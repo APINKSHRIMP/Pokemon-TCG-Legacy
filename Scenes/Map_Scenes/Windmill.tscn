@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://whm3sqvrpohw" path="res://Scripts/Map_Scripts/Windmill.gd" id="1_u04si"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_witqj"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="4_0nrty"]
-[ext_resource type="Texture2D" uid="uid://dvox0sjxpc2hs" path="res://Image_Assets/Character_Sprites/Mewtwo.png" id="5_witqj"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
 size = Vector2(77.75, 23)
@@ -67,10 +66,3 @@ shape = SubResource("RectangleShape2D_annoh")
 position = Vector2(337, 399)
 shape = SubResource("RectangleShape2D_annoh")
 
-[node name="MEWTWO?" type="TextureRect" parent="." unique_id=2139754661]
-offset_left = 320.0
-offset_top = 30.0
-offset_right = 360.0
-offset_bottom = 70.0
-scale = Vector2(1.5, 1.5)
-texture = ExtResource("5_witqj")

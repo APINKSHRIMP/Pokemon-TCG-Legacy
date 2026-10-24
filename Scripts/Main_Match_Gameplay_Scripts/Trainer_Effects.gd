@@ -1806,9 +1806,11 @@ func effect_professor_oak(played_card: card_object, is_opponent: bool) -> void:
 		card.current_location = "discard"
 		discard.append(card)
 		var card_texture = main.get_card_texture(card)
-		main.animate_card_out_of_hand(card, is_opponent, oak_from, discard_node, 0.15, card_texture)
-		await get_tree().create_timer(GameState.match_time(0.1)).timeout
+		# ISSUE #456: flights queue one at a time (#243), so a 0.1s timer here hid the hand faster than
+		# the cards flew. Waiting for each flight makes every card leave its slot as it moves.
+		await main.animate_card_out_of_hand(card, is_opponent, oak_from, discard_node, 0.15, card_texture)
 		if main._should_bail(): return
+	print("ISSUE #456 FIX ACTIVE: Professor Oak discarded ", hand_copy.size(), " cards one flight at a time")
 	hand.clear()
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -1996,8 +1998,7 @@ func effect_impostor_professor_oak(is_opponent: bool) -> void:
 		card.current_location = "deck"
 		target_deck.append(card)
 		var card_texture = main.get_card_texture(card)
-		main.animate_card_out_of_hand(card, target_is_opponent, io_from, target_deck_node, 0.15, card_texture)
-		await get_tree().create_timer(GameState.match_time(0.1)).timeout
+		await main.animate_card_out_of_hand(card, target_is_opponent, io_from, target_deck_node, 0.15, card_texture)   # ISSUE #456
 		if main._should_bail(): return
 	target_hand.clear()
 	target_deck.shuffle()
@@ -2129,29 +2130,33 @@ func effect_lass(is_opponent: bool) -> void:
 		main.restore_opponent_blocker(restore_blocker_lass, "effect_lass reveal")
 
 	# Animate player trainers going to deck
+	# ISSUE #456: the cards stay in the hand arrays until every flight is done -- erasing one at a
+	# time without a redraw shifted the indices lift_card_from_hand reads, so later flights hid the
+	# wrong slot. Each flight is awaited (flights queue anyway) so a card leaves as it moves.
 	for card in p_trainers:
 		var lp_from: Dictionary = main.lift_card_from_hand(card, false)   # FLIGHTS: before it leaves the hand
-		main.player_hand.erase(card)
 		card.current_location = "deck"
 		main.player_deck.append(card)
 		var card_texture = main.get_card_texture(card)
-		main.animate_card_out_of_hand(card, false, lp_from, main.player_deck_icon, 0.15, card_texture)
-		await get_tree().create_timer(GameState.match_time(0.1)).timeout
+		await main.animate_card_out_of_hand(card, false, lp_from, main.player_deck_icon, 0.15, card_texture)
 		if main._should_bail(): return
 		main.update_deck_icon(false)
-	
+
 	# Animate opponent trainers going to deck
 	for card in o_trainers:
 		var lo_from: Dictionary = main.lift_card_from_hand(card, true)   # FLIGHTS: before it leaves the hand
-		main.opponent_hand.erase(card)
 		card.current_location = "deck"
 		main.opponent_deck.append(card)
 		var card_texture = main.get_card_texture(card)
-		main.animate_card_out_of_hand(card, true, lo_from, main.opponent_deck_icon, 0.15, card_texture)
-		await get_tree().create_timer(GameState.match_time(0.1)).timeout
+		await main.animate_card_out_of_hand(card, true, lo_from, main.opponent_deck_icon, 0.15, card_texture)
 		if main._should_bail(): return
 		main.update_deck_icon(true)
-	
+	for card in p_trainers:
+		main.player_hand.erase(card)
+	for card in o_trainers:
+		main.opponent_hand.erase(card)
+	print("ISSUE #456 FIX ACTIVE: Lass flew ", p_trainers.size() + o_trainers.size(), " Trainers one by one")
+
 	main.player_deck.shuffle()
 	main.opponent_deck.shuffle()
 	main.refresh_hand_display(false)
@@ -5628,6 +5633,8 @@ func gym1_no_removal_gym_pay_tax(card: card_object, is_opponent: bool) -> bool:
 		var ctex = main.get_card_texture(c)
 		await main.animate_card_out_of_hand(c, is_opponent, nr_from, discard_node, 0.2, ctex)
 		if main._should_bail(): return false
+		# ISSUE #456: redraw before the next card is measured, or its slot index is one off.
+		main.refresh_hand_display(is_opponent)
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	return true

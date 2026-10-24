@@ -193,7 +193,11 @@ func attack_value(attack: Dictionary, me, foe) -> float:
 	# ISSUE #375 FORESIGHT: no Bench and nothing to bench next turn — Knocking Out their Active next turn wins the game.
 	if player_out_of_backups():
 		gamma *= CpuWeights.g("look.win_next", 4.0)
-	var v := (1.0 - pk) * (1.0 - die_a) * pk_next * foe_prizes * pv * gamma \
+	# ISSUE #460: the Prize taken NOW counts too. Without it a KO-now attack scored 0 here while a
+	# chip attack that only sets up next turn's KO scored pk_next * pv * gamma (+160) -- so "KO
+	# later" outranked "KO now" and the CPU passed up guaranteed Knock Outs.
+	var v := pk * foe_prizes * pv \
+		+ (1.0 - pk) * (1.0 - die_a) * pk_next * foe_prizes * pv * gamma \
 		- ((1.0 - pk) * die_a + pk * die_b) * my_prizes * pv
 	return v * CpuWeights.g("look.attack", 1.0)
 

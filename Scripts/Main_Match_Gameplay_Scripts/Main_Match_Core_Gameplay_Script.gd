@@ -5005,6 +5005,122 @@ static func _turn_float_anchor(is_opponent: bool = false) -> Vector2:
 	return Vector2(RIGHT_RAIL_X + RAIL_W * 0.5 - 150.0,
 		PILE_BOT_Y - 26.0 - TURN_FLOAT_GAP)
 
+# ============================================================
+# ATTACK HIT — the attacker lunges and bumps the defender
+# ============================================================
+# The attacking card tilts to point at the defender and darts forward until the two
+# touch. On the bump it swings back to its spot, and the defender flashes white, is
+# knocked back a little and wiggles as it settles. Both cards are played by stand-in
+# copies of their own images (the real ones hidden for the moment), so the board's
+# layout is never touched. Times scale with the Options animation speed (match_time).
+# TWEAKABLE:
+const HIT_TILT := 0.16              # radians the attacker turns toward the defender
+const HIT_WINDUP := 10.0            # px it draws back before the lunge
+const HIT_WINDUP_TIME := 0.08
+const HIT_LUNGE_TIME := 0.16
+const HIT_OVERLAP := 8.0            # px the cards overlap at the bump
+const HIT_RETURN_TIME := 0.24
+const HIT_KNOCKBACK := 22.0         # px the defender is pushed away
+const HIT_KNOCKBACK_TIME := 0.07
+const HIT_SETTLE_TIME := 0.22       # defender drifting back to its spot
+const HIT_WIGGLE := [0.14, -0.10, 0.06, -0.03, 0.0]   # defender rotation steps (radians)
+const HIT_WIGGLE_STEP := 0.05
+const HIT_FLASH := Color(3.0, 3.0, 3.0, 1.0)          # modulate at the moment of impact
+const HIT_FLASH_TIME := 0.22
+const HIT_Z := 150
+
+func play_attack_hit(attacker: card_object, defender: card_object) -> void:
+	if attacker == null or defender == null:
+		return
+	# Only Active against Active: bench hits and self-damage have no lunge.
+	var actives := [player_active_pokemon, opponent_active_pokemon]
+	if not (attacker in actives and defender in actives) or attacker == defender:
+		return
+	var a_node := find_card_ui_for_object(attacker)
+	var d_node := find_card_ui_for_object(defender)
+	if a_node == null or d_node == null or not a_node.is_visible_in_tree() or not d_node.is_visible_in_tree():
+		return
+
+	var a_ghost := _hit_ghost(a_node)
+	var d_ghost := _hit_ghost(d_node)
+	var a_home: Vector2 = a_ghost.position
+	var d_home: Vector2 = d_ghost.position
+	var a_centre: Vector2 = a_home + a_ghost.size / 2.0
+	var d_centre: Vector2 = d_home + d_ghost.size / 2.0
+	var dir: Vector2 = (d_centre - a_centre).normalized()
+	if dir == Vector2.ZERO:
+		dir = Vector2.RIGHT
+	# How far until the edges meet along the line between them, plus a little overlap.
+	var reach: float = absf(dir.x) * (a_ghost.size.x + d_ghost.size.x) / 2.0 \
+		+ absf(dir.y) * (a_ghost.size.y + d_ghost.size.y) / 2.0
+	var travel: float = maxf(0.0, a_centre.distance_to(d_centre) - reach + HIT_OVERLAP)
+	# Tip the top of the card toward the defender.
+	var tilt: float = HIT_TILT * (1.0 if dir.x >= 0.0 else -1.0)
+	a_node.set_meta("hit_alpha", a_node.modulate.a)
+	d_node.set_meta("hit_alpha", d_node.modulate.a)
+	a_node.modulate.a = 0.0
+	d_node.modulate.a = 0.0
+
+	var lunge := create_tween()
+	lunge.tween_property(a_ghost, "position", a_home - dir * HIT_WINDUP, GameState.match_time(HIT_WINDUP_TIME)) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	lunge.parallel().tween_property(a_ghost, "rotation", tilt, GameState.match_time(HIT_WINDUP_TIME))
+	lunge.tween_property(a_ghost, "position", a_home + dir * travel, GameState.match_time(HIT_LUNGE_TIME)) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await lunge.finished
+	if _should_bail():
+		_end_attack_hit(a_node, d_node, a_ghost, d_ghost)
+		return
+
+	# THE BUMP: attacker back home, defender flashes, is knocked back and wiggles.
+	var back := create_tween()
+	back.tween_property(a_ghost, "position", a_home, GameState.match_time(HIT_RETURN_TIME)) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	back.parallel().tween_property(a_ghost, "rotation", 0.0, GameState.match_time(HIT_RETURN_TIME))
+	d_ghost.modulate = HIT_FLASH
+	var flash := create_tween()
+	flash.tween_property(d_ghost, "modulate", Color.WHITE, GameState.match_time(HIT_FLASH_TIME))
+	var knock := create_tween()
+	knock.tween_property(d_ghost, "position", d_home + dir * HIT_KNOCKBACK, GameState.match_time(HIT_KNOCKBACK_TIME)) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	knock.tween_property(d_ghost, "position", d_home, GameState.match_time(HIT_SETTLE_TIME)) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var wiggle := create_tween()
+	wiggle.tween_interval(GameState.match_time(HIT_KNOCKBACK_TIME))
+	for r in HIT_WIGGLE:
+		wiggle.tween_property(d_ghost, "rotation", float(r), GameState.match_time(HIT_WIGGLE_STEP))
+	await wiggle.finished
+	if knock.is_running():
+		await knock.finished
+	if back.is_running():
+		await back.finished
+	_end_attack_hit(a_node, d_node, a_ghost, d_ghost)
+
+
+## A stand-in for one card on the board: same image, same rect, turning about its centre.
+func _hit_ghost(node: TextureRect) -> TextureRect:
+	var g := TextureRect.new()
+	g.texture = node.texture
+	g.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	g.stretch_mode = node.stretch_mode
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	g.z_index = HIT_Z
+	add_child(g)
+	g.size = node.size * node.get_global_transform().get_scale()
+	g.global_position = node.global_position
+	g.pivot_offset = g.size / 2.0
+	return g
+
+
+func _end_attack_hit(a_node: Control, d_node: Control, a_ghost: Control, d_ghost: Control) -> void:
+	for g in [a_ghost, d_ghost]:
+		if is_instance_valid(g):
+			g.queue_free()
+	for n in [a_node, d_node]:
+		if is_instance_valid(n):
+			n.modulate.a = float(n.get_meta("hit_alpha", 1.0))
+
+
 func float_label_over(pokemon: card_object, text: String, colour: Color,
 		is_opponent: bool = false) -> void:
 	# ISSUE #279 (retest): an ACTIVE Pokemon's figure rises out of its own HP text
@@ -6842,6 +6958,7 @@ func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 		flip_tween.tween_property(coin, "scale:y", 1.0, half_flip_time)
 
 	await flip_tween.finished
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_coin_land_sound)
 
 	# Set the final coin face to match the actual result
 	coin.texture = heads_tex if result else tex_tails
@@ -7645,6 +7762,11 @@ func perform_evolution(is_opponent: bool, defer_after: bool = false) -> void:
 	# Set the new card's HP as its max minus the carried damage — after the Tools moved over, so an HP Tool counts.
 	evo_card.current_hp = max(1, evo_card.get_max_hp() - damage_taken)
 	print("ISSUE #375 FIX ACTIVE: evolution carries ", damage_taken, " damage -> ", evo_card.current_hp, "/", evo_card.get_max_hp())
+	# ISSUE #468: Energy the new form may not hold (Scramble / Double Rainbow on a Pokémon-ex, R Energy
+	# on a non-Dark evolution) is discarded as it evolves, with a figure over it saying so.
+	for dropped_name in special_energy_effects.discard_now_illegal(evo_card, is_opponent):
+		float_label_over(evo_card, String(dropped_name).to_upper() + " DISCARDED", Color.ORANGE, is_opponent)
+	update_discard_pile_display(is_opponent)
 
 	# Mark as played this turn so it can't evolve again immediately
 	evo_card.placed_on_field_this_turn = true
@@ -8481,6 +8603,10 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	# the whole of "in line with the HP counters instead of overlapping the card".
 	# `is_opponent` here is the ATTACKER's side, so the DEFENDER is the other one.
 	var defender_is_opponent: bool = not is_opponent
+	# The lunge and bump, before any number floats up.
+	if final_damage > 0:
+		await play_attack_hit(attacker, defender)
+		if _should_bail(): return
 	print("ISSUE #279 FIX ACTIVE: damage label over ",
 		defender.metadata.get("name", "?"), " defender_is_opponent=", defender_is_opponent,
 		" nudge ", FLOAT_LABEL_SIDE_NUDGE, " font ", FLOAT_DAMAGE_FONT)
@@ -10345,14 +10471,15 @@ func load_opponent_data_by_name(opp_name: String):
 # Play the correct music via the global SoundManager
 # The JSON holds a bare track name (no folder, no extension) picked in the character editor;
 # the Sound Manager turns that into a path. Opponents still carrying the "REPLACEMUSIC" /
-# "TEST" placeholders name no real file, so they fall through to play_bgm()'s own warning.
+# "TEST" placeholders (or no track at all) name no real file, so they get the normal battle
+# theme rather than a silent match.
 func play_opponent_music():
-	var music_file = opponent_data.get("music")
-	if music_file == null:
-		print("No music file specified")
+	var music_file := str(opponent_data.get("music", ""))
+	if music_file.strip_edges() == "" or not ResourceLoader.exists(SoundManagerScript.bgm_path(music_file)):
+		SoundManagerScript.play_bgm(SoundManagerScript.BGM_NORMAL_BATTLE, true)
 		return
 
-	SoundManagerScript.play_bgm_named(str(music_file), true)
+	SoundManagerScript.play_bgm_named(music_file, true)
 
 # Function to set up opponent's active and bench pokemon using the priority condition criteria scoring selection
 func action_button_pressed_perform_action() -> void:

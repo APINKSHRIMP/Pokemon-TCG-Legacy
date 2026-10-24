@@ -99,6 +99,7 @@ func _ready():
 	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(sprite_name)
 	animated_sprite.play("idle_down")
 	animated_sprite.scale = Vector2(0.5, 0.5)
+	animated_sprite.frame_changed.connect(_on_walk_frame)
 
 	# ISSUE #81 FIX: these four steps used to be orphaned INSIDE refresh_sprite() (that function was
 	# accidentally inserted mid-_ready(), so everything below it silently became part of it). With the
@@ -111,6 +112,31 @@ func _ready():
 
 	# Seed candidates from bodies already overlapping on spawn (battle return case)
 	call_deferred("_seed_existing_overlaps")
+
+# ============================================================
+# FOOTSTEPS
+# ============================================================
+# A step sound each time a foot lands in the walk cycle (frames 1 and 3 of the four), so
+# running steps come faster on their own. Silent until FOOTSTEP_SFX_PATH exists -- drop
+# the chosen .ogg in there (and let the editor import it) and every walk picks it up.
+## TWEAKABLE — the sound, and which walk frames are footfalls.
+const FOOTSTEP_SFX_PATH := "res://Audio/SFX/Footsteps/footstep.ogg"
+const FOOTSTEP_FRAMES := [1, 3]
+## A little random pitch per step so a walk doesn't sound like one sample on repeat.
+const FOOTSTEP_PITCH_MIN := 0.92
+const FOOTSTEP_PITCH_MAX := 1.08
+static var _footstep_stream: AudioStream = null
+static var _footstep_checked: bool = false
+
+func _on_walk_frame() -> void:
+	if not animated_sprite.animation.begins_with("walk_") or not (animated_sprite.frame in FOOTSTEP_FRAMES):
+		return
+	if not _footstep_checked:
+		_footstep_checked = true
+		if ResourceLoader.exists(FOOTSTEP_SFX_PATH):
+			_footstep_stream = load(FOOTSTEP_SFX_PATH)
+	if _footstep_stream != null:
+		SoundManagerScript.play_sfx(_footstep_stream, randf_range(FOOTSTEP_PITCH_MIN, FOOTSTEP_PITCH_MAX))
 
 # ISSUE #52: the overworld map is no longer reloaded when a sub-menu closes, so a costume change made
 # in the Costume menu has to be pushed onto the live player node instead of arriving via _ready().

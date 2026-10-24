@@ -878,6 +878,38 @@ func _load_deck(deck_name: String, folder: String = PLAYER_DECKS_FOLDER) -> void
 	_rebuild_deck_name_counts()
 
 
+## COLLECTION PROGRESS: a small chip right of the set stepper — distinct cards owned in
+## the set on show / cards in the set. Hovering it gives the total across every set
+## (worked out once per visit: the collection can't change on this screen).
+var _collection_chip: PanelContainer = null
+var _collection_overall: String = ""
+
+func _refresh_collection_chip(owned_cards: Array) -> void:
+	if set_label == null or set_label.get_parent() == null:
+		return
+	if _collection_chip != null and is_instance_valid(_collection_chip):
+		_collection_chip.queue_free()
+	var have := 0
+	for card_data in owned_cards:
+		if int(card_data.get("owned", 0)) > 0:
+			have += 1
+	if _collection_overall == "":
+		var all_have := 0
+		var all_total := 0
+		for entry in set_list:
+			if not FileAccess.file_exists(OWNED_CARDS_FOLDER + String(entry["set_id"]) + "_player_owned_cards.json"):
+				continue
+			for card_data in _load_owned_cards_for_set(String(entry["set_id"])):
+				all_total += 1
+				if int(card_data.get("owned", 0)) > 0:
+					all_have += 1
+		_collection_overall = "Whole collection: %d / %d" % [all_have, all_total]
+	_collection_chip = UIKit.make_chip("%d / %d" % [have, owned_cards.size()], "on_chrome")
+	_collection_chip.tooltip_text = "Cards collected in this set\n" + _collection_overall
+	_collection_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	set_label.get_parent().add_child(_collection_chip)
+
+
 ## Loads the player_owned_cards JSON for a given set_id.
 ## Returns the "owned_cards" array, or an empty array on failure.
 func _load_owned_cards_for_set(set_id: String) -> Array:
@@ -2133,6 +2165,7 @@ func _display_current_set() -> void:
 
 	# Load this set's owned-cards data
 	var owned_cards := _load_owned_cards_for_set(set_id)
+	_refresh_collection_chip(owned_cards)
 
 	# Pre-load the card metadata (names, subtypes) for this set so the
 	# name-based copy limit checks work immediately when cards are clicked

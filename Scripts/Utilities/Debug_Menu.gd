@@ -47,6 +47,9 @@ var _date_spin: SpinBox = null
 var _cash_edit: LineEdit = null
 var _fish_coin_edit: LineEdit = null
 var _fish_sent_edit: LineEdit = null
+## The main page of columns, and the CUTSCENES sub-page that replaces it while open.
+var _main_page: ScrollContainer = null
+var _cutscene_page: ScrollContainer = null
 ## The confirm-first cheat that has had its first click.
 var _armed_code: String = ""
 
@@ -88,6 +91,8 @@ func _build() -> void:
 	scroll.size = Vector2(1920 - MARGIN * 2, SCROLL_HEIGHT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
+	_main_page = scroll
+	_cutscene_page = _build_cutscene_page(root)
 
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", COLUMN_GAP)
@@ -105,6 +110,10 @@ func _build() -> void:
 
 
 func _build_world_column(col: VBoxContainer) -> void:
+	_heading(col, "CUTSCENES")
+	col.add_child(_button("CUTSCENES…", func(): _show_cutscene_page(true)))
+	col.add_child(_note("Every cutscene and variation, ready to play from the start."))
+
 	_heading(col, "TIME OF DAY")
 	var row: HBoxContainer = null
 	for i in GameState.TIMES_OF_DAY.size():
@@ -182,6 +191,60 @@ func _build_placement_column(col: VBoxContainer) -> void:
 	col.add_child(_button("FISH TABLE",
 			func(): MapManager.debug_open_placement_tool(PlacementTool.Mode.FISH)))
 	col.add_child(_note("The nearest fishing spot's Morning / Afternoon / Evening / Night catchable fish. A map can have several and they fish differently — add one with NEW, template \"Fishing spot\"."))
+
+
+## The CUTSCENES sub-page: DebugCutscenes.entries(), one button each, grouped, in
+## CUTSCENE_COLUMNS columns. A button jumps to that cutscene's day, time and place.
+const CUTSCENE_COLUMNS := 3
+
+func _build_cutscene_page(root: Control) -> ScrollContainer:
+	var page := ScrollContainer.new()
+	page.position = Vector2(MARGIN, SCROLL_TOP)
+	page.size = Vector2(1920 - MARGIN * 2, SCROLL_HEIGHT)
+	page.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.visible = false
+	root.add_child(page)
+
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", ROW_GAP)
+	page.add_child(outer)
+	var top := _row(outer)
+	var back := _button("◀  BACK", func(): _show_cutscene_page(false))
+	back.custom_minimum_size.x = 220
+	top.add_child(back)
+	var warn := _label("Rewrites this save's story state (intro answers, flags, date) — use a spare save slot.",
+			NOTE_FONT_SIZE, WARN_COLOUR)
+	warn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(warn)
+
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", COLUMN_GAP)
+	outer.add_child(columns)
+	var cols: Array = []
+	for i in CUTSCENE_COLUMNS:
+		cols.append(_column(columns))
+	# Groups dealt into the shortest column so the page stays balanced.
+	var heights: Array = []
+	heights.resize(CUTSCENE_COLUMNS)
+	heights.fill(0)
+	for group in DebugCutscenes.entries():
+		var target := heights.find(heights.min())
+		var col: VBoxContainer = cols[target]
+		_heading(col, String(group[0]))
+		for item in group[1]:
+			var cut_id := String(item[1])
+			var b := _button(String(item[0]), func(): DebugCutscenes.launch(cut_id))
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.clip_text = true
+			b.tooltip_text = String(item[0])
+			col.add_child(b)
+		heights[target] += 1 + (group[1] as Array).size()
+	return page
+
+
+func _show_cutscene_page(show: bool) -> void:
+	_cutscene_page.visible = show
+	_main_page.visible = not show
 
 
 func _build_cheat_column(col: VBoxContainer) -> void:

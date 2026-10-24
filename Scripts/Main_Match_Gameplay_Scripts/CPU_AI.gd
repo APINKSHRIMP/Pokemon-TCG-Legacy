@@ -885,6 +885,12 @@ func _offensive_retreat_target() -> card_object:
 	if ko_sub != null:
 		return ko_sub
 	var active_damage = _best_usable_damage_against(main.opponent_active_pokemon, main.player_active_pokemon)
+	# ISSUE #454: damage past a Knock Out is worth nothing -- if the Active already KOs, no Benched
+	# Pokémon hits "harder" in any way that matters (Hitmonchan's Jab vs a 10 HP Ekans: it paid 2
+	# Energy to retreat into Mewtwo for the bigger number).
+	if active_damage >= main.player_active_pokemon.current_hp:
+		print("ISSUE #454 FIX ACTIVE: no offensive retreat -- the Active already Knocks Out")
+		return null
 	var best: card_object = null
 	var best_damage = active_damage
 	for bench_pokemon in main.opponent_bench:
@@ -1341,6 +1347,26 @@ func evaluate_evolution_pair(evo_card: card_object, target: card_object) -> Dict
 		score += EVOLUTION_WASTE_PENALTY
 		reasons.append("Pointless evolution — can attack now, can't after, energy spent, not under threat (" + str(EVOLUTION_WASTE_PENALTY) + " pts)")
 		print("ISSUE #36 FIX ACTIVE: ", EVOLUTION_WASTE_PENALTY, " waste penalty for evolving ", target.metadata.get("name", "?"), " into ", evo_card.metadata.get("name", "?"))
+
+	# ISSUE #457: the Active can Knock Out the Defending Pokémon right now (PlusPowers counted), but
+	# the evolved form can't attack this turn -- evolving throws the sure KO away (Spearow + PlusPower
+	# vs a 20 HP Pikachu, evolved into a Fearow with 1 Energy). "Can't attack" allows for the one
+	# Energy still to be attached this turn, if there is one in hand.
+	const EVOLUTION_LOSES_KO_PENALTY := -600.0
+	if target == main.opponent_active_pokemon and main.player_active_pokemon != null \
+			and _cpu_can_ko_now(main.player_active_pokemon):
+		var evo_may_attack: bool = has_usable_attack_after
+		if not evo_may_attack and not energy_done_36 \
+				and main.opponent_hand.any(func(c): return c.metadata.get("supertype", "") == "Energy"):
+			for attack in evo_card.metadata.get("attacks", []):
+				if get_unmet_energy_count(attack, target) <= 1:
+					evo_may_attack = true
+					break
+		if not evo_may_attack:
+			score += EVOLUTION_LOSES_KO_PENALTY
+			reasons.append("Would give up a sure Knock Out this turn (" + str(EVOLUTION_LOSES_KO_PENALTY) + " pts)")
+			print("ISSUE #457 FIX ACTIVE: not evolving ", target.metadata.get("name", "?"), " -- it can KO now, ",
+				evo_card.metadata.get("name", "?"), " couldn't attack")
 
 	# Active pokemon bonus: evolving the active is more urgent
 	if target.current_location == "active":
@@ -3150,12 +3176,16 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 
 		var score = 0.0
 		var damage_range = main.attack_effects.estimate_attack_damage_range(damage_source_attack, main.opponent_active_pokemon, main.player_active_pokemon)
-		var min_result = main.calculate_final_damage(damage_range["min"], cpu_types, main.player_active_pokemon)
-		var max_result = main.calculate_final_damage(damage_range["max"], cpu_types, main.player_active_pokemon)
+		# ISSUE #460: "this attack's damage isn't affected by (Weakness or) Resistance" (46 attacks) -- the
+		# estimate took Resistance off anyway, so a Land Sonic that KOs looked like it didn't.
+		var ign_weak: bool = "isn't affected by weakness" in attack_text
+		var ign_res: bool = ign_weak or "isn't affected by resistance" in attack_text
+		var min_result = main.calculate_final_damage(damage_range["min"], cpu_types, main.player_active_pokemon, null, false, ign_weak, ign_res)
+		var max_result = main.calculate_final_damage(damage_range["max"], cpu_types, main.player_active_pokemon, null, false, ign_weak, ign_res)
 		# ISSUE #95: coin-flip attacks have a min of 0, so scoring base damage off min valued every one
 		# of them at nothing (Comet Punch with 4 Energy scored 0 and lost to Fetch). Score off the
 		# AVERAGE roll instead; min/max still drive the guaranteed/potential KO tests below.
-		var exp_result = main.calculate_final_damage(damage_range["expected"], cpu_types, main.player_active_pokemon)
+		var exp_result = main.calculate_final_damage(damage_range["expected"], cpu_types, main.player_active_pokemon, null, false, ign_weak, ign_res)
 		var parsed_effects = main.attack_effects.parse_card_text_effects(damage_source_attack.get("text", ""), pokemon_name)
 
 		# ISSUE #11 FIX ACTIVE: a guaranteed (no coin-flip) Poison inflict is realistically worth
@@ -4568,7 +4598,11 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			score += la_v
 			print("ISSUE #375 LOOKAHEAD: ", attack.get("name", ""), " next-exchange value ", int(la_v))
 
-		attack_score_log.append({"name": attack.get("name", ""), "score": score, "exp": effective_exp_damage, "index": i})
+		# ISSUE #460: a sure Knock Out (minimum damage after W/R covers their HP) -- unless the attack is
+		# flagged as doing nothing here, or its recoil would knock out our own Active too.
+		var sure_ko: bool = effective_min_damage >= player_hp and score > -9000.0 \
+			and not (has_self_damage and int(self_damage_amount) >= main.opponent_active_pokemon.current_hp)
+		attack_score_log.append({"name": attack.get("name", ""), "score": score, "exp": effective_exp_damage, "index": i, "ko": sure_ko})
 		if score > best_attack_score:
 			best_attack_score = score
 			best_attack_index = i
@@ -4576,6 +4610,19 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	if best_attack_index == -1:
 		print("CPU found no suitable attack")
 		return
+	# ISSUE #460: a person always takes a guaranteed Knock Out. If the best score went to an attack that
+	# doesn't KO while one that does was payable, use the best-scoring KO attack instead.
+	var _ko_best := {}
+	var _chosen_ko := false
+	for entry in attack_score_log:
+		if int(entry["index"]) == best_attack_index:
+			_chosen_ko = bool(entry.get("ko", false))
+		if bool(entry.get("ko", false)) and (_ko_best.is_empty() or float(entry["score"]) > float(_ko_best["score"])):
+			_ko_best = entry
+	if not _chosen_ko and not _ko_best.is_empty():
+		print("ISSUE #460 FIX ACTIVE: taking the sure KO with ", _ko_best["name"], " over ", attacks[best_attack_index].get("name", ""))
+		best_attack_index = int(_ko_best["index"])
+		best_attack_score = float(_ko_best["score"])
 	# ISSUE #375 branch replay: maybe use another usable attack instead.
 	var _b_opts: Array = attack_score_log.map(func(e): return int(e["index"]))
 	var _b_pick := CpuWeights.branch_point("attack", _b_opts.size(), _b_opts.find(best_attack_index), attack_score_log.map(func(e): return e["name"]))
@@ -6274,10 +6321,19 @@ func _cpu_score_pluspower() -> float:
 	# Paralyzed/Asleep Active can't attack this turn.
 	if active.special_condition in ["Paralyzed", "Asleep"]:
 		return 0.0
-	var pp_bonus = (active.pluspower_count + 1) * 10
+	# ISSUE #453/#455: PlusPower is added AFTER Weakness/Resistance, so its effect is a flat +10 on
+	# top of what the attack already does (calculate_final_damage without an attacker leaves out
+	# the PlusPowers already attached; `have` adds them back). A human only spends one when it
+	# turns a non-KO into a KO, or at least cuts the number of hits the KO needs -- never when
+	# the attack already KOs, and never for +10 that changes nothing (Jab 20 vs 40 HP: 2 hits
+	# with or without it).
+	var have: int = active.pluspower_count * 10
+	var hp: int = main.player_active_pokemon.current_hp
 	var types = active.metadata.get("types", ["Colorless"])
 	var has_damaging_attack = false
+	var already_ko = false
 	var enables_ko = false
+	var fewer_hits = false
 	for attack in active.metadata.get("attacks", []):
 		if get_unmet_energy_count(attack, active) > 0: continue
 		var dmg_range = main.attack_effects.estimate_attack_damage_range(attack, active, main.player_active_pokemon)
@@ -6285,13 +6341,24 @@ func _cpu_score_pluspower() -> float:
 		if result_without["damage"] <= 0:
 			continue  # a 0-damage attack gains nothing from PlusPower
 		has_damaging_attack = true
-		if result_without["damage"] < main.player_active_pokemon.current_hp and result_without["damage"] + pp_bonus >= main.player_active_pokemon.current_hp:
+		var now: int = int(result_without["damage"]) + have
+		if now >= hp:
+			already_ko = true
+		elif now + 10 >= hp:
 			enables_ko = true
+		elif ceili(float(hp) / float(now + 10)) < ceili(float(hp) / float(now)):
+			fewer_hits = true
 	if not has_damaging_attack:
+		return 0.0
+	if already_ko:
+		print("ISSUE #453 FIX ACTIVE: PlusPower held -- an attack already Knocks Out (", hp, " HP)")
 		return 0.0
 	if enables_ko:
 		return 90.0
-	return 30.0
+	if fewer_hits:
+		return 30.0
+	print("ISSUE #453 FIX ACTIVE: PlusPower held -- +10 doesn't change the hits needed for ", hp, " HP")
+	return 0.0
 
 func _cpu_score_pokemon_center() -> float:
 	# ISSUE #373: healed damage against the Energy it strips (only from the damaged Pokémon), plus a big bonus when
@@ -6386,15 +6453,15 @@ func _cpu_score_gust_of_wind() -> float:
 
 
 func _cpu_score_gust_of_wind_base() -> float:
+	# ISSUE #452: if the player's Active is already a sure KO, a gust only earns its place when the
+	# Benched Pokémon it drags up is worth more to knock out (more Prizes, evolved, Energy on it).
+	var active_ko: bool = main.player_active_pokemon != null and _cpu_can_ko_now(main.player_active_pokemon)
 	for bp in main.player_bench:
-		if main.opponent_active_pokemon != null:
-			var types = main.opponent_active_pokemon.metadata.get("types", ["Colorless"])
-			for attack in main.opponent_active_pokemon.metadata.get("attacks", []):
-				if get_unmet_energy_count(attack, main.opponent_active_pokemon) > 0: continue
-				var dmg_range = main.attack_effects.estimate_attack_damage_range(attack, main.opponent_active_pokemon, bp)
-				var result = main.calculate_final_damage(dmg_range["min"], types, bp)
-				if result["damage"] >= bp.current_hp:
-					return 95.0 if main.is_ex_pokemon(bp) or main.opponent_prize_cards.size() <= 1 else 85.0
+		if active_ko and _gust_ko_worth(bp) <= _gust_ko_worth(main.player_active_pokemon):
+			print("ISSUE #452 FIX ACTIVE: no gust onto ", bp.metadata.get("name", ""), " -- the Active is already a KO worth as much")
+			continue
+		if _cpu_can_ko_now(bp):
+			return 95.0 if main.is_ex_pokemon(bp) or main.opponent_prize_cards.size() <= 1 else 85.0
 	# ISSUE #373: the stall gust — the player's Active is about to KO ours, so drag up a Benched Pokémon that
 	# can't attack and can't easily retreat, buying turns.
 	if evaluate_ko_threats().get("cpu_active_guaranteed_ko", false):
@@ -6408,6 +6475,30 @@ func _cpu_score_gust_of_wind_base() -> float:
 				print("ISSUE #373 FIX ACTIVE: CPU values a stall gust onto ", bp.metadata.get("name", ""))
 				return 60.0
 	return 0.0
+
+
+## Can the CPU's Active Knock Out `target` this turn with an attack it can already pay for
+## (as if `target` were the Defending Pokémon; minimum damage, PlusPowers attached counted)?
+func _cpu_can_ko_now(target: card_object) -> bool:
+	var me = main.opponent_active_pokemon
+	if me == null or target == null:
+		return false
+	var types = me.metadata.get("types", ["Colorless"])
+	for attack in me.metadata.get("attacks", []):
+		if get_unmet_energy_count(attack, me) > 0: continue
+		var dmg_range = main.attack_effects.estimate_attack_damage_range(attack, me, target)
+		var result = main.calculate_final_damage(dmg_range["min"], types, target)
+		if result["damage"] > 0 and int(result["damage"]) + me.pluspower_count * 10 >= target.current_hp:
+			return true
+	return false
+
+
+## ISSUE #452: what knocking `p` out is worth, for comparing two KO targets: Prizes first, then
+## the investment it carries (an Evolution, its Energy).
+func _gust_ko_worth(p: card_object) -> float:
+	var prizes := 2.0 if main.is_ex_pokemon(p) else 1.0
+	var evolved := 0.0 if main.is_basic_pokemon(p) else 25.0
+	return prizes * 100.0 + evolved + float(p.attached_energies.size()) * 15.0
 
 func _cpu_score_potion() -> float:
 	return _cpu_score_heal_item(20, false)

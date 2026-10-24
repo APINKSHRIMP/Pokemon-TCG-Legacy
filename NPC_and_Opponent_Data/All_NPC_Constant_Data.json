@@ -1832,7 +1832,7 @@
       "music": "fast_battle (PTCG Ronalds Theme)",
       "prize_cards": 3,
       "cash_reward": "100",
-      "pack_reward": "base1-a"
+      "pack_reward": "base1_a"
     },
     "Ellie 3": {
       "friendly_name": "Ellie",
@@ -1842,7 +1842,7 @@
       "music": "fast_battle (PTCG Ronalds Theme)",
       "prize_cards": 4,
       "cash_reward": "100",
-      "pack_reward": "base1-a"
+      "pack_reward": "base1_a"
     },
     "Olly 2": {
       "friendly_name": "Olly",
@@ -1852,7 +1852,7 @@
       "music": "fast_battle (PTCG Ronalds Theme)",
       "prize_cards": 4,
       "cash_reward": "100",
-      "pack_reward": "base1-c"
+      "pack_reward": "base1_c"
     }
   }
 }

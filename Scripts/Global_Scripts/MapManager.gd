@@ -193,14 +193,14 @@ const GIFT_FLIP_TOTAL_DURATION := 1.5
 const GIFT_COSTUME_TOTAL_DURATION := 1.5
 # "card_fly" gifts (Olly's energy cards): each card flies up from below and fades in,
 # left to right, CARD_FLY_STAGGER apart, settling with UIKit.fly_in's little fall-back.
-const CARD_FLY_TIME := 0.7
-const CARD_FLY_STAGGER := 0.2
+const CARD_FLY_TIME := 1.4
+const CARD_FLY_STAGGER := 0.4
 const CARD_FLY_FROM_Y := 260.0
 # Behind each flying card a trail of CARD_FLY_TRAIL copies follows it in, CARD_FLY_TRAIL_GAP
 # apart, each doing the same up-and-settle and landing in a pile under the front card.
 # CARD_FLY_TRAIL_STEP is how far each copy in the pile sits from the one above it (0 = hidden).
 const CARD_FLY_TRAIL := 20
-const CARD_FLY_TRAIL_GAP := 0.06
+const CARD_FLY_TRAIL_GAP := 0.12
 const CARD_FLY_TRAIL_STEP := Vector2(0.8, -0.8)
 # Each trail copy, on reaching its pile spot, carries on up into a small loop -- off to a
 # random side, over the top, down and round -- before tucking in behind the front card.
@@ -1402,6 +1402,7 @@ func _face_player_toward_actor(actor: Node) -> void:
 func _on_player_interact(opponent: Node):
 	if message_panel.visible or _validation_popup_active:
 		return
+	CafeBreakfastCutscene.note_npc_talk()
 	# A story opponent whose talk is a cutscene (the café breakfast): the map's script
 	# registered a handler by name, and it takes over instead of the Yes/No challenge.
 	var override: Callable = opponent_interact_overrides.get(opponent.opponent_name, Callable())
@@ -1635,6 +1636,7 @@ func _on_player_pokemon_interact(pokemon: Node) -> void:
 func _on_player_npc_interact(npc: Node):
 	if message_panel.visible or _validation_popup_active:
 		return
+	CafeBreakfastCutscene.note_npc_talk()
 	current_npc = npc
 
 	npc.pause_and_face(_player.global_position)
@@ -2859,6 +2861,7 @@ func _coinflip_launch_one(rect: TextureRect, landed_heads: bool, flight: float) 
 	await flip_tween.finished
 	if rect == null or not is_instance_valid(rect):
 		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_coin_land_sound)
 
 	# The spin ends on whichever face the parity landed on, so the result face is
 	# always set explicitly rather than left to the loop.
@@ -3414,6 +3417,59 @@ func _start_test_match(current: Node) -> void:
 # Reloads the supplied map scene, restoring the player to their current
 # spot/direction via the same menu-return path every map scene honours
 # in its _ready().
+# ============================================================
+# STORY REMINDER CALLS
+# ============================================================
+# Checked a couple of times a second: when a reminder is owed (the café breakfast,
+# CafeBreakfastCutscene.reminder_due) it rings the moment the player is free -- no
+# cutscene, message box, menu, fishing or door transition in the way.
+
+## TWEAKABLE — seconds between checks.
+const REMINDER_CHECK_INTERVAL := 0.5
+var _reminder_check_timer: float = 0.0
+var _ringing_reminder: bool = false
+
+
+func _process(delta: float) -> void:
+	_reminder_check_timer -= delta
+	if _reminder_check_timer > 0.0:
+		return
+	_reminder_check_timer = REMINDER_CHECK_INTERVAL
+	_try_story_reminder()
+
+
+func _try_story_reminder() -> void:
+	if _ringing_reminder or cutscene_active or overworld_paused or _validation_popup_active or _fishing != null:
+		return
+	if _player == null or not is_instance_valid(_player) or not _player.is_inside_tree() or not _player.can_move:
+		return
+	if message_panel == null or not is_instance_valid(message_panel) or message_panel.visible:
+		return
+	var call_id := CafeBreakfastCutscene.reminder_due()
+	if call_id != "":
+		_ring_story_reminder(call_id)
+
+
+func _ring_story_reminder(call_id: String) -> void:
+	_ringing_reminder = true
+	var host: Node = _player.get_parent()
+	_player.lock_movement()
+	cutscene_active = true   # keeps the menu shut for the call
+	var call := PhoneCall.play_from_data(host, call_id)
+	# Polled rather than awaiting `finished`: a call freed with its map (a quit, a debug jump)
+	# never emits it, and this would hang with _ringing_reminder stuck on for the session.
+	while call != null and is_instance_valid(call) and call.is_inside_tree() and not call.is_finished():
+		await get_tree().process_frame
+	_ringing_reminder = false
+	# Left the map mid-call (a quit): not marked, so it rings again next time.
+	if not is_instance_valid(host) or not host.is_inside_tree():
+		return
+	CafeBreakfastCutscene.reminder_played(call_id)
+	cutscene_active = false
+	if is_instance_valid(_player):
+		_player.unlock_movement()
+
+
 ## Reloads the current map with the player standing where they are now, so its
 ## date/time cast and colour grade are rebuilt (a story beat that moves the clock on).
 func reload_map_in_place() -> void:

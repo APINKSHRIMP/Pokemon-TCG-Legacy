@@ -17827,10 +17827,15 @@ func trigger_ex14_peal_of_thunder(charizard: card_object, is_opponent: bool) -> 
 			attach_target = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "PEAL OF THUNDER", "Attach the Energy to which Pokemon?", "ATTACH", false)
 			if main._should_bail(): return
 			if attach_target == null: attach_target = targets[0]
+		# ISSUE #459: only Energy the target can legally hold (R / Aqua / Magma / Boost / Scramble...
+		# are type-locked) -- the rest stays with the looked-at cards and is discarded below.
+		energies = energies.filter(func(e): return not ("Special" in e.metadata.get("subtypes", [])) \
+			or bool(main.special_energy_effects.can_attach_to(e, attach_target).get("allowed", true)))
+		print("ISSUE #459 FIX ACTIVE: Peal of Thunder legal Energy for ", attach_target.metadata.get("name", ""), ": ", energies.size())
 		var chosen_energies: Array = []
 		if is_opponent:
 			chosen_energies = energies
-		else:
+		elif not energies.is_empty():
 			# ISSUE #367: one yes/no per Energy → ONE screen of all 5 looked-at cards ("choose as many Energy as you like").
 			chosen_energies = await main.card_ops.pick_from_looked_at(look, func(c): return c in energies, 0, energies.size(), "PEAL OF THUNDER — THE TOP " + str(look.size()) + " CARDS", "Choose any number of Energy to attach to " + attach_target.metadata.get("name",""), "ATTACH")
 			if main._should_bail(): return

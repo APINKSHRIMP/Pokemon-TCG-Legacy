@@ -20,7 +20,8 @@
   },
   "opponents": {
     "Mewtwo": {
-      "at": [409, 648],
+      "at": [229, 10],
+      "requires": "not flag: mewtwo_vanished",
       "move": "idle_down",
       "says": {
         "meet": "...So. Someone finally found the way in. Do not look so surprised — I have been listening to your footsteps since the forest path. I have no interest in your words. Show me your cards instead.",

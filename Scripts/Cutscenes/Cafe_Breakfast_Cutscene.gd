@@ -20,7 +20,8 @@ extends Cutscene
 # their meet line as a plain box, a fade, the player sat at the table, the chat, and
 # one forced match after another -- Olly (if here), Ellie, Alexander. Every match is
 # played once, won or lost, and the clock is held still for them (no_time_advance);
-# once Alexander's is played the scene moves the day on to the afternoon itself.
+# once Alexander's is played the map comes back up in the afternoon (settle_after_load)
+# and the closing scene plays there.
 # Saying No to anyone stands the player up below the table; talking to any of the
 # table again reads their repeat line and sits them back down at the same question.
 #
@@ -129,7 +130,7 @@ const OLLY_ASK        := "Are you ready?"
 const OLLY_NO         := "Well I can't hang about much longer, if you've got something to do first make it quick."
 const OLLY_ASK_AGAIN  := "You all good now champ?"
 const OLLY_BYE        := "Well as fun as that was, some of us have places to be. I'll catch you all later!"
-const OLLY_ROD        := "[NAME], Make sure you come by the shop ASAP right? I've still got a rod for you and a favour to ask."
+const OLLY_ROD        := "[NAME], make sure you come by the shop ASAP right? I've still got a rod for you and a favour to ask."
 
 const ELLIE_MY_TURN   := "Well, now Ol has gone, it's my turn!"
 const ELLIE_NO        := ["What?? Do you need the toilet or something?", "Alright fine but I'm not leaving until I win!!!"]
@@ -147,7 +148,7 @@ const AFTER_ELLIE_PLAYER_LOST := [
 const AFTER_ELLIE_PLAYER_WON := [
 	["E", "Noooooo! I really am just that terrible. Unless you're cheating too..."],
 	["A", "I'm telling you I'm NOT CHEATING. Just because you can't beat either of us doesn't mean we're cheating."],
-	["E", "Well I still think you are, there's no way I lose so badly every time"],
+	["E", "Well I still think you are, there's no way I lose so badly every time."],
 	["A", "Look, I'll have a match with [NAME] right here right now and absolutely destroy their deck in front of you to prove it."],
 ]
 const ALEX_ASK     := "Are you ready to lose now?"
@@ -166,7 +167,7 @@ const AFTER_ALEX := {
 		["E", "...I suppose I'm taking care of the bill? ...Sigh... Of course. Okay I'll be back in a min."],
 	],
 	"w_l": [
-		["A", "See I'm just too good at this. I was clearly just born more naturally gifted at it"],
+		["A", "See I'm just too good at this. I was clearly just born more naturally gifted at it."],
 		["E", "No you clearly must have still been cheating somehow. I don't know how but you were."],
 		["A", "You just can't stand it when I'm naturally good at anything can you?"],
 		["E", "But you think you're naturally good at everything."],
@@ -263,6 +264,84 @@ static func call_due() -> bool:
 	return is_active() and _started_day_one() and not GameState.has_flag(CALL_DONE_FLAG)
 
 
+# ------------------------------------------------------------
+# REMINDER CALLS — invited but not sat down yet
+# ------------------------------------------------------------
+# Counted from the invitation (Ellie's call for "new"/"rules", Olly's goodbye for "played")
+# until the player first sits down. MapManager rings the call the moment they are free.
+# TWEAKABLE — each reminder rings at whichever comes first: this many conversations (any
+# NPC or opponent, repeats count) or this many trips from an interior back outside.
+const REMINDERS := [
+	{"talks": 10, "exits": 2},   # whoever didn't invite them
+	{"talks": 25, "exits": 5},   # Alexander
+]
+## TWEAKABLE — the bonus call: Olly, still waiting at the table, rings once the player has
+## landed this many fish since the invitation. Separate from the two reminders above.
+const FISH_CALL_AT := 5
+const FISH_CALL_ID := "cafe_reminder_fishing"
+const REMINDER_FISH_KEY  := "cafe_reminder_fish"
+const FISH_CALL_DONE_FLAG := "cafe_fish_call_done"
+const REMINDER_TALKS_KEY := "cafe_reminder_talks"
+const REMINDER_EXITS_KEY := "cafe_reminder_exits"
+const REMINDER_STEP_KEY  := "cafe_reminder_step"
+
+
+## Invited, not sat down yet, and still the café morning.
+static func _counting_reminders() -> bool:
+	if not is_active() or stage() != STAGE_NONE:
+		return false
+	return GameState.has_flag(CALL_DONE_FLAG) if _started_day_one() else GameState.has_flag(OLLY_GONE_FLAG)
+
+
+static func note_npc_talk() -> void:
+	if _counting_reminders():
+		GameState.progress[REMINDER_TALKS_KEY] = int(GameState.progress.get(REMINDER_TALKS_KEY, 0)) + 1
+		GameState.save_progress()
+
+
+static func note_exterior_return() -> void:
+	if _counting_reminders():
+		GameState.progress[REMINDER_EXITS_KEY] = int(GameState.progress.get(REMINDER_EXITS_KEY, 0)) + 1
+		GameState.save_progress()
+
+
+## Fishing_Minigame calls this for every fish landed.
+static func note_fish_caught() -> void:
+	if _counting_reminders() and olly_here():
+		GameState.progress[REMINDER_FISH_KEY] = int(GameState.progress.get(REMINDER_FISH_KEY, 0)) + 1
+		GameState.save_progress()
+
+
+## The Phone_Calls.json id of the reminder that is owed right now, or "".
+static func reminder_due() -> String:
+	if not _counting_reminders():
+		return ""
+	# The fishing call first: only while Olly is still sat at the table waiting.
+	if olly_here() and not GameState.has_flag(FISH_CALL_DONE_FLAG) \
+			and int(GameState.progress.get(REMINDER_FISH_KEY, 0)) >= FISH_CALL_AT:
+		return FISH_CALL_ID
+	var step := int(GameState.progress.get(REMINDER_STEP_KEY, 0))
+	if step >= REMINDERS.size():
+		return ""
+	var need: Dictionary = REMINDERS[step]
+	if int(GameState.progress.get(REMINDER_TALKS_KEY, 0)) < int(need["talks"]) \
+			and int(GameState.progress.get(REMINDER_EXITS_KEY, 0)) < int(need["exits"]):
+		return ""
+	if step == 0:
+		# Ellie rang them ("new"/"rules"), so Olly chases; Olly told them ("played"), so Ellie does.
+		return "cafe_reminder_olly" if _started_day_one() else "cafe_reminder_ellie"
+	return "cafe_reminder_alexander"
+
+
+## Called once `call_id` has hung up (a quit mid-call rings it again).
+static func reminder_played(call_id: String) -> void:
+	if call_id == FISH_CALL_ID:
+		GameState.set_flag(FISH_CALL_DONE_FLAG)
+		return
+	GameState.progress[REMINDER_STEP_KEY] = int(GameState.progress.get(REMINDER_STEP_KEY, 0)) + 1
+	GameState.save_progress()
+
+
 ## Back from one of the café matches: the map hands straight over to run_after_battle().
 static func should_resume(from_battle: bool) -> bool:
 	if not from_battle:
@@ -277,6 +356,9 @@ static func should_resume(from_battle: bool) -> bool:
 ## A quit part-way through a match leaves its battle stage set. Called by the map BEFORE
 ## it builds its cast, because the last case moves the clock on to the afternoon.
 static func settle_after_load(from_battle: bool) -> void:
+	# Alexander's match played: the map comes back up in the afternoon, closing scene and all.
+	if stage() == STAGE_ALEX_BATTLE and _result(ALEX_RESULT_KEY) != "":
+		_advance_to_afternoon()
 	if should_resume(from_battle):
 		return
 	match stage():
@@ -295,10 +377,20 @@ static func settle_after_load(from_battle: bool) -> void:
 				_set_stage(STAGE_ALEX_ASK)
 
 
-## Both matches are played: the morning is over.
+## Both matches are played: the morning is over. The clock has normally moved on already
+## (settle_after_load, on the way back from Alexander's match).
 static func _end_morning() -> void:
 	GameState.progress[STAGE_KEY] = STAGE_DONE
+	if not _advance_to_afternoon():
+		GameState.save_progress()
+
+
+## Moves the café morning on to the afternoon, once. True if it moved the clock (and saved).
+static func _advance_to_afternoon() -> bool:
+	if GameState.get_date() != CAFE_DATE or GameState.get_time() != CAFE_TIME:
+		return false
 	GameState.advance_time("Afternoon")   # saves
+	return true
 
 
 ## Talking to anyone at the table starts the cutscene. Call after the map's _ready().
@@ -548,7 +640,8 @@ func _play_after_alex() -> void:
 	while _alex != null and is_instance_valid(_alex):
 		await get_tree().process_frame
 
-	# The morning is over. Fade out and come back up in the afternoon where they stand.
+	# The morning is over (the clock already moved on with Alexander's match). Fade out and
+	# rebuild the afternoon's cast around where they stand.
 	await fade_out()
 	_end_morning()
 	GameState.save_current_location(map.get_scene_path(), player.position)

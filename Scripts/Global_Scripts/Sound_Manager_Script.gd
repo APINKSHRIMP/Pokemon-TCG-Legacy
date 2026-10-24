@@ -70,6 +70,8 @@ func set_bus_volume(bus_name: String, linear: float) -> void:
 # --- Preloaded SFX constants ---
 const SFX_attack_sound = preload("res://Audio/SFX/attack_sound.ogg")
 const SFX_coin_flip_sound = preload("res://Audio/SFX/coin_flip_sound.ogg")
+# Placeholder: a copy of coin_flip_sound until the real landing sound is dropped in over it.
+const SFX_coin_land_sound = preload("res://Audio/SFX/coin_land_sound.ogg")
 const SFX_knockout_sound = preload("res://Audio/SFX/knockout_sound.ogg")
 const SFX_select_button = preload("res://Audio/SFX/select_button.ogg")
 const SFX_evolve_sound = preload("res://Audio/SFX/evolve_sound.ogg")

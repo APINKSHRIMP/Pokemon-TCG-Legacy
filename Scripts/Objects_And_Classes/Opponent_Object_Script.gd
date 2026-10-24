@@ -39,7 +39,13 @@ func _ready():
 	add_to_group("opponents")
 	super._ready()
 
+## Set by a map script whose opponent talks instead of battling (the beaten Windmill
+## Mewtwo): shows this bubble instead of the battle ones.
+var bubble_override: Texture2D = null
+
 func _get_bubble_texture() -> Texture2D:
+	if bubble_override != null:
+		return bubble_override
 	if GameState.has_beaten_opponent(opponent_name):
 		return load("res://Image_Assets/Icons/Message_Icons/old_battle.png")
 	else:

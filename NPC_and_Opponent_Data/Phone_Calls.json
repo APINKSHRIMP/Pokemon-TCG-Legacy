@@ -126,6 +126,53 @@
 	]
   },
 
+  "_cafe_reminder_readme": [
+	"Morning 2 nudges while the player hasn't sat down at the café yet (CafeBreakfastCutscene REMINDERS).",
+	"First reminder: whoever DIDN'T invite them -- Olly if Ellie rang (new/rules), Ellie if Olly told them",
+	"(played). Second reminder: Alexander. Thresholds are NPC talks / interior-to-outside exits."
+  ],
+
+  "cafe_reminder_ellie": {
+	"speaker": "Ellie", "character": "Ellie", "clothes": "Hoodie", "pill_sprite": "1Ellie_Hoodie", "colour": "lilac",
+	"background": "BlurryTreeBackground", "phone": "iPhone4",
+	"battle_sprite": "1Ellie_Hoodie", "mouth": [500, 300], "mouth_width": 26,
+	"lines": [
+	  "Hey! Did Olly say we were at the Cafe? You should come by while we're still here!",
+	  "We'll be waiting at the cafe for you so hurry up!"
+	]
+  },
+
+  "cafe_reminder_olly": {
+	"speaker": "Olly", "character": "Olly", "clothes": "White", "pill_sprite": "1Olly_White", "colour": "aqua",
+	"background": "BlurryTreeBackground", "phone": "iPhone4",
+	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
+	"lines": [
+	  "Hey, will you get over here please, I've gotta head down to the shop asap.",
+	  "I'll be waiting at the cafe until you get here."
+	]
+  },
+
+  "cafe_reminder_fishing": {
+	"speaker": "Olly", "character": "Olly", "clothes": "White", "pill_sprite": "1Olly_White", "colour": "aqua",
+	"background": "BlurryTreeBackground", "phone": "iPhone4",
+	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
+	"lines": [
+	  "...... Are you fishing right now?",
+	  "Look, I wish I was out there with ya fishing too, but we're waiting on you at the cafe!!!"
+	]
+  },
+
+  "cafe_reminder_alexander": {
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "yellow",
+	"background": "BlurryTreeBackground", "phone": "iPhone4",
+	"battle_sprite": "1Alexander",
+	"lines": [
+	  "Please can you come here like right now? My sister is doing my head in.",
+	  "I don't mind playing this game a bit but this is relentless.",
+	  "Please come to the cafe like now please. PLEASE."
+	]
+  },
+
   "_fish_shop_readme": [
 	"FISH milestone calls: fish_shop_<N>_olly / fish_shop_<N>_alexander, rung by FishShopCalls the",
 	"moment the player has SENT N fish to FISH. Whoever is behind the counter today rings (the other",

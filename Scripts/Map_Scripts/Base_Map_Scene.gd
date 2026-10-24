@@ -122,6 +122,9 @@ func _ready():
 
 	var is_sleep_wakeup := GameState.sleep_wakeup_fade
 	GameState.sleep_wakeup_fade = false
+	# Read now: MapManager.initialise() below consumes the battle-return flag.
+	var from_battle: bool = GameState.returning_from_battle
+	var came_outside: bool = uses_time_of_day() and GameState.last_map_was_interior
 
 	# For sleep: add a black overlay to the UI layer immediately so the scene is
 	# covered on the first rendered frame, then fade it out after setup completes.
@@ -200,6 +203,17 @@ func _ready():
 		scene_path,
 		[]
 	)
+
+	# Stepping outside counts toward the café breakfast reminder calls.
+	if came_outside:
+		CafeBreakfastCutscene.note_exterior_return()
+	GameState.last_map_was_interior = not uses_time_of_day()
+	# The clock moved since the player last saw a map (a match, or matches while indoors):
+	# the time-of-day banner, but only back from a match or on stepping outside.
+	var now_time := GameState.get_time()
+	if GameState.last_seen_time != "" and now_time != GameState.last_seen_time and (from_battle or came_outside):
+		TimeOfDayBanner.play(_ui_layer, now_time)
+	GameState.last_seen_time = now_time
 
 	await get_tree().process_frame
 	if _sleep_overlay != null:

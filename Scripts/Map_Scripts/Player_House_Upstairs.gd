@@ -8,7 +8,12 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 
 var _player_in_bed_area: bool = true  # starts true to suppress any load-time trigger
 const SLEEP_FADE_DURATION := 2.5
-const BED_TOO_EARLY_TEXT := "Nothing wrong with an early night but it's far too early to go to sleep now!"
+# ISSUE #458: what the bed says before Night, by time slot (Evening is also the fallback).
+const BED_TOO_EARLY_TEXT := {
+	"Morning":   "I've only just woken up, I'm not getting back in bed now!",
+	"Afternoon": "I'd love an afternoon nap... but I'd end up sleeping for hours...",
+	"Evening":   "Nothing wrong with an early night but it's far too early to go to sleep now!",
+}
 const NEXT_MORNING_FONT := "res://UI_Themes/ChakraPetch-Bold.ttf"
 
 func get_scene_path() -> String:      return SCENE_PATH
@@ -75,7 +80,8 @@ func _on_bed_body_entered(body: Node2D) -> void:
 	if GameState.is_night_time():
 		MapManager.show_interactable_confirm(GameState.sleep_prompt_text(), _do_sleep)
 	else:
-		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT)
+		print("ISSUE #458 FIX ACTIVE: too-early bed line for ", GameState.get_time())
+		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT.get(GameState.get_time(), BED_TOO_EARLY_TEXT["Evening"]))
 
 func _do_sleep() -> void:
 	if _player != null and _player.has_method("lock_movement"):

@@ -153,6 +153,16 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 					if target_pokemon.attached_energies.is_empty():
 						return {"allowed": false, "reason": "PURE BODY! " + target_pokemon.metadata.get("name", "").to_upper() + " HAS NO ENERGY TO DISCARD!"}
 
+	return type_lock_check(energy_card, target_pokemon)
+
+
+## ISSUE #468: the part of can_attach_to() that is about WHICH Pokémon can hold this Energy at all
+## (R / Aqua / Magma / Miracle by name, Boost / Scramble / Double Rainbow by stage and ex). These
+## hold for as long as the card stays attached, so discard_now_illegal() re-runs just this when the
+## Pokémon changes (evolving into a Pokémon-ex); the attach-time rules above (Cursed Glare, Pure
+## Body) don't apply there.
+func type_lock_check(energy_card: card_object, target_pokemon: card_object) -> Dictionary:
+	var card_name = energy_card.metadata.get("name", "")
 	match card_name:
 		"Rainbow Energy", "Full Heal Energy", "Potion Energy", "Double Colorless Energy", \
 		"Darkness Energy", "Metal Energy", "Recycle Energy", "Multi Energy", "Dark Metal Energy", "Heal Energy", "React Energy", "δ Rainbow Energy":
@@ -205,6 +215,28 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 		_:
 			# Unknown special energy — allow by default
 			return {"allowed": true, "reason": ""}
+	return {"allowed": true, "reason": ""}
+
+
+## ISSUE #468: discards every attached Special Energy that `pokemon` may no longer hold (Scramble /
+## Double Rainbow on a Pokémon that just evolved into a Pokémon-ex, R Energy on a non-Dark evolution...).
+## Returns the names discarded.
+func discard_now_illegal(pokemon: card_object, is_owner_opp: bool) -> Array:
+	var dropped: Array = []
+	if pokemon == null:
+		return dropped
+	for e in pokemon.attached_energies.duplicate():
+		if not ("Special" in e.metadata.get("subtypes", [])):
+			continue
+		if not bool(type_lock_check(e, pokemon).get("allowed", true)):
+			# Detached here: mid-evolution the new card is not on the board yet, so the shared
+			# helper (which detaches from Pokémon in play) would leave it attached.
+			pokemon.attached_energies.erase(e)
+			main.card_ops.discard_energy_from_pokemon(e, is_owner_opp, true)
+			dropped.append(e.metadata.get("name", ""))
+	if not dropped.is_empty():
+		print("ISSUE #468 FIX ACTIVE: ", pokemon.metadata.get("name", ""), " can no longer hold ", dropped, " -- discarded")
+	return dropped
 
 ######################################################################################################################################################
 ############################################### ON-ATTACH EFFECTS (triggered when played from hand onto a pokemon) ###################################

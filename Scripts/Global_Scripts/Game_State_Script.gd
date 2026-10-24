@@ -6,6 +6,13 @@ extends Node
 
 var current_opponent_name: String = ""
 
+## Runtime only (never saved): was the last overworld map loaded an interior? Lets the next map
+## tell "just stepped outside" (the café reminder count, the time-of-day banner).
+var last_map_was_interior: bool = false
+## Runtime only: the time of day the player last saw a map in. "" until the first map loads.
+## BaseMapScene shows TimeOfDayBanner when this differs after a match or on stepping outside.
+var last_seen_time: String = ""
+
 ## How an opponent's name reads on the battle screens: a trailing " 2" / " 3" that only
 ## tells repeat encounters apart ("Ellie 3", "Olly 2") is dropped, underscores become spaces.
 static func battle_display_name(opponent_name: String) -> String:

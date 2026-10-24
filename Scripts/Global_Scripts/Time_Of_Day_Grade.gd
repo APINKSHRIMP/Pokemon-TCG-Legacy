@@ -55,11 +55,11 @@ const GRADES := {
 		"curve": Vector3(0.277, 0.342, 0.225),
 	},
 	"Bedtime": {
-		# The late hours after Night: Night's grade with the blue row x1.10 (a little more
-		# blue); the extra darkness is BRIGHTNESS below (Night's x0.75).
+		# The late hours after Night: Night's grade with the blue row x1.21 (x1.10, then
+		# another x1.10); the extra darkness is BRIGHTNESS below.
 		"red":   Vector4(0.636, -0.140, -0.016, -0.086),
 		"green": Vector4(-0.128, 0.592, -0.062, -0.082),
-		"blue":  Vector4(0.018, 0.319, 0.609, -0.101),
+		"blue":  Vector4(0.020, 0.351, 0.670, -0.101),
 		"curve": Vector3(0.277, 0.342, 0.225),
 	},
 }
@@ -70,8 +70,8 @@ const STRENGTH := {"Morning": 1.4, "Afternoon": 1.0, "Evening": 1.0, "Night": 1.
 
 ## TWEAKABLE -- overall brightness multiplier on top of the grade (0.85 = 15% darker).
 ## ISSUE #386: Evening back to 1.0 (it had been darkened to 0.85).
-## Bedtime is 25% darker than Night: 0.85 x 0.75.
-const BRIGHTNESS := {"Morning": 1.0, "Afternoon": 1.0, "Evening": 1.0, "Night": 0.85, "Bedtime": 0.64}
+## Bedtime is 25% darker than Night (0.85 x 0.75 = 0.64), then another 20% (x 0.8).
+const BRIGHTNESS := {"Morning": 1.0, "Afternoon": 1.0, "Evening": 1.0, "Night": 0.85, "Bedtime": 0.51}
 
 ## TWEAKABLE -- how strongly the lights overlays show (0 = off, 1 = full). Above 1 the lit
 ## pixels are fully shown AND brightened by that much (Bedtime 1.1 = 10% brighter).

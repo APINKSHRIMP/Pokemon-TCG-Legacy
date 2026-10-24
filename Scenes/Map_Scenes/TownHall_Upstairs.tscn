@@ -1,6 +1,6 @@
-[gd_scene format=4]
+[gd_scene format=4 uid="uid://c7gs0ldk50jwc"]
 
-[ext_resource type="Script" path="res://Scripts/Map_Scripts/Town_Hall_Upstairs.gd" id="1_klwu5"]
+[ext_resource type="Script" uid="uid://csic6bgaa68nm" path="res://Scripts/Map_Scripts/Town_Hall_Upstairs.gd" id="1_klwu5"]
 [ext_resource type="TileSet" uid="uid://butqsxecpp355" path="res://Image_Assets/Map_Sheets/Tile_Sets/Gym_Hall_Interior.tres" id="2_2v6s4"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="3_u30my"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="4_4h4kx"]
@@ -19,12 +19,6 @@ size = Vector2(271, 74)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_j34lu"]
 size = Vector2(150.375, 7)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_klwu5"]
-size = Vector2(64, 12)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_2v6s4"]
-size = Vector2(30, 7)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_u30my"]
 size = Vector2(14, 9)
@@ -48,41 +42,27 @@ tile_set = ExtResource("2_2v6s4")
 
 [node name="Rug" type="TileMapLayer" parent="Tile_Maps" unique_id=825913353]
 position = Vector2(16, 104)
-tile_map_data = PackedByteArray("AAAMAAsAAQA0AB0AAAANAAsAAQA1AB0AAAAOAAsAAQA2AB0AAAAMAAoAAQA0ABsAAAANAAoAAQA1ABsAAAAOAAoAAQA2ABsAAAA=")
 tile_set = ExtResource("3_u30my")
 
 [node name="Stair" type="TileMapLayer" parent="Tile_Maps" unique_id=1577272825]
 position = Vector2(140, 40)
-tile_map_data = PackedByteArray("AAACAPf/AQAZAAgAAAACAPj/AQAZAAkAAAACAPn/AQAZAAoAAAACAPr/AQAZAAoAAAACAPv/AQAZAAsAAAACAPz/AQAZAAwAAAADAPj/AQAaAAkAAAADAPn/AQAaAAoAAAADAPr/AQAaAAoAAAADAPv/AQAaAAsAAAADAPz/AQAaAAwAAAAEAPj/AQAaAAkAAAAEAPn/AQAaAAkAAAAEAPr/AQAaAAkAAAAEAPv/AQAaAAsAAAAEAPz/AQAaAAwAAAAFAPj/AQAaAAkAAAAFAPn/AQAaAAoAAAAFAPr/AQAaAAoAAAAFAPv/AQAaAAsAAAAFAPz/AQAaAAwAAAAGAPj/AQAaAAkAAAAGAPn/AQAaAAkAAAAGAPr/AQAaAAkAAAAGAPv/AQAaAAsAAAAGAPz/AQAaAAwAAAAHAPj/AQAaAAkAAAAHAPn/AQAaAAkAAAAHAPr/AQAaAAkAAAAHAPv/AQAaAAsAAAAHAPz/AQAaAAwAAAAIAPj/AQAaAAkAAAAIAPn/AQAaAAoAAAAIAPr/AQAaAAoAAAAIAPv/AQAaAAsAAAAIAPz/AQAaAAwAAAAJAPf/AQAbAAgAAAAJAPj/AQAbAAkAAAAJAPn/AQAbAAoAAAAJAPr/AQAbAAoAAAAJAPv/AQAbAAsAAAAJAPz/AQAbAAwAAAA=")
 tile_set = ExtResource("3_u30my")
 
 [node name="Rope" type="TileMapLayer" parent="Tile_Maps" unique_id=1219011927]
 position = Vector2(-10, -7)
 scale = Vector2(0.5, 0.5)
-tile_map_data = PackedByteArray("AAAWAAEAAQA1AAQAAAAXAAAAAQA2AAMAAAAXAAEAAQA2AAQAAAAYAAAAAQA3AAMAAAAZAAAAAQA4AAMAAAAaAAEAAQA5AAQAAAAbAAAAAQA2AAMAAAAbAAEAAQA2AAQAAAAcAAAAAQA3AAMAAAAdAAAAAQA4AAMAAAAeAAEAAQA5AAQAAAAfAAAAAQA2AAMAAAAfAAEAAQA2AAQAAAAgAAAAAQA3AAMAAAAhAAAAAQA4AAMAAAAiAAEAAQA5AAQAAAAjAAAAAQA2AAMAAAAjAAEAAQA2AAQAAAAkAAAAAQA3AAMAAAAlAAAAAQA4AAMAAAAWAP//AQA1AAIAAAAWAAAAAQA1AAMAAAAXAP//AQA2AAIAAAAZAP//AQA4AAIAAAAaAP//AQA5AAIAAAAaAAAAAQA5AAMAAAAbAP//AQA2AAIAAAAdAP//AQA4AAIAAAAeAP//AQA5AAIAAAAeAAAAAQA5AAMAAAAfAP//AQA2AAIAAAAhAP//AQA4AAIAAAAiAP//AQA5AAIAAAAiAAAAAQA5AAMAAAAjAP//AQA2AAIAAAAlAP//AQA4AAIAAAAmAP//AQA7AAIAAAAmAAAAAQA7AAMAAAAmAAEAAQA7AAQAAAAnAP//AQA8AAIAAAAnAAAAAQA8AAMAAAAnAAEAAQA8AAQAAAA=")
-tile_set = ExtResource("2_2v6s4")
-
-[node name="FossilsBottom" type="TileMapLayer" parent="Tile_Maps" unique_id=138909592]
-position = Vector2(-32, -7)
-tile_map_data = PackedByteArray("AAD8/wMAAQAoAC8AAAD9/wMAAQApAC8AAAD+/wMAAQAqAC8AAAD//wMAAQArAC8AAAD8/wgAAQAsADEAAAD9/wgAAQAtADEAAAD+/wgAAQAuADEAAAD//wgAAQAvADEAAAD8/w0AAQAoADEAAAD9/w0AAQApADEAAAD+/w0AAQAqADEAAAD//w0AAQArADEAAAAHAA0AAQAtADMAAAAGAA0AAQAsADMAAAAFAAgAAQAoADMAAAAGAAgAAQApADMAAAAHAAgAAQAqADMAAAAIAAgAAQArADMAAAAGAAMAAQAtAC8AAAAHAAMAAQAuAC8AAAAIAAMAAQAvAC8AAAAFAAMAAQAsAC8AAAA=")
-tile_set = ExtResource("2_2v6s4")
-
-[node name="FossilsTop" type="TileMapLayer" parent="Tile_Maps" unique_id=198735720]
-z_index = 10
-position = Vector2(-32, -7)
-tile_map_data = PackedByteArray("AAAFAAIAAQAsAC4AAAAGAAIAAQAtAC4AAAAHAAIAAQAuAC4AAAAIAAIAAQAvAC4AAAAFAAcAAQAoADIAAAAGAAcAAQApADIAAAAHAAcAAQAqADIAAAAIAAcAAQArADIAAAD8/wcAAQAsADAAAAD9/wcAAQAtADAAAAD+/wcAAQAuADAAAAD//wcAAQAvADAAAAD8/wIAAQAoAC4AAAD9/wIAAQApAC4AAAD+/wIAAQAqAC4AAAD//wIAAQArAC4AAAD8/wwAAQAoADAAAAD9/wwAAQApADAAAAD+/wwAAQAqADAAAAD//wwAAQArADAAAAAGAAwAAQAsADIAAAAHAAwAAQAtADIAAAA=")
 tile_set = ExtResource("2_2v6s4")
 
 [node name="Doors" type="TileMapLayer" parent="Tile_Maps" unique_id=502962352]
 position = Vector2(-12, -7)
 scale = Vector2(0.5, 0.5)
-tile_map_data = PackedByteArray("AABCAP7/AQA0AAoAABBCAP//AQA0AAsAABBCAAAAAQA0AAwAABBCAAEAAQA0AA0AABBDAP7/AQAzAAoAABBDAP//AQAzAAsAABBDAAAAAQAzAAwAABBDAAEAAQAzAA0AABBEAP7/AQAyAAoAABBEAP//AQAyAAsAABBEAAAAAQAyAAwAABBEAAEAAQAyAA0AABBFAP7/AQAxAAoAABBFAP//AQAxAAsAABBFAAAAAQAxAAwAABBFAAEAAQAxAA0AABBGAP7/AQAwAAoAABBGAP//AQAwAAsAABBGAAAAAQAwAAwAABBGAAEAAQAwAA0AABAvAP7/AQA0AAoAABAvAP//AQA0AAsAABAvAAAAAQA0AAwAABAvAAEAAQA0AA0AABAwAP7/AQAzAAoAABAwAP//AQAzAAsAABAwAAAAAQAzAAwAABAwAAEAAQAzAA0AABAxAP7/AQAyAAoAABAxAP//AQAyAAsAABAxAAAAAQAyAAwAABAxAAEAAQAyAA0AABAyAP7/AQAxAAoAABAyAP//AQAxAAsAABAyAAAAAQAxAAwAABAyAAEAAQAxAA0AABAzAP7/AQAwAAoAABAzAP//AQAwAAsAABAzAAAAAQAwAAwAABAzAAEAAQAwAA0AABA=")
+tile_map_data = PackedByteArray("AAAcAPX/AQAwAAAAAAAcAPb/AQAwAAEAAAAcAPf/AQAwAAIAAAAcAPj/AQAwAAMAAAAcAPn/AQAwAAQAAAAdAPX/AQAxAAAAAAAdAPb/AQAxAAEAAAAdAPf/AQAxAAIAAAAdAPj/AQAxAAMAAAAdAPn/AQAxAAQAAAAeAPX/AQAyAAAAAAAeAPb/AQAyAAEAAAAeAPf/AQAyAAIAAAAeAPj/AQAyAAMAAAAeAPn/AQAyAAQAAAAfAPX/AQAzAAAAAAAfAPb/AQAzAAEAAAAfAPf/AQAzAAIAAAAfAPj/AQAzAAMAAAAfAPn/AQAzAAQAAAAgAPX/AQA0AAAAAAAgAPb/AQA0AAEAAAAgAPf/AQA0AAIAAAAgAPj/AQA0AAMAAAAgAPn/AQA0AAQAAAA=")
 tile_set = ExtResource("2_2v6s4")
 
 [node name="PlantBot" type="TileMapLayer" parent="Tile_Maps" unique_id=1517640587]
 position = Vector2(-8, -7)
 scale = Vector2(0.5, 0.5)
-tile_map_data = PackedByteArray("AADv/yEAAQAQABcAAADv/yIAAQAQABgAAADv/yMAAQAQABkAAADw/yEAAQARABcAAADw/yIAAQARABgAAADw/yMAAQARABkAAADv/wEAAQAQABcAAADv/wIAAQAQABgAAADv/wMAAQAQABkAAADw/wEAAQARABcAAADw/wIAAQARABgAAADw/wMAAQARABkAAABKAAEAAQAQABcAAABKAAIAAQAQABgAAABKAAMAAQAQABkAAABLAAEAAQARABcAAABLAAIAAQARABgAAABLAAMAAQARABkAAABKACEAAQAQABcAAABKACIAAQAQABgAAABKACMAAQAQABkAAABLACEAAQARABcAAABLACIAAQARABgAAABLACMAAQARABkAAAA=")
+tile_map_data = PackedByteArray("AADv/yEAAQAQABcAAADv/yIAAQAQABgAAADv/yMAAQAQABkAAADw/yEAAQARABcAAADw/yIAAQARABgAAADw/yMAAQARABkAAADv/wEAAQAQABcAAADv/wIAAQAQABgAAADv/wMAAQAQABkAAADw/wEAAQARABcAAADw/wIAAQARABgAAADw/wMAAQARABkAAABKAAEAAQAQABcAAABKAAIAAQAQABgAAABKAAMAAQAQABkAAABLAAEAAQARABcAAABLAAIAAQARABgAAABLAAMAAQARABkAAABKACEAAQAQABcAAABKACIAAQAQABgAAABKACMAAQAQABkAAABLACEAAQARABcAAABLACIAAQARABgAAABLACMAAQARABkAAAAVAPb/AQAYABgAAAAVAPf/AQAYABkAAAAVAPj/AQAYABoAAAAVAPn/AQAYABsAAAAVAPr/AQAYABwAAAAWAPb/AQAZABgAAAAWAPf/AQAZABkAAAAWAPj/AQAZABoAAAAWAPn/AQAZABsAAAAWAPr/AQAZABwAAAAnAPb/AQAZABgAAAAnAPf/AQAZABkAAAAnAPj/AQAZABoAAAAnAPn/AQAZABsAAAAnAPr/AQAZABwAAAAmAPb/AQAYABgAAAAmAPf/AQAYABkAAAAmAPj/AQAYABoAAAAmAPn/AQAYABsAAAAmAPr/AQAYABwAAAA=")
 tile_set = ExtResource("2_2v6s4")
 
 [node name="PlantTop" type="TileMapLayer" parent="Tile_Maps" unique_id=1717113381]
@@ -98,11 +78,6 @@ tile_set = ExtResource("3_u30my")
 
 [node name="Empty" type="TileMapLayer" parent="Tile_Maps" unique_id=892450425]
 scale = Vector2(0.5, 0.5)
-tile_set = ExtResource("2_2v6s4")
-
-[node name="stands" type="TileMapLayer" parent="Tile_Maps" unique_id=627956284]
-position = Vector2(0, -24)
-tile_map_data = PackedByteArray("AAAYAAkAAQAAACUAAAAcAAkAAQAAACUAAAAgAAkAAQAAACUAAAA=")
 tile_set = ExtResource("2_2v6s4")
 
 [node name="NPCS" type="Node2D" parent="Tile_Maps" unique_id=427928302]
@@ -166,30 +141,6 @@ shape = SubResource("RectangleShape2D_annoh")
 [node name="Stand" type="CollisionShape2D" parent="Collision" unique_id=1004165768]
 position = Vector2(235.8125, -11)
 shape = SubResource("RectangleShape2D_j34lu")
-
-[node name="Fossil" type="CollisionShape2D" parent="Collision" unique_id=802196341]
-position = Vector2(-64.5, 39)
-shape = SubResource("RectangleShape2D_klwu5")
-
-[node name="Fossil2" type="CollisionShape2D" parent="Collision" unique_id=1439101836]
-position = Vector2(80, 39)
-shape = SubResource("RectangleShape2D_klwu5")
-
-[node name="Fossil3" type="CollisionShape2D" parent="Collision" unique_id=1950759855]
-position = Vector2(-64.5, 119)
-shape = SubResource("RectangleShape2D_klwu5")
-
-[node name="Fossil5" type="CollisionShape2D" parent="Collision" unique_id=1322457379]
-position = Vector2(-64.5, 199)
-shape = SubResource("RectangleShape2D_klwu5")
-
-[node name="Fossil4" type="CollisionShape2D" parent="Collision" unique_id=963015202]
-position = Vector2(80, 119)
-shape = SubResource("RectangleShape2D_klwu5")
-
-[node name="SmallFossil" type="CollisionShape2D" parent="Collision" unique_id=982466609]
-position = Vector2(80, 200.5)
-shape = SubResource("RectangleShape2D_2v6s4")
 
 [node name="CardMat" type="CollisionShape2D" parent="Collision" unique_id=1029549889]
 position = Vector2(392, 127)

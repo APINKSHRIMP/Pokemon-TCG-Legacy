@@ -25,8 +25,13 @@ const SLEEP_FADE_DURATION := 3.0
 # Fallback text shown when a non-special shape has no JSON entry.
 const MISSING_TEXT := "There's nothing of interest here."
 
-# Text shown when interacting with the bed outside of night time.
-const BED_TOO_EARLY_TEXT := "Nothing wrong with an early night but it's far too early to go to sleep now!"
+# Text shown when interacting with the bed outside of night time (ISSUE #458: one per slot,
+# shared with Player_House_Upstairs.gd).
+const BED_TOO_EARLY_TEXT: Dictionary = {
+	"Morning":   "I've only just woken up, I'm not getting back in bed now!",
+	"Afternoon": "I'd love an afternoon nap... but I'd end up sleeping for hours...",
+	"Evening":   "Nothing wrong with an early night but it's far too early to go to sleep now!",
+}
 
 # TV news headlines, grouped by progression stage. _tv_stage()
 # picks the highest stage whose condition is currently met, and
@@ -139,7 +144,7 @@ func _interact_bed() -> void:
 	if GameState.is_night_time():
 		MapManager.show_interactable_confirm(GameState.sleep_prompt_text(), Callable(self, "_do_sleep"))
 	else:
-		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT)
+		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT.get(GameState.get_time(), BED_TOO_EARLY_TEXT["Evening"]))
 
 
 # Fades to black, advances the in-game day, and reloads the scene fresh

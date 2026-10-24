@@ -871,11 +871,18 @@ func _speak_lines() -> void:
 			# Wait for the typing to FINISH before the reading hold starts, so a slow text speed
 			# does not eat the time the line is readable for.
 			while _box.is_typing():
+				if not is_inside_tree():
+					return
 				await get_tree().process_frame
+			if not is_inside_tree():
+				return
 			await get_tree().create_timer(_auto_hold_for(text)).timeout
 		else:
 			_advance_pressed = false
 			while not _advance_pressed:
+				# The map changed under the call (a quit, a debug jump): it goes with the map.
+				if not is_inside_tree():
+					return
 				await get_tree().process_frame
 			_advance_pressed = false
 
