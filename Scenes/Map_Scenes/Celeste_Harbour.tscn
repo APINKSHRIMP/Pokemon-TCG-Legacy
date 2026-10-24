@@ -842,6 +842,7 @@ tile_map_data = PackedByteArray("AAD6/wEAAAAyAFcAAAD7/wEAAAAyAFcAAAD8/wEAAAAyAFc
 tile_set = ExtResource("2_bf13f")
 
 [node name="plazacollision" type="StaticBody2D" parent="TILE_MAPS/TOWN HALL PLAZA" unique_id=1058990661]
+visible = false
 z_index = 50
 
 [node name="Lamp112" type="CollisionShape2D" parent="TILE_MAPS/TOWN HALL PLAZA/plazacollision" unique_id=1001021053]
@@ -1145,6 +1146,7 @@ tile_map_data = PackedByteArray("AADr//L/AAASAGgAAADr//P/AAASAGkAAADr//T/AAASAGo
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collision" type="StaticBody2D" parent="TILE_MAPS/TRAIN TRACKS" unique_id=291136393]
+visible = false
 z_index = 50
 
 [node name="long wall" type="CollisionShape2D" parent="TILE_MAPS/TRAIN TRACKS/Collision" unique_id=1760391361]
@@ -1266,6 +1268,7 @@ position = Vector2(-49, 0)
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collision" type="StaticBody2D" parent="TILE_MAPS/WINDYHILL" unique_id=844903013]
+visible = false
 position = Vector2(-13, -725)
 
 [node name="bottomhill" type="CollisionShape2D" parent="TILE_MAPS/WINDYHILL/Collision" unique_id=646713067]
@@ -1614,6 +1617,7 @@ tile_map_data = PackedByteArray("AADa/wIAAAAqAFYAAADa/wMAAAAqAFcAAADa/wQAAAAqAFY
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collision" type="StaticBody2D" parent="TILE_MAPS/EllieHouse" unique_id=1373653666]
+visible = false
 position = Vector2(-449, -16)
 
 [node name="Flowerbox" type="CollisionShape2D" parent="TILE_MAPS/EllieHouse/Collision" unique_id=1199557268]
@@ -1837,6 +1841,7 @@ tile_map_data = PackedByteArray("AADV//v/AAAaAAoAAADV//z/AAAaAAsAAADV//3/AAAaAAw
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collision" type="StaticBody2D" parent="TILE_MAPS/Alexander House" unique_id=105093528]
+visible = false
 position = Vector2(-606, 104)
 
 [node name="Wall" type="CollisionShape2D" parent="TILE_MAPS/Alexander House/Collision" unique_id=1690815466]
@@ -2971,6 +2976,7 @@ tile_map_data = PackedByteArray("AABBAGYAAAAnAGwAAABBAGcAAAAnAG0AAAA4AGYAAAAnAGw
 tile_set = ExtResource("2_bf13f")
 
 [node name="COLLISION" type="StaticBody2D" parent="TILE_MAPS/BAKUJETTY" unique_id=1788307033]
+visible = false
 z_index = 50
 
 [node name="Lamp130" type="CollisionShape2D" parent="TILE_MAPS/BAKUJETTY/COLLISION" unique_id=290389068]
@@ -3070,6 +3076,7 @@ tile_map_data = PackedByteArray("AAAeABQAAAAgAHIAAAAeABUAAAAgAHMAAAAeABYAAAAgAHQ
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collision" type="StaticBody2D" parent="TILE_MAPS/FISHJETTY/Boat" unique_id=1515060147]
+visible = false
 z_index = 50
 position = Vector2(-1.5258789e-05, -7.6293945e-06)
 scale = Vector2(0.99999994, 0.99999994)
@@ -3135,73 +3142,74 @@ position = Vector2(-1, 0)
 tile_map_data = PackedByteArray("AABIAEkAAAApAGwAAABIAEoAAAApAG0AAABCAEkAAAApAGwAAABCAEoAAAApAG0AAAA9AGYAAAA0AEkAAAA9AGcAAAA0AEoAAAAlAGYAAAA0AEkAAAAlAGcAAAA0AEoAAABIAGYAAAA0AEkAAABIAGcAAAA0AEoAAAAwAGYAAAA0AEkAAAAwAGcAAAA0AEoAAAA=")
 tile_set = ExtResource("2_bf13f")
 
-[node name="StaticBody2D" type="StaticBody2D" parent="TILE_MAPS/FISHJETTY" unique_id=1516522666]
+[node name="Collision" type="StaticBody2D" parent="TILE_MAPS/FISHJETTY" unique_id=1516522666]
+visible = false
 
-[node name="Pier" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=352290405]
+[node name="Pier" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=352290405]
 position = Vector2(1301, 1444)
 shape = SubResource("RectangleShape2D_2lct0")
 
-[node name="Pier 2" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=984944142]
+[node name="Pier 2" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=984944142]
 position = Vector2(833, 1739)
 shape = SubResource("RectangleShape2D_42g8u")
 
-[node name="Road" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=219891842]
+[node name="Road" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=219891842]
 position = Vector2(375, 1349)
 shape = SubResource("RectangleShape2D_q4dvq")
 
-[node name="Road2" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=1712294077]
+[node name="Road2" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=1712294077]
 position = Vector2(288, 1063)
 shape = SubResource("RectangleShape2D_q4dvq")
 
-[node name="Pier2" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=1824435407]
+[node name="Pier2" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=1824435407]
 position = Vector2(971, 1525)
 shape = SubResource("RectangleShape2D_kj8hs")
 
-[node name="Pier3" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=1365252254]
+[node name="Pier3" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=1365252254]
 position = Vector2(581, 1525)
 shape = SubResource("RectangleShape2D_kj8hs")
 
-[node name="Pier4" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=1241098849]
+[node name="Pier4" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=1241098849]
 position = Vector2(507, 1621)
 shape = SubResource("RectangleShape2D_kj8hs")
 
-[node name="Lamp136" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=1694852803]
+[node name="Lamp136" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=1694852803]
 position = Vector2(775, 1668)
 shape = SubResource("RectangleShape2D_bf13f")
 
-[node name="Lamp137" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=31168512]
+[node name="Lamp137" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=31168512]
 position = Vector2(599, 1668)
 shape = SubResource("RectangleShape2D_bf13f")
 
-[node name="Lamp140" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=1795372879]
+[node name="Lamp140" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=1795372879]
 position = Vector2(599, 1564)
 shape = SubResource("RectangleShape2D_bf13f")
 
-[node name="Lamp141" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=1462650368]
+[node name="Lamp141" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=1462650368]
 position = Vector2(1044, 1564)
 shape = SubResource("RectangleShape2D_bf13f")
 
-[node name="Lamp138" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=376086145]
+[node name="Lamp138" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=376086145]
 position = Vector2(1159, 1668)
 shape = SubResource("RectangleShape2D_bf13f")
 
-[node name="Lamp139" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=659069360]
+[node name="Lamp139" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=659069360]
 position = Vector2(983, 1668)
 shape = SubResource("RectangleShape2D_bf13f")
 
-[node name="box" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=1602356677]
+[node name="box" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=1602356677]
 position = Vector2(983, 1570)
 shape = SubResource("RectangleShape2D_qudk6")
 
-[node name="box2" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=302183954]
+[node name="box2" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=302183954]
 position = Vector2(999, 1570)
 shape = SubResource("RectangleShape2D_qudk6")
 
-[node name="box3" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=1803507287]
+[node name="box3" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=1803507287]
 position = Vector2(679, 1570)
 shape = SubResource("RectangleShape2D_qudk6")
 
-[node name="Sign" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/StaticBody2D" unique_id=422407976]
+[node name="Sign" type="CollisionShape2D" parent="TILE_MAPS/FISHJETTY/Collision" unique_id=422407976]
 position = Vector2(639, 1564.5)
 shape = SubResource("RectangleShape2D_j1pnk")
 
@@ -3325,6 +3333,7 @@ tile_map_data = PackedByteArray("AACXAAIAAAArABYAAACeAAgAAAArABYAAACXAA4AAAArABY
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collision" type="Area2D" parent="TILE_MAPS/Market Plaza" unique_id=1204333033]
+visible = false
 z_index = 50
 
 [node name="Lamp121" type="CollisionShape2D" parent="TILE_MAPS/Market Plaza/Collision" unique_id=175735140]
@@ -3664,6 +3673,7 @@ tile_map_data = PackedByteArray("AAD0/9z/AAAsAHMAAAD0/93/AAAsAHQAAAD0/97/AAAsAHU
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collision" type="StaticBody2D" parent="TILE_MAPS/FISHSHOP" unique_id=1973149971]
+visible = false
 
 [node name="Fish_Shop_Colision" type="CollisionPolygon2D" parent="TILE_MAPS/FISHSHOP/Collision" unique_id=1478680309]
 polygon = PackedVector2Array(-281, -958, -234, -958, -234, -934, -220, -934, -221, -958, -167, -958, -167, -952, -144, -952, -145, -967, -138, -968, -138, -1007, -145, -1007, -145, -1061, -369, -1060, -369, -1006, -375, -1006, -375, -968, -368, -968, -368, -952, -346, -952, -346, -958, -293, -958, -293, -934, -281, -934)
@@ -3735,6 +3745,7 @@ position = Vector2(910, -1127)
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collisio" type="StaticBody2D" parent="TILE_MAPS/TRAINSTATION" unique_id=717542466]
+visible = false
 position = Vector2(3361, -758)
 
 [node name="TRAIN" type="CollisionShape2D" parent="TILE_MAPS/TRAINSTATION/Collisio" unique_id=1820685178]
@@ -3933,6 +3944,7 @@ tile_map_data = PackedByteArray("AAB8ANv/AAAIABIAAAB9ANv/AAAJABIAAAB+ANv/AAAKABI
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collision" type="StaticBody2D" parent="TILE_MAPS/HOTEL" unique_id=853457966]
+visible = false
 position = Vector2(2913, -852)
 
 [node name="Hedges" type="CollisionShape2D" parent="TILE_MAPS/HOTEL/Collision" unique_id=210201782]
@@ -4088,6 +4100,7 @@ tile_map_data = PackedByteArray("AACQAN3/AAAeAAoAAACQAN7/AAAeAAsAAACQAN//AAAeAAw
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collision" type="StaticBody2D" parent="TILE_MAPS/CAFE" unique_id=322398544]
+visible = false
 z_index = 50
 
 [node name="Cafe" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=329237706]
@@ -4296,6 +4309,7 @@ tile_map_data = PackedByteArray("AADJ/9X/AAA0AEsAAAC+/9X/AAA0AEsAAAA=")
 tile_set = ExtResource("2_bf13f")
 
 [node name="collision" type="StaticBody2D" parent="TILE_MAPS/POND" unique_id=151456075]
+visible = false
 z_index = 50
 
 [node name="Pond 1" type="CollisionShape2D" parent="TILE_MAPS/POND/collision" unique_id=1824738192]
@@ -5021,6 +5035,7 @@ shape = SubResource("RectangleShape2D_r50et")
 z_index = 1
 
 [node name="LIGHTS" type="Control" parent="." unique_id=563581829]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -7263,6 +7278,7 @@ texture = ExtResource("4_401pq")
 offset = Vector2(-0.38427734, 775.4363)
 
 [node name="Collision Objects" type="Control" parent="." unique_id=557795143]
+visible = false
 z_index = 50
 layout_mode = 3
 anchors_preset = 0
@@ -9575,6 +9591,7 @@ texture = ExtResource("4_401pq")
 offset = Vector2(-0.38427734, 775.4363)
 
 [node name="CutsceneCollisions" type="Area2D" parent="." unique_id=2118879612]
+visible = false
 z_index = 50
 position = Vector2(-725, 2735)
 

@@ -3,7 +3,7 @@
 [ext_resource type="TileSet" uid="uid://brncoaox03ylg" path="res://Image_Assets/Map_Sheets/Tile_Sets/Verdant_Forest.tres" id="1_vnhbh"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="2_06m8d"]
 [ext_resource type="PackedScene" uid="uid://c10qeone4u11s" path="res://Image_Assets/Map_Objects/Forest/DarkTree.tscn" id="4_0jajs"]
-[ext_resource type="TileSet" path="res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour.tres" id="4_li0g5"]
+[ext_resource type="TileSet" uid="uid://bws8g1h8clkgq" path="res://Image_Assets/Map_Sheets/Tile_Sets/Celeste_Harbour.tres" id="4_li0g5"]
 [ext_resource type="PackedScene" uid="uid://d0k3aqu382y78" path="res://Image_Assets/Map_Objects/Forest/LightTree.tscn" id="5_efv3c"]
 [ext_resource type="PackedScene" uid="uid://bd1cf7d6oc7n0" path="res://Image_Assets/Map_Objects/Forest/Forest_Lamp.tscn" id="6_3uusb"]
 [ext_resource type="PackedScene" uid="uid://bw46iqrxgoxpp" path="res://Image_Assets/Map_Objects/Forest/LightVinesTree.tscn" id="6_7yrxg"]
@@ -248,6 +248,7 @@ tile_map_data = PackedByteArray("AACL//H/AAAuAAUAAAA=")
 tile_set = ExtResource("1_vnhbh")
 
 [node name="LIGHTS" type="Control" parent="TILE_MAPS/POKEBALL_PLAZA" unique_id=665697933]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -1044,6 +1045,7 @@ position = Vector2(936, 704)
 position = Vector2(984, 728)
 
 [node name="Poke_Collisions" type="StaticBody2D" parent="TILE_MAPS/POKEBALL_PLAZA" unique_id=1302583343]
+visible = false
 position = Vector2(503, 1080)
 
 [node name="Raikou" type="CollisionShape2D" parent="TILE_MAPS/POKEBALL_PLAZA/Poke_Collisions" unique_id=325397014]
@@ -1817,6 +1819,7 @@ rotation = -3.1415925
 scale = Vector2(1, -1)
 
 [node name="LIGHTS" type="Control" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE" unique_id=1607593516]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -1833,6 +1836,7 @@ rotation = -3.1415925
 scale = Vector2(1, -1)
 
 [node name="Bridge_Collision" type="StaticBody2D" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE" unique_id=280754524]
+visible = false
 
 [node name="Bridge_Left" type="CollisionPolygon2D" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE/Bridge_Collision" unique_id=2097177695]
 position = Vector2(2985, 77)
@@ -2780,6 +2784,7 @@ position = Vector2(2084, 581)
 position = Vector2(2156, 599)
 
 [node name="MAGIKARP_POND_L_LIGHTS" type="Control" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L" unique_id=2062735305]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -2792,6 +2797,7 @@ position = Vector2(-164, -44)
 position = Vector2(14, -44)
 
 [node name="Karp_Collision" type="StaticBody2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L" unique_id=741170526]
+visible = false
 
 [node name="North_Collision" type="CollisionPolygon2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L/Karp_Collision" unique_id=1007182827]
 polygon = PackedVector2Array(-369, -49, -369, -97, -339, -97, -339, -145, -309, -145, -309, -180, -261, -180, -261, -233, -292, -233, -292, -325, -161, -325, -161, -293, -132, -293, -132, -325, -102, -325, -102, -355, -34, -355, -34, -323, -4, -323, -4, -290, 25, -290, 25, -321, 160, -321, 160, -250, 124, -250, 124, -163, 159, -163, 159, -132, 206, -132, 206, -115, 236, -115, 237, -148, 251, -148, 251, -178, 282, -178, 282, -209, 313, -209, 313, -243, 429, -243, 429, -159, 394, -159, 394, -117, 364, -117, 364, -42, 346, -42, 346, -32, 31, -32, 31, -48, 18, -48, 18, -63, 2, -63, 2, -74, -11, -74, -11, -91, -119, -91, -119, -75, -138, -75, -138, -63, -155, -63, -155, -45, -172, -45, -172, -32, -382, -32, -382, -49)
@@ -3754,6 +3760,7 @@ position = Vector2(2205, 485)
 position = Vector2(2155, 517)
 
 [node name="MAGIKARP_POND_R_LIGHTS" type="Control" parent="TILE_MAPS/PONDS/MAGIKARP_POND_R" unique_id=1274285934]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_left = 2859.0
@@ -3770,6 +3777,7 @@ position = Vector2(-3325, 101)
 position = Vector2(-2889, -56)
 
 [node name="Karp_Collision" type="StaticBody2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_R" unique_id=638557130]
+visible = false
 
 [node name="North_East_Pond" type="CollisionPolygon2D" parent="TILE_MAPS/PONDS/MAGIKARP_POND_R/Karp_Collision" unique_id=1960806805]
 polygon = PackedVector2Array(-369, -49, -369, -97, -339, -97, -339, -145, -309, -145, -309, -180, -261, -180, -261, -233, -292, -233, -292, -325, -161, -325, -161, -293, -132, -293, -132, -325, -102, -325, -102, -138, -164, -138, -164, -124, -182, -124, -182, -112, -198, -112, -198, -98, -213, -98, -213, -82, -230, -82, -229, -25, -385, -25, -385, -49)
@@ -3812,6 +3820,7 @@ tile_map_data = PackedByteArray("AADq/xoAAAAWAA0AAADr/xoAAAAXAA0AAADs/xoAAAAYAA0
 tile_set = ExtResource("1_vnhbh")
 
 [node name="PIKACHU_POND_LIGHTS" type="Control" parent="TILE_MAPS/PONDS/PIKACHU_POND" unique_id=1285701515]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_left = 346.0
@@ -5320,6 +5329,7 @@ position = Vector2(604, 471.00006)
 position = Vector2(545, 489.00006)
 
 [node name="Pikachu_Collision" type="StaticBody2D" parent="TILE_MAPS/PONDS/PIKACHU_POND" unique_id=877897755]
+visible = false
 
 [node name="Top_Left" type="CollisionPolygon2D" parent="TILE_MAPS/PONDS/PIKACHU_POND/Pikachu_Collision" unique_id=357942268]
 position = Vector2(1183.2598, 440.4917)
@@ -5441,6 +5451,7 @@ tile_map_data = PackedByteArray("AACq//X/AAAcABUAAACq//b/AAAcABYAAACq//f/AAAgAAQ
 tile_set = ExtResource("1_vnhbh")
 
 [node name="Gold_Collision" type="StaticBody2D" parent="TILE_MAPS/GOLD_PLAZA" unique_id=482086428]
+visible = false
 position = Vector2(1120, -332)
 
 [node name="Bush" type="CollisionShape2D" parent="TILE_MAPS/GOLD_PLAZA/Gold_Collision" unique_id=2091231511]
@@ -5625,6 +5636,7 @@ tile_map_data = PackedByteArray("AACi/0AAAAAjABQAAACj/z8AAAAkABMAAACj/0AAAAAkABQ
 tile_set = ExtResource("1_vnhbh")
 
 [node name="LIGHTS" type="Control" parent="TILE_MAPS" unique_id=753293066]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -6441,6 +6453,7 @@ position = Vector2(2894, 1584)
 scale = Vector2(-1, 1)
 
 [node name="Collisions" type="StaticBody2D" parent="Objects" unique_id=1634106243]
+visible = false
 
 [node name="Windmill" type="CollisionPolygon2D" parent="Objects/Collisions" unique_id=94942651]
 position = Vector2(5, -260)
@@ -6716,6 +6729,7 @@ stretch_mode = 2
 metadata/_edit_use_anchors_ = true
 
 [node name="Collision_Body" type="StaticBody2D" parent="TREE_WALL_NORTH" unique_id=1284470760]
+visible = false
 position = Vector2(-3, -220)
 
 [node name="Tree_Block" type="CollisionShape2D" parent="TREE_WALL_NORTH/Collision_Body" unique_id=1797870242]
@@ -6792,6 +6806,7 @@ texture = ExtResource("14_6ll1i")
 metadata/_edit_use_anchors_ = true
 
 [node name="Collision_Body2" type="StaticBody2D" parent="TREE_WALL_WEST_GROUP" unique_id=1031542514]
+visible = false
 position = Vector2(-939, -66)
 
 [node name="Tree_Block_Vert" type="CollisionShape2D" parent="TREE_WALL_WEST_GROUP/Collision_Body2" unique_id=1938424641]
@@ -6914,6 +6929,7 @@ texture = ExtResource("14_6ll1i")
 metadata/_edit_use_anchors_ = true
 
 [node name="Collision_Body" type="StaticBody2D" parent="TREE_WALL_EAST_GROUP" unique_id=1634764830]
+visible = false
 position = Vector2(-3, -220)
 
 [node name="Tree_Block_Vert" type="CollisionShape2D" parent="TREE_WALL_EAST_GROUP/Collision_Body" unique_id=2054301483]
@@ -7025,6 +7041,7 @@ stretch_mode = 2
 metadata/_edit_use_anchors_ = true
 
 [node name="Collision_Body" type="StaticBody2D" parent="TREE_WALL_SOUTH_GROUP" unique_id=1674329102]
+visible = false
 z_index = 20
 position = Vector2(-3, -220)
 

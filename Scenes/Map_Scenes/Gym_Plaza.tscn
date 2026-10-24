@@ -537,6 +537,7 @@ rotation = -3.1415925
 scale = Vector2(1, -1)
 
 [node name="Lights" type="Control" parent="." unique_id=190418010]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -1082,6 +1083,7 @@ position = Vector2(1878.5, 1710)
 shape = SubResource("RectangleShape2D_8xcuo")
 
 [node name="Collision" type="Control" parent="." unique_id=1375372029]
+visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_left = 1750.0
