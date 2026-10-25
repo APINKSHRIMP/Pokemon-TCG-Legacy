@@ -193,6 +193,8 @@ func _ready():
 	# actually won, all three of those behaviours silently no-op'd.)
 
 	GameState.save_current_location(scene_path, _player.position)
+	# Uncovers this map's area on the phone map (World_Map.gd).
+	WorldMap.note_visit(scene_path)
 
 	MapManager.initialise(
 		_player,

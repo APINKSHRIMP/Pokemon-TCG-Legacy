@@ -3140,6 +3140,21 @@ func is_debug_menu_open() -> bool:
 	return _debug_menu != null and is_instance_valid(_debug_menu)
 
 
+## The phone map opens only in a map scene, with the player free to walk: not over a
+## message, cutscene, the main menu, fishing or either debug tool.
+func _can_open_world_map() -> bool:
+	if WorldMap.is_open() or cutscene_active or overworld_paused:
+		return false
+	if is_placement_tool_open() or is_debug_menu_open():
+		return false
+	var current := get_tree().current_scene
+	if current == null or not String(current.scene_file_path).begins_with(_MAP_SCENES_PREFIX):
+		return false
+	if _player == null or not is_instance_valid(_player) or not _player.is_inside_tree():
+		return false
+	return not ("can_move" in _player) or _player.can_move
+
+
 ## Open the debug placement editor in one of PlacementTool.Mode's modes. It closes
 ## itself and restores the camera, the player's movement and any grabbed actor's
 ## collision on the way out.
@@ -3156,6 +3171,13 @@ func _open_placement_tool(mode: int) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# The phone map (World_Map.gd) -- a player feature, so it sits above the debug gate.
+	if event is InputEventKey and event.pressed and not event.is_echo() \
+			and event.keycode == WorldMap.OPEN_KEY and _can_open_world_map():
+		get_viewport().set_input_as_handled()
+		WorldMap.open(get_tree().current_scene, _player)
+		return
+
 	# Developer-only. Without this gate an exported build would let anyone open the
 	# debug menu and mint cash, skip time or launch a test match. See Debug_Mode.gd for
 	# how debug mode is switched on and off — in the editor it is always on.

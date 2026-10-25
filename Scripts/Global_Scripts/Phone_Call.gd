@@ -1364,7 +1364,7 @@ func _composite_image(look: Array) -> Image:
 ##
 ## A phone with no transparent screen falls back to a centred rectangle over most of the body, which
 ## is wrong-looking but harmless, and says so; that art should pass "screen_rect" in its config.
-func _find_screen_rect(tex: Texture2D) -> Rect2:
+static func _find_screen_rect(tex: Texture2D) -> Rect2:
 	var img := _readable_image(tex)
 	if img == null:
 		return _fallback_screen_rect(tex)
@@ -1406,13 +1406,13 @@ func _find_screen_rect(tex: Texture2D) -> Rect2:
 			max_y = maxi(max_y, y)
 
 	if max_x < min_x or max_y < min_y:
-		push_warning("PhoneCall: '%s' has no transparent screen; pass a screen_rect." % _phone_name)
+		push_warning("PhoneCall: '%s' has no transparent screen; pass a screen_rect." % tex.resource_path)
 		return _fallback_screen_rect(tex)
 	return Rect2(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1)
 
 
 ## Marks one pixel as reachable from outside the handset, if it is transparent and not marked yet.
-func _seed_outside(img: Image, outside: Dictionary, stack: Array[Vector2i], at: Vector2i) -> void:
+static func _seed_outside(img: Image, outside: Dictionary, stack: Array[Vector2i], at: Vector2i) -> void:
 	if outside.has(at) or img.get_pixel(at.x, at.y).a > 0.0:
 		return
 	outside[at] = true
@@ -1421,7 +1421,7 @@ func _seed_outside(img: Image, outside: Dictionary, stack: Array[Vector2i], at: 
 
 ## An Image whose pixels can actually be read. A texture imported with VRAM compression hands back
 ## a compressed Image, and get_pixel() / get_used_rect() on one of those is meaningless.
-func _readable_image(tex: Texture2D) -> Image:
+static func _readable_image(tex: Texture2D) -> Image:
 	var img := tex.get_image()
 	if img == null:
 		return null
@@ -1433,7 +1433,7 @@ func _readable_image(tex: Texture2D) -> Image:
 	return img
 
 
-func _fallback_screen_rect(tex: Texture2D) -> Rect2:
+static func _fallback_screen_rect(tex: Texture2D) -> Rect2:
 	var w := float(tex.get_width())
 	var h := float(tex.get_height())
 	return Rect2(w * 0.1, h * 0.15, w * 0.8, h * 0.7)
