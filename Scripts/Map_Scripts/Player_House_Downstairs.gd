@@ -9,12 +9,15 @@ const NOTE_LOOK_BACK_DELAY := 0.5   # after the fade in, before the player turns
 
 # ── Morning 2: Ellie rings about breakfast at Café Mieux — TWEAKABLE ────────
 # Only for saves that woke up on day 1 ("new" / "rules"; CafeBreakfastCutscene.call_due).
-# It rings once the player has walked this far (world px) from where they came in, so
-# not the instant they arrive downstairs.
+# It rings once the player has walked this far (world px, summed along the path they
+# actually walked) since coming in, so not the instant they arrive downstairs.
+# ISSUE #478: 4x the old 32px, and measured as distance walked rather than straight-line
+# displacement so a small room can't keep the call from ever ringing.
 const CAFE_CALL_ID := "cafe_call_ellie"
-const CAFE_CALL_TRIGGER_DISTANCE := 32.0
+const CAFE_CALL_TRIGGER_DISTANCE := 128.0
 
 var _cafe_call_from: Vector2 = Vector2.INF
+var _cafe_call_walked: float = 0.0
 
 
 func get_scene_path() -> String:      return SCENE_PATH
@@ -33,7 +36,10 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if _cafe_call_from == Vector2.INF:
 		return
-	if _player.global_position.distance_to(_cafe_call_from) >= CAFE_CALL_TRIGGER_DISTANCE:
+	_cafe_call_walked += _player.global_position.distance_to(_cafe_call_from)
+	_cafe_call_from = _player.global_position
+	if _cafe_call_walked >= CAFE_CALL_TRIGGER_DISTANCE:
+		print("ISSUE #478 FIX ACTIVE: cafe call after walking ", _cafe_call_walked, "px")
 		_cafe_call_from = Vector2.INF
 		_play_cafe_call()
 

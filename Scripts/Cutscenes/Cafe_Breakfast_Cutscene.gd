@@ -100,6 +100,12 @@ const ELLIE_STEP_Y    : float = 1004.0     # "walks down a bit"
 const ELLIE_AISLE_X   : float = 2063.0     # halfway between the chairs either side
 const ELLIE_STOP      := Vector2(2007.0, 1182.0)
 const ELLIE_WALK_SPEED : float = 70.0
+# ISSUE #498: the walk from the table to those spots (no fade). Alexander goes round the
+# left of the table, the player steps down below it then across.
+const ALEX_STAND_X       : float = 1958.0
+const PLAYER_STEP_DOWN_Y : float = 1140.0
+const ELLIE_DOOR_FADE    : float = 0.3     # going through the café door, and back out
+const ELLIE_INSIDE_TIME  : float = 1.5
 # Leaving: both walk down to the path and off to the left. Ellie turns a little past
 # its centre line, Alexander (half a step to her left) a little before it.
 const LEAVE_SPEED       : float = 75.0
@@ -133,6 +139,11 @@ const OLLY_BYE        := "Well as fun as that was, some of us have places to be.
 const OLLY_ROD        := "[NAME], make sure you come by the shop ASAP right? I've still got a rod for you and a favour to ask."
 
 const ELLIE_MY_TURN   := "Well, now Ol has gone, it's my turn!"
+# ISSUE #488: as Olly walks off. TWEAKABLE: ELLIE_SIGH_AT -- how far along his walk off screen (0-1)
+# she looks down after him; ELLIE_SIGH_AFTER -- the pause once he's gone before she carries on.
+const ELLIE_SIGH       := "Sigh… Don't worry then I'll pay..."
+const ELLIE_SIGH_AT    : float = 0.5
+const ELLIE_SIGH_AFTER : float = 0.5
 const ELLIE_NO        := ["What?? Do you need the toilet or something?", "Alright fine but I'm not leaving until I win!!!"]
 const ELLIE_ASK_AGAIN := "So you ARE going to play against me?"
 const ELLIE_NO_AGAIN  := "Stop rage baiting me."
@@ -541,6 +552,11 @@ func _ask_ellie(question: String, again: bool) -> void:
 
 
 func _ask_alex() -> void:
+	# ISSUE #494: he sits straight above the player -- they look at each other for the challenge.
+	print("ISSUE #494 FIX ACTIVE: Alexander looks down, the player looks up")
+	if _alex != null and is_instance_valid(_alex):
+		_alex.face("down")
+	player_face("up")
 	if await ask(_sp_alex, ALEX_ASK):
 		_start_battle(ALEX_NAME)
 		return
@@ -569,11 +585,37 @@ func _play_after_olly() -> void:
 	close_box()
 
 	# Down off his chair to the path, left to the path into the plaza, and up it.
-	await _walk_off(_olly, [
-		Vector2(_olly.global_position.x, PATH_Y),
-		Vector2(OLLY_EXIT_X, PATH_Y),
-		Vector2(OLLY_EXIT_X, PATH_Y - OLLY_EXIT_UP),
-	], OLLY_EXIT_SPEED)
+	# ISSUE #488: about halfway to the edge of the screen Ellie looks down after him, a beat, and
+	# sighs that she'll pay, while he is still walking. Then she turns back to the player, and her
+	# own lines wait until he is off screen (or ELLIE_SIGH_AFTER, whichever is later).
+	var olly_gone := [false]
+	var olly_from: Vector2 = _olly.global_position
+	var go := func() -> void:
+		await _walk_off(_olly, [
+			Vector2(_olly.global_position.x, PATH_Y),
+			Vector2(OLLY_EXIT_X, PATH_Y),
+			Vector2(OLLY_EXIT_X, PATH_Y - OLLY_EXIT_UP),
+		], OLLY_EXIT_SPEED)
+		olly_gone[0] = true
+	go.call()
+	var walked := 0.0
+	var last: Vector2 = olly_from
+	while not olly_gone[0] and walked < OFFSCREEN_MARGIN_X * ELLIE_SIGH_AT:
+		await get_tree().process_frame
+		if _olly == null or not is_instance_valid(_olly):
+			break
+		walked += _olly.global_position.distance_to(last)
+		last = _olly.global_position
+	print("ISSUE #488 FIX ACTIVE: Ellie sighs after Olly walked ", int(walked), "px")
+	if _ellie != null:
+		_ellie.face("down")
+		await wait(ELLIE_LOOK_BACK)
+		await say(_sp_ellie, ELLIE_SIGH)
+		close_box()
+		_ellie.face(SEAT_FACING[ELLIE_NAME])
+	while not olly_gone[0] and is_inside_tree():
+		await get_tree().process_frame
+	await wait(ELLIE_SIGH_AFTER)
 	_olly = null
 	# His world node was hidden while he sat; the flag keeps him off every later load.
 	for node in _hidden_nodes.duplicate():
@@ -599,16 +641,46 @@ func _play_after_alex() -> void:
 	await _say_script(AFTER_ALEX.get(outcome, AFTER_ALEX["l_l"]))
 	close_box()
 
-	# Ellie goes in to pay. Fade, and she is already at the café door with the two of
-	# them stood a few steps below the table.
-	await fade_out()
-	_alex.global_position = ALEX_END_SPOT
-	_alex.face("right")
-	_ellie.global_position = ELLIE_DOOR_SPOT
-	_ellie.face("down")
-	player.global_position = PLAYER_END_SPOT
+	# ISSUE #498: no fade, no cut. Ellie gets up and goes in to pay (out to the aisle, up to the
+	# café door and through it) while Alexander and the player step down from the table to stand
+	# facing each other. A beat later she comes back out of the door.
+	print("ISSUE #498 FIX ACTIVE: café closing scene walks, no fade")
+	var alex_down := [
+		Vector2(ALEX_STAND_X, _alex.global_position.y),
+		Vector2(ALEX_STAND_X, ALEX_END_SPOT.y),
+		ALEX_END_SPOT,
+	]
+	var moving := [2]   # Alexander and Ellie still walking
+	var glide := func(actor: CutsceneActor, pts: Array) -> void:
+		await actor.glide_path(pts, ELLIE_WALK_SPEED)
+		moving[0] -= 1
+	glide.call(_alex, alex_down)
+	var ellie_in := [
+		Vector2(ELLIE_AISLE_X, _ellie.global_position.y),
+		Vector2(ELLIE_AISLE_X, ELLIE_STEP_Y),
+		Vector2(ELLIE_DOOR_SPOT.x, ELLIE_STEP_Y),
+		ELLIE_DOOR_SPOT,
+	]
+	glide.call(_ellie, ellie_in)
+	await player_walk_path([
+		Vector2(player.global_position.x, PLAYER_STEP_DOWN_Y),
+		Vector2(PLAYER_END_SPOT.x, PLAYER_STEP_DOWN_Y),
+		PLAYER_END_SPOT,
+	], ELLIE_WALK_SPEED)
 	player_face("left")
-	await fade_in()
+	while moving[0] > 0 and is_inside_tree():
+		await get_tree().process_frame
+	_alex.face("right")
+	# Through the door: she fades out on the step, waits inside, and fades back in.
+	_ellie.face("up")
+	var fade_in_door := create_tween()
+	fade_in_door.tween_property(_ellie, "modulate:a", 0.0, ELLIE_DOOR_FADE)
+	await fade_in_door.finished
+	await wait(ELLIE_INSIDE_TIME)
+	_ellie.face("down")
+	var fade_out_door := create_tween()
+	fade_out_door.tween_property(_ellie, "modulate:a", 1.0, ELLIE_DOOR_FADE)
+	await fade_out_door.finished
 
 	await _ellie.glide_path([
 		Vector2(ELLIE_DOOR_SPOT.x, ELLIE_STEP_Y),
@@ -640,16 +712,16 @@ func _play_after_alex() -> void:
 	while _alex != null and is_instance_valid(_alex):
 		await get_tree().process_frame
 
-	# The morning is over (the clock already moved on with Alexander's match). Fade out and
-	# rebuild the afternoon's cast around where they stand.
-	await fade_out()
+	# The morning is over. ISSUE #498: no fade and no reload -- the clock already moved on to the
+	# afternoon on the way back from Alexander's match (settle_after_load), so the map came up with
+	# the afternoon's cast (Ellie and Alexander are in the Card Mart) and the player just carries on.
 	_end_morning()
 	GameState.save_current_location(map.get_scene_path(), player.position)
 	for node in _hidden_nodes:
 		if is_instance_valid(node):
 			node.queue_free()
 	_hidden_nodes.clear()
-	MapManager.reload_map_in_place()
+	finish()
 
 
 # ============================================================

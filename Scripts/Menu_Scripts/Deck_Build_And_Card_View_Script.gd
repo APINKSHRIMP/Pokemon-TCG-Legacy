@@ -922,7 +922,15 @@ func _load_owned_cards_for_set(set_id: String) -> Array:
 	file.close()
 
 	if data is Dictionary and data.has("owned_cards"):
-		return data["owned_cards"]
+		var cards: Array = data["owned_cards"]
+		# ISSUE #476: the intro walkthrough draws the bonus pack's cards as not-yet-owned, then
+		# flies them in. _owned_override holds how many of each to hold back.
+		if not _owned_override.is_empty():
+			for c in cards:
+				var cid := String(c.get("card_id", ""))
+				if _owned_override.has(cid):
+					c["owned"] = maxi(0, int(c.get("owned", 0)) - int(_owned_override[cid]))
+		return cards
 	return []
 
 
@@ -2197,6 +2205,7 @@ func _display_current_set() -> void:
 	print("CARD CACHE: set ", set_id, " grid built in ", (Time.get_ticks_usec() - build_start_usec) / 1000, " ms")
 	# ISSUE #32: grid finished building for the current set — allow player input again.
 	_loading_overlay.hide()
+	grid_built.emit()   # ISSUE #476: the intro walkthrough waits for this
 
 
 ## Removes all card entries from the grid, killing tweens to avoid
@@ -3358,6 +3367,8 @@ func _save_last_set_loaded() -> void:
 ## - Shift press: zooms into the hovered card's large image
 ## - Shift release: closes the zoom overlay and restores UI
 func _input(event: InputEvent) -> void:
+	if walkthrough_active:
+		return   # ISSUE #476: Olly's intro is driving this screen
 	if event is InputEventMouseButton and event.pressed:
 		_update_composition_panel()
 
@@ -4294,3 +4305,234 @@ func _close_load_popup() -> void:
 	if load_popup != null:
 		load_popup.queue_free()
 		load_popup = null
+
+
+# ============================================================
+# INTRO WALKTHROUGH — ISSUE #476
+# ============================================================
+# Olly's intro opens this screen on its own (OllyIntroCutscene._deck_walkthrough) and drives it:
+# the bonus pack's cards fly into their slots, then the deck is rebuilt into the better one card by
+# card, renamed and saved. The player can't touch anything while it runs (walkthrough_active: _input
+# returns at once and a clear blocker stops the mouse). All TWEAKABLE timings are below.
+
+signal grid_built
+
+const WALK_SCROLL_TIME   := 0.8    # scrolling down to the first new card's row
+const WALK_FLY_TIME      := 0.7    # a card fading in and floating down into its slot
+const WALK_FLY_RISE      := 90.0   # how far above its slot it starts
+const WALK_PAIR_DELAY    := 0.22   # the second copy of a card, off-sync with the first
+const WALK_CARD_GAP      := 0.18   # between one card's flight and the next card's
+const WALK_ROW_SCROLL    := 0.25   # scrolling a changed card into view during the rebuild
+
+var walkthrough_active: bool = false
+var _owned_override: Dictionary = {}   # card_id -> copies to hold back from the grid
+var _walk_blocker: Control = null
+
+
+func walkthrough_begin() -> void:
+	walkthrough_active = true
+	_walk_blocker = ColorRect.new()
+	(_walk_blocker as ColorRect).color = Color(0, 0, 0, 0)
+	_walk_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_walk_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	_walk_blocker.z_index = 400
+	add_child(_walk_blocker)
+	print("ISSUE #476 FIX ACTIVE: deck builder walkthrough started")
+
+
+func walkthrough_end() -> void:
+	walkthrough_active = false
+	_owned_override.clear()
+	if _walk_blocker != null and is_instance_valid(_walk_blocker):
+		_walk_blocker.queue_free()
+	_walk_blocker = null
+
+
+## Shows `set_id` with the cards in `new_counts` (card_id -> copies just received) held back as empty
+## slots, scrolls so the first row holding one is the top row, then flies each copy in -- the copies
+## of one card a moment apart -- and ticks its "in deck / owned" count up as it lands.
+func walkthrough_reveal_new_cards(set_id: String, new_counts: Dictionary) -> void:
+	_owned_override = new_counts.duplicate()
+	for pos in unlocked_indices.size():
+		if set_list[unlocked_indices[pos]]["set_id"] == set_id:
+			current_unlock_pos = pos
+	_display_current_set()
+	await grid_built
+	await get_tree().process_frame
+	_owned_override.clear()
+	var cells := _walk_cells()
+	var first_idx := -1
+	for i in cells.size():
+		if new_counts.has(String(cells[i].get_meta("card_id", ""))):
+			first_idx = i
+			break
+	if first_idx < 0:
+		return
+	await _walk_scroll_to_row(int(first_idx / COLUMNS), WALK_SCROLL_TIME)
+	# In grid order, so the reveal sweeps down the screen.
+	for i in cells.size():
+		var cid := String(cells[i].get_meta("card_id", ""))
+		if not new_counts.has(cid):
+			continue
+		await _walk_scroll_to_row(int(i / COLUMNS), WALK_ROW_SCROLL)
+		var copies: int = int(new_counts[cid])
+		for k in copies:
+			if k < copies - 1:
+				_walk_fly_into(i, cid)
+				await get_tree().create_timer(WALK_PAIR_DELAY).timeout
+			else:
+				await _walk_fly_into(i, cid)
+		await get_tree().create_timer(WALK_CARD_GAP).timeout
+
+
+## Turns the deck on screen into `target` (card_id -> count) one copy at a time over about `seconds`,
+## so every count can be seen going up or down. New cards go in first, then the cards being cut come
+## out, Energy last (down first, then up) -- the order a person would edit it in.
+func walkthrough_convert_to(target: Dictionary, seconds: float) -> void:
+	var energy_ids: Array = []
+	for ids in GameState.ENERGY_STYLES.values():
+		energy_ids.append_array(ids)
+	var steps: Array = []   # [card_id, +1/-1]
+	var all_ids: Array = deck_cards.keys()
+	for cid in target:
+		if not cid in all_ids:
+			all_ids.append(cid)
+	var adds: Array = []
+	var cuts: Array = []
+	var e_down: Array = []
+	var e_up: Array = []
+	for cid in all_ids:
+		var have: int = int(deck_cards.get(cid, 0))
+		var want: int = int(target.get(cid, 0))
+		var is_e: bool = cid in energy_ids
+		for n in absi(want - have):
+			if want > have:
+				(e_up if is_e else adds).append([cid, 1])
+			else:
+				(e_down if is_e else cuts).append([cid, -1])
+	steps = adds + cuts + e_down + e_up
+	print("ISSUE #476 FIX ACTIVE: rebuilding the deck in ", steps.size(), " steps")
+	if steps.is_empty():
+		return
+	var gap: float = seconds / float(steps.size())
+	for st in steps:
+		await _walk_change_count(String(st[0]), int(st[1]))
+		await get_tree().create_timer(gap).timeout
+
+
+## Names the deck, "presses" Save (the button pops) and shows DECK SAVED!. The old deck's file is
+## left where it was, so Load Deck still has it.
+func walkthrough_save_as(deck_name: String) -> void:
+	deck_name_edit.text = deck_name
+	_on_deck_name_changed(deck_name)
+	var tw := create_tween()
+	save_btn.pivot_offset = save_btn.size / 2.0
+	tw.tween_property(save_btn, "scale", Vector2(0.9, 0.9), 0.08)
+	tw.tween_property(save_btn, "scale", Vector2.ONE, 0.12)
+	await tw.finished
+	_write_deck_save()
+	_show_deck_message(MSG_SAVED_TEXT, MSG_SAVED_COLOUR)
+
+
+func _walk_cells() -> Array:
+	var out: Array = []
+	for c in grid.get_children():
+		if c.is_queued_for_deletion() or not c.has_meta("card_id"):
+			continue
+		out.append(c)
+	return out
+
+
+func _walk_scroll_to_row(row: int, seconds: float) -> void:
+	var scroll = grid.get_parent()
+	if not scroll is ScrollContainer:
+		return
+	var y: int = int(row * (CARD_SIZE.y + CARD_V_SEP))
+	var bar: VScrollBar = (scroll as ScrollContainer).get_v_scroll_bar()
+	if bar != null:
+		y = mini(y, int(bar.max_value - bar.page))
+	y = maxi(y, 0)
+	# Already in view: leave it.
+	var top: int = (scroll as ScrollContainer).scroll_vertical
+	if y >= top and y + CARD_SIZE.y <= top + scroll.size.y and seconds < WALK_SCROLL_TIME:
+		return
+	var tw := create_tween()
+	tw.tween_property(scroll, "scroll_vertical", y, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await tw.finished
+
+
+## One copy flies into grid cell `idx`: it fades in above the slot and floats down. On landing the
+## cell is rebuilt as an owned card (if it was an empty slot) and its count goes up by one.
+func _walk_fly_into(idx: int, cid: String) -> void:
+	var cells := _walk_cells()
+	if idx >= cells.size():
+		return
+	var cell: Control = cells[idx]
+	var tex := _load_card_texture_small_first(_small_card_image_path(cid))
+	var fly := TextureRect.new()
+	fly.texture = tex
+	fly.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fly.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	fly.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fly.z_index = 350
+	add_child(fly)
+	fly.size = CARD_SIZE
+	var land: Vector2 = cell.global_position
+	fly.global_position = land - Vector2(0, WALK_FLY_RISE)
+	fly.modulate.a = 0.0
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(fly, "modulate:a", 1.0, WALK_FLY_TIME * 0.5)
+	tw.tween_property(fly, "global_position", land, WALK_FLY_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await tw.finished
+	fly.queue_free()
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	cells = _walk_cells()
+	if idx >= cells.size():
+		return
+	cell = cells[idx]
+	var owned: int = int(cell.get_meta("owned", 0)) + 1
+	if int(cell.get_meta("owned", 0)) == 0:
+		# The empty slot becomes the real card, in the same place in the grid.
+		var at := cell.get_index()
+		_add_card_to_grid({"card_id": cid, "owned": owned})
+		var fresh: Control = grid.get_child(grid.get_child_count() - 1)
+		grid.move_child(fresh, at)
+		grid.remove_child(cell)
+		cell.queue_free()
+		return
+	cell.set_meta("owned", owned)
+	var lbl: Label = cell.get_meta("count_label")
+	lbl.text = "%d / %d" % [int(cell.get_meta("in_deck", 0)), owned]
+
+
+## +1 / -1 copy of `cid` in the deck, exactly as a click would, with the card scrolled into view.
+func _walk_change_count(cid: String, delta: int) -> void:
+	var have: int = int(deck_cards.get(cid, 0))
+	var now: int = maxi(0, have + delta)
+	if now == have:
+		return
+	total_deck_count += now - have
+	if now == 0:
+		deck_cards.erase(cid)
+	else:
+		deck_cards[cid] = now
+	_rebuild_deck_name_counts()
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select if delta > 0 else SoundManagerScript.SFX_minus_select)
+	var cells := _walk_cells()
+	for i in cells.size():
+		var cell: Control = cells[i]
+		if String(cell.get_meta("card_id", "")) != cid:
+			continue
+		await _walk_scroll_to_row(int(i / COLUMNS), WALK_ROW_SCROLL)
+		cell.set_meta("in_deck", now)
+		var lbl: Label = cell.get_meta("count_label")
+		lbl.text = "%d / %d" % [now, int(cell.get_meta("owned", 0))]
+		if cell is TextureRect:
+			if now > 0 and have == 0:
+				_apply_selected_animation(cell)
+			elif now == 0:
+				_remove_selected_animation(cell)
+		break
+	_refresh_energy_icons_from_deck()
+	_update_deck_count_label()
+	_refresh_save_button()

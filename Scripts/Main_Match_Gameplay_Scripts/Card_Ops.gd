@@ -360,6 +360,8 @@ func recover_to_hand(card: card_object, is_opponent: bool, animate: bool = false
 
 # ── Healing ───────────────────────────────────────────────────────────────────────────────
 
+const HEAL_BLOCK_STEP := 0.25   # ISSUE #490: seconds between restored HP blocks
+
 # Heal `amount` HP from a pokemon (clamped to max HP).
 # Shows a green floating "+N HP" label above the pokemon's actual screen position,
 # whether it is the active or a bench pokemon. Also animates HP circles restoring.
@@ -378,24 +380,25 @@ func heal_pokemon(pokemon: card_object, amount: int, is_opponent: bool) -> void:
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
 
-	# Show floating "+N HP" label above this pokemon's real screen position
-	var loc = main.get_pokemon_screen_location(pokemon)
-	if not loc.is_empty():
-		main.show_floating_label("+" + str(actual_heal) + " HP", loc["position"] + Vector2(0, -20), Color.GREEN, true)
+	# Show floating "+N HP" label over this pokemon's real screen position
+	# ISSUE #501: through float_label_over, which centres it (the old one sat off to the right).
+	if not main.get_pokemon_screen_location(pokemon).is_empty():
+		main.float_label_over(pokemon, "+" + str(actual_heal) + " HP", Color.GREEN, is_opponent)
 
-	# Animate HP circles restoring one counter at a time
+	# Animate HP blocks restoring one counter at a time.
+	# ISSUE #490: on the Pokémon that is healed -- the loop used to redraw the ACTIVE's row each step,
+	# so a Benched Pokémon's blocks all came back at once on the final refresh. TWEAKABLE: HEAL_BLOCK_STEP.
 	var circles_to_restore = actual_heal / 10
 	var hp_before = pokemon.current_hp
-	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	print("ISSUE #490 FIX ACTIVE: healing ", pokemon.metadata.get("name", ""), " one block at a time (", circles_to_restore, ")")
 	for i in range(circles_to_restore):
 		var partial_hp = hp_before + ((i + 1) * 10)
 		pokemon.current_hp = min(partial_hp, hp_before + actual_heal)
-		main.display_hp_circles_above_align(active if active != null else pokemon, is_opponent)
-		await main.get_tree().create_timer(GameState.match_time(0.15)).timeout
+		main.refresh_pokemon_hp_display(pokemon, is_opponent)
+		await main.get_tree().create_timer(GameState.match_time(HEAL_BLOCK_STEP)).timeout
 		if main._should_bail(): return
 	pokemon.current_hp = min(hp_before + actual_heal, max_hp)
-	main.display_hp_circles_above_align(active if active != null else pokemon, is_opponent)
-	main.display_pokemon(is_opponent)
+	main.refresh_pokemon_hp_display(pokemon, is_opponent)
 
 # ── Status Conditions ─────────────────────────────────────────────────────────────────────
 
@@ -1004,10 +1007,10 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool, fr
 		print("ISSUE #294 FIX ACTIVE: bench damage to ", pokemon.metadata.get("name", ""), " fully prevented")
 		return
 	pokemon.current_hp = max(0, pokemon.current_hp - damage)
-	var loc = main.get_pokemon_screen_location(pokemon)
-	if not loc.is_empty():
-		var label_pos = loc["position"] + Vector2(loc["size"].x / 2.0, -10)
-		main.show_floating_label("-" + str(damage), label_pos, Color.RED, true)
+	# ISSUE #501: the label used the card's centre as the LEFT edge of show_floating_label's 300px box,
+	# so it sat ~150px right of the card. float_label_over centres it properly.
+	if not main.get_pokemon_screen_location(pokemon).is_empty():
+		main.float_label_over(pokemon, "-" + str(damage), Color.RED, is_opponent)
 	main.display_pokemon(is_opponent)
 
 # ISSUE #38: staggered multi-target bench damage. Applies `damage` to every valid Pokémon in

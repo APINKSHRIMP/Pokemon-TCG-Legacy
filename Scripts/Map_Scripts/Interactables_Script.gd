@@ -25,7 +25,7 @@ const SLEEP_FADE_DURATION := 3.0
 # Fallback text shown when a non-special shape has no JSON entry.
 const MISSING_TEXT := "There's nothing of interest here."
 
-# Text shown when interacting with the bed outside of night time (ISSUE #458: one per slot,
+# Text shown when interacting with the bed outside of night time (ISSUE #457: one per slot,
 # shared with Player_House_Upstairs.gd).
 const BED_TOO_EARLY_TEXT: Dictionary = {
 	"Morning":   "I've only just woken up, I'm not getting back in bed now!",

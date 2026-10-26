@@ -138,15 +138,16 @@ const ANIMATION_SPEED_OPTIONS := ["slow", "medium", "fast"]
 # and MUST all carry the same three keys as ANIMATION_SPEED_OPTIONS. "medium" does not have to mean
 # the same multiplier in each, and does not: a pack tear is a set-piece and runs slower than the
 # match it paid for.
+# ISSUE #496: slow 10% slower (1.0 -> 0.9), medium and fast 10% faster (1.25 -> 1.375, 2.2 -> 2.42).
 const MATCH_SPEED_PRESETS := {
-	"slow": 1.0,
-	"medium": 1.25,
-	"fast": 2.2,
+	"slow": 0.9,
+	"medium": 1.375,
+	"fast": 2.42,
 }
 const ITEM_SPEED_PRESETS := {
-	"slow": 1.0,
-	"medium": 1.25,
-	"fast": 2.2,
+	"slow": 0.9,
+	"medium": 1.375,
+	"fast": 2.42,
 }
 # ISSUE #94's relabel is preserved: "fast" is the straight 1.0 passthrough where the base durations
 # written into Pack_Opening_Manager.gd play exactly as authored, and the default sits one notch
@@ -251,6 +252,14 @@ var hide_bars_setting: String = DEFAULT_HIDE_BARS
 # itself back off once that match ends. See Tutorial_Director.gd.
 const TUTORIAL_NEXT_MATCH_OPTIONS := ["off", "on"]
 var tutorial_next_match_setting: String = "off"
+## ISSUE #470: true while a tutorial the player must finish is running (Olly's newby / rules match,
+## the newby's follow-up match). Not saved -- Tutorial_Director sets and clears it.
+var mandatory_tutorial_running: bool = false
+
+## ISSUE #470: the tutorial row is shown On and can't be changed while a must-finish tutorial is
+## running or the newby's follow-up match is still to come.
+func tutorial_option_locked() -> bool:
+	return mandatory_tutorial_running or bool(progress.get(TUTORIAL_TIPS_KEY, false))
 
 
 func set_tutorial_next_match(choice: String, save: bool = true) -> void:

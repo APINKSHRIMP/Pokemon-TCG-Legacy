@@ -444,14 +444,14 @@ func _divider_color(opp: bool) -> Color:
 func _make_row(text: String, opp: bool, index: int, kind: String = "") -> Control:
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color(0, 0, 0, ROW_TINT_ALPHA if index % 2 == 1 else 0.0)
-	# A tutorial help message: a tinted row with a thick accent stripe and a bold HELP tag,
-	# so the hints stand out from the play-by-play at a glance.
+	# A tutorial help message: a tinted row with a thick accent stripe and a bold TUTORIAL tag,
+	# so the hints stand out from the play-by-play at a glance. (ISSUE #480: was "HELP".)
 	if kind == "tutorial":
 		var accent: Color = UIKit.selection_colour()
 		box.bg_color = Color(accent.r, accent.g, accent.b, TUTORIAL_ROW_ALPHA)
 		box.border_width_left = TUTORIAL_STRIPE_W
 		box.border_color = accent
-		text = "[b]HELP[/b]   " + text
+		text = "[b]TUTORIAL[/b]   " + text
 	box.content_margin_left   = ROW_PAD_X
 	box.content_margin_right  = ROW_PAD_X
 	box.content_margin_top    = ROW_PAD_Y

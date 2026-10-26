@@ -24,8 +24,9 @@ const STYLE := {
 const REST_POS := Vector2(28.0, 28.0)
 const DROP_FROM := 70.0          # starts this far above its resting spot
 const DELAY := 0.6               # after the map loads, so the scene fade-in is done first
-const IN_TIME := 0.35
-const HOLD_TIME := 1.0
+# ISSUE #505: fly-in and stay are 2.5x their old values (0.35 -> 0.875, 1.0 -> 2.5).
+const IN_TIME := 0.875
+const HOLD_TIME := 2.5
 const OUT_TIME := 0.35
 const FONT_SIZE := 30
 const ICON_SIZE := 34.0
@@ -82,6 +83,7 @@ static func play(ui_layer: Node, time_name: String) -> void:
 	panel.position = REST_POS - Vector2(0.0, DROP_FROM)
 	panel.modulate.a = 0.0
 
+	print("ISSUE #505 FIX ACTIVE: time banner in ", IN_TIME, "s hold ", HOLD_TIME, "s")
 	var tween := panel.create_tween()
 	tween.tween_interval(DELAY)
 	tween.tween_property(panel, "position:y", REST_POS.y, IN_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

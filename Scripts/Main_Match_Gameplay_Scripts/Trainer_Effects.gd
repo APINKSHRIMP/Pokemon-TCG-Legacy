@@ -1293,7 +1293,9 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 			else:
 				player_played_supporter_this_turn = true
 		await resolve_standard_trainer(card, is_opponent)
-	
+		if not _flight_done:
+			await _flight_finished   # ISSUE #490
+
 	main.update_discard_pile_display(is_opponent)
 	main.refresh_hand_display(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -1388,8 +1390,29 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 		# Standard trainers animate to the discard pile
 		var discard_node = main.opponent_discard_icon if is_opponent else main.player_discard_icon
 		var land: Dictionary = main.landing_rect_node(discard_node)
+		# ISSUE #490: the CPU's Potions heal WHILE the card is on its way to the discard pile -- the
+		# flight is started, not waited for, and play_trainer_card waits for it after the effect.
+		if is_opponent and card.metadata.get("name", "") in HEAL_DURING_FLIGHT:
+			print("ISSUE #490 FIX ACTIVE: ", card.metadata.get("name", ""), " heals during its discard flight")
+			_flight_done = false
+			_run_flight_then_flag(hand_container_node, discard_node, card_texture, from_size, land, from_pos)
+			return
 		await main.animate_card_a_to_b(hand_container_node, discard_node, 0.3, card_texture, from_size,
 			land["size"], land["position"], false, from_pos, main.PLAY_HOLD_TIME)
+
+
+## ISSUE #490: trainers whose effect plays during the flight to the discard (CPU only -- the player
+## still picks a target after the card has gone).
+const HEAL_DURING_FLIGHT := ["Potion", "Super Potion"]
+var _flight_done: bool = true
+signal _flight_finished
+
+func _run_flight_then_flag(from_node: Control, discard_node: Control, tex: Texture2D, from_size: Vector2,
+		land: Dictionary, from_pos: Vector2) -> void:
+	await main.animate_card_a_to_b(from_node, discard_node, 0.3, tex, from_size,
+		land["size"], land["position"], false, from_pos, main.PLAY_HOLD_TIME)
+	_flight_done = true
+	_flight_finished.emit()
 
 ############################################### Section D: STANDARD TRAINER CARD EFFECTS ############################################################
 
@@ -1806,11 +1829,11 @@ func effect_professor_oak(played_card: card_object, is_opponent: bool) -> void:
 		card.current_location = "discard"
 		discard.append(card)
 		var card_texture = main.get_card_texture(card)
-		# ISSUE #456: flights queue one at a time (#243), so a 0.1s timer here hid the hand faster than
+		# ISSUE #455: flights queue one at a time (#243), so a 0.1s timer here hid the hand faster than
 		# the cards flew. Waiting for each flight makes every card leave its slot as it moves.
 		await main.animate_card_out_of_hand(card, is_opponent, oak_from, discard_node, 0.15, card_texture)
 		if main._should_bail(): return
-	print("ISSUE #456 FIX ACTIVE: Professor Oak discarded ", hand_copy.size(), " cards one flight at a time")
+	print("ISSUE #455 FIX ACTIVE: Professor Oak discarded ", hand_copy.size(), " cards one flight at a time")
 	hand.clear()
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -1998,7 +2021,7 @@ func effect_impostor_professor_oak(is_opponent: bool) -> void:
 		card.current_location = "deck"
 		target_deck.append(card)
 		var card_texture = main.get_card_texture(card)
-		await main.animate_card_out_of_hand(card, target_is_opponent, io_from, target_deck_node, 0.15, card_texture)   # ISSUE #456
+		await main.animate_card_out_of_hand(card, target_is_opponent, io_from, target_deck_node, 0.15, card_texture)   # ISSUE #455
 		if main._should_bail(): return
 	target_hand.clear()
 	target_deck.shuffle()
@@ -2130,7 +2153,7 @@ func effect_lass(is_opponent: bool) -> void:
 		main.restore_opponent_blocker(restore_blocker_lass, "effect_lass reveal")
 
 	# Animate player trainers going to deck
-	# ISSUE #456: the cards stay in the hand arrays until every flight is done -- erasing one at a
+	# ISSUE #455: the cards stay in the hand arrays until every flight is done -- erasing one at a
 	# time without a redraw shifted the indices lift_card_from_hand reads, so later flights hid the
 	# wrong slot. Each flight is awaited (flights queue anyway) so a card leaves as it moves.
 	for card in p_trainers:
@@ -2155,7 +2178,7 @@ func effect_lass(is_opponent: bool) -> void:
 		main.player_hand.erase(card)
 	for card in o_trainers:
 		main.opponent_hand.erase(card)
-	print("ISSUE #456 FIX ACTIVE: Lass flew ", p_trainers.size() + o_trainers.size(), " Trainers one by one")
+	print("ISSUE #455 FIX ACTIVE: Lass flew ", p_trainers.size() + o_trainers.size(), " Trainers one by one")
 
 	main.player_deck.shuffle()
 	main.opponent_deck.shuffle()
@@ -2643,10 +2666,17 @@ func effect_energy_retrieval(played_card: card_object, is_opponent: bool) -> voi
 		var to_discard = cpu_get_discard_priority(hand, 1, played_card)
 		if to_discard.size() == 0:
 			return
+		# ISSUE #483: the discarded card flies from the hand to the discard pile, face up.
+		print("ISSUE #483 FIX ACTIVE: CPU Energy Retrieval animates its discard and the Energy coming back")
+		var er_from: Dictionary = main.lift_card_from_hand(to_discard[0], true)
 		hand.erase(to_discard[0])
 		to_discard[0].current_location = "discard"
 		discard.append(to_discard[0])
-		
+		await main.animate_card_out_of_hand(to_discard[0], true, er_from, main.opponent_discard_icon, 0.3, main.get_card_texture(to_discard[0]))
+		if main._should_bail(): return
+		main.refresh_hand_display(true)
+		main.update_discard_pile_display(true)
+
 		var retrieved = 0
 		# ISSUE #310: the basic Energy its Pokémon need most (was the first two in the discard pile)
 		var ranked_e = basic_energies.duplicate()
@@ -2658,6 +2688,10 @@ func effect_energy_retrieval(played_card: card_object, is_opponent: bool) -> voi
 			energy.current_location = "hand"
 			hand.append(energy)
 			retrieved += 1
+			# ISSUE #483: each Energy flies from the discard pile into the hand (face up -- it's public).
+			main.update_discard_pile_display(true)
+			await main.animate_card_into_hand(energy, true, main.opponent_discard_icon, {}, 0.3, main.get_card_texture(energy))
+			if main._should_bail(): return
 		await main.show_message("Opponent retrieved " + str(retrieved) + " Basic Energy from discard!")
 		if main._should_bail(): return
 		main.refresh_hand_display(true)
@@ -2668,10 +2702,15 @@ func effect_energy_retrieval(played_card: card_object, is_opponent: bool) -> voi
 			return
 		await player_select_cards_to_discard(hand, 1, "ENERGY RETRIEVAL", "Select 1 card to discard")
 		if main._should_bail(): return
-		for card in main.trainer_discard_selected:
+		main.refresh_hand_display(false)
+		for card in main.trainer_discard_selected.duplicate():
+			var er_from: Dictionary = main.lift_card_from_hand(card, false)   # ISSUE #483
 			hand.erase(card)
 			card.current_location = "discard"
 			discard.append(card)
+			await main.animate_card_out_of_hand(card, false, er_from, main.player_discard_icon, 0.3, main.get_card_texture(card))
+			if main._should_bail(): return
+			main.update_discard_pile_display(false)
 		main.trainer_discard_selected.clear()
 		main.refresh_hand_display(false)
 		
@@ -2748,12 +2787,23 @@ func effect_maintenance(played_card: card_object, is_opponent: bool) -> void:
 	else:
 		await player_select_cards_to_discard(hand, 2, "MAINTENANCE", "Select 2 cards to shuffle into your deck")
 		if main._should_bail(): return
-		for card in main.trainer_discard_selected:
+		# ISSUE #481: the same show the CPU's Maintenance gets -- each card flies into the deck, the deck
+		# shuffles, and only then is the new card drawn.
+		print("ISSUE #481 FIX ACTIVE: Maintenance animates ", main.trainer_discard_selected.size(), " cards into the deck")
+		main.refresh_hand_display(false)
+		for card in main.trainer_discard_selected.duplicate():
+			var mt_from: Dictionary = main.lift_card_from_hand(card, false)
 			hand.erase(card)
 			card.current_location = "deck"
 			deck.append(card)
+			await main.animate_card_out_of_hand(card, false, mt_from, main.player_deck_icon, 0.3, main.get_card_texture(card))
+			if main._should_bail(): return
+			main.refresh_hand_display(false)
+			main.update_deck_icon(false)
 		main.trainer_discard_selected.clear()
 		deck.shuffle()
+		await main.animate_deck_shuffle(false)
+		if main._should_bail(): return
 		await main.card_ops.draw_n(false, 1)
 		if main._should_bail(): return
 
@@ -2868,6 +2918,7 @@ func effect_pokedex(is_opponent: bool) -> void:
 		top_cards.sort_custom(func(a, b): return _cpu_pokedex_priority(a) > _cpu_pokedex_priority(b))
 		for i in range(count):
 			deck[i] = top_cards[i]
+		main.cpu_ai.cpu_note_known_top(top_cards)   # ISSUE #489: it now knows its next draws
 		await main.show_message("Opponent rearranged the top " + str(count) + " cards of their deck!")
 		if main._should_bail(): return
 	else:
@@ -3496,32 +3547,10 @@ func effect_recycle(is_opponent: bool) -> void:
 	var chosen: card_object = null
 	
 	if is_opponent:
-		# CPU picks the most useful card
-		# Priority: evolution needed > energy needed > trainer > other
-		var best_card: card_object = null
-		var best_score = -999.0
-		for card in discard:
-			var score = 0.0
-			var st = card.metadata.get("supertype", "")
-			if st == "Pokémon":
-				var subtypes = card.metadata.get("subtypes", [])
-				if "Stage 1" in subtypes or "Stage 2" in subtypes:
-					# Check if evolution target exists on field
-					var targets = main.get_valid_evolution_targets(card, true)
-					if targets.size() > 0:
-						score = 80.0
-					else:
-						score = 20.0
-				else:
-					score = 15.0
-			elif st == "Energy":
-				score = 30.0
-			elif st == "Trainer":
-				score = main.cpu_ai.cpu_score_trainer_card(card)
-			if score > best_score:
-				best_score = score
-				best_card = card
-		chosen = best_card
+		# ISSUE #499: the same keep value every other "take a card" effect uses, never another Recycle.
+		var pool: Array = main.cpu_ai.cpu_recycle_candidates()
+		chosen = main.cpu_ai.cpu_pick_best_keep(pool) if not pool.is_empty() else discard[0]
+		print("ISSUE #499 FIX ACTIVE: CPU Recycle picks ", chosen.metadata.get("name", ""))
 	else:
 		# Player selects
 		chosen = await main.card_ops.prompt_select_card(discard, "RECYCLE: CHOOSE A CARD", "This card will be placed on top of your deck", "RECYCLE", false)
@@ -5633,7 +5662,7 @@ func gym1_no_removal_gym_pay_tax(card: card_object, is_opponent: bool) -> bool:
 		var ctex = main.get_card_texture(c)
 		await main.animate_card_out_of_hand(c, is_opponent, nr_from, discard_node, 0.2, ctex)
 		if main._should_bail(): return false
-		# ISSUE #456: redraw before the next card is measured, or its slot index is one off.
+		# ISSUE #455: redraw before the next card is measured, or its slot index is one off.
 		main.refresh_hand_display(is_opponent)
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -7216,8 +7245,11 @@ func effect_neo1_new_pokedex(is_opponent: bool) -> void:
 	for i in range(reveal_count):
 		top_cards.append(deck[i])
 	if is_opponent:
-		# CPU: sort energy first if needed
-		pass  # simple: keep as-is
+		# ISSUE #489: the same order Pokedex uses (best card on top), and the CPU remembers it.
+		top_cards.sort_custom(func(a, b): return _cpu_pokedex_priority(a) > _cpu_pokedex_priority(b))
+		for i in range(top_cards.size()):
+			deck[i] = top_cards[i]
+		main.cpu_ai.cpu_note_known_top(top_cards)
 		await main.show_message("OPPONENT USED NEW POKEDEX TO REARRANGE DECK!")
 		if main._should_bail(): return
 	else:

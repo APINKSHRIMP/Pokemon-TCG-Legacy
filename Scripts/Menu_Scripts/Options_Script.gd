@@ -497,7 +497,7 @@ func _current_values() -> Dictionary:
 		"cries_volume":  _to_percent(GameState.cries_volume_setting),
 		"ui_theme":      GameState.ui_theme_setting,
 		"hide_bars":     GameState.hide_bars_setting,
-		"tutorial_next_match": GameState.tutorial_next_match_setting,
+		"tutorial_next_match": "on" if GameState.tutorial_option_locked() else GameState.tutorial_next_match_setting,
 	}
 
 
@@ -580,6 +580,11 @@ func _refresh_section(section: String) -> void:
 	for option in section_buttons[section]:
 		var btn: Button = section_buttons[section][option]
 		UIKit.style_button(btn, "selected" if chosen == option else "secondary")
+		# ISSUE #470: a must-finish tutorial keeps the row On and greyed out.
+		if section == "tutorial_next_match" and GameState.tutorial_option_locked():
+			btn.disabled = true
+			btn.modulate = Color(1, 1, 1, 0.45)
+			print("ISSUE #470 FIX ACTIVE: tutorial option locked On")
 
 
 ## Pushes the current reduce-motion state into every scrolling/spinning node on

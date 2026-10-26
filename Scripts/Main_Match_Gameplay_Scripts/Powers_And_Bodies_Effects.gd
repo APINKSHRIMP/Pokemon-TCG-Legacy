@@ -838,6 +838,7 @@ func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 		return
 	var ability_name = ability.get("name", "")
 	if GameState.autotest != null: GameState.autotest.note("power", pokemon.uid if pokemon != null else "stadium", ability_name, main.opponents_turn_active)
+	if pokemon != null and main.card_fx != null and not main.opponents_turn_active: main.card_fx.power_used(pokemon)   # ISSUE #474
 	if _power_dispatch.has(ability_name):
 		neo3_power_resolving = true   # ISSUE #374: Allergic Pollen shields discard piles from Pokémon Powers
 		await _power_dispatch[ability_name].call(pokemon)
@@ -1460,6 +1461,25 @@ func power_step_in(dragonite: card_object) -> void:
 	print("STEP IN: Dragonite switched in, ", old_active.metadata.get("name", ""), " moved to bench")
 
 # CURSE (Gengar): Move 1 damage counter from one opponent pokemon to another. Once per turn.
+## ISSUE #500: move ONE damage counter from `source` to `dest` (either side) and show it: a green "+10"
+## off the Pokémon that loses the counter, then a red "-10" off the one that gains it, each HP row
+## redrawn in its own slot (bench or Active). The caller handles any Knock Out.
+## TWEAKABLE: CURSE_LABEL_GAP -- seconds between the two labels.
+const CURSE_LABEL_GAP := 0.35
+func move_damage_counter_animated(source: card_object, dest: card_object) -> void:
+	print("ISSUE #500 FIX ACTIVE: damage counter ", source.metadata.get("name", ""), " -> ", dest.metadata.get("name", ""))
+	var src_opp: bool = source.is_owner_opp(main)
+	var dst_opp: bool = dest.is_owner_opp(main)
+	source.current_hp = min(source.get_max_hp(), source.current_hp + 10)
+	main.float_label_over(source, "+10", Color(0.35, 1.0, 0.45), src_opp)
+	main.refresh_pokemon_hp_display(source, src_opp)
+	await get_tree().create_timer(GameState.match_time(CURSE_LABEL_GAP)).timeout
+	if main._should_bail(): return
+	dest.current_hp = max(0, dest.current_hp - 10)
+	main.float_label_over(dest, "-10", Color.RED, dst_opp)
+	main.refresh_pokemon_hp_display(dest, dst_opp)
+	await get_tree().create_timer(GameState.match_time(CURSE_LABEL_GAP)).timeout
+
 func power_curse(gengar: card_object) -> void:
 	if gengar.power_used_this_turn:
 		await main.show_message("CURSE ALREADY USED THIS TURN!")
@@ -1510,16 +1530,10 @@ func power_curse(gengar: card_object) -> void:
 		return
 	
 	gengar.power_used_this_turn = true
-	source.current_hp = min(source.get_max_hp(), source.current_hp + 10)
-	dest.current_hp = max(0, dest.current_hp - 10)
-	
-	# Determine is_opponent for each pokemon for display
-	var source_is_opp = (source == main.opponent_active_pokemon or source in main.opponent_bench)
-	var dest_is_opp = (dest == main.opponent_active_pokemon or dest in main.opponent_bench)
-	main.display_hp_circles_above_align(source, source_is_opp)
-	main.display_hp_circles_above_align(dest, dest_is_opp)
-	
-	await main.show_message("CURSE: MOVED DAMAGE FROM " + source.metadata.get("name", "").to_upper() + " TO " + dest.metadata.get("name", "").to_upper() + "!")
+	# ISSUE #500: the shared move -- "+10" rises off the source, "-10" off the target, both HP rows redraw.
+	await move_damage_counter_animated(source, dest)
+	if main._should_bail(): return
+	await main.show_message("CURSE: MOVED A DAMAGE COUNTER FROM " + source.metadata.get("name", "").to_upper() + " TO " + dest.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
 	print("CURSE: Moved 1 damage counter from ", source.metadata.get("name", ""), " to ", dest.metadata.get("name", ""))
 	
@@ -2298,56 +2312,34 @@ func cpu_phase_activate_powers() -> void:
 					await main.animate_retreat(old_active, dragonite, [], true, true)
 					if main._should_bail(): return
 	
-	# Curse (Gengar): Move damage to opponent's active for KO potential
-	var gengar = _find_cpu_pokemon_with_power("Curse")
-	if gengar != null and not gengar.power_used_this_turn:
-		if not is_power_blocked_by_status(gengar) and not is_toxic_gas_active():
-			var player_pokemon: Array = []
-			if main.player_active_pokemon != null:
-				player_pokemon.append(main.player_active_pokemon)
-			player_pokemon.append_array(main.player_bench)
-			
-			# Find a source with damage that isn't the active
-			var best_source: card_object = null
-			var best_dest: card_object = null
-			
-			# ISSUE #307: 1) a Knock Out — put the counter on any Pokémon with 10 HP left (an ex first);
-			# 2) otherwise set up a KO: move a counter onto the Active when that brings it into the CPU's reach;
-			# 3) otherwise pile counters on the Active from the Bench. Source = any OTHER damaged Pokémon.
-			var damaged: Array = player_pokemon.filter(func(p): return p.get_damage_counters() > 0)
-			var ko_dest: card_object = null
-			for p in player_pokemon:
-				if p.current_hp <= 10 and damaged.any(func(q): return q != p):
-					if ko_dest == null or (main.is_ex_pokemon(p) and not main.is_ex_pokemon(ko_dest)):
-						ko_dest = p
-			if ko_dest != null:
-				best_dest = ko_dest
-				for q in damaged:
-					if q != ko_dest:
-						best_source = q
-						break
-			elif main.player_active_pokemon != null:
-				for bp in main.player_bench:
-					if bp.get_damage_counters() > 0:
-						best_source = bp
-						best_dest = main.player_active_pokemon
-						break
-			
-			if best_source != null and best_dest != null:
-				# ISSUE #102: announce -> explain -> move counters + animate.
-				gengar.power_used_this_turn = true
-				await announce_cpu_power(gengar, "Curse")
-				if main._should_bail(): return
-				await main.show_message("A DAMAGE COUNTER MOVES TO " + best_dest.metadata.get("name", "").to_upper() + "!")
-				if main._should_bail(): return
-				best_source.current_hp = min(best_source.get_max_hp(), best_source.current_hp + 10)
-				best_dest.current_hp = max(0, best_dest.current_hp - 10)
-				main.display_hp_circles_above_align(best_source, false)
-				main.display_hp_circles_above_align(best_dest, false)
-				if best_dest.current_hp <= 0:
-					await main.check_all_knockouts()
-					if main._should_bail(): return
-	
+	# Curse (Gengar): move 1 damage counter between the player's Pokémon.
+	# ISSUE #503: EVERY Gengar with Curse gets its own go (Curse is once per turn per Gengar -- the old code
+	# only ever looked at the first one), and the pair is chosen by cpu_ai.cpu_pick_curse_move().
+	for gengar in main.cpu_ai.get_all_cpu_field_pokemon():
+		if not gengar.has_ability("Curse") or gengar.power_used_this_turn:
+			continue
+		if is_power_blocked_by_status(gengar) or is_toxic_gas_active():
+			continue
+		var move: Dictionary = main.cpu_ai.cpu_pick_curse_move()
+		if move.is_empty():
+			break
+		var best_source: card_object = move["from"]
+		var best_dest: card_object = move["to"]
+		# ISSUE #102: announce -> explain -> move counters + animate.
+		gengar.power_used_this_turn = true
+		await announce_cpu_power(gengar, "Curse")
+		if main._should_bail(): return
+		# ISSUE #500: say where it comes FROM and where it goes TO, and show both HP changes.
+		await main.show_message("CURSE: A DAMAGE COUNTER MOVES FROM " + best_source.metadata.get("name", "").to_upper()
+			+ " TO " + best_dest.metadata.get("name", "").to_upper() + "!")
+		if main._should_bail(): return
+		await move_damage_counter_animated(best_source, best_dest)
+		if main._should_bail(): return
+		print("ISSUE #503 FIX ACTIVE: CPU Curse ", best_source.metadata.get("name", ""), " -> ", best_dest.metadata.get("name", ""), " (", move.get("why", ""), ")")
+		if best_dest.current_hp <= 0:
+			await main.check_all_knockouts()
+			if main._should_bail(): return
+
 	# Strange Behavior (Slowbro): Move damage off CPU active to Slowbro
 	var slowbro = _find_cpu_pokemon_with_power("Strange Behavior")
 	if slowbro != null and not is_power_blocked_by_status(slowbro) and not is_toxic_gas_active():
@@ -2791,6 +2783,7 @@ func announce_cpu_power(pokemon: card_object, power_name: String) -> void:
 	if GameState.autotest != null: GameState.autotest.note("power", pokemon.uid, power_name, true)
 	var pokemon_name: String = pokemon.metadata.get("name", "POKEMON")
 	print("ISSUE #102 FIX ACTIVE: announcing CPU power ", power_name, " on ", pokemon_name)
+	if main.card_fx != null: main.card_fx.power_used(pokemon)   # ISSUE #474
 	await main.show_message("OPPONENT USED " + pokemon_name.to_upper() + "'S " + power_name.to_upper() + " POWER!")
 
 func _find_cpu_pokemon_with_power(power_name: String) -> card_object:
@@ -17827,11 +17820,11 @@ func trigger_ex14_peal_of_thunder(charizard: card_object, is_opponent: bool) -> 
 			attach_target = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, false, "PEAL OF THUNDER", "Attach the Energy to which Pokemon?", "ATTACH", false)
 			if main._should_bail(): return
 			if attach_target == null: attach_target = targets[0]
-		# ISSUE #459: only Energy the target can legally hold (R / Aqua / Magma / Boost / Scramble...
+		# ISSUE #458: only Energy the target can legally hold (R / Aqua / Magma / Boost / Scramble...
 		# are type-locked) -- the rest stays with the looked-at cards and is discarded below.
 		energies = energies.filter(func(e): return not ("Special" in e.metadata.get("subtypes", [])) \
 			or bool(main.special_energy_effects.can_attach_to(e, attach_target).get("allowed", true)))
-		print("ISSUE #459 FIX ACTIVE: Peal of Thunder legal Energy for ", attach_target.metadata.get("name", ""), ": ", energies.size())
+		print("ISSUE #458 FIX ACTIVE: Peal of Thunder legal Energy for ", attach_target.metadata.get("name", ""), ": ", energies.size())
 		var chosen_energies: Array = []
 		if is_opponent:
 			chosen_energies = energies

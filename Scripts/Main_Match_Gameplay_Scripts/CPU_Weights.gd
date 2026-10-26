@@ -149,6 +149,18 @@ static func cheating_coins() -> bool:
 	return cheat_coins > 0.0 and (cheat_coins >= 1.0 or _cheat_rng.randf() < cheat_coins)
 
 
+# ── Retreat appetite (ISSUE #484) ── 1.0 = retreats whenever its rules say so (default); 0.5 = only half those
+# times; 0.0 = never retreats (Switch and forced replacements still work). Opponent JSON "cpu_retreat_rate".
+static var retreat_rate := 1.0
+
+static func retreat_allowed() -> bool:
+	if retreat_rate >= 1.0:
+		return true
+	var ok: bool = retreat_rate > 0.0 and _cheat_rng.randf() < retreat_rate
+	print("ISSUE #484 FIX ACTIVE: retreat rate ", retreat_rate, " -> ", "allowed" if ok else "held")
+	return ok
+
+
 # ── Learned counters (ISSUE #375) ── {"cards": {cpu_uid: {player_uid: pts}}, "style": {trait: {style: pts}},
 # "traits": {uid: [traits]}} — which CPU cards win more when the player has a given card out, and which CPU card traits
 # pay off against a player's play style (Trainer-heavy, evolving, bench damage...). Shipped: res://NPC_and_Opponent_Data/

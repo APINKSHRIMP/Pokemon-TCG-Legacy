@@ -156,7 +156,7 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 	return type_lock_check(energy_card, target_pokemon)
 
 
-## ISSUE #468: the part of can_attach_to() that is about WHICH Pokémon can hold this Energy at all
+## ISSUE #467: the part of can_attach_to() that is about WHICH Pokémon can hold this Energy at all
 ## (R / Aqua / Magma / Miracle by name, Boost / Scramble / Double Rainbow by stage and ex). These
 ## hold for as long as the card stays attached, so discard_now_illegal() re-runs just this when the
 ## Pokémon changes (evolving into a Pokémon-ex); the attach-time rules above (Cursed Glare, Pure
@@ -218,7 +218,7 @@ func type_lock_check(energy_card: card_object, target_pokemon: card_object) -> D
 	return {"allowed": true, "reason": ""}
 
 
-## ISSUE #468: discards every attached Special Energy that `pokemon` may no longer hold (Scramble /
+## ISSUE #467: discards every attached Special Energy that `pokemon` may no longer hold (Scramble /
 ## Double Rainbow on a Pokémon that just evolved into a Pokémon-ex, R Energy on a non-Dark evolution...).
 ## Returns the names discarded.
 func discard_now_illegal(pokemon: card_object, is_owner_opp: bool) -> Array:
@@ -235,7 +235,7 @@ func discard_now_illegal(pokemon: card_object, is_owner_opp: bool) -> Array:
 			main.card_ops.discard_energy_from_pokemon(e, is_owner_opp, true)
 			dropped.append(e.metadata.get("name", ""))
 	if not dropped.is_empty():
-		print("ISSUE #468 FIX ACTIVE: ", pokemon.metadata.get("name", ""), " can no longer hold ", dropped, " -- discarded")
+		print("ISSUE #467 FIX ACTIVE: ", pokemon.metadata.get("name", ""), " can no longer hold ", dropped, " -- discarded")
 	return dropped
 
 ######################################################################################################################################################

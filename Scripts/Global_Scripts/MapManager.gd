@@ -378,7 +378,83 @@ func initialise(
 	_player.pokemon_interact_pressed.connect(_on_player_pokemon_interact)
 
 	if GameState.returning_from_battle:
+		_face_battled_opponent()   # ISSUE #504
+		if GameState.get_time() == "Bedtime" and not GameState.test_match_mode:
+			_bedtime_dismiss_battled_opponent()   # ISSUE #507 (runs on; not awaited)
 		_handle_battle_return()
+
+
+## ISSUE #507: nobody is out at Bedtime, so the opponent the player has just fought must not stay to be
+## rematched. The map comes back with them standing there (the battle-return respawn), the player waits,
+## a quick fade to black and back, and they are gone. TWEAKABLE: the three timings.
+const BEDTIME_DISMISS_DELAY := 0.8   # after the map has faded in
+const BEDTIME_DISMISS_FADE := 0.35   # each way
+const BEDTIME_DISMISS_HOLD := 0.25   # fully black
+
+func _bedtime_dismiss_battled_opponent() -> void:
+	var opp: Node = null
+	for child in _opponents_container.get_children():
+		if child.is_in_group("opponents") and child.opponent_name == GameState.current_opponent_name:
+			opp = child
+			break
+	if opp == null:
+		return
+	print("ISSUE #507 FIX ACTIVE: Bedtime -- fading out ", opp.opponent_name, " after the battle")
+	cutscene_active = true
+	if _player != null and is_instance_valid(_player):
+		_player.lock_movement()
+	await get_tree().create_timer(BEDTIME_DISMISS_DELAY).timeout
+	# Their after-battle line (when the outro didn't already say it) is read first.
+	while message_panel != null and is_instance_valid(message_panel) and message_panel.visible:
+		await get_tree().process_frame
+	if _player != null and is_instance_valid(_player):
+		_player.lock_movement()   # closing the box hands movement back
+	var layer := CanvasLayer.new()
+	layer.layer = 90
+	var sheet := ColorRect.new()
+	sheet.color = Color(0, 0, 0, 0)
+	sheet.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(sheet)
+	get_tree().current_scene.add_child(layer)
+	var tw := sheet.create_tween()
+	tw.tween_property(sheet, "color:a", 1.0, BEDTIME_DISMISS_FADE)
+	await tw.finished
+	if is_instance_valid(opp):
+		opp.queue_free()
+	await get_tree().create_timer(BEDTIME_DISMISS_HOLD).timeout
+	if not is_instance_valid(sheet):
+		cutscene_active = false
+		return
+	var tw2 := sheet.create_tween()
+	tw2.tween_property(sheet, "color:a", 0.0, BEDTIME_DISMISS_FADE)
+	await tw2.finished
+	if is_instance_valid(layer):
+		layer.queue_free()
+	cutscene_active = false
+	if _player != null and is_instance_valid(_player):
+		_player.unlock_movement()
+
+
+## ISSUE #504: back from a battle, the opponent just fought is still looking at the player (and the
+## player at them), whichever way its node was respawned -- the re-made "last battled" node and any
+## pattern default both came back facing down.
+func _face_battled_opponent() -> void:
+	if _opponents_container == null or _player == null or not is_instance_valid(_player):
+		return
+	for child in _opponents_container.get_children():
+		if not child.is_in_group("opponents") or child.opponent_name != GameState.current_opponent_name:
+			continue
+		if "lock_facing" in child and child.lock_facing:
+			return
+		var diff: Vector2 = _player.global_position - child.global_position
+		var d: String = (("right" if diff.x > 0 else "left") if absf(diff.x) > absf(diff.y)
+			else ("down" if diff.y > 0 else "up"))
+		if child.animated_sprite.sprite_frames != null and child.animated_sprite.sprite_frames.has_animation("idle_" + d):
+			child.current_facing = d
+			child.animated_sprite.play("idle_" + d)
+		print("ISSUE #504 FIX ACTIVE: ", child.opponent_name, " faces ", d, " after the battle")
+		return
 
 # ============================================================
 # CONSTANT DATA
@@ -1255,6 +1331,7 @@ func start_forced_battle(entry: Dictionary, overrides: Dictionary = {}) -> void:
 	GameState.current_opponent_deck = str(entry.get("deck", ""))
 	GameState.current_opponent_map  = _map_data
 	GameState.player_position       = _player.position
+	GameState.save_player_direction(_player.get_current_direction())   # ISSUE #504
 	GameState.returning_from_battle = false
 	GameState.return_map_scene_path = _map_scene_path
 	# No "position" key: _load_and_spawn_opponents() checks for one before
@@ -1511,6 +1588,9 @@ func _on_yes_pressed():
 		GameState.forced_opponent_overrides  = {}
 		GameState.current_opponent_map = _map_data
 		GameState.player_position            = _player.position
+		# ISSUE #504: the battle return spawns the player facing GameState's saved direction, and
+		# nothing saved it here -- so they came back facing whatever the last door left ("down").
+		GameState.save_player_direction(_player.get_current_direction())
 		GameState.returning_from_battle      = false
 		GameState.return_map_scene_path      = _map_scene_path
 		GameState.last_battled_opponent_entry = {
@@ -1595,7 +1675,16 @@ func _on_ok_pressed():
 		_pending_pack_opening.clear()
 		message_panel.visible = false
 		PackOpeningManager.all_packs_opened.connect(_on_pack_opening_finished, CONNECT_ONE_SHOT)
-		PackOpeningManager.open_packs(arts)
+		# ISSUE #487: a single revealed pack glides into the opening's start rect and becomes the
+		# pack that opens (no fade-in, no flash); the reveal goes once the opening is drawn over it.
+		var shown := _single_gift_pack_rect()
+		if shown != null:
+			await _glide_rect_to_pack_rect(shown)
+			PackOpeningManager.open_packs(arts, 0.0)
+			await get_tree().process_frame
+			_clear_gift_display()
+		else:
+			PackOpeningManager.open_packs(arts)
 		return
 
 	# One-shot callback for a multi-step message (e.g. the note through the door)
@@ -2230,6 +2319,26 @@ func _finalize_gift_reveal() -> void:
 	_gift_reveal_finals.clear()
 
 # Removes the gift display container and dim overlay if they exist.
+## ISSUE #487: the one pack TextureRect on the gift reveal, or null (several items, or none).
+func _single_gift_pack_rect() -> TextureRect:
+	if _gift_display_container == null or not is_instance_valid(_gift_display_container):
+		return null
+	var rects: Array = _gift_display_container.find_children("*", "TextureRect", true, false)
+	return rects[0] if rects.size() == 1 else null
+
+## ISSUE #487: the Card Mart's handoff (Pack_Purchase_Script): position AND size into the rect
+## PackOpeningManager opens from. TWEAKABLE: GIFT_PACK_HANDOFF_TIME.
+const GIFT_PACK_HANDOFF_TIME := 0.35
+func _glide_rect_to_pack_rect(rect: TextureRect) -> void:
+	var target: Rect2 = PackOpeningManager.get_pack_target_rect()
+	print("ISSUE #487 FIX ACTIVE: overworld gift pack glides into the opening rect ", target)
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	var t: float = GameState.pack_time(GIFT_PACK_HANDOFF_TIME)
+	var tw := rect.create_tween().set_parallel(true)
+	tw.tween_property(rect, "global_position", target.position, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(rect, "size", target.size, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
+	await tw.finished
+
 func _clear_gift_display() -> void:
 	# ISSUE #33: tear down any in-flight reveal-skip state.
 	_gift_reveal_active = false

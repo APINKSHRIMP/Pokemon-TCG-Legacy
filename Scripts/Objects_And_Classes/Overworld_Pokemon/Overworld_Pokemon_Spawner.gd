@@ -674,11 +674,46 @@ func _flock_offset(direction: float, placed: Array[Vector2]) -> Vector2:
 func _map_edge(direction: float) -> float:
 	if _player != null and is_instance_valid(_player) and "camera" in _player:
 		var camera: Camera2D = _player.camera
-		if camera != null:
+		# ISSUE #477: only a camera whose limits are ON knows the map's edge. Outdoors they are off
+		# and the scene's leftover numbers (-1000 .. 6500) were older than the map, so flocks vanished
+		# mid-screen on the expanded west side. Those maps measure their tiles instead.
+		if camera != null and camera.limit_enabled:
 			return float(camera.limit_right) + FLYER_END_MARGIN if direction > 0.0 \
 					else float(camera.limit_left) - FLYER_END_MARGIN
+	var bounds := _map_bounds()
+	if bounds.size != Vector2.ZERO:
+		print("ISSUE #477 FIX ACTIVE: flyer edge from map tiles ", bounds)
+		return bounds.end.x + FLYER_END_MARGIN if direction > 0.0 else bounds.position.x - FLYER_END_MARGIN
 	var view := _view_rect()
 	return view.end.x + 2000.0 if direction > 0.0 else view.position.x - 2000.0
+
+
+## ISSUE #477: the world-px rect every TileMapLayer of the current map covers. Measured once per map.
+var _bounds_cache: Rect2 = Rect2()
+var _bounds_scene: Node = null
+
+func _map_bounds() -> Rect2:
+	var scene := get_tree().current_scene
+	if scene == null:
+		return Rect2()
+	if scene == _bounds_scene:
+		return _bounds_cache
+	var out := Rect2()
+	var first := true
+	for layer in scene.find_children("*", "TileMapLayer", true, false):
+		var tl := layer as TileMapLayer
+		var used: Rect2i = tl.get_used_rect()
+		if used.size == Vector2i.ZERO or tl.tile_set == null:
+			continue
+		var ts: Vector2 = Vector2(tl.tile_set.tile_size)
+		var a: Vector2 = tl.to_global(tl.map_to_local(used.position) - ts * 0.5)
+		var b: Vector2 = tl.to_global(tl.map_to_local(used.end) - ts * 0.5)
+		var r := Rect2(a, Vector2.ZERO).expand(b)
+		out = r if first else out.merge(r)
+		first = false
+	_bounds_scene = scene
+	_bounds_cache = out
+	return out
 
 
 func _view_rect() -> Rect2:

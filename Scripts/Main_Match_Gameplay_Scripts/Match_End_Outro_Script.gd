@@ -937,8 +937,12 @@ func _play_gift_sequence() -> void:
 		_show_gift_message("You received a " + _format_pack_name(pack_art) + "!")
 		await player_clicked
 		_hide_gift_message()
+		# ISSUE #487: the SAME pack is the one that opens. It glides from the reveal into the rect
+		# PackOpeningManager opens from and the opening starts with no fade-in; the reveal is only
+		# cleared once the opening's own pack is on screen over it -- no flash, no swap.
+		await _glide_gift_to_pack_rect(rect)
+		await _open_reward_pack(pack_art, 0.0)
 		_clear_gift()
-		await _open_reward_pack(pack_art)
 
 
 ## Hands one pack to PackOpeningManager and waits for the whole opening to finish.
@@ -951,15 +955,36 @@ func _play_gift_sequence() -> void:
 ## stops events being consumed twice in the same frame, while this stops a click
 ## that lands in the gap between the overlay closing and this function resuming
 ## from firing player_clicked into a sequence that is no longer awaiting one.
-func _open_reward_pack(pack_art: String) -> void:
+func _open_reward_pack(pack_art: String, intro_fade: float = 0.4) -> void:
 	if PackOpeningManager.is_active():
 		push_warning("Match outro: a pack opening is already running, skipping " + pack_art)
 		return
 	var was_click_enabled := click_enabled
 	click_enabled = false
-	PackOpeningManager.open_packs([pack_art])
+	PackOpeningManager.open_packs([pack_art], intro_fade)
+	# ISSUE #487: the reveal's pack stays under the opening until the opening's pack is drawn.
+	await get_tree().process_frame
+	if _gift_container != null and is_instance_valid(_gift_container):
+		_gift_container.visible = false
 	await PackOpeningManager.all_packs_opened
 	click_enabled = was_click_enabled
+
+
+## ISSUE #487: tween the revealed pack (position AND size) into PackOpeningManager's start rect, the
+## way the Card Mart hands its bought pack over (Pack_Purchase_Script). TWEAKABLE: PACK_HANDOFF_TIME.
+const PACK_HANDOFF_TIME := 0.35
+func _glide_gift_to_pack_rect(rect: TextureRect) -> void:
+	if rect == null or not is_instance_valid(rect):
+		return
+	var target: Rect2 = PackOpeningManager.get_pack_target_rect()
+	print("ISSUE #487 FIX ACTIVE: gift pack glides into the opening rect ", target)
+	var t: float = GameState.pack_time(PACK_HANDOFF_TIME)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(rect, "offset_left", target.position.x, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(rect, "offset_top", target.position.y, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(rect, "offset_right", target.end.x, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(rect, "offset_bottom", target.end.y, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
+	await tw.finished
 
 
 ## Sleeve basename -> readable name. Sleeves keep their own capitalisation

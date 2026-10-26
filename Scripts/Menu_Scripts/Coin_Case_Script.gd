@@ -115,6 +115,7 @@ func _ready() -> void:
 	if not is_inside_tree():
 		return
 	hide_btn.disabled = false
+	coins_built.emit()   # ISSUE #476
 
 	# After all coins are in the grid, auto-select the player's saved coin
 	if saved_coin_name != "":
@@ -566,6 +567,8 @@ func _on_cancel_pressed() -> void:
 # ─── Escape / zoom-key input ─────────────────────────────────────────────────
 
 func _input(event: InputEvent) -> void:
+	if walkthrough_active:
+		return   # ISSUE #476: Olly's intro is driving this screen
 	# ── Hold-to-preview ──
 	# Shift, not Space. Space is the accept key (ISSUE #97: an unhandled press fell through to
 	# "ui_accept" and re-pressed whichever button still had focus, so previewing a coin also
@@ -734,3 +737,55 @@ func _get_coin_sparkle_colour(coin_path: String) -> Color:
 	if " black"  in n: return Color(0.0,  0.0,  0.0)
 	if " brown"  in n: return Color(0.5,  0.3,  0.2)
 	return Color(1.0, 1.0, 1.0)
+
+
+# ============================================================
+# INTRO WALKTHROUGH — ISSUE #476
+# ============================================================
+# Olly's intro opens the coin case and "puts the coins in": each owned coin's tile is hidden, then the
+# coin appears large and faint as if held up to the player's eyes, fades in, and shrinks fast down
+# into its slot. TWEAKABLE below.
+
+signal coins_built
+
+const WALK_COIN_START_SCALE := 3.2
+const WALK_COIN_FADE_TIME   := 0.25
+const WALK_COIN_HOLD_TIME   := 0.2
+const WALK_COIN_DROP_TIME   := 0.22
+const WALK_COIN_GAP         := 0.35
+
+var walkthrough_active: bool = false
+
+
+func walkthrough_place_coins(coin_files: Array) -> void:
+	walkthrough_active = true
+	print("ISSUE #476 FIX ACTIVE: coin case walkthrough for ", coin_files)
+	var rects: Array = []
+	for child in grid.get_children():
+		if child is TextureRect and String(child.get_meta("coin_name", "")) in coin_files:
+			child.modulate.a = 0.0
+			rects.append(child)
+	await get_tree().process_frame
+	for rect in rects:
+		var fly := TextureRect.new()
+		fly.texture = rect.texture
+		fly.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		fly.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		fly.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fly.z_index = 300
+		add_child(fly)
+		fly.size = COIN_SIZE
+		fly.pivot_offset = COIN_SIZE / 2.0
+		fly.global_position = rect.global_position
+		fly.scale = Vector2.ONE * WALK_COIN_START_SCALE
+		fly.modulate.a = 0.0
+		var tw := create_tween()
+		tw.tween_property(fly, "modulate:a", 1.0, WALK_COIN_FADE_TIME)
+		tw.tween_interval(WALK_COIN_HOLD_TIME)
+		tw.tween_property(fly, "scale", Vector2.ONE, WALK_COIN_DROP_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		await tw.finished
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+		fly.queue_free()
+		rect.modulate = Color(0.8, 0.8, 0.8, 1.0)
+		await get_tree().create_timer(WALK_COIN_GAP).timeout
+	walkthrough_active = false

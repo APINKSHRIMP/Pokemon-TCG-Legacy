@@ -71,7 +71,8 @@ const STRENGTH := {"Morning": 1.4, "Afternoon": 1.0, "Evening": 1.0, "Night": 1.
 ## TWEAKABLE -- overall brightness multiplier on top of the grade (0.85 = 15% darker).
 ## ISSUE #386: Evening back to 1.0 (it had been darkened to 0.85).
 ## Bedtime is 25% darker than Night (0.85 x 0.75 = 0.64), then another 20% (x 0.8).
-const BRIGHTNESS := {"Morning": 1.0, "Afternoon": 1.0, "Evening": 1.0, "Night": 0.85, "Bedtime": 0.51}
+## ISSUE #506: Night 10% lighter (0.85 x 1.1 = 0.935), Bedtime 10% darker (0.51 x 0.9 = 0.459).
+const BRIGHTNESS := {"Morning": 1.0, "Afternoon": 1.0, "Evening": 1.0, "Night": 0.935, "Bedtime": 0.459}
 
 ## TWEAKABLE -- how strongly the lights overlays show (0 = off, 1 = full). Above 1 the lit
 ## pixels are fully shown AND brightened by that much (Bedtime 1.1 = 10% brighter).
@@ -121,6 +122,7 @@ static var _lights_suffix := OPEN_LIGHTS_SUFFIX   # set by apply_time, read when
 static func apply_time(time: String) -> void:
 	print("ISSUE #386 FIX ACTIVE: grade '", time, "' brightness ", BRIGHTNESS.get(time, 1.0))
 	print("ISSUE #387 FIX ACTIVE: night red row ", GRADES["Night"]["red"])
+	print("ISSUE #506 FIX ACTIVE: grade '", time, "' brightness ", BRIGHTNESS.get(time, 1.0))
 	var g: Dictionary = GRADES.get(time, GRADES["Afternoon"])
 	var id: Dictionary = GRADES["Afternoon"]
 	var k: float = STRENGTH.get(time, 1.0)

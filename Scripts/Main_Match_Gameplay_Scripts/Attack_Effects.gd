@@ -1518,6 +1518,7 @@ func handle_attack_confusion(attacker: card_object, is_opponent: bool) -> bool:
 		return false
 	if attacker.special_condition != "Confused":
 		return false
+	if main.card_fx != null: main.card_fx.status(attacker, "Confused")   # ISSUE #471
 	await main.show_message(attacker.metadata["name"].to_upper() + " IS CONFUSED! FLIPPING COIN...")
 	if main._should_bail(): return true   # ISSUE #375: a bail STOPS the attack (was: let it run on a finished game)
 	var coin = await main.flip_coin(false, is_opponent)
@@ -5170,7 +5171,7 @@ func gym1_place_counters(pokemon: card_object, amount: int, is_pokemon_opponent:
 	pokemon.current_hp = max(0, pokemon.current_hp - amount)
 	var loc = main.get_pokemon_screen_location(pokemon)
 	if not loc.is_empty():
-		main.show_floating_label("-" + str(amount), loc["position"] + Vector2(loc["size"].x / 2.0, -10), Color.RED, true)
+		main.float_label_over(pokemon, "-" + str(amount), Color.RED, pokemon.is_owner_opp(main))   # ISSUE #501: centred
 	main.display_hp_circles_above_align(pokemon, is_pokemon_opponent)
 
 # ISSUE #294: attack damage to an ACTIVE Pokemon with no Weakness/Resistance. `is_opponent` is the
@@ -19740,7 +19741,7 @@ func execute_ex2_psyimpact(attacker: card_object, is_opponent: bool) -> void:
 		p.current_hp = max(0, p.current_hp - 10)
 		var loc = main.get_pokemon_screen_location(p)
 		if not loc.is_empty():
-			main.show_floating_label("-10", loc["position"] + Vector2(loc["size"].x / 2.0, -10), Color.WHITE, true)
+			main.float_label_over(p, "-10", Color.WHITE, target_is_opp)   # ISSUE #501: centred
 		await main.powers_and_bodies.dispatch_on_damage(p, attacker, 10, target_is_opp)
 		if main._should_bail(): return
 	main.display_pokemon(target_is_opp)

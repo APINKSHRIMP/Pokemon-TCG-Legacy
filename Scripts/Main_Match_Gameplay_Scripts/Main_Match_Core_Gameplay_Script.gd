@@ -523,6 +523,7 @@ var cpu_ai: Node
 var powers_and_bodies: Node
 var card_ops: Node
 var match_effects: Node
+var card_fx: Node   # ISSUE #471/#474/#486: Card_FX.gd -- status / gesture / Knock Out animations
 # Tutorial_Director.gd: Olly's tutorial matches and the Options "tutorial for next
 # match". Always present; every call is a no-op when no tutorial is running.
 var tutorial: Node
@@ -3329,6 +3330,14 @@ func set_active_slot_visible(is_opponent: bool, is_slot_visible: bool) -> void:
 ##
 ## The function keeps its name and signature: it is called from a dozen places.
 func display_hp_circles_above_align(active_pokemon: card_object, is_opponent: bool) -> void:
+	# ISSUE #502: dozens of effects hand this a BENCHED Pokémon (Curse, Damage Swap, Strange Behavior...),
+	# which painted its HP over the Active's ("0 / 30" on a full-HP Dugtrio while Rattata was the one
+	# Knocked Out). A Pokémon on either Bench is redrawn in its own bench slot instead (#173's rule).
+	if active_pokemon != null and (active_pokemon in player_bench or active_pokemon in opponent_bench):
+		var bench_side_opp: bool = active_pokemon in opponent_bench
+		print("ISSUE #502 FIX ACTIVE: HP refresh for benched ", active_pokemon.metadata.get("name", ""), " redirected to its bench slot")
+		display_pokemon(bench_side_opp)
+		return
 	var hp_grid_container = opponent_hp_container if is_opponent else player_hp_container
 
 	for child in hp_grid_container.get_children():
@@ -3376,6 +3385,26 @@ func display_hp_circles_above_align(active_pokemon: card_object, is_opponent: bo
 	# back to where it was and take the blocks off one at a time.
 	_maybe_animate_hp_deplete(blocks, hp_label, active_pokemon, is_opponent,
 		current_hp, max_hp)
+
+
+## ISSUE #471: every status change ends in update_status_icons(), whichever of the hundreds of effects
+## made it, so this is where a NEWLY landed Special Condition starts its animation. Remembers what each
+## Pokémon had last time; only additions play.
+var _status_fx_seen: Dictionary = {}
+
+func _status_fx_diff(pokemon: card_object) -> void:
+	if pokemon == null or card_fx == null:
+		return
+	var now: Array = []
+	if pokemon.is_poisoned: now.append("Poisoned")
+	if pokemon.is_burned: now.append("Burned")
+	if pokemon.special_condition in ["Asleep", "Confused", "Paralyzed"]: now.append(pokemon.special_condition)
+	var id := pokemon.get_instance_id()
+	var before: Array = _status_fx_seen.get(id, [])
+	_status_fx_seen[id] = now
+	for s in now:
+		if not s in before:
+			card_fx.status(pokemon, s)
 
 
 ## ISSUE #286: THE BLOCKS COME OFF ONE AT A TIME.
@@ -3497,10 +3526,12 @@ func show_attack_buttons() -> void:
 		hide_attack_buttons()
 		return
 	if player_active_pokemon.special_condition == "Paralyzed":
+		if card_fx != null: card_fx.status(player_active_pokemon, "Paralyzed")   # ISSUE #471
 		await show_message(player_active_pokemon.metadata.get("name", "").to_upper() + " IS PARALYZED AND CANNOT ATTACK!")
 		hide_attack_buttons()
 		return
 	if player_active_pokemon.special_condition == "Asleep":
+		if card_fx != null: card_fx.status(player_active_pokemon, "Asleep")   # ISSUE #471
 		await show_message(player_active_pokemon.metadata.get("name", "").to_upper() + " IS ASLEEP AND CANNOT ATTACK!")
 		hide_attack_buttons()
 		return
@@ -3950,6 +3981,7 @@ func _skip_msgbox_typing() -> bool:
 ## `log_it` false keeps a line out of the Caps Lock match log. `log_kind` tags the entry
 ## for the log's styling: "tutorial" for the tutorial's help messages.
 func show_message(message_text: String, log_it: bool = true, log_kind: String = "") -> void:
+	await settle_after_draw()   # ISSUE #472
 	if log_it:
 		_log_match_message(message_text, log_kind)
 	var box := _ensure_match_msgbox()
@@ -4019,7 +4051,12 @@ func _open_match_log() -> void:
 
 	_match_log_panel = MatchLogPanel.new()
 	_match_log_layer.add_child(_match_log_panel)
-	_match_log_panel.configure(_match_msgbox_theme_key(), GameState.battle_display_name(GameState.current_opponent_name))
+	# ISSUE #479: the log's opponent pill, dividers and stripes wear the OPPONENT's message_colour
+	# (Olly = aqua), as its header comment says -- it was handed the in-match box's theme key, which is
+	# the UI accent (pink in some themes), so every opponent looked pink.
+	var log_key := str(opponent_data.get("message_colour", ""))
+	print("ISSUE #479 FIX ACTIVE: match log colour '", log_key, "' for ", GameState.current_opponent_name)
+	_match_log_panel.configure(log_key if log_key != "" else _match_msgbox_theme_key(), GameState.battle_display_name(GameState.current_opponent_name))
 	_match_log_panel.set_entries(_match_log)
 	_match_log_panel.scroll_to_bottom()
 
@@ -4226,6 +4263,7 @@ const ACTIVE_HP_FONT := 24
 
 # Clears and rebuilds status condition icons for a pokemon's status container
 func update_status_icons(pokemon: card_object, is_opponent: bool) -> void:
+	_status_fx_diff(pokemon)
 	var container = opponent_status_container if is_opponent else player_status_container
 	for child in container.get_children():
 		child.queue_free()
@@ -5029,9 +5067,34 @@ const HIT_FLASH := Color(3.0, 3.0, 3.0, 1.0)          # modulate at the moment o
 const HIT_FLASH_TIME := 0.22
 const HIT_Z := 150
 
-func play_attack_hit(attacker: card_object, defender: card_object) -> void:
+## ISSUE #474: a 0-damage attack (no printed damage at all) makes a gesture instead of the lunge.
+func play_attack_intent(attacker: card_object, defender: card_object, attack: Dictionary) -> void:
+	if card_fx == null or attacker == null:
+		return
+	if attack_effects.parse_attack_base_damage(attack) > 0 or str(attack.get("damage", "")).strip_edges() != "":
+		return
+	await card_fx.attack_intent(attacker, defender, attack)
+
+
+## ISSUE #473: the bump follows the damage maths. Weak: twice the knock-back and wiggle, a green-tinted
+## flash. Resistant: half, red-tinted. Damage cut to 0: the lunge still plays but the defender doesn't
+## move or flash -- unless Resistance did it, then a faint red flash.
+## TWEAKABLE: the tints and the 0-damage resist flash.
+const HIT_FLASH_WEAK := Color(2.2, 3.0, 2.2, 1.0)
+const HIT_FLASH_RESIST := Color(3.0, 2.1, 2.1, 1.0)
+const HIT_FLASH_ZERO_RESIST := Color(1.7, 1.0, 1.0, 1.0)
+const HIT_WEAK_MULT := 2.0
+const HIT_RESIST_MULT := 0.5
+
+func play_attack_hit(attacker: card_object, defender: card_object, damage: int = 1, weak: bool = false, resisted: bool = false) -> void:
 	if attacker == null or defender == null:
 		return
+	var mult: float = HIT_WEAK_MULT if weak else (HIT_RESIST_MULT if resisted else 1.0)
+	var flash_col: Color = HIT_FLASH_WEAK if weak else (HIT_FLASH_RESIST if resisted else HIT_FLASH)
+	var react: bool = damage > 0
+	if not react and resisted:
+		flash_col = HIT_FLASH_ZERO_RESIST
+	print("ISSUE #473 FIX ACTIVE: hit damage ", damage, " weak ", weak, " resisted ", resisted, " mult ", mult)
 	# Only Active against Active: bench hits and self-damage have no lunge.
 	var actives := [player_active_pokemon, opponent_active_pokemon]
 	if not (attacker in actives and defender in actives) or attacker == defender:
@@ -5077,18 +5140,23 @@ func play_attack_hit(attacker: card_object, defender: card_object) -> void:
 	back.tween_property(a_ghost, "position", a_home, GameState.match_time(HIT_RETURN_TIME)) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	back.parallel().tween_property(a_ghost, "rotation", 0.0, GameState.match_time(HIT_RETURN_TIME))
-	d_ghost.modulate = HIT_FLASH
-	var flash := create_tween()
-	flash.tween_property(d_ghost, "modulate", Color.WHITE, GameState.match_time(HIT_FLASH_TIME))
+	if react or resisted:
+		d_ghost.modulate = flash_col
+		var flash := create_tween()
+		flash.tween_property(d_ghost, "modulate", Color.WHITE, GameState.match_time(HIT_FLASH_TIME))
 	var knock := create_tween()
-	knock.tween_property(d_ghost, "position", d_home + dir * HIT_KNOCKBACK, GameState.match_time(HIT_KNOCKBACK_TIME)) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	knock.tween_property(d_ghost, "position", d_home, GameState.match_time(HIT_SETTLE_TIME)) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	var wiggle := create_tween()
-	wiggle.tween_interval(GameState.match_time(HIT_KNOCKBACK_TIME))
-	for r in HIT_WIGGLE:
-		wiggle.tween_property(d_ghost, "rotation", float(r), GameState.match_time(HIT_WIGGLE_STEP))
+	if react:
+		knock.tween_property(d_ghost, "position", d_home + dir * HIT_KNOCKBACK * mult, GameState.match_time(HIT_KNOCKBACK_TIME)) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		knock.tween_property(d_ghost, "position", d_home, GameState.match_time(HIT_SETTLE_TIME)) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		wiggle.tween_interval(GameState.match_time(HIT_KNOCKBACK_TIME))
+		for r in HIT_WIGGLE:
+			wiggle.tween_property(d_ghost, "rotation", float(r) * mult, GameState.match_time(HIT_WIGGLE_STEP))
+	else:
+		knock.tween_interval(GameState.match_time(HIT_SETTLE_TIME))
+		wiggle.tween_interval(GameState.match_time(HIT_SETTLE_TIME))
 	await wiggle.finished
 	if knock.is_running():
 		await knock.finished
@@ -5142,10 +5210,21 @@ func float_label_over(pokemon: card_object, text: String, colour: Color,
 		return
 	var rect_pos: Vector2 = loc["position"]
 	var rect_size: Vector2 = loc["size"]
+	var y_frac := 0.35
+	# ISSUE #501: a BENCHED Pokémon's figure sits dead centre on its card -- no outward nudge -- and is
+	# measured off the card's real node when it is drawn (the computed slot rect assumes a full row).
+	if not bool(loc.get("is_active", false)):
+		var real := _card_rect_now(pokemon)
+		if not real.is_empty():
+			rect_pos = real["position"]
+			rect_size = real["size"]
+		nudge = 0.0
+		y_frac = 0.5
+		print("ISSUE #501 FIX ACTIVE: bench label centred on ", pokemon.metadata.get("name", ""), " at ", rect_pos + rect_size * 0.5)
 	# show_floating_label centres its text in a 300px box, hence the -150.
 	show_floating_label(text,
 		Vector2(rect_pos.x + rect_size.x * 0.5 - 150.0 + nudge,
-			rect_pos.y + rect_size.y * 0.35),
+			rect_pos.y + rect_size.y * y_frac),
 		colour, true, FLOAT_DAMAGE_FONT, FLOAT_DAMAGE_OUTLINE)
 
 
@@ -5938,11 +6017,15 @@ func _on_pause_options_pressed() -> void:
 	# without this every click that lands on empty space on that screen would fall through
 	# to the board underneath. FIRST in the child list: it draws behind the screen and is
 	# picked after it, so it catches only what the screen itself ignores.
+	# ISSUE #469: TRANSPARENT. The screen's own background (UIKit.add_field) sits at a negative
+	# z_index, so an opaque blocker drew OVER it and the whole options screen read as black. A clear
+	# ColorRect still stops the mouse, which is all it is here for.
 	var blocker := ColorRect.new()
-	blocker.color = Color(0, 0, 0, 1)
+	blocker.color = Color(0, 0, 0, 0)
 	blocker.anchor_right  = 1.0
 	blocker.anchor_bottom = 1.0
 	options_overlay.add_child(blocker)
+	print("ISSUE #469 FIX ACTIVE: in-match options blocker is transparent (field background shows)")
 
 	var instance: Node = packed.instantiate()
 	if instance is Control:
@@ -6745,8 +6828,44 @@ func draw_card_from_deck(is_opponent: bool, speed_multiplier: float = 1.0) -> ca
 	var speed: float = (0.2 if is_opponent else 0.3) * speed_multiplier
 	await animate_card_into_hand(drawn_card, is_opponent, deck_icon,
 		{"position": deck_icon.global_position, "size": deck_icon.size}, speed, back_tex)
+	note_card_landed_in_hand()   # ISSUE #472
 
 	return drawn_card
+
+
+## ISSUE #495: the pause between one side's "End turn" label and the next side's "Start turn",
+## so the two read as two events. TWEAKABLE (seconds, x the animation speed).
+const TURN_LABEL_GAP := 0.9
+
+func turn_label_gap() -> void:
+	var t: float = GameState.match_time(TURN_LABEL_GAP)
+	print("ISSUE #495 FIX ACTIVE: ", snappedf(t, 0.01), "s between End turn and Start turn")
+	if t > 0.0:
+		await get_tree().create_timer(t).timeout
+
+
+## ISSUE #472: A BEAT TO SEE WHAT WAS JUST DRAWN.
+##
+## The message box covers the hand, so a box opening the instant a card lands (a tutorial
+## line, "Opponent attached..."), or a Prize going straight into "choose your new Active",
+## or a Bill's two cards being played at once, never let the drawn card register. Every
+## draw / Prize that lands in a hand stamps the time; the next message box, KO replacement
+## or CPU play waits out whatever is left of DRAW_SETTLE_TIME (x the animation speed).
+## TWEAKABLE.
+const DRAW_SETTLE_TIME := 1.0
+var _draw_landed_msec: int = 0
+
+func note_card_landed_in_hand() -> void:
+	_draw_landed_msec = Time.get_ticks_msec()
+
+func settle_after_draw() -> void:
+	if _draw_landed_msec == 0:
+		return
+	var left: float = GameState.match_time(DRAW_SETTLE_TIME) - float(Time.get_ticks_msec() - _draw_landed_msec) / 1000.0
+	_draw_landed_msec = 0
+	if left > 0.0:
+		print("ISSUE #472 FIX ACTIVE: pausing ", snappedf(left, 0.01), "s so the drawn card registers")
+		await get_tree().create_timer(left).timeout
 
 # ISSUE #10 FIX ACTIVE: when several cards are drawn back-to-back (e.g. shuffling a hand back
 # into the deck and redrawing), each individual draw animation should get quicker so the whole
@@ -7108,8 +7227,10 @@ func take_prize_card(card: card_object, is_opponent: bool, from_rect: Dictionary
 	display_prize_cards(is_opponent)
 
 	await animate_card_into_hand(card, is_opponent, prize_container, prize_from, 0.3, card_texture)
+	note_card_landed_in_hand()   # ISSUE #472
 
 # Opens selection mode to choose a prize card and return that as the object to put into hand
+
 func player_pick_prize_card() -> void:
 	prize_card_selection_active = true
 	show_enlarged_array_selection_mode(player_prize_cards)
@@ -7163,6 +7284,8 @@ func player_start_turn_checks() -> void:
 		return
 	# ISSUE #309: Trainer locks now lift at the END of the locked side's turn (Trainer_Effects.tick_trainer_lock)
 	opponent_blocker.visible = false
+	await turn_label_gap()   # ISSUE #495
+	if _should_bail(): return
 	# ISSUE #281: up out of the player's corner, exactly like "End turn".
 	print("ISSUE #281 FIX ACTIVE: turn labels rise from ", _turn_float_anchor())
 	show_floating_label("Start turn", _turn_float_anchor(), Color.WHITE, true)
@@ -7762,7 +7885,7 @@ func perform_evolution(is_opponent: bool, defer_after: bool = false) -> void:
 	# Set the new card's HP as its max minus the carried damage — after the Tools moved over, so an HP Tool counts.
 	evo_card.current_hp = max(1, evo_card.get_max_hp() - damage_taken)
 	print("ISSUE #375 FIX ACTIVE: evolution carries ", damage_taken, " damage -> ", evo_card.current_hp, "/", evo_card.get_max_hp())
-	# ISSUE #468: Energy the new form may not hold (Scramble / Double Rainbow on a Pokémon-ex, R Energy
+	# ISSUE #467: Energy the new form may not hold (Scramble / Double Rainbow on a Pokémon-ex, R Energy
 	# on a non-Dark evolution) is discarded as it evolves, with a figure over it saying so.
 	for dropped_name in special_energy_effects.discard_now_illegal(evo_card, is_opponent):
 		float_label_over(evo_card, String(dropped_name).to_upper() + " DISCARDED", Color.ORANGE, is_opponent)
@@ -8604,8 +8727,12 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	# `is_opponent` here is the ATTACKER's side, so the DEFENDER is the other one.
 	var defender_is_opponent: bool = not is_opponent
 	# The lunge and bump, before any number floats up.
-	if final_damage > 0:
-		await play_attack_hit(attacker, defender)
+	# ISSUE #473: it also plays when the damage was cut to 0 (the attack still had printed damage), and
+	# it knows about Weakness / Resistance.
+	if final_damage > 0 or base_damage > 0:
+		var hit_weak: bool = modifiers.any(func(m): return "WEAKNESS" in str(m))
+		var hit_resist: bool = modifiers.any(func(m): return "RESISTANCE" in str(m))
+		await play_attack_hit(attacker, defender, final_damage, hit_weak, hit_resist)
 		if _should_bail(): return
 	print("ISSUE #279 FIX ACTIVE: damage label over ",
 		defender.metadata.get("name", "?"), " defender_is_opponent=", defender_is_opponent,
@@ -8628,6 +8755,9 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	if show_damage_label:
 		float_label_over(defender, "-" + str(final_damage) + "HP", Color.WHITE, defender_is_opponent)
 	defender.current_hp = max(0, defender.current_hp - final_damage)
+	# ISSUE #486: a Knock Out shows the moment the damage lands -- the card darkens and sways.
+	if defender.current_hp <= 0 and card_fx != null:
+		card_fx.start_ko(defender)
 	print(attacker.metadata["name"] + " dealt " + str(final_damage) + " damage to " + defender.metadata["name"] + "! HP remaining: " + str(defender.current_hp))
 	display_hp_circles_above_align(defender, !is_opponent)
 	# ISSUE #298: Mirror Move mirrors what actually landed on it, after every modifier.
@@ -8689,7 +8819,9 @@ func perform_attack(attack_index: int) -> void:
 		return
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
+	if card_fx != null: card_fx.attack_declared(player_active_pokemon)   # ISSUE #474
 	await show_message((player_active_pokemon.metadata["name"] + " USED " + attack_name).to_upper())
+	await play_attack_intent(player_active_pokemon, opponent_active_pokemon, attack)   # ISSUE #474
 
 	# EX14 Holon Circle (ex14-79 Stadium): prevent all effects, including damage, done by either player's
 	# Active Pokémon. The moment an Active uses an attack, that attack ends and Holon Circle is discarded.
@@ -9300,6 +9432,7 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_knockout_sound)
 	await show_message(ko_name.to_upper() + " WAS KNOCKED OUT!")
+	if card_fx != null: card_fx.end_ko(pokemon)   # ISSUE #486: lightens again as it goes to the discard
 
 	# Pre-KO event hooks (Final Beam and any future on-KO powers registered in Powers)
 	var ko_attacker = player_active_pokemon if is_opponent else opponent_active_pokemon
@@ -9444,6 +9577,11 @@ func check_all_knockouts() -> Dictionary:
 	if opponent_active_pokemon != null:
 		opponent_to_check.append(opponent_active_pokemon)
 	opponent_to_check.append_array(opponent_bench.duplicate())
+	# ISSUE #486: every Pokémon about to be Knocked Out (bench damage, Poison, Curse...) darkens too.
+	if card_fx != null:
+		for ko_mon in player_to_check + opponent_to_check:
+			if ko_mon.current_hp <= 0:
+				card_fx.start_ko(ko_mon)
 	
 	for pokemon in opponent_to_check:
 		# EX8 Empty Shell (Shedinja): when this Pokemon is Knocked Out, the opponent takes no Prizes.
@@ -9536,10 +9674,12 @@ func check_all_knockouts() -> Dictionary:
 		print("ISSUE #305 FIX ACTIVE: player Active empty without a KO — promoting")
 		await handle_post_knockout(false)
 
+	if card_fx != null: card_fx.end_all_ko()   # ISSUE #486: a survivor (Focus Band, Endure...) goes back to normal
 	return results
 
 # After KOs are processed, animates a bench Pokemon moving to the active spot or ends the game
 func handle_post_knockout(is_opponent: bool) -> void:
+	await settle_after_draw()   # ISSUE #472: the Prize card just taken registers before "choose a new Active"
 	var active = opponent_active_pokemon if is_opponent else player_active_pokemon
 	var bench = opponent_bench if is_opponent else player_bench
 	var active_container = opponent_active_container if is_opponent else player_active_container
@@ -9708,7 +9848,8 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 		pokemon.current_hp = max(0, pokemon.current_hp - poison_tick)
 		var label = "TOXIC" if pokemon.poison_damage == 20 else "POISON"
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_poison_sound)
-		show_floating_label("-" + str(poison_tick) + "HP", Vector2(530 if !is_opponent else 1030, 300), Color.PURPLE, true)
+		if card_fx != null: card_fx.status(pokemon, "Poisoned")   # ISSUE #471
+		float_label_over(pokemon, "-" + str(poison_tick) + "HP", Color.PURPLE, is_opponent)   # ISSUE #501: on the card
 		display_hp_circles_above_align(pokemon, is_opponent)
 		await show_message(pokemon_name.to_upper() + " TAKES " + str(poison_tick) + " " + label + " DAMAGE!")
 		print("BETWEEN TURNS: ", pokemon_name, " took ", poison_tick, " poison damage. HP: ", pokemon.current_hp)
@@ -9722,8 +9863,9 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 			var coin = await flip_coin(false, is_opponent)
 			if not coin:
 				pokemon.current_hp = max(0, pokemon.current_hp - burn_dmg)
+				if card_fx != null: card_fx.status(pokemon, "Burned")   # ISSUE #471
 				await show_message(pokemon_name.to_upper() + " TAKES " + str(burn_dmg) + " BURN DAMAGE!")
-				show_floating_label("-" + str(burn_dmg) + "HP", Vector2(530 if !is_opponent else 1030, 300), Color.RED, is_opponent)
+				float_label_over(pokemon, "-" + str(burn_dmg) + "HP", Color.RED, is_opponent)   # ISSUE #501
 				display_hp_circles_above_align(pokemon, is_opponent)
 				print("BETWEEN TURNS: ", pokemon_name, " took ", burn_dmg, " burn damage. HP: ", pokemon.current_hp)
 			else:
@@ -9731,8 +9873,9 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 				print("BETWEEN TURNS: ", pokemon_name, " avoided burn damage (heads)")
 		elif burn_rules == "modern_era_burn_rules":
 			pokemon.current_hp = max(0, pokemon.current_hp - burn_dmg)
+			if card_fx != null: card_fx.status(pokemon, "Burned")   # ISSUE #471
 			await show_message(pokemon_name.to_upper() + " TAKES " + str(burn_dmg) + " BURN DAMAGE!")
-			show_floating_label("-" + str(burn_dmg) + "HP", Vector2(530 if !is_opponent else 1030, 300), Color.RED, is_opponent)
+			float_label_over(pokemon, "-" + str(burn_dmg) + "HP", Color.RED, is_opponent)   # ISSUE #501
 			display_hp_circles_above_align(pokemon, is_opponent)
 			print("BETWEEN TURNS: ", pokemon_name, " took 20 burn damage. HP: ", pokemon.current_hp)
 			await show_message("FLIPPING COIN TO CURE BURN...")
@@ -9757,6 +9900,7 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 				update_status_icons(pokemon, is_opponent)
 				print("BETWEEN TURNS: ", pokemon_name, " woke up from Deep Sleep (both heads)")
 			else:
+				if card_fx != null: card_fx.status(pokemon, "Asleep")   # ISSUE #471
 				await show_message(pokemon_name.to_upper() + " IS STILL ASLEEP! (DEEP SLEEP)")
 				print("BETWEEN TURNS: ", pokemon_name, " still asleep via Deep Sleep")
 		else:
@@ -9768,6 +9912,7 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 				update_status_icons(pokemon, is_opponent)
 				print("BETWEEN TURNS: ", pokemon_name, " woke up (heads)")
 			else:
+				if card_fx != null: card_fx.status(pokemon, "Asleep")   # ISSUE #471
 				await show_message(pokemon_name.to_upper() + " IS STILL ASLEEP!")
 				print("BETWEEN TURNS: ", pokemon_name, " still asleep (tails)")
 
@@ -10464,6 +10609,8 @@ func load_opponent_data_by_name(opp_name: String):
 	CpuWeights.cheat_coins = clampf(float(opponent_data.get("cpu_cheat_coins", 0.0)), 0.0, 1.0)
 	# ISSUE #375 phase 3: "cpu_plan_turns" — how many turns ahead this opponent plans (0 = off).
 	CpuWeights.plan_turns = int(opponent_data.get("cpu_plan_turns", 0))
+	# ISSUE #484: "cpu_retreat_rate" (0.0-1.0) -- how often this opponent takes a retreat its rules want.
+	CpuWeights.retreat_rate = clampf(float(opponent_data.get("cpu_retreat_rate", 1.0)), 0.0, 1.0)
 	if opponent_data.is_empty():
 		print("Opponent with name ", opp_name, " not found on map ",
 			GameState.current_opponent_map)
@@ -11942,6 +12089,11 @@ func _ready() -> void:
 	tutorial.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Tutorial_Director.gd"))
 	add_child(tutorial)
 	tutorial.main = self
+
+	card_fx = Node.new()
+	card_fx.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Card_FX.gd"))
+	add_child(card_fx)
+	card_fx.main = self
 
 	# Register all on-damage and pre-KO power hooks, then let attack_effects add its own.
 	powers_and_bodies._register_all_power_hooks()

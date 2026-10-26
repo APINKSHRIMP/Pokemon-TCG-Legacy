@@ -1842,7 +1842,8 @@
       "music": "fast_battle (PTCG Ronalds Theme)",
       "prize_cards": 4,
       "cash_reward": "100",
-      "pack_reward": "base1_a"
+      "pack_reward": "base1_a",
+      "cpu_retreat_rate": 0.5
     },
     "Olly 2": {
       "friendly_name": "Olly",
@@ -1852,7 +1853,8 @@
       "music": "fast_battle (PTCG Ronalds Theme)",
       "prize_cards": 4,
       "cash_reward": "100",
-      "pack_reward": "base1_c"
+      "pack_reward": "base1_c",
+      "cpu_retreat_rate": 0.0
     }
   }
 }

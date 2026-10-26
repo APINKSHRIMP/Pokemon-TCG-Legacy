@@ -135,6 +135,17 @@ const LINES_AFTER_BONUS := [
 	"He also gave me a load of each energy card so we'll never run out. Here.",
 ]
 const TEXT_ENERGY := "You received a load of energy cards!"
+# ISSUE #476: the deck walkthrough's lines. LINES_AFTER_BONUS[0] opens it; the binder line is
+# dropped there (the walkthrough builds the deck instead) and the energy line follows it.
+const LINE_ENERGY_AFTER_BONUS := "He also gave me a load of each energy card so we'll never run out. Here."
+const NEWBY_BETTER_DECK := "Better Deck"
+const TEXT_WALK_BUILDER := "You can look at your owned cards, edit your deck, remove any cards in it and add any new cards on this screen"
+const LINES_WALK_BETTER := [
+	"With those cards you got in your bonus pack, I would have a deck that looks a little more like this.",
+	"It'll have a much stronger selection of cards and you should be able to do a lot better with it!",
+	"Don't forget to tweak your deck to your own liking, don't just take my advice!!",
+]
+const TEXT_WALK_LOAD := "It's a good idea to write down all your different deck ideas so you can quickly switch from one deck to another. You can go back to using your first deck if you want by pressing Load Deck."
 const LINES_COIN := [
 	"You can also play matches using whatever coin you want. Your starter deck came with a coin and a case to keep them all in.",
 	"Put the coin I just gave you in there, for your next match you can use that instead if you prefer it!",
@@ -155,6 +166,9 @@ const LINE_ENERGY_ADVANCED := "I also got a load of each energy card so we'll ne
 const LINES_CAFE_MORNING := [
 	"El and Alexander have just gone for breakfast at Café Mieux. I got them each a deck too.",
 	"I gave Alexander the day off because it's a bank holiday. A lot of stuff's closed today but I've got stuff to do so I'll be open.",
+	# ISSUE #482: the Card Mart nudge. Olly isn't at the café himself, so "get there" not "get here".
+	"Before you get there, call in at the Card Mart and get yourself some new packs!",
+	"Make sure your deck is the best it can be, they'll want to battle when you get there!",
 	"El told me to tell you to meet them at the café ASAP, she said they'll be waiting for you.",
 	"There isn't much to do around here this morning so you might as well at least stop by the Cafe for a drink if nothing else.",
 ]
@@ -371,8 +385,21 @@ const GIFT_DONE_KEY := "olly_intro_pack_given"
 func _gift_pack(text: String, art_id: String) -> void:
 	if GameState.progress.get(GIFT_DONE_KEY, false):
 		return
-	await _reveal_art(text, art_id)
-	PackOpeningManager.open_packs([art_id])
+	# ISSUE #487: the pack on the reveal glides into the opening's rect and opens from there.
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
+	MapManager.show_pack_reveal(text, "res://Image_Assets/Packs/" + art_id + ".png",
+			func(): line_advanced.emit())
+	await line_advanced
+	var shown: TextureRect = MapManager._single_gift_pack_rect()
+	if shown != null:
+		MapManager.message_panel.visible = false
+		await MapManager._glide_rect_to_pack_rect(shown)
+		PackOpeningManager.open_packs([art_id], 0.0)
+		await get_tree().process_frame
+		close_box()
+	else:
+		close_box()
+		PackOpeningManager.open_packs([art_id])
 	await PackOpeningManager.all_packs_opened
 	GameState.progress[GIFT_DONE_KEY] = true
 	GameState.save_progress()
@@ -457,16 +484,23 @@ func _play_after_battle() -> void:
 		"basic":
 			await say_all(_speaker, LINES_NEW_BONUS)
 			await _gift_pack(TEXT_NEW_BONUS, "starter1_a")
-			await say_all(_speaker, LINES_AFTER_BONUS)
+			# ISSUE #476: the deck builder walkthrough, Basic Starter Deck -> Better Deck.
+			await _deck_walkthrough("starter1_a", GameState.STARTER_DECK_BASIC, NEWBY_BETTER_DECK)
+			await say(_speaker, LINE_ENERGY_AFTER_BONUS)
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
-			await say_all(_speaker, LINES_COIN + LINES_NEW_GOODBYE)
+			await _say_coin_lines()
+			await say_all(_speaker, LINES_NEW_GOODBYE)
 		"starter":
 			await say_all(_speaker, LINES_RULES_BONUS)
 			var pair: String = GameState.progress.get(GameState.INTRO_PAIR_KEY, "Fire Shock")
-			await _gift_pack(TEXT_RULES_BONUS, GameState.BONUS_PACK_FOR_PAIR.get(pair, "bonus1_a"))
-			await say_all(_speaker, LINES_AFTER_BONUS)
+			var bonus_art: String = GameState.BONUS_PACK_FOR_PAIR.get(pair, "bonus1_a")
+			await _gift_pack(TEXT_RULES_BONUS, bonus_art)
+			# ISSUE #476: "<pair> Starter Deck" -> "<pair> Deck", from the bonus pack's cards.
+			await _deck_walkthrough(bonus_art, pair + " Starter Deck", pair + " Deck")
+			await say(_speaker, LINE_ENERGY_AFTER_BONUS)
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
-			await say_all(_speaker, LINES_COIN + LINES_RULES_GOODBYE)
+			await _say_coin_lines()
+			await say_all(_speaker, LINES_RULES_GOODBYE)
 		"advanced":
 			await say(_speaker, LINE_GET_PACKS)
 			await say(_speaker, LINE_ENERGY_ADVANCED)
@@ -524,3 +558,215 @@ func _check_exit() -> void:
 		return
 	_watching_exit = false
 	finish()
+
+# ============================================================
+# ISSUE #476 — THE MENU WALKTHROUGHS (deck builder, coin case)
+# ============================================================
+# Olly's "your deck can only keep 60 cards" line stays on screen (it can't be cleared yet, no caret)
+# while the escape menu opens with the Cards & Deck tile glowing and everything else dimmed, then the
+# deck builder opens on its own: the bonus pack's cards fly into their slots. The line can be cleared
+# once both screens have been up for WALK_MIN_VIEW seconds. Then the deck is rebuilt into the better
+# one while Olly talks, renamed, saved, and the menu closes back to the map. The coin case gets the
+# same treatment for "Put the coin I just gave you in there". TWEAKABLE below.
+const WALK_MIN_VIEW    := 2.0     # seconds each screen is up before the line can be cleared
+const WALK_PULSE_SCALE := 1.06    # the highlighted tile's grow
+const WALK_PULSE_TIME  := 0.5     # one grow-and-shrink
+const WALK_DIM         := Color(0.3, 0.3, 0.3, 1.0)
+const WALK_CONVERT_SECONDS := 5.0
+const WALK_UI_LAYER    := 12      # the message box above the menu (10) and sub-menu (11) layers
+const DECK_MENU_TILE   := "deck/deck_mode_background"
+const COIN_MENU_TILE   := "coin/coin_case_mode_background"
+const DECK_SCENE       := "res://Scenes/Main_Menu_Scenes/Deck_Build_And_Card_View_Scene.tscn"
+const COIN_SCENE       := "res://Scenes/Main_Menu_Scenes/Coin_Case_Scene.tscn"
+const WALK_DONE_KEY    := "olly_intro_walkthrough_done"
+
+var _walk_ui_layer_was: int = 1
+var _walk_ring: Control = null
+var _walk_pulse: Tween = null
+
+
+func _deck_walkthrough(pack_art: String, from_deck: String, to_deck: String) -> void:
+	if GameState.progress.get(WALK_DONE_KEY, false):
+		await say_all(_speaker, LINES_AFTER_BONUS.slice(0, 2))
+		return
+	print("ISSUE #476 FIX ACTIVE: deck walkthrough ", from_deck, " -> ", to_deck)
+	var started := Time.get_ticks_msec()
+	_hold_line(_speaker, LINES_AFTER_BONUS[0])
+	var menu: Node = await _open_menu_on(DECK_MENU_TILE)
+	await wait(WALK_MIN_VIEW)
+	var builder: Node = await _open_sub_menu(DECK_SCENE)
+	if builder == null or not builder.has_method("walkthrough_begin"):
+		await _release_line()
+		await _close_walk_menu()
+		return
+	builder.walkthrough_begin()
+	var shown := Time.get_ticks_msec()
+	await builder.walkthrough_reveal_new_cards("base1", _count_ids(GameState.FIXED_PACKS.get(pack_art, [])))
+	var left: float = WALK_MIN_VIEW - float(Time.get_ticks_msec() - shown) / 1000.0
+	if left > 0.0:
+		await wait(left)
+	await _release_line()
+	await _system_line(TEXT_WALK_BUILDER)
+
+	# The better deck: anything it needs that the player doesn't own yet is given first.
+	var target := _read_deck(GameState.STARTER_DECKS_FOLDER + to_deck + ".json")
+	_grant_missing(target)
+	var converting := [true]
+	var run := func() -> void:
+		await builder.walkthrough_convert_to(target, WALK_CONVERT_SECONDS)
+		converting[0] = false
+	run.call()
+	await say_all(_speaker, LINES_WALK_BETTER)
+	close_box()
+	while converting[0] and is_inside_tree():
+		await get_tree().process_frame
+	await builder.walkthrough_save_as(to_deck)
+	await wait(0.6)
+	await _system_line(TEXT_WALK_LOAD)
+	builder.walkthrough_end()
+	GameState.progress[WALK_DONE_KEY] = true
+	GameState.save_progress()
+	await _close_walk_menu()
+	print("ISSUE #476 FIX ACTIVE: deck walkthrough done in ", (Time.get_ticks_msec() - started) / 1000, "s; menu ", menu != null)
+
+
+func _say_coin_lines() -> void:
+	await say(_speaker, LINES_COIN[0])
+	if GameState.progress.get(WALK_DONE_KEY + "_coin", false):
+		await say(_speaker, LINES_COIN[1])
+		return
+	_hold_line(_speaker, LINES_COIN[1])
+	await _open_menu_on(COIN_MENU_TILE)
+	await wait(WALK_MIN_VIEW)
+	var case: Node = await _open_sub_menu(COIN_SCENE)
+	if case != null and case.has_method("walkthrough_place_coins"):
+		if not case.is_node_ready() or case.grid.get_child_count() == 0:
+			await case.coins_built
+		var coins: Array = []
+		for c in GameState.progress.get("coins", []):
+			coins.append(String(c) if String(c).ends_with(".png") else String(c) + ".png")
+		await case.walkthrough_place_coins(coins)
+		await wait(WALK_MIN_VIEW * 0.5)
+	await _release_line()
+	GameState.progress[WALK_DONE_KEY + "_coin"] = true
+	GameState.save_progress()
+	await _close_walk_menu()
+
+
+## A line that stays up and can't be cleared until _release_line().
+func _hold_line(speaker: Dictionary, text: String) -> void:
+	_walk_ui_layer_was = map._ui_layer.layer
+	map._ui_layer.layer = WALK_UI_LAYER
+	MapManager.show_cutscene_message(text, speaker, func(): line_advanced.emit())
+	MapManager.message_panel.hold_advance(true)
+
+
+func _release_line() -> void:
+	MapManager.message_panel.hold_advance(false)
+	await line_advanced
+	close_box()
+
+
+func _system_line(text: String) -> void:
+	map._ui_layer.layer = WALK_UI_LAYER
+	# No speaker and nobody being talked to: the plain system box.
+	MapManager.current_opponent = null
+	MapManager.current_npc = null
+	await say({}, text)
+	close_box()
+
+
+## The escape menu, opened for the player, with `tile` glowing (the selection ring) and pulsing and
+## every other tile dimmed. Its own keys are switched off.
+func _open_menu_on(tile: String) -> Node:
+	if map._menu_instance == null or not is_instance_valid(map._menu_instance):
+		map._open_menu_overlay()
+	player.lock_movement()
+	var menu: Node = map._menu_instance
+	menu.set_process_input(false)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var target := menu.get_node_or_null(tile) as Control
+	if target == null:
+		return menu
+	var tile_box := target.get_parent() as Control
+	for child in menu.get_children():
+		if child is Control and child != tile_box and child.name != "black_background":
+			(child as Control).modulate = WALK_DIM
+		elif child == tile_box:
+			(child as Control).modulate = Color.WHITE
+	var ring_layer := Control.new()
+	ring_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu.add_child(ring_layer)
+	_walk_ring = ring_layer
+	UIKit.add_selection_ring(ring_layer, target, float(UITheme.mi("panel_radius")))
+	tile_box.pivot_offset = target.position + target.size * 0.5
+	_walk_pulse = tile_box.create_tween().set_loops()
+	_walk_pulse.tween_property(tile_box, "scale", Vector2.ONE * WALK_PULSE_SCALE, WALK_PULSE_TIME * 0.5).set_trans(Tween.TRANS_SINE)
+	_walk_pulse.tween_property(tile_box, "scale", Vector2.ONE, WALK_PULSE_TIME * 0.5).set_trans(Tween.TRANS_SINE)
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
+	return menu
+
+
+func _open_sub_menu(scene_path: String) -> Node:
+	if _walk_pulse != null and _walk_pulse.is_valid():
+		_walk_pulse.kill()
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
+	map.open_submenu_overlay(scene_path)
+	var layer: CanvasLayer = map._submenu_canvas_layer
+	if layer == null or layer.get_child_count() == 0:
+		return null
+	var inst: Node = layer.get_child(0)
+	if not inst.is_node_ready():
+		await inst.ready
+	return inst
+
+
+func _close_walk_menu() -> void:
+	if _walk_pulse != null and _walk_pulse.is_valid():
+		_walk_pulse.kill()
+	_walk_pulse = null
+	if _walk_ring != null and is_instance_valid(_walk_ring):
+		_walk_ring.queue_free()
+	_walk_ring = null
+	map._close_menu_overlay()
+	map._ui_layer.layer = _walk_ui_layer_was
+	# Closing the menu hands the player back; the cutscene still owns them.
+	player.lock_movement()
+	await wait(0.3)
+
+
+func _count_ids(ids: Array) -> Dictionary:
+	var out := {}
+	for id in ids:
+		out[id] = int(out.get(id, 0)) + 1
+	return out
+
+
+func _read_deck(path: String) -> Dictionary:
+	var out := {}
+	var data = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if data is Array:
+		for e in data:
+			out[String(e.get("id", ""))] = int(e.get("count", 0))
+	return out
+
+
+## Gives the player whatever the target deck needs beyond what they own.
+func _grant_missing(target: Dictionary) -> void:
+	var missing: Array = []
+	for cid in target:
+		var set_id := String(cid).split("-")[0]
+		var owned := 0
+		var data = JSON.parse_string(FileAccess.get_file_as_string(GameState.OWNED_CARDS_FOLDER + set_id + "_player_owned_cards.json"))
+		if data is Dictionary:
+			for e in data.get("owned_cards", []):
+				if String(e.get("card_id", "")) == cid:
+					owned = int(e.get("owned", 0))
+		for n in maxi(0, int(target[cid]) - owned):
+			missing.append(cid)
+	if not missing.is_empty():
+		print("ISSUE #476 FIX ACTIVE: granting cards the better deck needs: ", missing)
+		GameState.give_cards(",".join(missing))
+

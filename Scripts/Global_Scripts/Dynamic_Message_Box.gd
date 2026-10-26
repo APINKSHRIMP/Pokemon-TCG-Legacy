@@ -610,6 +610,14 @@ func is_ok_mode() -> bool:
 	return _mode == "ok"
 
 
+## ISSUE #476: an OK box that can't be dismissed yet -- no caret (it would promise an input that does
+## nothing), and MapManager ignores the click / key while ok_armed is false. Release it with false.
+func hold_advance(held: bool) -> void:
+	ok_armed = not held
+	if _mode == "ok":
+		_set_caret_visible(not held)
+
+
 func is_choice_mode() -> bool:
 	return _mode == "choices"
 

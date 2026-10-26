@@ -542,7 +542,9 @@ func _advance_card_reveal() -> void:
 	_waiting_for_advance = true
 
 
-func _on_flying_card_finished(card_rect: TextureRect) -> void:
+# Untyped: clicking through fast frees a card still in flight (_show_card_summary), and a typed
+# TextureRect argument refuses the freed object with "Cannot convert argument 1 from Object to Object".
+func _on_flying_card_finished(card_rect) -> void:
 	if card_rect != null and is_instance_valid(card_rect):
 		_flying_card_rects.erase(card_rect)
 		card_rect.queue_free()
