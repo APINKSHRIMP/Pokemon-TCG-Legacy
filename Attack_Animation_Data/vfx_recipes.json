@@ -1,0 +1,9378 @@
+{
+ "recipes": {
+  "Tackle": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "SimpleAttack",
+     "at": "target"
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 0.7,
+     "par": true,
+     "off": [
+      0,
+      0.3
+     ]
+    }
+   ],
+   "element": "normal",
+   "sfx": "Tackle"
+  },
+  "Pound": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "QuickPunch",
+     "at": "target",
+     "size": 0.7
+    }
+   ],
+   "element": "normal",
+   "sfx": "Pound"
+  },
+  "QuickAttack": {
+   "body": "dash",
+   "steps": [
+    {
+     "fx": "SpeedLines",
+     "at": "travel",
+     "orient": true,
+     "size": 1.0,
+     "time": 0.15
+    },
+    {
+     "fx": "QuickSwipe",
+     "at": "target",
+     "orient": true
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "par": true,
+     "delay": 0.05
+    }
+   ],
+   "element": "normal",
+   "sfx": "Quick Attack"
+  },
+  "Headbutt": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "QuickBurst",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "SimpleAttack",
+     "at": "target",
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "sfx": "Headbutt"
+  },
+  "PowerfulHit": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "PowerfulHit",
+     "at": "target"
+    }
+   ],
+   "element": "normal",
+   "sfx": "Strength"
+  },
+  "BodySlam": {
+   "body": "leap",
+   "steps": [
+    {
+     "fx": "Slam",
+     "at": "target",
+     "size": 1.3
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "off": [
+      0,
+      0.3
+     ]
+    },
+    {
+     "at": "quake",
+     "dur": 0.35,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "react": "squash",
+   "power": "heavy",
+   "screen": {
+    "shake": 6
+   },
+   "sfx": "Body Slam"
+  },
+  "TakeDown": {
+   "body": "dash",
+   "steps": [
+    {
+     "fx": "GigaImpact/000",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "GigaImpact/016",
+     "at": "target",
+     "par": true,
+     "size": 1.1
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "off": [
+      0,
+      0.3
+     ]
+    }
+   ],
+   "element": "normal",
+   "power": "heavy",
+   "recoil": true,
+   "screen": {
+    "shake": 5
+   },
+   "sfx": "Take Down"
+  },
+  "GigaImpact": {
+   "body": "dash",
+   "steps": [
+    {
+     "fx": "GigaImpact/010",
+     "at": "travel",
+     "orient": true,
+     "time": 0.15
+    },
+    {
+     "fx": "GigaImpact/016",
+     "at": "target",
+     "size": 1.4
+    },
+    {
+     "fx": "GigaImpact/000",
+     "at": "target",
+     "par": true,
+     "size": 1.3
+    },
+    {
+     "fx": "HatchFlash",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    },
+    {
+     "at": "quake",
+     "dur": 0.4,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "react": "squash",
+   "power": "heavy",
+   "recoil": true,
+   "screen": {
+    "shake": 10
+   },
+   "sfx": "Giga Impact"
+  },
+  "Stomp": {
+   "body": "leap",
+   "steps": [
+    {
+     "fx": "Paw",
+     "at": "target",
+     "size": 0.6,
+     "tint": "#c8b8a0"
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "off": [
+      0,
+      0.3
+     ]
+    }
+   ],
+   "element": "normal",
+   "react": "squash",
+   "sfx": "Stomp"
+  },
+  "Trample": {
+   "body": "leap",
+   "steps": [
+    {
+     "fx": "Paw",
+     "at": "target",
+     "size": 0.55,
+     "tint": "#c8b8a0",
+     "count": 3,
+     "stagger": 0.13,
+     "jitter": 0.25
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "off": [
+      0,
+      0.3
+     ]
+    },
+    {
+     "at": "quake",
+     "dur": 0.5,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 2,
+   "screen": {
+    "shake": 4
+   },
+   "sfx": "Stomp"
+  },
+  "Rollout": {
+   "body": "spin",
+   "steps": [
+    {
+     "fx": "Slam",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "off": [
+      0,
+      0.3
+     ]
+    }
+   ],
+   "element": "normal",
+   "sfx": "Rollout"
+  },
+  "Spin": {
+   "body": "spin",
+   "steps": [
+    {
+     "fx": "SpinningSlash",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "SimpleAttack",
+     "at": "target",
+     "par": true,
+     "delay": 0.1,
+     "size": 0.8
+    }
+   ],
+   "element": "normal",
+   "sfx": "Rapid Spin"
+  },
+  "Thrash": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Slam",
+     "at": "target",
+     "count": 3,
+     "stagger": 0.15,
+     "jitter": 0.25,
+     "size": 1.0
+    },
+    {
+     "fx": "PowerfulHit",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Thrash"
+  },
+  "Wrap": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "VineWrap",
+     "at": "target",
+     "tint": "#e8d8b0",
+     "size": 1.1,
+     "loops": 1,
+     "dur": 0.6
+    }
+   ],
+   "element": "normal",
+   "react": "squeeze",
+   "sfx": "Wrap"
+  },
+  "Constrict": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "VineWrap",
+     "at": "target",
+     "hue": 270,
+     "size": 1.1,
+     "dur": 0.6
+    },
+    {
+     "fx": "GrabCrush",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "normal",
+   "react": "squeeze",
+   "sfx": "Constrict"
+  },
+  "Squeeze": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "GrabCrush",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "normal",
+   "react": "squeeze",
+   "sfx": "Constrict"
+  },
+  "Bind": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "VineWrap",
+     "at": "target",
+     "tint": "#b0b0b0",
+     "size": 1.1,
+     "dur": 0.6
+    }
+   ],
+   "element": "normal",
+   "react": "squeeze",
+   "sfx": "Bind"
+  },
+  "Lick": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Lick",
+     "at": "target",
+     "size": 0.7,
+     "count": 2,
+     "stagger": 0.2,
+     "jitter": 0.15
+    }
+   ],
+   "element": "normal",
+   "sfx": "Lick"
+  },
+  "TailWhip": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Swagger",
+     "at": "target",
+     "size": 0.6,
+     "count": 2,
+     "stagger": 0.2,
+     "jitter": 0.2
+    },
+    {
+     "fx": "StatDown",
+     "at": "target",
+     "delay": 0.15,
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Fall Down"
+    }
+   ],
+   "element": "normal",
+   "sfx": "Tail Whip"
+  },
+  "TailSlap": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "OneSlap",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "normal",
+   "sfx": "Slam",
+   "sfx_pitch": 1.1
+  },
+  "Slap": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DoubleSlap",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "normal",
+   "sfx": "Double Slap 1hit"
+  },
+  "DoubleSlap": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DoubleSlap",
+     "at": "target",
+     "size": 0.8,
+     "count": 2,
+     "stagger": 0.22,
+     "jitter": 0.18
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 2,
+   "sfx": "Double Slap 1hit"
+  },
+  "Scratch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "QuickSwipe",
+     "at": "target",
+     "orient": true,
+     "size": 0.9
+    }
+   ],
+   "element": "normal",
+   "sfx": "Scratch"
+  },
+  "FurySwipes": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MultipleClawAttack/000",
+     "at": "target",
+     "size": 0.9,
+     "count": 3,
+     "stagger": 0.16,
+     "jitter": 0.2
+    },
+    {
+     "fx": "MultipleClawAttack/008",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Fury Swipes"
+  },
+  "Slash": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "SwipeAttack",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "sfx": "Slash"
+  },
+  "DoubleClaw": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DoubleClaw",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 2,
+   "sfx": "Crush Claw"
+  },
+  "DoubleSlash": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DoubleSlash",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "par": true,
+     "delay": 0.15
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 2,
+   "sfx": "Cut"
+  },
+  "CrossCut": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DarkSlash",
+     "at": "target",
+     "hue": -60,
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "sfx": "X-Scissor"
+  },
+  "SpinningSlash": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "SpinningSlash",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "normal",
+   "sfx": "Fury Cutter"
+  },
+  "LightSlash": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "LightSlash",
+     "at": "target",
+     "orient": true,
+     "size": 1.0
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "electric",
+   "sfx": "Psycho Cut"
+  },
+  "Peck": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Beak",
+     "at": "target",
+     "size": 0.35,
+     "orient": true
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "size": 0.7,
+     "par": true
+    }
+   ],
+   "element": "flying",
+   "sfx": "Peck"
+  },
+  "DrillPeck": {
+   "body": "spin",
+   "steps": [
+    {
+     "fx": "Beak",
+     "at": "target",
+     "size": 0.35,
+     "orient": true,
+     "count": 3,
+     "stagger": 0.1,
+     "jitter": 0.12
+    },
+    {
+     "fx": "QuickBurst",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "flying",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Drill Peck"
+  },
+  "FuryAttack": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "size": 0.7,
+     "count": 4,
+     "stagger": 0.12,
+     "jitter": 0.25
+    }
+   ],
+   "element": "flying",
+   "react": "multi",
+   "hits": 4,
+   "sfx": "Fury Attack 1hit"
+  },
+  "HornAttack": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "ViceGrip",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "normal",
+   "sfx": "Horn Attack"
+  },
+  "HornDrill": {
+   "body": "spin",
+   "steps": [
+    {
+     "fx": "SpinningSlash",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "PowerfulHit",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "normal",
+   "power": "heavy",
+   "screen": {
+    "shake": 6
+   },
+   "sfx": "Horn Drill"
+  },
+  "Megahorn": {
+   "body": "dash",
+   "steps": [
+    {
+     "fx": "ViceGrip",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "PowerfulHit",
+     "at": "target",
+     "size": 1.2,
+     "par": true,
+     "delay": 0.1
+    },
+    {
+     "at": "quake",
+     "dur": 0.3,
+     "par": true
+    }
+   ],
+   "element": "bug",
+   "power": "heavy",
+   "screen": {
+    "shake": 6
+   },
+   "sfx": "Megahorn"
+  },
+  "WingAttack": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Feathers",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "SimpleAttack",
+     "at": "target",
+     "par": true,
+     "size": 0.7
+    }
+   ],
+   "element": "flying",
+   "sfx": "Wing Attack"
+  },
+  "BraveBird": {
+   "body": "dash",
+   "steps": [
+    {
+     "fx": "BraveBird",
+     "at": "travel",
+     "orient": true,
+     "time": 0.15,
+     "size": 0.7
+    },
+    {
+     "fx": "PowerfulHit",
+     "at": "target",
+     "size": 1.3
+    },
+    {
+     "fx": "Feathers",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "flying",
+   "power": "heavy",
+   "recoil": true,
+   "screen": {
+    "shake": 7
+   },
+   "sfx": "Brave Bird"
+  },
+  "Fly": {
+   "body": "dive",
+   "steps": [
+    {
+     "fx": "FeatherFall",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "PowerfulHit",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "flying",
+   "react": "squash",
+   "sfx": "Fly"
+  },
+  "Gust": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Gust",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "flying",
+   "react": "spin",
+   "sfx": "Gust"
+  },
+  "Whirlwind": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "GustWithFeathers",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "flying",
+   "react": "spin",
+   "sfx": "Whirlwind"
+  },
+  "Twister": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Gust",
+     "at": "target",
+     "size": 1.2,
+     "hue": 120,
+     "tint": "#a0ffc0"
+    },
+    {
+     "fx": "Gust",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.2,
+     "off": [
+      0.2,
+      0.0
+     ]
+    }
+   ],
+   "element": "flying",
+   "react": "spin",
+   "bench_fx": {
+    "fx": "Gust",
+    "at": "target",
+    "size": 0.6
+   },
+   "sfx": "Twister"
+  },
+  "Hurricane": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Gust",
+     "at": "screen",
+     "size": 1.6
+    },
+    {
+     "fx": "GustWithFeathers",
+     "at": "target",
+     "size": 1.2,
+     "par": true,
+     "delay": 0.2
+    }
+   ],
+   "element": "flying",
+   "react": "spin",
+   "power": "heavy",
+   "screen": {
+    "shake": 5
+   },
+   "bench_fx": {
+    "fx": "Gust",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Aeroblast"
+  },
+  "AirCutter": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "AirCutter",
+     "at": "target",
+     "size": 1.4
+    }
+   ],
+   "element": "flying",
+   "react": "spin",
+   "sfx": "Air Cutter"
+  },
+  "AirSlash": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "AirSlash",
+     "at": "target",
+     "size": 1.0,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.15
+    }
+   ],
+   "element": "flying",
+   "react": "multi",
+   "hits": 2,
+   "sfx": "Air Slash"
+  },
+  "RazorWind": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "RazorWind/Effect",
+     "at": "travel",
+     "spin": 720,
+     "size": 0.55
+    },
+    {
+     "fx": "RazorWind/Projectile",
+     "at": "target",
+     "size": 0.8,
+     "spin": 540
+    }
+   ],
+   "element": "flying",
+   "sfx": "Razor Wind"
+  },
+  "Sonicboom": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "HarshSound",
+     "at": "travel",
+     "orient": true,
+     "size": 0.7
+    },
+    {
+     "fx": "QuickBurst",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "flying",
+   "sfx": "Sonic Boom"
+  },
+  "Swift": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Star",
+     "at": "travel",
+     "spin": 720,
+     "size": 0.25,
+     "count": 5,
+     "stagger": 0.07,
+     "jitter": 0.15
+    },
+    {
+     "fx": "YellowStars",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "StarShine",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 3,
+   "bench_fx": {
+    "fx": "YellowStars",
+    "at": "target",
+    "size": 0.6
+   },
+   "sfx": "Swift"
+  },
+  "StarStrike": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "StarTrail",
+     "at": "travel",
+     "orient": true,
+     "size": 0.6,
+     "time": 0.3
+    },
+    {
+     "fx": "StarShine",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "Twinkle",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "sfx": "Swift"
+  },
+  "ShootingStar": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "StarStrikeRed",
+     "at": "drop",
+     "size": 0.8,
+     "time": 0.3,
+     "count": 3,
+     "stagger": 0.12,
+     "jitter": 0.2
+    },
+    {
+     "fx": "YellowStars",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "StarShine",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Doom Desire"
+  },
+  "StarBeam": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "StarBeam",
+     "at": "travel",
+     "orient": true,
+     "size": 0.7
+    },
+    {
+     "fx": "TwinklingStar",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "normal",
+   "sfx": "Swift"
+  },
+  "Wish": {
+   "body": "rise",
+   "steps": [
+    {
+     "fx": "Wish",
+     "at": "self",
+     "size": 1.2,
+     "off": [
+      0,
+      -0.35
+     ]
+    },
+    {
+     "fx": "FairySparkles",
+     "at": "self",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.2
+    }
+   ],
+   "element": "fairy",
+   "screen": {
+    "dim": 0.3
+   },
+   "sfx": "Wish"
+  },
+  "PayDay": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "SimpleAttack",
+     "at": "target"
+    },
+    {
+     "fx": "GoldScatter",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    },
+    {
+     "fx": "GoldCluster",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "normal",
+   "sfx": "Pay Day"
+  },
+  "Explosion": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "WhiteGrow",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "Explosion",
+     "at": "self",
+     "size": 2.4
+    },
+    {
+     "fx": "Explosion",
+     "at": "target",
+     "size": 2.2,
+     "par": true,
+     "delay": 0.12
+    },
+    {
+     "at": "quake",
+     "dur": 0.8,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "power": "heavy",
+   "screen": {
+    "flash": "#ffffff",
+    "shake": 14
+   },
+   "bench_fx": {
+    "fx": "MiniExplosions",
+    "at": "target",
+    "size": 0.9
+   },
+   "sfx": "Explosion"
+  },
+  "Selfdestruct": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "WhiteGather",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "Selfdestruct",
+     "at": "self",
+     "size": 2.0
+    },
+    {
+     "fx": "SmallBomb",
+     "at": "target",
+     "size": 1.3,
+     "par": true,
+     "delay": 0.12
+    },
+    {
+     "at": "quake",
+     "dur": 0.5,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "power": "heavy",
+   "recoil": true,
+   "screen": {
+    "flash": "#fff4d0",
+    "shake": 10
+   },
+   "bench_fx": {
+    "fx": "SmallBomb",
+    "at": "target",
+    "size": 0.8
+   },
+   "sfx": "Self Destruct"
+  },
+  "EggBomb": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "EggBomb/000",
+     "at": "travel",
+     "arc": 90,
+     "spin": 360,
+     "size": 0.25
+    },
+    {
+     "fx": "EggBomb/001",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "normal",
+   "sfx": "Egg Bomb"
+  },
+  "Barrage": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Barrage/001",
+     "at": "travel",
+     "arc": 70,
+     "size": 0.25,
+     "count": 3,
+     "stagger": 0.15
+    },
+    {
+     "fx": "Barrage/000",
+     "at": "target",
+     "size": 0.9,
+     "count": 2,
+     "stagger": 0.12,
+     "jitter": 0.15
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Barrage 1hit"
+  },
+  "SmallBomb": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SmallBomb",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "normal",
+   "sfx": "Self Destruct",
+   "sfx_pitch": 1.15
+  },
+  "MiniExplosions": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "MiniExplosions",
+     "at": "target",
+     "size": 0.8,
+     "count": 3,
+     "stagger": 0.12,
+     "jitter": 0.25
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 3,
+   "bench_fx": {
+    "fx": "MiniExplosions",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Self Destruct",
+   "sfx_pitch": 1.25
+  },
+  "HyperBeam": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "PowerUpAbsorb",
+     "at": "self",
+     "size": 1.0,
+     "dur": 0.6
+    },
+    {
+     "fx": "LightBeam",
+     "at": "beam",
+     "size": 0.55,
+     "tint": "#ffb070",
+     "dur": 0.75
+    },
+    {
+     "fx": "Explosion",
+     "at": "target",
+     "size": 1.6,
+     "delay": 0.15,
+     "par": true
+    },
+    {
+     "at": "quake",
+     "dur": 0.5,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "power": "heavy",
+   "screen": {
+    "flash": "#ffd0a0",
+    "shake": 8
+   },
+   "sfx": "Hyper Beam"
+  },
+  "HyperVoice": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "HyperVoice",
+     "at": "self",
+     "size": 1.2
+    },
+    {
+     "fx": "HarshSound",
+     "at": "travel",
+     "orient": true,
+     "size": 0.8,
+     "count": 2,
+     "stagger": 0.15
+    },
+    {
+     "fx": "SoundRings",
+     "at": "target",
+     "size": 1.3
+    },
+    {
+     "fx": "Uproar",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "sound",
+   "react": "shake",
+   "screen": {
+    "shake": 5
+   },
+   "bench_fx": {
+    "fx": "SoundRings",
+    "at": "target",
+    "size": 0.6
+   },
+   "sfx": "Hyper Voice"
+  },
+  "Screech": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "SoundRings",
+     "at": "self",
+     "size": 1.0,
+     "off": [
+      0.3,
+      0
+     ]
+    },
+    {
+     "fx": "MetalSound",
+     "at": "target",
+     "size": 1.1,
+     "hue": -30
+    },
+    {
+     "fx": "StatDown",
+     "at": "target",
+     "delay": 0.15,
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Fall Down"
+    }
+   ],
+   "element": "sound",
+   "react": "shake",
+   "bench_fx": {
+    "fx": "SoundRings",
+    "at": "target",
+    "size": 0.6
+   },
+   "sfx": "Screech"
+  },
+  "Supersonic": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "PsyWave",
+     "at": "travel",
+     "orient": true,
+     "size": 0.5,
+     "count": 3,
+     "stagger": 0.1
+    },
+    {
+     "fx": "ConfusingHit",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "sound",
+   "react": "spin",
+   "sfx": "Supersonic"
+  },
+  "Growl": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "Growl",
+     "at": "self",
+     "size": 1.2,
+     "off": [
+      0.45,
+      0
+     ]
+    },
+    {
+     "fx": "StatDown",
+     "at": "target",
+     "delay": 0.25,
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Fall Down"
+    }
+   ],
+   "element": "sound",
+   "sfx": "Growl"
+  },
+  "Roar": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "Uproar",
+     "at": "self",
+     "size": 1.4
+    },
+    {
+     "fx": "SoundRings",
+     "at": "target",
+     "size": 1.2,
+     "par": true,
+     "delay": 0.15
+    },
+    {
+     "fx": "Growl",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.25
+    }
+   ],
+   "element": "sound",
+   "react": "shake",
+   "screen": {
+    "shake": 4
+   },
+   "bench_fx": {
+    "fx": "SoundRings",
+    "at": "target",
+    "size": 0.6
+   },
+   "sfx": "Roar"
+  },
+  "Sing": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SingingToSelf",
+     "at": "self",
+     "size": 0.5,
+     "off": [
+      0.1,
+      -0.35
+     ],
+     "mirror": false
+    },
+    {
+     "fx": "Sing",
+     "at": "target",
+     "size": 1.0,
+     "mirror": false,
+     "par": true,
+     "delay": 0.15
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Sing"
+  },
+  "DarkSing": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "DarkSing",
+     "at": "target",
+     "size": 1.0,
+     "mirror": false
+    }
+   ],
+   "element": "dark",
+   "sfx": "Perish Song"
+  },
+  "PerishSong": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PerishSong",
+     "at": "target",
+     "size": 1.0,
+     "mirror": false
+    }
+   ],
+   "element": "ghost",
+   "screen": {
+    "dim": 0.45
+   },
+   "sfx": "Perish Song"
+  },
+  "HealingSong": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "HealingCall",
+     "at": "self",
+     "size": 1.0,
+     "mirror": false
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Heal Bell"
+  },
+  "Whisper": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Whispering",
+     "at": "target",
+     "size": 0.6,
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.2,
+     "jitter": 0.2
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Grass Whistle"
+  },
+  "Attract": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Heart",
+     "at": "travel",
+     "size": 0.25,
+     "count": 3,
+     "stagger": 0.12
+    },
+    {
+     "fx": "Attract",
+     "at": "target",
+     "size": 1.0,
+     "mirror": false
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Attract"
+  },
+  "Charm": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "LotsOfLove",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "PinkSparkles",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    },
+    {
+     "fx": "StatDown",
+     "at": "target",
+     "delay": 0.2,
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Fall Down"
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Charm"
+  },
+  "SweetKiss": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SweetKiss",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Sweet Kiss"
+  },
+  "EvilKiss": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "EvilKiss",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "dark",
+   "sfx": "Lovely Kiss"
+  },
+  "Flatter": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "ClapFlatter/000",
+     "at": "self",
+     "size": 0.6,
+     "off": [
+      0,
+      -0.3
+     ]
+    },
+    {
+     "fx": "Flatter",
+     "at": "target",
+     "size": 1.0,
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.35
+     ]
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Flatter"
+  },
+  "Swagger": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Swagger",
+     "at": "target",
+     "size": 0.6,
+     "count": 3,
+     "stagger": 0.1,
+     "jitter": 0.2
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Swagger"
+  },
+  "Clap": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "HandClapPowerUp",
+     "at": "self",
+     "size": 1.0
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Encore"
+  },
+  "Encore": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "ClapPowerUp",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "ClapFlatter/001",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.2,
+     "off": [
+      0,
+      0.35
+     ]
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Encore"
+  },
+  "Metronome": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Metronome",
+     "at": "self",
+     "size": 0.7,
+     "mirror": false
+    },
+    {
+     "fx": "ConfusingHit",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "normal",
+   "sfx": "Metronome"
+  },
+  "Conversion": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Conversion",
+     "at": "self",
+     "size": 0.6
+    }
+   ],
+   "element": "normal",
+   "sfx": "Conversion"
+  },
+  "TriAttack": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "TriAttack/001",
+     "at": "travel",
+     "spin": 540,
+     "size": 0.45
+    },
+    {
+     "fx": "TriAttack/000",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "normal",
+   "sfx": "Tri Attack"
+  },
+  "Substitute": {
+   "body": "vanish",
+   "steps": [
+    {
+     "fx": "Substitute",
+     "at": "self",
+     "size": 0.9
+    }
+   ],
+   "element": "normal",
+   "sfx": "Substitute"
+  },
+  "Teleport": {
+   "body": "vanish",
+   "steps": [
+    {
+     "fx": "Teleport",
+     "at": "self",
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.45
+     ],
+     "size": 1.4
+    }
+   ],
+   "element": "psychic",
+   "screen": {
+    "flash": "#ffe0ff"
+   },
+   "sfx": "Teleport"
+  },
+  "TeleportBeam": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "TeleportBeam",
+     "at": "target",
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.45
+     ],
+     "size": 1.4
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Teleport"
+  },
+  "Spotlight": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SpotLightsRainbow",
+     "at": "target",
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.45
+     ],
+     "size": 1.4
+    }
+   ],
+   "element": "normal",
+   "sfx": "Morning Sun"
+  },
+  "FollowMe": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FollowMe",
+     "at": "self",
+     "size": 0.5
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Follow Me"
+  },
+  "CallForFamily": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "CallingBell",
+     "at": "self",
+     "size": 0.9
+    },
+    {
+     "fx": "FollowMe",
+     "at": "self",
+     "size": 0.4,
+     "par": true,
+     "delay": 0.3,
+     "off": [
+      0.3,
+      -0.2
+     ]
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Helping Hand"
+  },
+  "ChantingBell": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "ChantingBell",
+     "at": "self",
+     "size": 1.1,
+     "mirror": false
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Heal Bell"
+  },
+  "Recover": {
+   "body": "rise",
+   "steps": [
+    {
+     "fx": "GoldenRingRise",
+     "at": "self",
+     "size": 1.0,
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.45
+     ]
+    },
+    {
+     "fx": "Heal1",
+     "at": "self",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.2
+    }
+   ],
+   "element": "heal",
+   "sfx": "Recover"
+  },
+  "Softboiled": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Egg",
+     "at": "self",
+     "size": 0.3,
+     "off": [
+      0,
+      -0.3
+     ]
+    },
+    {
+     "fx": "Softboiled",
+     "at": "self",
+     "size": 1.0
+    }
+   ],
+   "element": "heal",
+   "sfx": "Soft-Boiled"
+  },
+  "MilkDrink": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "MilkDrink",
+     "at": "self",
+     "size": 0.9
+    }
+   ],
+   "element": "heal",
+   "sfx": "Milk Drink"
+  },
+  "Rest": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Nightmare",
+     "at": "self",
+     "size": 0.5,
+     "off": [
+      0.3,
+      -0.3
+     ],
+     "mirror": false,
+     "tint": "#c0d8ff"
+    },
+    {
+     "fx": "Heal1",
+     "at": "self",
+     "size": 0.9
+    },
+    {
+     "fx": "BubblesRising",
+     "at": "self",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "heal",
+   "sfx": "Rest"
+  },
+  "Heal": {
+   "body": "rise",
+   "steps": [
+    {
+     "fx": "Heal1",
+     "at": "self",
+     "size": 0.9
+    },
+    {
+     "fx": "GoldenRingRise",
+     "at": "self",
+     "size": 0.9,
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.45
+     ],
+     "par": true
+    }
+   ],
+   "element": "heal",
+   "sfx": "Recover"
+  },
+  "HealBench": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "HealingCall",
+     "at": "self",
+     "size": 1.0,
+     "mirror": false
+    },
+    {
+     "fx": "Heal1",
+     "at": "own_bench",
+     "size": 0.7
+    }
+   ],
+   "element": "heal",
+   "sfx": "Heal Bell"
+  },
+  "Agility": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SpeedLines",
+     "at": "self",
+     "size": 1.2,
+     "loops": 2
+    },
+    {
+     "fx": "QuickPowerUp",
+     "at": "self",
+     "size": 1.0,
+     "par": true
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "normal",
+   "sfx": "Agility"
+  },
+  "SwordsDance": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "SwordsDance",
+     "at": "self",
+     "size": 0.5,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.25
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "normal",
+   "sfx": "Swords Dance"
+  },
+  "PowerUp": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "PoweringUp",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "normal",
+   "sfx": "Bulk Up"
+  },
+  "PowerUpRings": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "PowerUpRings",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "normal",
+   "sfx": "Stockpile"
+  },
+  "PowerUpLights": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "PowerUpLights",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "normal",
+   "sfx": "Cosmic Power"
+  },
+  "Focus": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "PowerUpSpinningCircles",
+     "at": "self",
+     "size": 0.9
+    },
+    {
+     "fx": "GlowGrowShrink/002",
+     "at": "self",
+     "size": 0.6,
+     "par": true,
+     "delay": 0.2
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Focus Energy"
+  },
+  "Harden": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "DefenceCurl",
+     "at": "self",
+     "size": 0.7
+    },
+    {
+     "fx": "SelfPolishPowerUp",
+     "at": "self",
+     "size": 1.0,
+     "par": true
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "metal",
+   "sfx": "Harden"
+  },
+  "IronDefense": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "SelfPolishPowerUp",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "GlowGrowShrink/000",
+     "at": "self",
+     "size": 0.8,
+     "par": true,
+     "tint": "#d0e0ff"
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "metal",
+   "sfx": "Iron Defense"
+  },
+  "Withdraw": {
+   "body": "shrink",
+   "steps": [
+    {
+     "fx": "ShellArmour",
+     "at": "self",
+     "size": 0.9
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "metal",
+   "sfx": "Withdraw"
+  },
+  "Protect": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Protect",
+     "at": "self",
+     "size": 1.1
+    }
+   ],
+   "element": "normal",
+   "sfx": "Protect"
+  },
+  "Barrier": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "Protect",
+     "at": "self",
+     "size": 1.1,
+     "hue": 150
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Barrier"
+  },
+  "Block": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Block",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "normal",
+   "sfx": "Block"
+  },
+  "Endure": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "PowerUpRings",
+     "at": "self",
+     "size": 1.0,
+     "hue": -160
+    }
+   ],
+   "element": "normal",
+   "sfx": "Endure"
+  },
+  "Minimize": {
+   "body": "shrink",
+   "steps": [
+    {
+     "fx": "GenericSelfPulseIn",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "GenericSelfPulseIn2",
+     "at": "self",
+     "size": 0.7,
+     "par": true,
+     "delay": 0.15
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "normal",
+   "sfx": "Minimize"
+  },
+  "Detect": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "MiniIcons/Alert",
+     "at": "self",
+     "size": 0.5,
+     "off": [
+      0.25,
+      -0.35
+     ]
+    },
+    {
+     "fx": "Glow1",
+     "at": "self",
+     "size": 0.6
+    }
+   ],
+   "element": "normal",
+   "sfx": "Detect"
+  },
+  "Foresight": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Foresight",
+     "at": "target",
+     "size": 0.6,
+     "mirror": false
+    }
+   ],
+   "element": "normal",
+   "sfx": "Foresight"
+  },
+  "LockOn": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "LockOn",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "sfx": "Lock On"
+  },
+  "MindReader": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MindReader/000",
+     "at": "target",
+     "size": 0.6
+    },
+    {
+     "fx": "MindReader/001",
+     "at": "target",
+     "size": 1.3,
+     "par": true,
+     "delay": 0.25
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Mind Reader"
+  },
+  "MeanLook": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MeanLook",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "dark",
+   "screen": {
+    "dim": 0.3
+   },
+   "sfx": "Mean Look"
+  },
+  "Glare": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MindReader/000",
+     "at": "self",
+     "size": 0.5,
+     "off": [
+      0,
+      -0.2
+     ]
+    },
+    {
+     "fx": "MeanLook",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.2
+    }
+   ],
+   "element": "dark",
+   "screen": {
+    "dim": 0.25
+   },
+   "sfx": "Glare"
+  },
+  "ScaryFace": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "ScaryFace",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "StatDown",
+     "at": "target",
+     "delay": 0.3,
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Fall Down"
+    }
+   ],
+   "element": "dark",
+   "sfx": "Scary Face"
+  },
+  "Taunt": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Taunt/000",
+     "at": "self",
+     "size": 0.5,
+     "off": [
+      0.3,
+      -0.3
+     ]
+    },
+    {
+     "fx": "Taunt/001",
+     "at": "target",
+     "size": 0.5,
+     "off": [
+      0.25,
+      -0.3
+     ]
+    }
+   ],
+   "element": "dark",
+   "sfx": "Taunt"
+  },
+  "Torment": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Torment",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "dark",
+   "sfx": "Torment"
+  },
+  "Question": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MiniIcons/Questioning",
+     "at": "target",
+     "size": 0.4,
+     "off": [
+      0,
+      -0.35
+     ],
+     "mirror": false
+    }
+   ],
+   "element": "normal",
+   "sfx": "Mimic"
+  },
+  "Exclaim": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "MiniIcons/000",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0,
+      -0.35
+     ],
+     "mirror": false
+    }
+   ],
+   "element": "normal",
+   "sfx": "Foresight"
+  },
+  "Cheer": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Confetti",
+     "at": "self",
+     "size": 1.2
+    },
+    {
+     "fx": "MiniIcons/LoudCheer",
+     "at": "self",
+     "size": 0.6,
+     "off": [
+      0,
+      -0.4
+     ],
+     "mirror": false,
+     "par": true
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Helping Hand"
+  },
+  "Sweat": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MiniIcons/Phew",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.25,
+      -0.35
+     ],
+     "mirror": false
+    }
+   ],
+   "element": "normal",
+   "sfx": "Teeter Dance"
+  },
+  "Anger": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "MiniIcons/Aggravated",
+     "at": "self",
+     "size": 0.5,
+     "off": [
+      0.25,
+      -0.35
+     ]
+    },
+    {
+     "fx": "MiniRedPowerup",
+     "at": "self",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "sfx": "Rage"
+  },
+  "Cry": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Crying",
+     "at": "self",
+     "size": 0.8,
+     "off": [
+      0,
+      -0.2
+     ],
+     "mirror": false
+    }
+   ],
+   "element": "normal",
+   "sfx": "Fake Tears"
+  },
+  "Panic": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Panic",
+     "at": "self",
+     "size": 0.8,
+     "off": [
+      0,
+      -0.25
+     ],
+     "mirror": false
+    }
+   ],
+   "element": "normal",
+   "sfx": "Teeter Dance"
+  },
+  "Bounce": {
+   "body": "leap",
+   "steps": [
+    {
+     "fx": "CatKick",
+     "at": "target",
+     "size": 0.6
+    },
+    {
+     "fx": "SimpleAttack",
+     "at": "target",
+     "par": true,
+     "size": 0.8
+    }
+   ],
+   "element": "normal",
+   "react": "squash",
+   "sfx": "Bounce"
+  },
+  "Hidden Power": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FallingLetters",
+     "at": "target",
+     "size": 1.1,
+     "mirror": false
+    },
+    {
+     "fx": "PsychicAttack",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Hidden Power"
+  },
+  "BeatUp": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "BeatUp",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 4,
+   "sfx": "Beat Up 1hit"
+  },
+  "GangUp": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MultiPunch",
+     "at": "target",
+     "size": 0.8,
+     "count": 3,
+     "stagger": 0.12,
+     "jitter": 0.25
+    }
+   ],
+   "element": "normal",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Beat Up 1hit"
+  },
+  "Pickup": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Twinkle",
+     "at": "self",
+     "size": 0.6,
+     "off": [
+      0,
+      0.3
+     ]
+    }
+   ],
+   "element": "normal",
+   "sfx": "Recycle"
+  },
+  "Search": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Foresight",
+     "at": "self",
+     "size": 0.5,
+     "mirror": false,
+     "off": [
+      0.2,
+      -0.25
+     ]
+    }
+   ],
+   "element": "normal",
+   "sfx": "Odor Sleuth"
+  },
+  "Draw": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Glow3",
+     "at": "self",
+     "size": 0.6,
+     "off": [
+      0,
+      -0.2
+     ]
+    }
+   ],
+   "element": "normal",
+   "sfx": "Recycle"
+  },
+  "Present": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Sack",
+     "at": "travel",
+     "arc": 90,
+     "spin": 360,
+     "size": 0.25
+    },
+    {
+     "fx": "HatchFlash",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "Confetti",
+     "at": "target",
+     "size": 1.2,
+     "par": true
+    }
+   ],
+   "element": "fairy",
+   "screen": {
+    "flash": "#fff8e0"
+   },
+   "sfx": "Present"
+  },
+  "Fling": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "RockThrow",
+     "at": "travel",
+     "arc": 80,
+     "spin": 540,
+     "size": 0.3
+    },
+    {
+     "fx": "SimpleAttack",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "normal",
+   "react": "lift",
+   "sfx": "Fling"
+  },
+  "Smokescreen": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Smoke",
+     "at": "target",
+     "size": 1.2
+    },
+    {
+     "fx": "Smoke",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.15,
+     "off": [
+      0.2,
+      0.15
+     ]
+    }
+   ],
+   "element": "normal",
+   "sfx": "Smokescreen"
+  },
+  "SmokeEscape": {
+   "body": "vanish",
+   "steps": [
+    {
+     "fx": "SmokeBombEscape",
+     "at": "self",
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "sfx": "In-Battle Switch Flee Run"
+  },
+  "Switch": {
+   "body": "vanish",
+   "steps": [
+    {
+     "fx": "SmokePuff",
+     "at": "self",
+     "size": 0.6
+    },
+    {
+     "fx": "GenericPulseOut",
+     "at": "self",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "sfx": "In-Battle Recall Switch Pokeball"
+  },
+  "Copy": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MirrorShot/000",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "MirrorShot/001",
+     "at": "self",
+     "size": 0.9
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Mimic"
+  },
+  "Counter": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MirrorShot/002",
+     "at": "self",
+     "size": 0.4
+    },
+    {
+     "fx": "PowerfulHit",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Counter"
+  },
+  "MirrorShot": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "MirrorShot/002",
+     "at": "travel",
+     "size": 0.3
+    },
+    {
+     "fx": "MirrorShot/001",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "normal",
+   "sfx": "Mirror Shot"
+  },
+  "Moonlight": {
+   "body": "rise",
+   "steps": [
+    {
+     "fx": "Moonlight/001",
+     "at": "self",
+     "size": 1.0,
+     "off": [
+      0,
+      -0.3
+     ]
+    },
+    {
+     "fx": "Moonlight/000",
+     "at": "self",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.3
+    }
+   ],
+   "element": "fairy",
+   "screen": {
+    "dim": 0.45
+   },
+   "sfx": "Moonlight"
+  },
+  "MoonAttack": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Moonlight/001",
+     "at": "self",
+     "size": 0.8,
+     "off": [
+      0,
+      -0.4
+     ],
+     "dur": 0.5
+    },
+    {
+     "fx": "Moonlight/002",
+     "at": "travel",
+     "size": 0.5
+    },
+    {
+     "fx": "Twinkle",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fairy",
+   "screen": {
+    "dim": 0.4
+   },
+   "sfx": "Moonlight"
+  },
+  "SunnyDay": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SunnyDay",
+     "at": "screen",
+     "size": 1.6,
+     "off": [
+      0,
+      -0.45
+     ]
+    }
+   ],
+   "element": "fire",
+   "screen": {
+    "flash": "#fff4c0"
+   },
+   "sfx": "Sunny Day"
+  },
+  "Glitter": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FairySparkles",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "Twinkle",
+     "at": "self",
+     "size": 0.7,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "fairy",
+   "sfx": "Lucky Chant"
+  },
+  "Flash": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Flash",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "normal",
+   "screen": {
+    "flash": "#ffffff"
+   },
+   "sfx": "Flash"
+  },
+  "LightBall": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "WhiteBallOrb",
+     "at": "travel",
+     "size": 0.35
+    },
+    {
+     "fx": "Flash",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "sfx": "Flash Cannon"
+  },
+  "EnergyOut": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "HugeEnergyOut",
+     "at": "self",
+     "size": 1.3
+    }
+   ],
+   "element": "normal",
+   "sfx": "Judgment"
+  },
+  "EnergyRings": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "EnergyRings",
+     "at": "self",
+     "size": 0.8
+    }
+   ],
+   "element": "normal",
+   "sfx": "Conversion"
+  },
+  "EnergyUp": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "EnergyUpLarge",
+     "at": "self",
+     "size": 0.9
+    },
+    {
+     "fx": "PowerUpAbsorb",
+     "at": "self",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "sfx": "Focus Energy"
+  },
+  "EnergyUpSmall": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "EnergyUpMid",
+     "at": "self",
+     "size": 0.8
+    }
+   ],
+   "element": "normal",
+   "sfx": "Focus Energy",
+   "sfx_pitch": 1.15
+  },
+  "Absorb": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "GreenGlint",
+     "at": "target",
+     "size": 0.6
+    },
+    {
+     "fx": "AbsorbingLights",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    },
+    {
+     "fx": "GreenSparkle",
+     "at": "return",
+     "size": 0.3,
+     "count": 3,
+     "stagger": 0.1
+    },
+    {
+     "fx": "Heal1",
+     "at": "self",
+     "size": 0.7
+    }
+   ],
+   "element": "grass",
+   "sfx": "Absorb"
+  },
+  "GenericBeam": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "WhiteLineBeam",
+     "at": "beam",
+     "size": 0.35,
+     "dur": 0.5
+    },
+    {
+     "fx": "GenericPulseOut",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.15
+    }
+   ],
+   "element": "normal",
+   "sfx": "Charge Beam"
+  },
+  "ShieldBreak": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "ShieldBreak/000",
+     "at": "target",
+     "size": 0.7
+    },
+    {
+     "fx": "ShieldBreak/001",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "sfx": "Brick Break"
+  },
+  "EnergyRemove": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "ShieldBreak/001",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "LightPowerUpMini",
+     "at": "return",
+     "size": 0.4
+    }
+   ],
+   "element": "normal",
+   "sfx": "Knock Off"
+  },
+  "Devolve": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SpiralSpinIn",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "GenericSelfPulseIn",
+     "at": "target",
+     "size": 1.1,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "sfx": "Transform"
+  },
+  "DataStrike": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FuturisticDataStrike",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "normal",
+   "sfx": "Lock On"
+  },
+  "Misc": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "GenericPulseOut2",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "sfx": "Disable"
+  },
+  "Punch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Fist",
+     "at": "target",
+     "size": 0.45
+    },
+    {
+     "fx": "QuickBurst",
+     "at": "target",
+     "size": 0.7,
+     "par": true,
+     "delay": 0.05
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Mach Punch"
+  },
+  "MegaPunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MegaPunch",
+     "at": "target",
+     "size": 1.3
+    }
+   ],
+   "element": "fighting",
+   "power": "heavy",
+   "screen": {
+    "shake": 5
+   },
+   "sfx": "Mega Punch"
+  },
+  "MegaKick": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MegaKick",
+     "at": "target",
+     "size": 1.3
+    }
+   ],
+   "element": "fighting",
+   "power": "heavy",
+   "screen": {
+    "shake": 5
+   },
+   "sfx": "Mega Kick"
+  },
+  "Kick": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DoubleKick",
+     "at": "target",
+     "size": 0.45
+    },
+    {
+     "fx": "QuickBurst",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.05
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Low Kick",
+   "sfx_pitch": 1.05
+  },
+  "DoubleKick": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DoubleKick",
+     "at": "target",
+     "size": 0.45,
+     "count": 2,
+     "stagger": 0.2,
+     "jitter": 0.2
+    },
+    {
+     "fx": "QuickBurst",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "fighting",
+   "react": "multi",
+   "hits": 2,
+   "sfx": "Double Kick"
+  },
+  "TripleKick": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DoubleKick",
+     "at": "target",
+     "size": 0.45,
+     "count": 3,
+     "stagger": 0.15,
+     "jitter": 0.25
+    },
+    {
+     "fx": "MegaKick",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fighting",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Triple Kick"
+  },
+  "CatKick": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "CatKick",
+     "at": "target",
+     "size": 0.6
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Low Kick"
+  },
+  "CometPunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MultiPunch",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fighting",
+   "react": "multi",
+   "hits": 4,
+   "sfx": "Comet Punch 1hit"
+  },
+  "RapidPunches": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "RapidPunches",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fighting",
+   "react": "multi",
+   "hits": 5,
+   "sfx": "Arm Thrust 1hit"
+  },
+  "DynamicPunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DynamicPunch",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "fighting",
+   "react": "spin",
+   "power": "heavy",
+   "screen": {
+    "shake": 7
+   },
+   "sfx": "Dynamic Punch"
+  },
+  "DizzyPunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DizzyPunch",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fighting",
+   "react": "spin",
+   "sfx": "Dizzy Punch"
+  },
+  "DrainPunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DrainPunch",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "LightPowerUpMini",
+     "at": "return",
+     "size": 0.4
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Drain Punch"
+  },
+  "SteelPunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "SteelRockPunch",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "metal",
+   "power": "heavy",
+   "sfx": "Meteor Mash"
+  },
+  "FistSlam": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "FistSlam",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fighting",
+   "react": "squash",
+   "power": "heavy",
+   "screen": {
+    "shake": 6
+   },
+   "sfx": "Hammer Arm"
+  },
+  "GrabCrush": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "GrabCrush",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "fighting",
+   "react": "squeeze",
+   "sfx": "Crush Grip"
+  },
+  "CrossChop": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "CrossChop",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "PowerfulHit",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "fighting",
+   "power": "heavy",
+   "sfx": "Cross Chop"
+  },
+  "KarateChop": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "CrossChop",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Karate Chop"
+  },
+  "ForcePalm": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "ForcePalm",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Force Palm"
+  },
+  "Palm": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Palm",
+     "at": "target",
+     "size": 0.5
+    },
+    {
+     "fx": "QuickBurst",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Force Palm"
+  },
+  "OneSlap": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "OneSlap",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Double Slap 1hit",
+   "sfx_pitch": 0.95
+  },
+  "WakeUpSlap": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "WakeUpSlap",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Wake Up Slap"
+  },
+  "SeismicToss": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Slam",
+     "at": "target",
+     "size": 1.2
+    },
+    {
+     "at": "quake",
+     "dur": 0.5,
+     "par": true
+    },
+    {
+     "fx": "SandAttack",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.2,
+     "off": [
+      0,
+      0.3
+     ]
+    }
+   ],
+   "element": "fighting",
+   "react": "lift",
+   "power": "heavy",
+   "screen": {
+    "shake": 8
+   },
+   "sfx": "Seismic Toss"
+  },
+  "Submission": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "GrabCrush",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "Slam",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.4
+    }
+   ],
+   "element": "fighting",
+   "react": "squash",
+   "power": "heavy",
+   "screen": {
+    "shake": 5
+   },
+   "sfx": "Submission"
+  },
+  "RockSmash": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MegaPunch",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "RockSmash",
+     "at": "target",
+     "size": 1.1,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "rock",
+   "sfx": "Rock Smash"
+  },
+  "RockThrow": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "RockThrow",
+     "at": "travel",
+     "arc": 80,
+     "spin": 540,
+     "size": 0.3
+    },
+    {
+     "fx": "RockSmash",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "RockDebris",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "rock",
+   "sfx": "Rock Throw"
+  },
+  "RockSlide": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "RockfallMed",
+     "at": "drop",
+     "anchor": "bottom",
+     "size": 1.2,
+     "time": 0.0,
+     "off": [
+      0,
+      0.4
+     ]
+    },
+    {
+     "fx": "RockDebris",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "rock",
+   "react": "squash",
+   "screen": {
+    "shake": 5
+   },
+   "bench_fx": {
+    "fx": "RockDebris",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Rock Slide"
+  },
+  "Avalanche": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "RockFall2",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.3,
+     "off": [
+      0,
+      0.4
+     ]
+    },
+    {
+     "fx": "RockSmash",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "at": "quake",
+     "dur": 0.5,
+     "par": true
+    }
+   ],
+   "element": "rock",
+   "react": "squash",
+   "power": "heavy",
+   "screen": {
+    "shake": 9
+   },
+   "bench_fx": {
+    "fx": "RockDebris",
+    "at": "target",
+    "size": 0.8
+   },
+   "sfx": "Avalanche"
+  },
+  "RockTomb": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "RockTomb",
+     "at": "target",
+     "size": 1.3
+    }
+   ],
+   "element": "rock",
+   "sfx": "Rock Tomb"
+  },
+  "StoneEdge": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "StoneEdge",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.2,
+     "off": [
+      0,
+      0.45
+     ]
+    }
+   ],
+   "element": "rock",
+   "power": "heavy",
+   "screen": {
+    "shake": 6
+   },
+   "sfx": "Stone Edge"
+  },
+  "AncientPower": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "AncientPower",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "RockThrow",
+     "at": "travel",
+     "arc": 60,
+     "spin": 360,
+     "size": 0.3
+    },
+    {
+     "fx": "RockSmash",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "rock",
+   "sfx": "Ancient Power"
+  },
+  "RockBlast": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "RockBlast/PowerUp",
+     "at": "self",
+     "size": 0.7
+    },
+    {
+     "fx": "RockBlast/Projectile",
+     "at": "travel",
+     "spin": 360,
+     "size": 0.4
+    },
+    {
+     "fx": "RockBlast/Explosion",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "rock",
+   "power": "heavy",
+   "screen": {
+    "shake": 5
+   },
+   "sfx": "Rock Blast 1hit"
+  },
+  "Earthquake": {
+   "body": "shake",
+   "steps": [
+    {
+     "at": "quake",
+     "dur": 1.0
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 1.3,
+     "par": true
+    },
+    {
+     "fx": "RockChips",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.15
+    }
+   ],
+   "element": "ground",
+   "react": "shake",
+   "power": "heavy",
+   "screen": {
+    "shake": 10
+   },
+   "bench_fx": {
+    "fx": "RockScatter",
+    "at": "target",
+    "size": 0.8
+   },
+   "sfx": "Earthquake"
+  },
+  "Magnitude": {
+   "body": "shake",
+   "steps": [
+    {
+     "at": "quake",
+     "dur": 0.8
+    },
+    {
+     "fx": "RockScatter",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.1
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "ground",
+   "react": "shake",
+   "screen": {
+    "shake": 7
+   },
+   "bench_fx": {
+    "fx": "RockScatter",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Magnitude"
+  },
+  "Fissure": {
+   "body": "shake",
+   "steps": [
+    {
+     "at": "quake",
+     "dur": 1.0
+    },
+    {
+     "fx": "SandFall",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.4,
+     "off": [
+      0,
+      0.45
+     ],
+     "par": true
+    },
+    {
+     "fx": "RockDebris",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.2
+    }
+   ],
+   "element": "ground",
+   "react": "shake",
+   "power": "heavy",
+   "screen": {
+    "shake": 12
+   },
+   "bench_fx": {
+    "fx": "RockDebris",
+    "at": "target",
+    "size": 0.8
+   },
+   "sfx": "Fissure"
+  },
+  "Dig": {
+   "body": "vanish_strike",
+   "steps": [
+    {
+     "fx": "DustBurst",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "RockScatter",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "DustBurst",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "off": [
+      0,
+      0.3
+     ]
+    }
+   ],
+   "element": "ground",
+   "sfx": "Dig"
+  },
+  "SandAttack": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SandAttack",
+     "at": "travel",
+     "size": 0.4
+    },
+    {
+     "fx": "SandAttack",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "ground",
+   "sfx": "Sand Attack"
+  },
+  "Sandstorm": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SandTomb",
+     "at": "target",
+     "size": 1.2
+    },
+    {
+     "fx": "Gust",
+     "at": "target",
+     "size": 1.1,
+     "par": true,
+     "tint": "#e0b070"
+    }
+   ],
+   "element": "ground",
+   "react": "shake",
+   "bench_fx": {
+    "fx": "SandAttack",
+    "at": "target",
+    "size": 0.8
+   },
+   "sfx": "Sandstorm"
+  },
+  "SandTomb": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SandTomb",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "ground",
+   "sfx": "Sand Tomb"
+  },
+  "MudSlap": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MudBall",
+     "at": "travel",
+     "size": 0.3,
+     "count": 2,
+     "stagger": 0.1,
+     "arc": 30
+    },
+    {
+     "fx": "Bomb",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "ground",
+   "sfx": "Mud Slap"
+  },
+  "MudSport": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Bomb",
+     "at": "target",
+     "size": 0.9,
+     "count": 3,
+     "stagger": 0.15,
+     "jitter": 0.25
+    }
+   ],
+   "element": "ground",
+   "sfx": "Mud Sport"
+  },
+  "Bonemerang": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Bonemerang/000",
+     "at": "travel",
+     "arc": -60,
+     "spin": 900,
+     "size": 0.35
+    },
+    {
+     "fx": "Bonemerang/001",
+     "at": "target",
+     "size": 0.8
+    },
+    {
+     "fx": "Bonemerang/000",
+     "at": "return",
+     "arc": 60,
+     "spin": 900,
+     "size": 0.35,
+     "par": true
+    }
+   ],
+   "element": "ground",
+   "sfx": "Bonemerang 2hits"
+  },
+  "BoneClub": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Bonemerang/000",
+     "at": "target",
+     "size": 0.5,
+     "spin": 720,
+     "dur": 0.3
+    },
+    {
+     "fx": "Bonemerang/001",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "ground",
+   "sfx": "Bone Club"
+  },
+  "BoneRush": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Bonemerang/000",
+     "at": "target",
+     "size": 0.45,
+     "spin": 720,
+     "count": 3,
+     "stagger": 0.15,
+     "jitter": 0.2
+    },
+    {
+     "fx": "Bonemerang/001",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "ground",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Bone Rush 1hit"
+  },
+  "Ember": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FireDart",
+     "at": "travel",
+     "orient": true,
+     "size": 0.35
+    },
+    {
+     "fx": "Ember",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "FireSparks",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "fire",
+   "sfx": "Ember"
+  },
+  "Flare": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Ember",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "Embers",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    },
+    {
+     "fx": "MiniCombustion",
+     "at": "target",
+     "size": 0.4,
+     "par": true,
+     "delay": 0.1,
+     "count": 2,
+     "stagger": 0.1,
+     "jitter": 0.2
+    }
+   ],
+   "element": "fire",
+   "sfx": "Ember",
+   "sfx_pitch": 1.1
+  },
+  "Fireball": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FireOrb",
+     "at": "travel",
+     "size": 0.35,
+     "spin": 360
+    },
+    {
+     "fx": "FireballCombust",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "FireSparks",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "fire",
+   "sfx": "Ember",
+   "sfx_pitch": 0.9
+  },
+  "BigFireball": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "FireOrb",
+     "at": "travel",
+     "size": 0.55,
+     "grow": [
+      0.6,
+      1.2
+     ]
+    },
+    {
+     "fx": "Combustion2",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "FireBursts",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "fire",
+   "sfx": "Overheat",
+   "sfx_pitch": 1.05
+  },
+  "Flamethrower": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FireBullet",
+     "at": "travel",
+     "orient": true,
+     "size": 0.55,
+     "count": 6,
+     "stagger": 0.06
+    },
+    {
+     "fx": "FireBursts",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "Embers",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "fire",
+   "react": "multi",
+   "hits": 4,
+   "sfx": "Flamethrower"
+  },
+  "FireBlast": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "FireRing",
+     "at": "self",
+     "size": 0.7,
+     "dur": 0.45
+    },
+    {
+     "fx": "FireBlast/000",
+     "at": "travel",
+     "spin": 720,
+     "size": 0.55
+    },
+    {
+     "fx": "FireBlast/001",
+     "at": "target",
+     "size": 1.4
+    },
+    {
+     "fx": "Embers",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.3
+    }
+   ],
+   "element": "fire",
+   "power": "heavy",
+   "screen": {
+    "flash": "#ffb060",
+    "shake": 6
+   },
+   "sfx": "Fire Blast"
+  },
+  "FireSpin": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "FireRing",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "FireSpin",
+     "at": "target",
+     "size": 1.1,
+     "par": true
+    },
+    {
+     "fx": "FireSpinningTower",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.0,
+     "off": [
+      0,
+      0.4
+     ],
+     "par": true,
+     "delay": 0.3
+    }
+   ],
+   "element": "fire",
+   "react": "spin",
+   "bench_fx": {
+    "fx": "Ember",
+    "at": "target",
+    "size": 0.6
+   },
+   "sfx": "Fire Spin"
+  },
+  "FlamePillar": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FlameColumn",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.3,
+     "off": [
+      0,
+      0.45
+     ]
+    },
+    {
+     "fx": "UpwardShootingFire",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.2,
+     "off": [
+      0.2,
+      0.45
+     ],
+     "par": true,
+     "delay": 0.1
+    },
+    {
+     "fx": "Embers",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "fire",
+   "sfx": "Lava Plume"
+  },
+  "FlameWheel": {
+   "body": "spin",
+   "steps": [
+    {
+     "fx": "FlameWheel",
+     "at": "travel",
+     "size": 0.6,
+     "spin": 720,
+     "time": 0.18
+    },
+    {
+     "fx": "FlameWheel",
+     "at": "target",
+     "size": 1.0,
+     "spin": 360
+    },
+    {
+     "fx": "FireSparks",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "fire",
+   "sfx": "Flame Wheel"
+  },
+  "FirePunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MegaPunch",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "FireBursts",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.05
+    }
+   ],
+   "element": "fire",
+   "sfx": "Fire Punch"
+  },
+  "BlazeKick": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "BlazeKick",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fire",
+   "sfx": "Blaze Kick"
+  },
+  "FireFang": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "FireFang",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fire",
+   "sfx": "Fire Fang"
+  },
+  "FireClaw": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "FireSwipes",
+     "at": "target",
+     "orient": true,
+     "size": 1.0
+    },
+    {
+     "fx": "FireSweep",
+     "at": "target",
+     "par": true,
+     "size": 0.7,
+     "delay": 0.1
+    }
+   ],
+   "element": "fire",
+   "sfx": "Fire Fang"
+  },
+  "FireTail": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "FireSweep",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "Ember",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.1
+    },
+    {
+     "fx": "FireSparks",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "fire",
+   "sfx": "Flame Wheel"
+  },
+  "Inferno": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "Inferno",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "fire",
+   "power": "heavy",
+   "screen": {
+    "flash": "#ff8040",
+    "shake": 6
+   },
+   "bench_fx": {
+    "fx": "FireBursts",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Overheat"
+  },
+  "Eruption": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "Eruption",
+     "at": "target",
+     "size": 1.4
+    },
+    {
+     "at": "quake",
+     "dur": 0.6,
+     "par": true
+    }
+   ],
+   "element": "fire",
+   "react": "shake",
+   "power": "heavy",
+   "screen": {
+    "shake": 12,
+    "flash": "#ff8040"
+   },
+   "bench_fx": {
+    "fx": "HotRocks/001",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Eruption"
+  },
+  "HotRocks": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "HotRocks/000",
+     "at": "travel",
+     "arc": 90,
+     "size": 0.45
+    },
+    {
+     "fx": "HotRocks/001",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "fire",
+   "sfx": "Lava Plume"
+  },
+  "Magma": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "HotRocks/000",
+     "at": "travel",
+     "arc": 90,
+     "size": 0.45
+    },
+    {
+     "fx": "HotRocks/001",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "FireBursts",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "fire",
+   "power": "heavy",
+   "screen": {
+    "shake": 7
+   },
+   "sfx": "Magma Storm"
+  },
+  "FireWall": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FireSpinningTower",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.2,
+     "off": [
+      0,
+      0.45
+     ]
+    },
+    {
+     "fx": "UpwardShootingFire",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.2,
+     "off": [
+      0.25,
+      0.45
+     ],
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "fire",
+   "sfx": "Fire Spin"
+  },
+  "FireBurst": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FireBurst",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "fire",
+   "sfx": "Lava Plume"
+  },
+  "Combustion": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "Combustion2",
+     "at": "target",
+     "size": 1.2
+    },
+    {
+     "fx": "MiniExplosions",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.15
+    }
+   ],
+   "element": "fire",
+   "sfx": "Lava Plume"
+  },
+  "Sunburn": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SunnyDay",
+     "at": "screen",
+     "size": 1.4,
+     "off": [
+      0,
+      -0.45
+     ]
+    },
+    {
+     "fx": "FireBursts",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fire",
+   "screen": {
+    "flash": "#fff0b0"
+   },
+   "sfx": "Heat Wave"
+  },
+  "WillOWisp": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "DarkFlame/DarkFlame2",
+     "at": "travel",
+     "size": 0.35,
+     "arc": -40,
+     "count": 3,
+     "stagger": 0.1
+    },
+    {
+     "fx": "Willowisp",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "ghost",
+   "sfx": "Will O Wisp"
+  },
+  "BlueFlame": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "BlueComet",
+     "at": "travel",
+     "orient": true,
+     "size": 0.5
+    },
+    {
+     "fx": "BlueFlame",
+     "at": "target",
+     "size": 0.8
+    },
+    {
+     "fx": "DarkFlame/DarkFlame",
+     "at": "target",
+     "size": 1.0,
+     "hue": -70,
+     "par": true
+    }
+   ],
+   "element": "dragon",
+   "sfx": "Will O Wisp"
+  },
+  "DarkFlame": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "DarkFlame/DarkFlame2",
+     "at": "travel",
+     "size": 0.35
+    },
+    {
+     "fx": "DarkFlame/DarkFlame",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "dark",
+   "sfx": "Will O Wisp"
+  },
+  "SacredFire": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "FireBlast/000",
+     "at": "travel",
+     "spin": 720,
+     "size": 0.5,
+     "hue": 30
+    },
+    {
+     "fx": "FlameColumn",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.4,
+     "off": [
+      0,
+      0.45
+     ]
+    },
+    {
+     "fx": "FireBlast/001",
+     "at": "target",
+     "size": 1.2,
+     "par": true,
+     "delay": 0.15
+    },
+    {
+     "fx": "Embers",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.3
+    }
+   ],
+   "element": "fire",
+   "power": "heavy",
+   "screen": {
+    "flash": "#ffe0a0",
+    "shake": 6
+   },
+   "sfx": "Sacred Fire"
+  },
+  "FlameStar": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "FlameStar",
+     "at": "travel",
+     "spin": 720,
+     "size": 0.4
+    },
+    {
+     "fx": "Combustion2",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "fire",
+   "sfx": "Flame Wheel"
+  },
+  "HeatWave": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "FireSpin",
+     "at": "target",
+     "size": 1.2
+    },
+    {
+     "fx": "Embers",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    },
+    {
+     "fx": "Smoke",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "tint": "#ffb080"
+    }
+   ],
+   "element": "fire",
+   "bench_fx": {
+    "fx": "Ember",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Heat Wave"
+  },
+  "Bubble": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "BigBubble",
+     "at": "travel",
+     "size": 0.25,
+     "count": 3,
+     "stagger": 0.1,
+     "arc": -20
+    },
+    {
+     "fx": "BubbleBurst",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "BubblePop",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "water",
+   "sfx": "Bubble"
+  },
+  "Bubblebeam": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "BubbleSmall",
+     "at": "travel",
+     "size": 0.2,
+     "count": 9,
+     "stagger": 0.045,
+     "jitter": 0.12
+    },
+    {
+     "fx": "BubbleTrio",
+     "at": "target",
+     "size": 0.8
+    },
+    {
+     "fx": "BubblePop",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "water",
+   "react": "multi",
+   "hits": 3,
+   "bench_fx": {
+    "fx": "BubbleTrio",
+    "at": "target",
+    "size": 0.5
+   },
+   "sfx": "Bubble Beam"
+  },
+  "WaterGun": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "WaterBall",
+     "at": "travel",
+     "size": 0.25,
+     "count": 3,
+     "stagger": 0.08
+    },
+    {
+     "fx": "WaterBallBurst",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "SplashAttack/001",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "water",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Water Gun"
+  },
+  "WaterPulse": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "WaterPulse",
+     "at": "travel",
+     "orient": true,
+     "size": 0.5
+    },
+    {
+     "fx": "BlueRings",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "SplashAttack/002",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "water",
+   "sfx": "Water Pulse"
+  },
+  "HydroPump": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "LightBeam",
+     "at": "beam",
+     "size": 0.6,
+     "tint": "#70b8ff",
+     "dur": 0.8
+    },
+    {
+     "fx": "WaterBall",
+     "at": "travel",
+     "size": 0.3,
+     "count": 4,
+     "stagger": 0.1,
+     "par": true
+    },
+    {
+     "fx": "WaterGeyser",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.3,
+     "off": [
+      0,
+      0.45
+     ],
+     "delay": 0.2,
+     "par": true
+    },
+    {
+     "fx": "SplashAttack/000",
+     "at": "target",
+     "size": 1.2,
+     "par": true,
+     "delay": 0.3
+    }
+   ],
+   "element": "water",
+   "power": "heavy",
+   "screen": {
+    "shake": 6
+   },
+   "sfx": "Hydro Pump"
+  },
+  "Splash": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "WaterGeyser",
+     "at": "self",
+     "anchor": "bottom",
+     "size": 0.9,
+     "off": [
+      0,
+      0.45
+     ]
+    },
+    {
+     "fx": "WaterSplash",
+     "at": "self",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "water",
+   "sfx": "Splash"
+  },
+  "SplashHit": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "WaterBallBurst",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "SplashAttack/001",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "water",
+   "sfx": "Aqua Tail"
+  },
+  "WaterSlash": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "QuickSwipe",
+     "at": "target",
+     "orient": true,
+     "size": 1.0,
+     "tint": "#80c0ff"
+    },
+    {
+     "fx": "SplashAttack/001",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "water",
+   "sfx": "Aqua Jet"
+  },
+  "Waterfall": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DownPour",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.2,
+     "off": [
+      0,
+      0.4
+     ],
+     "dur": 0.6
+    },
+    {
+     "fx": "WaterGeyser",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.2,
+     "off": [
+      0,
+      0.45
+     ]
+    }
+   ],
+   "element": "water",
+   "react": "squash",
+   "power": "heavy",
+   "sfx": "Waterfall"
+  },
+  "Surf": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "WaterGeyser",
+     "at": "screen",
+     "anchor": "bottom",
+     "size": 1.4,
+     "off": [
+      0,
+      0.45
+     ],
+     "count": 3,
+     "stagger": 0.12,
+     "jitter": 0.3
+    },
+    {
+     "fx": "SplashAttack/000",
+     "at": "target",
+     "size": 1.3,
+     "par": true,
+     "delay": 0.25
+    }
+   ],
+   "element": "water",
+   "screen": {
+    "shake": 4
+   },
+   "bench_fx": {
+    "fx": "SplashAttack/001",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Surf"
+  },
+  "TidalWave": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "WaterGeyser",
+     "at": "screen",
+     "anchor": "bottom",
+     "size": 1.6,
+     "off": [
+      0,
+      0.45
+     ],
+     "count": 4,
+     "stagger": 0.1,
+     "jitter": 0.4
+    },
+    {
+     "fx": "BubbleColumn",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.3,
+     "off": [
+      0,
+      0.45
+     ],
+     "par": true,
+     "delay": 0.15
+    },
+    {
+     "fx": "SplashAttack/000",
+     "at": "target",
+     "size": 1.4,
+     "par": true,
+     "delay": 0.25
+    },
+    {
+     "fx": "DownPour",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.3,
+     "off": [
+      0,
+      0.4
+     ],
+     "par": true,
+     "delay": 0.1
+    },
+    {
+     "at": "quake",
+     "dur": 0.6,
+     "par": true
+    }
+   ],
+   "element": "water",
+   "power": "heavy",
+   "screen": {
+    "shake": 9,
+    "dim": 0.2
+   },
+   "bench_fx": {
+    "fx": "WaterBallBurst",
+    "at": "target",
+    "size": 0.8
+   },
+   "sfx": "Water Spout"
+  },
+  "Rain": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "RainStreaks",
+     "at": "target",
+     "size": 0.8,
+     "count": 4,
+     "stagger": 0.1,
+     "jitter": 0.3,
+     "loops": 2
+    },
+    {
+     "fx": "DownPour",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.3,
+     "off": [
+      0,
+      0.4
+     ],
+     "par": true
+    }
+   ],
+   "element": "water",
+   "bench_fx": {
+    "fx": "RainStreaks",
+    "at": "target",
+    "size": 0.6
+   },
+   "sfx": "Rain Dance"
+  },
+  "Whirlpool": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Gust",
+     "at": "target",
+     "size": 1.1,
+     "hue": 170,
+     "tint": "#80c0ff"
+    },
+    {
+     "fx": "AquaRing",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "water",
+   "react": "spin",
+   "sfx": "Whirlpool"
+  },
+  "AquaRing": {
+   "body": "rise",
+   "steps": [
+    {
+     "fx": "AquaRing",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "BubblesRising",
+     "at": "self",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "water",
+   "sfx": "Aqua Ring"
+  },
+  "Octazooka": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Octazooka/001",
+     "at": "travel",
+     "size": 0.3
+    },
+    {
+     "fx": "Octazooka/000",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "water",
+   "sfx": "Octazooka"
+  },
+  "Clamp": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Clamp",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "water",
+   "react": "squeeze",
+   "sfx": "Clamp"
+  },
+  "Crabhammer": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "ViceGrip",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "SplashAttack/001",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.15
+    }
+   ],
+   "element": "water",
+   "react": "squeeze",
+   "sfx": "Crabhammer"
+  },
+  "ViceGrip": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "ViceGrip",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "normal",
+   "react": "squeeze",
+   "sfx": "Vice Grip"
+  },
+  "Guillotine": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Guillotine",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "normal",
+   "power": "heavy",
+   "screen": {
+    "flash": "#ffffff",
+    "shake": 6
+   },
+   "sfx": "Guillotine"
+  },
+  "Steam": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "BlueSmoke",
+     "at": "target",
+     "size": 1.1,
+     "tint": "#e0f0ff"
+    },
+    {
+     "fx": "Smoke",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.15
+    },
+    {
+     "fx": "BubblesRising",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "water",
+   "sfx": "Mist"
+  },
+  "IceBeam": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "LightBeam",
+     "at": "beam",
+     "size": 0.5,
+     "tint": "#a8f0ff",
+     "dur": 0.7
+    },
+    {
+     "fx": "IceDart",
+     "at": "travel",
+     "orient": true,
+     "size": 0.35,
+     "count": 3,
+     "stagger": 0.08,
+     "par": true
+    },
+    {
+     "fx": "IceSparkle",
+     "at": "target",
+     "size": 1.1,
+     "delay": 0.2,
+     "par": true
+    },
+    {
+     "fx": "CyanBurst",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.3
+    }
+   ],
+   "element": "ice",
+   "react": "freeze",
+   "screen": {
+    "flash": "#d8f8ff"
+   },
+   "sfx": "Ice Beam"
+  },
+  "AuroraBeam": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "LightBeam",
+     "at": "beam",
+     "size": 0.55,
+     "hue_cycle": 540,
+     "dur": 0.8
+    },
+    {
+     "fx": "IceSparkle",
+     "at": "target",
+     "size": 1.0,
+     "delay": 0.25,
+     "par": true
+    },
+    {
+     "fx": "RockTombBlueIce",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.3
+    }
+   ],
+   "element": "ice",
+   "react": "freeze",
+   "screen": {
+    "flash": "#f0e0ff"
+   },
+   "sfx": "Aurora Beam"
+  },
+  "IcyWind": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Snowflake",
+     "at": "travel",
+     "size": 0.2,
+     "spin": 540,
+     "count": 5,
+     "stagger": 0.07,
+     "jitter": 0.2
+    },
+    {
+     "fx": "IcyWind/001",
+     "at": "target",
+     "size": 1.1,
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.35
+     ]
+    },
+    {
+     "fx": "IceDust",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "ice",
+   "react": "freeze",
+   "bench_fx": {
+    "fx": "IceDust",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Icy Wind"
+  },
+  "PowderSnow": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Snowflake",
+     "at": "drop",
+     "size": 0.2,
+     "spin": 360,
+     "count": 6,
+     "stagger": 0.08,
+     "jitter": 0.3,
+     "time": 0.35
+    },
+    {
+     "fx": "IceDust",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "IceAttack/001",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "ice",
+   "react": "freeze",
+   "bench_fx": {
+    "fx": "IceDust",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Powder Snow"
+  },
+  "Blizzard": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "Gust",
+     "at": "screen",
+     "size": 1.8,
+     "tint": "#d0f0ff"
+    },
+    {
+     "fx": "Snowflake",
+     "at": "drop",
+     "size": 0.22,
+     "spin": 540,
+     "count": 10,
+     "stagger": 0.06,
+     "jitter": 0.45,
+     "time": 0.35,
+     "par": true
+    },
+    {
+     "fx": "IceSparkle",
+     "at": "target",
+     "size": 1.2,
+     "par": true,
+     "delay": 0.35
+    },
+    {
+     "fx": "IceAttack/000",
+     "at": "target",
+     "size": 1.3,
+     "par": true,
+     "delay": 0.4
+    }
+   ],
+   "element": "ice",
+   "react": "freeze",
+   "power": "heavy",
+   "screen": {
+    "flash": "#e0f8ff",
+    "shake": 6,
+    "dim": 0.25
+   },
+   "bench_fx": {
+    "fx": "Snowflake",
+    "at": "target",
+    "size": 0.3,
+    "spin": 360
+   },
+   "sfx": "Blizzard"
+  },
+  "Freeze": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "RockTombBlueIce",
+     "at": "target",
+     "size": 1.2
+    },
+    {
+     "fx": "IceSparkle",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.4
+    }
+   ],
+   "element": "ice",
+   "react": "freeze",
+   "sfx": "Sheer Cold"
+  },
+  "IceShard": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "IceDart",
+     "at": "travel",
+     "orient": true,
+     "size": 0.4
+    },
+    {
+     "fx": "IceCrash/000",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "IceSparkle",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "ice",
+   "sfx": "Ice Shard"
+  },
+  "Icicle": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "IcicleAttack",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "IceCrash/000",
+     "at": "target",
+     "size": 0.9,
+     "delay": 0.0
+    }
+   ],
+   "element": "ice",
+   "sfx": "Icicle Spear 1hit"
+  },
+  "Hail": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "IceCrash/001",
+     "at": "drop",
+     "size": 0.3,
+     "count": 5,
+     "stagger": 0.09,
+     "jitter": 0.3,
+     "time": 0.3
+    },
+    {
+     "fx": "Hail",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "IceCrash/000",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "ice",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Hail"
+  },
+  "IcePunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MegaPunch",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "IceCrash/000",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.05
+    },
+    {
+     "fx": "IceSparkle",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "ice",
+   "sfx": "Ice Punch"
+  },
+  "IceFang": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "IceFang",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "ice",
+   "sfx": "Ice Fang"
+  },
+  "IceWing": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Feathers",
+     "at": "target",
+     "size": 1.0,
+     "hue": 180,
+     "tint": "#c0f0ff"
+    },
+    {
+     "fx": "IceAttack/001",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "ice",
+   "sfx": "Icy Wind",
+   "sfx_pitch": 1.1
+  },
+  "SheerCold": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "IceDust",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "RockTombBlueIce",
+     "at": "target",
+     "size": 1.3
+    },
+    {
+     "fx": "IceAttack/000",
+     "at": "target",
+     "size": 1.4,
+     "par": true,
+     "delay": 0.3
+    },
+    {
+     "fx": "CyanBurst",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.5
+    }
+   ],
+   "element": "ice",
+   "react": "freeze",
+   "power": "heavy",
+   "screen": {
+    "flash": "#c0f0ff",
+    "dim": 0.45,
+    "shake": 8
+   },
+   "sfx": "Sheer Cold"
+  },
+  "Spark": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Spark",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "SparkScatter",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "bench_fx": {
+    "fx": "SparkScatter",
+    "at": "target",
+    "size": 0.6
+   },
+   "sfx": "Spark"
+  },
+  "ThunderShock": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "ThunderShock",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.1,
+     "off": [
+      0,
+      0.25
+     ]
+    },
+    {
+     "fx": "Spark",
+     "at": "target",
+     "size": 0.8
+    },
+    {
+     "fx": "SparkScatter",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "sfx": "Thunder Shock"
+  },
+  "Thunderbolt": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "ElectricGather",
+     "at": "self",
+     "size": 1.0,
+     "dur": 0.4
+    },
+    {
+     "fx": "ThunderBolt",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.4,
+     "off": [
+      0,
+      0.3
+     ]
+    },
+    {
+     "fx": "Discharge",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.3
+    },
+    {
+     "fx": "SparkBurst",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.35
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "screen": {
+    "flash": "#fff8c0",
+    "shake": 4
+   },
+   "sfx": "Thunderbolt"
+  },
+  "Thunder": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "Thunder",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.6,
+     "off": [
+      0,
+      0.3
+     ],
+     "loops": 2
+    },
+    {
+     "fx": "Discharge",
+     "at": "target",
+     "size": 1.3
+    },
+    {
+     "fx": "SparkScatter",
+     "at": "target",
+     "size": 1.2,
+     "par": true
+    },
+    {
+     "at": "quake",
+     "dur": 0.4,
+     "par": true
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "power": "heavy",
+   "screen": {
+    "flash": "#fffbe0",
+    "shake": 10,
+    "dim": 0.35
+   },
+   "bench_fx": {
+    "fx": "Spark",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Thunder"
+  },
+  "ThunderWave": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "LightningDart",
+     "at": "travel",
+     "orient": true,
+     "size": 0.3,
+     "count": 3,
+     "stagger": 0.08
+    },
+    {
+     "fx": "Electrocute",
+     "at": "target",
+     "size": 1.0,
+     "loops": 2
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "sfx": "Thunder Wave"
+  },
+  "ThunderPunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MegaPunch",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "Spark",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.05
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "sfx": "Thunder Punch"
+  },
+  "ThunderFang": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "ThunderFang",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "sfx": "Thunder Fang"
+  },
+  "ElectricTackle": {
+   "body": "dash",
+   "steps": [
+    {
+     "fx": "LightningDart",
+     "at": "travel",
+     "orient": true,
+     "size": 0.35,
+     "time": 0.15
+    },
+    {
+     "fx": "ElectroShock",
+     "at": "target",
+     "size": 0.8
+    },
+    {
+     "fx": "Spark",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "sfx": "Volt Tackle"
+  },
+  "ElectroBall": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SparkOrb",
+     "at": "travel",
+     "size": 0.45
+    },
+    {
+     "fx": "Discharge",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "SparkScatter",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "sfx": "Shock Wave"
+  },
+  "LightningBall": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SparkOrb",
+     "at": "travel",
+     "size": 0.4,
+     "spin": 360
+    },
+    {
+     "fx": "Spark",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "SparkBurst",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "sfx": "Shock Wave"
+  },
+  "ZapCannon": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "ZapCannon/Ball",
+     "at": "self",
+     "size": 0.3,
+     "off": [
+      0.35,
+      0
+     ]
+    },
+    {
+     "fx": "ZapCannon/Projectile",
+     "at": "travel",
+     "orient": true,
+     "size": 0.6
+    },
+    {
+     "fx": "ZapCannon/Impact",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "power": "heavy",
+   "screen": {
+    "flash": "#fff8a0",
+    "shake": 8
+   },
+   "sfx": "Zap Cannon"
+  },
+  "Discharge": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "Discharge",
+     "at": "self",
+     "size": 1.4
+    },
+    {
+     "fx": "Spark",
+     "at": "target",
+     "size": 1.0,
+     "delay": 0.0
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "screen": {
+    "flash": "#fff8c0",
+    "shake": 4
+   },
+   "bench_fx": {
+    "fx": "Spark",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Discharge"
+  },
+  "Charge": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "ElectricGather",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "Charge",
+     "at": "self",
+     "size": 1.0
+    }
+   ],
+   "element": "electric",
+   "sfx": "Charge"
+  },
+  "ReverseCharge": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "ReverseCharge",
+     "at": "self",
+     "size": 1.0
+    }
+   ],
+   "element": "electric",
+   "sfx": "Charge"
+  },
+  "Gigashock": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "Thunder",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.5,
+     "off": [
+      0,
+      0.3
+     ]
+    },
+    {
+     "fx": "Discharge",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "power": "heavy",
+   "screen": {
+    "flash": "#fff8c0",
+    "shake": 8,
+    "dim": 0.3
+   },
+   "bench_fx": {
+    "fx": "Spark",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Discharge"
+  },
+  "ChainLightning": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "ThunderBolt",
+     "at": "target",
+     "anchor": "bottom",
+     "size": 1.3,
+     "off": [
+      0,
+      0.3
+     ]
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "screen": {
+    "dim": 0.3,
+    "shake": 5
+   },
+   "bench_fx": {
+    "fx": "ThunderShock",
+    "at": "target",
+    "anchor": "bottom",
+    "size": 0.8
+   },
+   "sfx": "Discharge"
+  },
+  "Magnet": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SteelOrb/Projectile",
+     "at": "travel",
+     "size": 0.3,
+     "count": 2,
+     "stagger": 0.1
+    },
+    {
+     "fx": "ElectroShock",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "sfx": "Magnet Rise"
+  },
+  "MagnetBomb": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SteelOrb/Projectile",
+     "at": "travel",
+     "size": 0.35,
+     "arc": 50
+    },
+    {
+     "fx": "SmallBomb",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "Spark",
+     "at": "target",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "sfx": "Magnet Bomb"
+  },
+  "VineWhip": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "VineWhip/000",
+     "at": "target",
+     "size": 0.9,
+     "loops": 2
+    },
+    {
+     "fx": "VineWhip/001",
+     "at": "target",
+     "size": 0.6
+    }
+   ],
+   "element": "grass",
+   "react": "multi",
+   "hits": 2,
+   "sfx": "Vine Whip"
+  },
+  "VineWrap": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "VineWrap",
+     "at": "target",
+     "size": 1.1,
+     "dur": 0.6
+    }
+   ],
+   "element": "grass",
+   "react": "squeeze",
+   "sfx": "Wrap"
+  },
+  "RazorLeaf": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "RazorLeafPowerUp",
+     "at": "self",
+     "size": 1.0,
+     "dur": 0.4
+    },
+    {
+     "fx": "Leaf",
+     "at": "travel",
+     "size": 0.3,
+     "spin": 900,
+     "count": 6,
+     "stagger": 0.05,
+     "jitter": 0.15
+    },
+    {
+     "fx": "LeafNeedles1",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "grass",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Razor Leaf"
+  },
+  "LeafStorm": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "RazorLeafPowerUp",
+     "at": "self",
+     "size": 1.0,
+     "dur": 0.4
+    },
+    {
+     "fx": "Leaf",
+     "at": "travel",
+     "size": 0.3,
+     "spin": 900,
+     "count": 10,
+     "stagger": 0.04,
+     "jitter": 0.3
+    },
+    {
+     "fx": "LeafNeedles2",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "PetalBlizzard",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "hue": -90
+    }
+   ],
+   "element": "grass",
+   "react": "multi",
+   "hits": 4,
+   "power": "heavy",
+   "screen": {
+    "shake": 5
+   },
+   "bench_fx": {
+    "fx": "LeafNeedles1",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Leaf Storm"
+  },
+  "MagicalLeaf": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "MagicalLeaf/PowerUp",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "MagicalLeaf/Projectile",
+     "at": "travel",
+     "size": 0.5,
+     "spin": 540,
+     "hue_cycle": 720
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "grass",
+   "sfx": "Magical Leaf"
+  },
+  "LeafBlade": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "LeafBlade",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "grass",
+   "sfx": "Leaf Blade"
+  },
+  "PetalDance": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PetalBomb",
+     "at": "self",
+     "size": 0.8
+    },
+    {
+     "fx": "PetalBlizzard",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "grass",
+   "sfx": "Petal Dance"
+  },
+  "PetalBlizzard": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PetalBlizzard",
+     "at": "screen",
+     "size": 1.4
+    }
+   ],
+   "element": "grass",
+   "bench_fx": {
+    "fx": "PetalBomb",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Petal Dance"
+  },
+  "SleepPowder": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SleepPowder",
+     "at": "target",
+     "size": 0.9,
+     "off": [
+      0,
+      -0.1
+     ]
+    }
+   ],
+   "element": "grass",
+   "sfx": "Sleep Powder"
+  },
+  "StunSpore": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "StunPowder",
+     "at": "target",
+     "size": 0.9,
+     "off": [
+      0,
+      -0.1
+     ]
+    }
+   ],
+   "element": "grass",
+   "sfx": "Stun Spore"
+  },
+  "PoisonPowder": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PoisonPowder",
+     "at": "target",
+     "size": 0.9,
+     "off": [
+      0,
+      -0.1
+     ]
+    }
+   ],
+   "element": "poison",
+   "sfx": "Poison Powder"
+  },
+  "CottonSpore": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "CottonSpore",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "grass",
+   "sfx": "Cotton Spore"
+  },
+  "LeechSeed": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Seed",
+     "at": "travel",
+     "arc": 60,
+     "size": 0.15,
+     "count": 3,
+     "stagger": 0.08
+    },
+    {
+     "fx": "LeechSeed/001",
+     "at": "target",
+     "size": 0.9,
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.3
+     ]
+    },
+    {
+     "fx": "GreenSparkle",
+     "at": "return",
+     "size": 0.3,
+     "count": 3,
+     "stagger": 0.1
+    },
+    {
+     "fx": "Heal1",
+     "at": "self",
+     "size": 0.7,
+     "tint": "#a0ff80"
+    }
+   ],
+   "element": "grass",
+   "sfx": "Leech Seed"
+  },
+  "Growth": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "LeafPowerUp",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "GreenSparkle",
+     "at": "self",
+     "size": 0.6,
+     "par": true,
+     "count": 3,
+     "stagger": 0.1,
+     "jitter": 0.3
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "grass",
+   "sfx": "Growth"
+  },
+  "Ingrain": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Ingrain2",
+     "at": "self",
+     "size": 1.1,
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.45
+     ]
+    }
+   ],
+   "element": "grass",
+   "sfx": "Ingrain"
+  },
+  "Roots": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Ingrain1",
+     "at": "target",
+     "size": 1.1,
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.45
+     ]
+    }
+   ],
+   "element": "grass",
+   "react": "squeeze",
+   "sfx": "Ingrain"
+  },
+  "Photosynthesis": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Photosynthesis",
+     "at": "self",
+     "size": 0.7
+    },
+    {
+     "fx": "NatureRecovery",
+     "at": "self",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.15
+    }
+   ],
+   "element": "grass",
+   "sfx": "Synthesis"
+  },
+  "Solarbeam": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "Photosynthesis",
+     "at": "self",
+     "size": 0.7,
+     "loops": 2
+    },
+    {
+     "fx": "SunRing",
+     "at": "self",
+     "size": 0.9,
+     "par": true
+    },
+    {
+     "fx": "LightBeam",
+     "at": "beam",
+     "size": 0.65,
+     "tint": "#fff4b0",
+     "dur": 0.8
+    },
+    {
+     "fx": "GreenEnergyHit",
+     "at": "target",
+     "size": 1.2,
+     "par": true,
+     "delay": 0.25
+    },
+    {
+     "fx": "GreenBurst",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.3
+    }
+   ],
+   "element": "grass",
+   "power": "heavy",
+   "screen": {
+    "flash": "#fff8d0",
+    "shake": 7
+   },
+   "sfx": "Solar Beam"
+  },
+  "EnergyBall": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "GreenOrb",
+     "at": "travel",
+     "size": 0.4
+    },
+    {
+     "fx": "GreenBloom",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "EnergyBall/002",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "grass",
+   "sfx": "Energy Ball"
+  },
+  "BulletSeed": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "BulletSeed",
+     "at": "travel",
+     "orient": true,
+     "size": 0.3,
+     "count": 5,
+     "stagger": 0.07
+    },
+    {
+     "fx": "VineWhip/001",
+     "at": "target",
+     "size": 0.6,
+     "count": 2,
+     "stagger": 0.1,
+     "jitter": 0.2
+    }
+   ],
+   "element": "grass",
+   "react": "multi",
+   "hits": 4,
+   "sfx": "Bullet Seed"
+  },
+  "NaturalPower": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "NaturalPower",
+     "at": "self",
+     "size": 1.0
+    }
+   ],
+   "element": "grass",
+   "sfx": "Nature Power"
+  },
+  "NatureRecovery": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "NatureRecovery",
+     "at": "self",
+     "size": 1.0
+    }
+   ],
+   "element": "grass",
+   "sfx": "Synthesis"
+  },
+  "Seeds": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "ChestnutsFalling",
+     "at": "drop",
+     "anchor": "bottom",
+     "size": 1.2,
+     "time": 0.0,
+     "off": [
+      0,
+      0.4
+     ]
+    }
+   ],
+   "element": "grass",
+   "sfx": "Bullet Seed"
+  },
+  "GrassKnot": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Ingrain1",
+     "at": "target",
+     "size": 1.0,
+     "anchor": "bottom",
+     "off": [
+      0,
+      0.45
+     ]
+    },
+    {
+     "fx": "GreenEnergyHit",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "grass",
+   "react": "squeeze",
+   "sfx": "Grass Knot"
+  },
+  "GreenHit": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SeedBomb",
+     "at": "travel",
+     "size": 0.3,
+     "arc": 60,
+     "spin": 360
+    },
+    {
+     "fx": "GreenBurst",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "GreenEnergyHit",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "grass",
+   "sfx": "Seed Bomb"
+  },
+  "MegaDrain": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "GreenEnergyHit",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "GreenSparkle",
+     "at": "return",
+     "size": 0.35,
+     "count": 5,
+     "stagger": 0.08
+    },
+    {
+     "fx": "NatureRecovery",
+     "at": "self",
+     "size": 0.9
+    },
+    {
+     "fx": "GreenBloom",
+     "at": "self",
+     "size": 0.8,
+     "par": true
+    }
+   ],
+   "element": "grass",
+   "sfx": "Mega Drain"
+  },
+  "Spore": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "CottonSpore",
+     "at": "target",
+     "size": 1.0,
+     "tint": "#ffe0a0"
+    },
+    {
+     "fx": "SleepPowder",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.2
+    }
+   ],
+   "element": "grass",
+   "sfx": "Spore"
+  },
+  "StringShot": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "StringShotSpiderSilk",
+     "at": "travel",
+     "range": [
+      0,
+      1
+     ],
+     "size": 0.3
+    },
+    {
+     "fx": "StringShotSpiderSilk",
+     "at": "target",
+     "size": 1.0,
+     "mirror": false
+    }
+   ],
+   "element": "bug",
+   "react": "squeeze",
+   "sfx": "String Shot"
+  },
+  "BugSwarm": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "BeeSwarmBugAttack",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "bug",
+   "sfx": "Attack Order"
+  },
+  "BugBuzz": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "BeeSwarmWithEffect",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "bug",
+   "sfx": "Bug Buzz"
+  },
+  "PinMissile": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "PinMissile",
+     "at": "travel",
+     "orient": true,
+     "size": 0.4,
+     "count": 3,
+     "stagger": 0.1
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "size": 0.7,
+     "count": 2,
+     "stagger": 0.1,
+     "jitter": 0.2
+    }
+   ],
+   "element": "bug",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Pin Missile 1hit"
+  },
+  "Sting": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Sting",
+     "at": "travel",
+     "orient": true,
+     "size": 0.3
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "size": 0.6
+    }
+   ],
+   "element": "bug",
+   "sfx": "Pin Missile 1hit"
+  },
+  "Twineedle": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "DoubleSting",
+     "at": "travel",
+     "orient": true,
+     "size": 0.35
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "size": 0.6,
+     "count": 2,
+     "stagger": 0.1,
+     "jitter": 0.15
+    }
+   ],
+   "element": "bug",
+   "react": "multi",
+   "hits": 2,
+   "sfx": "Twineedle"
+  },
+  "TripleNeedle": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "TripleSting",
+     "at": "travel",
+     "orient": true,
+     "size": 0.4
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "size": 0.6,
+     "count": 3,
+     "stagger": 0.08,
+     "jitter": 0.2
+    }
+   ],
+   "element": "bug",
+   "react": "multi",
+   "hits": 3,
+   "sfx": "Twineedle"
+  },
+  "PoisonSting": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Sting",
+     "at": "travel",
+     "orient": true,
+     "size": 0.3
+    },
+    {
+     "fx": "QuickPoisonHit",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "poison",
+   "sfx": "Poison Sting"
+  },
+  "SignalBeam": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SignalBeam",
+     "at": "travel",
+     "size": 0.35,
+     "count": 3,
+     "stagger": 0.08
+    },
+    {
+     "fx": "PsionicAttack",
+     "at": "target",
+     "size": 1.0,
+     "hue": -160
+    }
+   ],
+   "element": "bug",
+   "sfx": "Signal Beam"
+  },
+  "SilverWind": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Gust",
+     "at": "screen",
+     "size": 1.4,
+     "tint": "#e0e0ff"
+    },
+    {
+     "fx": "TwinklingStar",
+     "at": "target",
+     "size": 0.6,
+     "par": true,
+     "delay": 0.2,
+     "count": 3,
+     "stagger": 0.1,
+     "jitter": 0.25
+    }
+   ],
+   "element": "flying",
+   "bench_fx": {
+    "fx": "TwinklingStar",
+    "at": "target",
+    "size": 0.5
+   },
+   "sfx": "Silver Wind"
+  },
+  "LeechLife": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Bite",
+     "at": "target",
+     "size": 0.5
+    },
+    {
+     "fx": "LightPowerUpMini",
+     "at": "return",
+     "size": 0.4,
+     "tint": "#ff8080"
+    }
+   ],
+   "element": "bug",
+   "sfx": "Leech Life"
+  },
+  "Web": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "StringShotSpiderSilk",
+     "at": "target",
+     "size": 1.1,
+     "mirror": false
+    }
+   ],
+   "element": "bug",
+   "react": "squeeze",
+   "sfx": "Spider Web"
+  },
+  "Acid": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PoisonBubbles",
+     "at": "travel",
+     "size": 0.3,
+     "count": 3,
+     "stagger": 0.08,
+     "arc": 30
+    },
+    {
+     "fx": "QuickPoisonHit",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "PoisonColumn",
+     "at": "target",
+     "size": 0.6,
+     "par": true
+    }
+   ],
+   "element": "poison",
+   "sfx": "Acid"
+  },
+  "Sludge": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SludgeOrb",
+     "at": "travel",
+     "size": 0.35,
+     "arc": 60
+    },
+    {
+     "fx": "SmokeBombAttack/001",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "PoisonColumn",
+     "at": "target",
+     "size": 0.7,
+     "par": true
+    }
+   ],
+   "element": "poison",
+   "sfx": "Sludge"
+  },
+  "PoisonGas": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SmokeBombAttack/001",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "PoisonColumn",
+     "at": "target",
+     "size": 0.7,
+     "par": true,
+     "delay": 0.2
+    }
+   ],
+   "element": "poison",
+   "bench_fx": {
+    "fx": "PoisonColumn",
+    "at": "target",
+    "size": 0.5
+   },
+   "sfx": "Poison Gas"
+  },
+  "Smog": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SmokeBombAttack/000",
+     "at": "travel",
+     "size": 0.35,
+     "arc": 50
+    },
+    {
+     "fx": "SmokeBombAttack/001",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "PoisonColumn",
+     "at": "target",
+     "size": 0.6,
+     "par": true
+    }
+   ],
+   "element": "poison",
+   "bench_fx": {
+    "fx": "SmokeBombAttack/001",
+    "at": "target",
+    "size": 0.6
+   },
+   "sfx": "Smog"
+  },
+  "Toxic": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "ToxicSpike",
+     "at": "target",
+     "size": 0.9,
+     "count": 2,
+     "stagger": 0.12,
+     "jitter": 0.2
+    },
+    {
+     "fx": "CrossPoison",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "PoisonColumn",
+     "at": "target",
+     "size": 0.7,
+     "par": true
+    }
+   ],
+   "element": "poison",
+   "bench_fx": {
+    "fx": "PoisonBubbles",
+    "at": "target",
+    "size": 0.3
+   },
+   "sfx": "Toxic"
+  },
+  "PoisonFang": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Crunch",
+     "at": "target",
+     "size": 0.8
+    },
+    {
+     "fx": "QuickPoisonHit",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "poison",
+   "sfx": "Poison Fang"
+  },
+  "PoisonClaw": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "PoisonSlash",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "poison",
+   "sfx": "Poison Jab"
+  },
+  "CrossPoison": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "CrossPoison",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "poison",
+   "sfx": "Cross Poison"
+  },
+  "PoisonHorn": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "ViceGrip",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "QuickPoisonHit",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "poison",
+   "sfx": "Poison Jab"
+  },
+  "PoisonTentacle": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "VineWrap",
+     "at": "target",
+     "hue": 270,
+     "size": 1.0,
+     "dur": 0.6
+    },
+    {
+     "fx": "QuickPoisonHit",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "poison",
+   "react": "squeeze",
+   "sfx": "Wring Out"
+  },
+  "PoisonSpray": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PsychicBall",
+     "at": "travel",
+     "size": 0.3,
+     "hue": 60,
+     "count": 3,
+     "stagger": 0.1
+    },
+    {
+     "fx": "QuickPoisonHit",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "poison",
+   "sfx": "Acid"
+  },
+  "Confusion": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PinkPulse",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "MiniPyschic",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "psychic",
+   "react": "spin",
+   "sfx": "Confusion"
+  },
+  "Psychic": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PsychoOrb",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "PsychicAttack",
+     "at": "target",
+     "size": 1.1,
+     "par": true,
+     "delay": 0.15
+    }
+   ],
+   "element": "psychic",
+   "react": "lift",
+   "screen": {
+    "dim": 0.3
+   },
+   "bench_fx": {
+    "fx": "PinkPulse",
+    "at": "target",
+    "size": 0.6
+   },
+   "sfx": "Psychic"
+  },
+  "Psybeam": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "LightBeam",
+     "at": "beam",
+     "size": 0.5,
+     "tint": "#ffa0f0",
+     "hue_cycle": 300,
+     "dur": 0.7
+    },
+    {
+     "fx": "PinkPulse",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.2
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Psybeam"
+  },
+  "Psywave": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PsyWave",
+     "at": "travel",
+     "orient": true,
+     "size": 0.5,
+     "count": 4,
+     "stagger": 0.12
+    },
+    {
+     "fx": "MiniPyschic",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Psywave"
+  },
+  "Psyshock": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PsychicRazor",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Psycho Cut"
+  },
+  "PsychicBlast": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "PsychicPowerUp",
+     "at": "self",
+     "size": 0.9,
+     "dur": 0.5
+    },
+    {
+     "fx": "MassivePsychichBlast",
+     "at": "target",
+     "size": 1.3
+    },
+    {
+     "fx": "PinkPulse",
+     "at": "target",
+     "size": 1.1,
+     "par": true
+    }
+   ],
+   "element": "psychic",
+   "react": "lift",
+   "power": "heavy",
+   "screen": {
+    "dim": 0.4,
+    "flash": "#ffc0f0",
+    "shake": 7
+   },
+   "bench_fx": {
+    "fx": "PinkPulse",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Psycho Boost"
+  },
+  "PsychicBall": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "PsychicBall",
+     "at": "travel",
+     "size": 0.4
+    },
+    {
+     "fx": "PsychicAttack",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Mist Ball"
+  },
+  "MindShock": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MindShatter",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "psychic",
+   "screen": {
+    "dim": 0.25
+   },
+   "sfx": "Extrasensory"
+  },
+  "PsychicLights": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PsychicLights",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Miracle Eye"
+  },
+  "Hypnosis": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "HypnoSpiral",
+     "at": "target",
+     "size": 0.6,
+     "spin": 360,
+     "loops": 2
+    },
+    {
+     "fx": "PsychicLights",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.15
+    }
+   ],
+   "element": "psychic",
+   "screen": {
+    "dim": 0.35
+   },
+   "sfx": "Hypnosis"
+  },
+  "Amnesia": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Amnesia",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Amnesia"
+  },
+  "Meditate": {
+   "body": "rise",
+   "steps": [
+    {
+     "fx": "PsychicPowerUp",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Meditate"
+  },
+  "Psypunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "PsychicPalm",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Zen Headbutt"
+  },
+  "PsyPalm": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "OneSlap",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Force Palm"
+  },
+  "SpoonBend": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "SpoonBend",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.3,
+      -0.2
+     ]
+    },
+    {
+     "fx": "MiniPyschic",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Kinesis"
+  },
+  "Telekinesis": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PsychicPalm",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "PsychicLights",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "psychic",
+   "react": "lift",
+   "sfx": "Kinesis"
+  },
+  "DestinyBond": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "DestinyBond",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "DestinyBond",
+     "at": "self",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "ghost",
+   "screen": {
+    "dim": 0.45
+   },
+   "sfx": "Destiny Bond"
+  },
+  "PainSplit": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "DestinyBond",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "DestinyBond",
+     "at": "self",
+     "size": 1.0,
+     "par": true,
+     "hue": -60
+    }
+   ],
+   "element": "ghost",
+   "screen": {
+    "dim": 0.3
+   },
+   "sfx": "Pain Split"
+  },
+  "Nightmare": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Nightmare",
+     "at": "target",
+     "size": 0.6
+    },
+    {
+     "fx": "DarknessEngulf",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.15
+    }
+   ],
+   "element": "ghost",
+   "screen": {
+    "dim": 0.45
+   },
+   "sfx": "Nightmare"
+  },
+  "DreamEater": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Nightmare",
+     "at": "target",
+     "size": 0.6
+    },
+    {
+     "fx": "DarknessEngulf",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "LightPowerUpMini",
+     "at": "return",
+     "size": 0.4,
+     "tint": "#ff80ff"
+    }
+   ],
+   "element": "ghost",
+   "screen": {
+    "dim": 0.45
+   },
+   "sfx": "Dream Eater"
+  },
+  "Curse": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "CurseGhost",
+     "at": "self",
+     "size": 0.6,
+     "off": [
+      0,
+      -0.3
+     ]
+    },
+    {
+     "fx": "CursePin",
+     "at": "travel",
+     "orient": true,
+     "size": 0.4
+    },
+    {
+     "fx": "Spite",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "ghost",
+   "screen": {
+    "dim": 0.45
+   },
+   "sfx": "Curse"
+  },
+  "CurseCounters": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "CursePin",
+     "at": "target",
+     "orient": true,
+     "size": 0.4,
+     "count": 3,
+     "stagger": 0.12,
+     "jitter": 0.25
+    },
+    {
+     "fx": "Spite",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "ghost",
+   "screen": {
+    "dim": 0.35
+   },
+   "sfx": "Grudge"
+  },
+  "Spite": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "Spite",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "ghost",
+   "screen": {
+    "dim": 0.35
+   },
+   "sfx": "Spite"
+  },
+  "ConfuseRay": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PsychicBall",
+     "at": "travel",
+     "size": 0.35,
+     "hue": -60
+    },
+    {
+     "fx": "ConfusingHit",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "psychic",
+   "react": "spin",
+   "sfx": "Confuse Ray"
+  },
+  "Lunar": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Moonlight/001",
+     "at": "self",
+     "size": 0.9,
+     "off": [
+      0,
+      -0.4
+     ],
+     "dur": 0.6
+    },
+    {
+     "fx": "MassivePsychichBlast",
+     "at": "target",
+     "size": 1.1,
+     "hue": 40
+    }
+   ],
+   "element": "psychic",
+   "screen": {
+    "dim": 0.4,
+    "flash": "#fff0c0"
+   },
+   "sfx": "Lunar Dance"
+  },
+  "Future": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MindReader/000",
+     "at": "self",
+     "size": 0.6,
+     "off": [
+      0,
+      -0.3
+     ]
+    },
+    {
+     "fx": "PsychicLights",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "psychic",
+   "screen": {
+    "dim": 0.3
+   },
+   "sfx": "Future Sight"
+  },
+  "PsychicDamage": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "PsionicAttack",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Psychic"
+  },
+  "ShadowBall": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "ShadowBall",
+     "at": "travel",
+     "size": 0.45,
+     "spin": 360,
+     "grow": [
+      0.6,
+      1.1
+     ]
+    },
+    {
+     "fx": "DarknessEngulf",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "ShadowSpark",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "dark",
+   "screen": {
+    "dim": 0.35
+   },
+   "sfx": "Shadow Ball"
+  },
+  "NightShade": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "EvilForce",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "DarkSwirl",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "delay": 0.3
+    }
+   ],
+   "element": "ghost",
+   "screen": {
+    "dim": 0.45
+   },
+   "sfx": "Night Shade"
+  },
+  "Haunt": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "CurseGhost",
+     "at": "travel",
+     "size": 0.4
+    },
+    {
+     "fx": "EvilForce",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "ghost",
+   "screen": {
+    "dim": 0.4
+   },
+   "sfx": "Astonish"
+  },
+  "ShadowPunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "ShadowPunch",
+     "at": "target",
+     "size": 0.6,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.2
+    },
+    {
+     "fx": "DarkSwirl",
+     "at": "target",
+     "size": 0.9
+    }
+   ],
+   "element": "dark",
+   "react": "multi",
+   "hits": 2,
+   "sfx": "Shadow Punch"
+  },
+  "ShadowClaw": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "ShadowClaw",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "dark",
+   "sfx": "Shadow Claw"
+  },
+  "ShadowSneak": {
+   "body": "vanish_strike",
+   "steps": [
+    {
+     "fx": "ShadowSneak/Move",
+     "at": "target",
+     "size": 0.9,
+     "off": [
+      0,
+      0.35
+     ]
+    },
+    {
+     "fx": "ShadowSneak/Effect",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "dark",
+   "sfx": "Shadow Sneak"
+  },
+  "FeintAttack": {
+   "body": "vanish_strike",
+   "steps": [
+    {
+     "fx": "HiddenDarkShadowStrike",
+     "at": "target",
+     "size": 1.2
+    },
+    {
+     "fx": "PurpleCrescent",
+     "at": "target",
+     "size": 0.7,
+     "par": true
+    }
+   ],
+   "element": "dark",
+   "sfx": "Feint Attack"
+  },
+  "DarkSlash": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "DarkSlash",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "PurpleCrescent",
+     "at": "target",
+     "size": 0.7,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "dark",
+   "sfx": "Night Slash"
+  },
+  "Bite": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Bite",
+     "at": "target",
+     "size": 0.7
+    }
+   ],
+   "element": "dark",
+   "sfx": "Bite"
+  },
+  "Crunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Crunch",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "dark",
+   "sfx": "Crunch"
+  },
+  "HyperFang": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "SuperFang",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "dark",
+   "power": "heavy",
+   "sfx": "Hyper Fang"
+  },
+  "DarkWave": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "DarkWave",
+     "at": "travel",
+     "orient": true,
+     "size": 0.5,
+     "count": 3,
+     "stagger": 0.1
+    },
+    {
+     "fx": "DarkSwirl",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "dark",
+   "sfx": "Dark Pulse"
+  },
+  "DarkPulse": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "DarkPowerUp",
+     "at": "self",
+     "size": 1.2,
+     "dur": 0.6
+    },
+    {
+     "fx": "DarkWave",
+     "at": "travel",
+     "orient": true,
+     "size": 0.6,
+     "count": 2,
+     "stagger": 0.1
+    },
+    {
+     "fx": "DarkCombustion",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "dark",
+   "power": "heavy",
+   "screen": {
+    "dim": 0.45,
+    "shake": 7
+   },
+   "bench_fx": {
+    "fx": "DarkSwirl",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Dark Pulse"
+  },
+  "DarkMind": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "EvilDarkPsychicPower",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "dark",
+   "screen": {
+    "dim": 0.35
+   },
+   "sfx": "Night Shade"
+  },
+  "DarkCloud": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "DarkCloudAttack",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "dark",
+   "screen": {
+    "dim": 0.35
+   },
+   "sfx": "Ominous Wind"
+  },
+  "DarknessEngulf": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "DarknessEngulf",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "dark",
+   "screen": {
+    "dim": 0.4
+   },
+   "sfx": "Dark Void"
+  },
+  "DarkBlast": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "DarkPowerUp",
+     "at": "self",
+     "size": 1.2,
+     "dur": 0.6
+    },
+    {
+     "fx": "ShadowBall",
+     "at": "travel",
+     "size": 0.5
+    },
+    {
+     "fx": "DarkCombustion",
+     "at": "target",
+     "size": 1.2
+    }
+   ],
+   "element": "dark",
+   "power": "heavy",
+   "screen": {
+    "dim": 0.45,
+    "shake": 8
+   },
+   "sfx": "Dark Pulse"
+  },
+  "EvilForce": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "EvilForce",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "dark",
+   "screen": {
+    "dim": 0.4
+   },
+   "sfx": "Astonish"
+  },
+  "DarkPowerUp": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "DarkPowerUp",
+     "at": "self",
+     "size": 1.2
+    }
+   ],
+   "element": "dark",
+   "sfx": "Nasty Plot"
+  },
+  "Pursuit": {
+   "body": "dash",
+   "steps": [
+    {
+     "fx": "ShadowSneak/Move",
+     "at": "travel",
+     "size": 0.9,
+     "time": 0.2
+    },
+    {
+     "fx": "HiddenDarkShadowStrike",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "dark",
+   "sfx": "Pursuit"
+  },
+  "MetalClaw": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "ShadowClaw",
+     "at": "target",
+     "size": 1.0,
+     "tint": "#e0e0f0",
+     "hue": -30
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "metal",
+   "sfx": "Metal Claw"
+  },
+  "IronTail": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "PowerfulHit",
+     "at": "target",
+     "size": 1.0,
+     "tint": "#c8d0e8"
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.05
+    }
+   ],
+   "element": "metal",
+   "power": "heavy",
+   "sfx": "Iron Tail"
+  },
+  "SteelWing": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Feathers",
+     "at": "target",
+     "size": 1.0,
+     "tint": "#c0c8d8"
+    },
+    {
+     "fx": "SmallSlash",
+     "at": "target",
+     "size": 0.8,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "metal",
+   "sfx": "Steel Wing"
+  },
+  "MetalSound": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "MetalSound",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "SoundRings",
+     "at": "target",
+     "size": 1.0,
+     "par": true,
+     "hue": 180
+    },
+    {
+     "fx": "StatDown",
+     "at": "target",
+     "delay": 0.2,
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Fall Down"
+    }
+   ],
+   "element": "metal",
+   "react": "shake",
+   "sfx": "Metal Sound"
+  },
+  "SteelOrb": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SteelOrb/PowerUp",
+     "at": "self",
+     "size": 0.8
+    },
+    {
+     "fx": "SteelOrb/Projectile",
+     "at": "travel",
+     "size": 0.35
+    },
+    {
+     "fx": "SteelRockPunch",
+     "at": "target",
+     "size": 1.0
+    }
+   ],
+   "element": "metal",
+   "sfx": "Flash Cannon"
+  },
+  "MetalBall": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SteelOrb/Projectile",
+     "at": "travel",
+     "size": 0.35,
+     "arc": 60
+    },
+    {
+     "fx": "PowerfulHit",
+     "at": "target",
+     "size": 1.0,
+     "tint": "#d0d8ff"
+    }
+   ],
+   "element": "metal",
+   "sfx": "Gyro Ball"
+  },
+  "DragonRage": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "RoarOfTime/000",
+     "at": "self",
+     "size": 1.1,
+     "dur": 0.6
+    },
+    {
+     "fx": "BlueComet",
+     "at": "travel",
+     "orient": true,
+     "size": 0.55
+    },
+    {
+     "fx": "DarkCombustion",
+     "at": "target",
+     "size": 1.2,
+     "hue": 170
+    }
+   ],
+   "element": "dragon",
+   "power": "heavy",
+   "screen": {
+    "shake": 7
+   },
+   "sfx": "Dragon Rage"
+  },
+  "Dragonbreath": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "BlueComet",
+     "at": "travel",
+     "orient": true,
+     "size": 0.5,
+     "count": 2,
+     "stagger": 0.1
+    },
+    {
+     "fx": "BlueFlame",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "Combustion2",
+     "at": "target",
+     "size": 1.0,
+     "hue": -140,
+     "par": true
+    }
+   ],
+   "element": "dragon",
+   "sfx": "Dragon Breath"
+  },
+  "DragonClaw": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "MultipleClawAttack/000",
+     "at": "target",
+     "size": 1.0,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.15,
+     "hue": 140
+    },
+    {
+     "fx": "MultipleClawAttack/008",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "dragon",
+   "react": "multi",
+   "hits": 2,
+   "power": "heavy",
+   "sfx": "Dragon Claw"
+  },
+  "RoarOfTime": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "RoarOfTime/000",
+     "at": "self",
+     "size": 1.3
+    },
+    {
+     "fx": "RoarOfTime/001",
+     "at": "travel",
+     "size": 0.4
+    },
+    {
+     "fx": "Explosion",
+     "at": "target",
+     "size": 1.4
+    },
+    {
+     "at": "quake",
+     "dur": 0.6,
+     "par": true
+    }
+   ],
+   "element": "dragon",
+   "power": "heavy",
+   "screen": {
+    "dim": 0.4,
+    "flash": "#c0d0ff",
+    "shake": 12
+   },
+   "bench_fx": {
+    "fx": "RoarOfTime/001",
+    "at": "target",
+    "size": 0.4
+   },
+   "sfx": "Roar of Time"
+  },
+  "Outrage": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Slam",
+     "at": "target",
+     "count": 3,
+     "stagger": 0.15,
+     "jitter": 0.25,
+     "size": 1.0,
+     "hue": 170
+    },
+    {
+     "fx": "DarkCombustion",
+     "at": "target",
+     "size": 1.1,
+     "hue": 170
+    }
+   ],
+   "element": "dragon",
+   "react": "multi",
+   "hits": 3,
+   "power": "heavy",
+   "screen": {
+    "shake": 6
+   },
+   "sfx": "Outrage"
+  },
+  "DragonDance": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "PowerUpRings",
+     "at": "self",
+     "size": 1.0,
+     "hue": 140
+    },
+    {
+     "fx": "MiniRedPowerup",
+     "at": "self",
+     "size": 0.9,
+     "par": true
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "dragon",
+   "sfx": "Dragon Dance"
+  },
+  "Meteor": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "MeteorStrike",
+     "at": "screen",
+     "size": 2.4,
+     "off": [
+      0.0,
+      -0.1
+     ]
+    },
+    {
+     "fx": "Explosion",
+     "at": "target",
+     "size": 1.2,
+     "delay": 0.0
+    },
+    {
+     "at": "quake",
+     "dur": 0.5,
+     "par": true
+    }
+   ],
+   "element": "dragon",
+   "power": "heavy",
+   "screen": {
+    "flash": "#ffe0c0",
+    "shake": 14
+   },
+   "bench_fx": {
+    "fx": "Explosion",
+    "at": "target",
+    "size": 0.7
+   },
+   "sfx": "Draco Meteor"
+  },
+  "AuraSphere": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "AuraSphere",
+     "at": "travel",
+     "size": 0.5
+    },
+    {
+     "fx": "GenericPulseOut3",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "fighting",
+   "sfx": "Aura Sphere"
+  },
+  "FingerStorm": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "FingerStorm",
+     "at": "target",
+     "size": 0.9
+    },
+    {
+     "fx": "Spark",
+     "at": "target",
+     "size": 0.7,
+     "par": true,
+     "delay": 0.3
+    }
+   ],
+   "element": "electric",
+   "react": "jolt",
+   "sfx": "Thunder Shock"
+  },
+  "NastyPlot": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "NastyPlot",
+     "at": "self",
+     "size": 0.9,
+     "off": [
+      0,
+      -0.25
+     ]
+    }
+   ],
+   "element": "dark",
+   "sfx": "Nasty Plot"
+  },
+  "RainbowWing": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "RainbowWing",
+     "at": "travel",
+     "orient": true,
+     "size": 0.35,
+     "count": 3,
+     "stagger": 0.1
+    },
+    {
+     "fx": "TwinklingStar",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "flying",
+   "sfx": "Silver Wind"
+  },
+  "EnergyAbsorbLong": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "PowerUpAbsorbLong",
+     "at": "self",
+     "size": 1.1
+    }
+   ],
+   "element": "normal",
+   "sfx": "Tail Glow"
+  },
+  "PowerUpNoRing": {
+   "body": "grow",
+   "steps": [
+    {
+     "fx": "PoweringUpNoRing",
+     "at": "self",
+     "size": 1.0
+    },
+    {
+     "fx": "Glow2",
+     "at": "self",
+     "size": 0.5,
+     "par": true,
+     "delay": 0.4
+    },
+    {
+     "fx": "StatUp",
+     "at": "self",
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Rise Up"
+    }
+   ],
+   "element": "normal",
+   "sfx": "Belly Drum"
+  },
+  "Pebbles": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "RockfallSmall",
+     "at": "drop",
+     "anchor": "bottom",
+     "size": 1.1,
+     "off": [
+      0,
+      0.4
+     ]
+    },
+    {
+     "fx": "RockSmash",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "rock",
+   "sfx": "Rock Throw",
+   "sfx_pitch": 1.15
+  },
+  "NatureBoost": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "NaturePowerUp2",
+     "at": "self",
+     "size": 0.9
+    },
+    {
+     "fx": "Glow4",
+     "at": "self",
+     "size": 0.5,
+     "par": true,
+     "delay": 0.2
+    }
+   ],
+   "element": "grass",
+   "sfx": "Growth"
+  },
+  "SmokeBurst": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "SmokeBurst",
+     "at": "target",
+     "size": 1.1
+    }
+   ],
+   "element": "normal",
+   "sfx": "Smokescreen"
+  },
+  "FireCharge": {
+   "body": "charge",
+   "steps": [
+    {
+     "fx": "MiniRedPowerup",
+     "at": "self",
+     "size": 0.9
+    },
+    {
+     "fx": "Embers",
+     "at": "self",
+     "size": 1.0,
+     "par": true
+    },
+    {
+     "fx": "FireSpinningTower",
+     "at": "self",
+     "anchor": "bottom",
+     "size": 0.8,
+     "off": [
+      0,
+      0.45
+     ],
+     "par": true,
+     "delay": 0.2
+    }
+   ],
+   "element": "fire",
+   "sfx": "Sunny Day"
+  },
+  "TailSmash": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Slam",
+     "at": "target",
+     "size": 1.1
+    },
+    {
+     "fx": "PowerfulHit",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.08
+    }
+   ],
+   "element": "normal",
+   "sfx": "Slam"
+  },
+  "Shockwave": {
+   "body": "shake",
+   "steps": [
+    {
+     "fx": "GenericPulseOut",
+     "at": "self",
+     "size": 1.4
+    },
+    {
+     "fx": "GenericPulseOut2",
+     "at": "target",
+     "size": 1.2,
+     "delay": 0.0
+    },
+    {
+     "fx": "QuickBurst",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "sfx": "Shock Wave"
+  },
+  "Leer": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MeanLook",
+     "at": "target",
+     "size": 0.8
+    },
+    {
+     "fx": "StatDown",
+     "at": "target",
+     "delay": 0.2,
+     "size": 0.4,
+     "off": [
+      0.0,
+      -0.05
+     ],
+     "mirror": false,
+     "count": 2,
+     "stagger": 0.15,
+     "jitter": 0.18,
+     "loops": 2,
+     "sfx": "Stat Fall Down"
+    }
+   ],
+   "element": "dark",
+   "sfx": "Leer"
+  },
+  "Steal": {
+   "body": "dash",
+   "steps": [
+    {
+     "fx": "SpeedLines",
+     "at": "travel",
+     "orient": true,
+     "size": 1.0,
+     "time": 0.15
+    },
+    {
+     "fx": "QuickSwipe",
+     "at": "target",
+     "orient": true
+    },
+    {
+     "fx": "Sack",
+     "at": "return",
+     "size": 0.25,
+     "arc": 50,
+     "spin": 360
+    }
+   ],
+   "element": "dark",
+   "sfx": "Thief"
+  },
+  "Hatch": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "Egg",
+     "at": "self",
+     "size": 0.35
+    },
+    {
+     "fx": "EggCrack",
+     "at": "self",
+     "size": 0.45
+    },
+    {
+     "fx": "HatchFlash",
+     "at": "self",
+     "size": 1.2
+    },
+    {
+     "fx": "Confetti",
+     "at": "self",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "normal",
+   "screen": {
+    "flash": "#fffbe0"
+   },
+   "sfx": "Natural Gift"
+  },
+  "MistBall": {
+   "body": "hop",
+   "steps": [
+    {
+     "fx": "MistBall",
+     "at": "travel",
+     "size": 0.45,
+     "spin": 180
+    },
+    {
+     "fx": "PsychicAttack",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "CloudPuff",
+     "at": "target",
+     "size": 1.0,
+     "par": true
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Mist Ball"
+  }
+ },
+ "status": {
+  "Poisoned": {
+   "body": "none",
+   "steps": [
+    {
+     "fx": "PoisonBubbles",
+     "at": "target",
+     "size": 0.35,
+     "count": 3,
+     "stagger": 0.12,
+     "jitter": 0.25
+    },
+    {
+     "fx": "QuickPoisonHit",
+     "at": "target",
+     "size": 0.9,
+     "par": true,
+     "delay": 0.1
+    }
+   ],
+   "element": "poison",
+   "sfx": "Status Poisoned"
+  },
+  "Toxic": {
+   "body": "none",
+   "steps": [
+    {
+     "fx": "PoisonColumn",
+     "at": "target",
+     "size": 0.7
+    },
+    {
+     "fx": "ToxicSpike",
+     "at": "target",
+     "size": 0.8,
+     "count": 2,
+     "stagger": 0.12,
+     "jitter": 0.2,
+     "par": true
+    },
+    {
+     "fx": "QuickPoisonHit",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "poison",
+   "sfx": "Status Poisoned"
+  },
+  "Burned": {
+   "body": "none",
+   "steps": [
+    {
+     "fx": "Embers",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "MiniCombustion",
+     "at": "target",
+     "size": 0.35,
+     "count": 3,
+     "stagger": 0.12,
+     "jitter": 0.25,
+     "par": true
+    }
+   ],
+   "element": "fire",
+   "sfx": "Status Burned"
+  },
+  "Paralyzed": {
+   "body": "none",
+   "steps": [
+    {
+     "fx": "Electrocute",
+     "at": "target",
+     "size": 1.0
+    },
+    {
+     "fx": "SparkScatter",
+     "at": "target",
+     "size": 0.9,
+     "par": true
+    }
+   ],
+   "element": "electric",
+   "sfx": "Status Paralyzed"
+  },
+  "Asleep": {
+   "body": "none",
+   "steps": [
+    {
+     "fx": "Nightmare",
+     "at": "target",
+     "size": 0.45,
+     "off": [
+      0.25,
+      -0.3
+     ],
+     "mirror": false,
+     "tint": "#c0d8ff"
+    }
+   ],
+   "element": "normal",
+   "sfx": "Status Sleep"
+  },
+  "Confused": {
+   "body": "none",
+   "steps": [
+    {
+     "fx": "ConfusingHit",
+     "at": "target",
+     "size": 0.9,
+     "off": [
+      0,
+      -0.25
+     ],
+     "range": [
+      0,
+      8
+     ]
+    }
+   ],
+   "element": "psychic",
+   "sfx": "Status Confused"
+  }
+ },
+ "fallback": {
+  "Fire": {
+   "spec": [
+    "Ember",
+    "Fireball",
+    "FireBlast"
+   ],
+   "phys": [
+    "FireTail",
+    "FirePunch",
+    "BlazeKick"
+   ]
+  },
+  "Water": {
+   "spec": [
+    "Bubble",
+    "WaterGun",
+    "HydroPump"
+   ],
+   "phys": [
+    "SplashHit",
+    "WaterSlash",
+    "Waterfall"
+   ]
+  },
+  "Lightning": {
+   "spec": [
+    "Spark",
+    "ThunderShock",
+    "Thunder"
+   ],
+   "phys": [
+    "ElectricTackle",
+    "ThunderPunch",
+    "ThunderFang"
+   ]
+  },
+  "Grass": {
+   "spec": [
+    "VineWhip",
+    "RazorLeaf",
+    "EnergyBall"
+   ],
+   "phys": [
+    "VineWhip",
+    "LeafBlade",
+    "LeafBlade"
+   ]
+  },
+  "Psychic": {
+   "spec": [
+    "Confusion",
+    "Psybeam",
+    "PsychicBlast"
+   ],
+   "phys": [
+    "PsyPalm",
+    "Psypunch",
+    "Psypunch"
+   ]
+  },
+  "Fighting": {
+   "spec": [
+    "RockThrow",
+    "RockSlide",
+    "StoneEdge"
+   ],
+   "phys": [
+    "Punch",
+    "MegaPunch",
+    "DynamicPunch"
+   ]
+  },
+  "Darkness": {
+   "spec": [
+    "DarkWave",
+    "ShadowBall",
+    "DarkPulse"
+   ],
+   "phys": [
+    "Bite",
+    "DarkSlash",
+    "FeintAttack"
+   ]
+  },
+  "Metal": {
+   "spec": [
+    "MetalBall",
+    "SteelOrb",
+    "MetalSound"
+   ],
+   "phys": [
+    "MetalClaw",
+    "IronTail",
+    "SteelPunch"
+   ]
+  },
+  "Colorless": {
+   "spec": [
+    "Swift",
+    "GenericBeam",
+    "HyperBeam"
+   ],
+   "phys": [
+    "Tackle",
+    "PowerfulHit",
+    "TakeDown"
+   ]
+  },
+  "Dragon": {
+   "spec": [
+    "Dragonbreath",
+    "DragonRage",
+    "RoarOfTime"
+   ],
+   "phys": [
+    "DragonClaw",
+    "DragonClaw",
+    "Outrage"
+   ]
+  }
+ },
+ "utility": {
+  "inflict": "Misc",
+  "self": "PowerUp",
+  "counters": "CurseCounters",
+  "other": "Glitter"
+ },
+ "elements": {
+  "normal": {
+   "glow": "#ffffff",
+   "flash": [
+    3.0,
+    3.0,
+    3.0
+   ]
+  },
+  "fire": {
+   "glow": "#ffa050",
+   "flash": [
+    3.0,
+    1.9,
+    1.1
+   ],
+   "linger": "#ff9060",
+   "linger_mode": "fade",
+   "linger_time": 0.9
+  },
+  "water": {
+   "glow": "#70b8ff",
+   "flash": [
+    1.7,
+    2.3,
+    3.0
+   ],
+   "linger": "#90c8ff",
+   "linger_mode": "fade",
+   "linger_time": 0.6
+  },
+  "electric": {
+   "glow": "#fff070",
+   "flash": [
+    3.0,
+    3.0,
+    1.5
+   ],
+   "linger": "#fff080",
+   "linger_mode": "flicker",
+   "linger_time": 0.8
+  },
+  "grass": {
+   "glow": "#90f070",
+   "flash": [
+    1.9,
+    3.0,
+    1.6
+   ],
+   "linger": "#b0f0a0",
+   "linger_mode": "fade",
+   "linger_time": 0.5
+  },
+  "ice": {
+   "glow": "#b0f4ff",
+   "flash": [
+    2.2,
+    3.0,
+    3.0
+   ],
+   "linger": "#a0e8ff",
+   "linger_mode": "fade",
+   "linger_time": 1.3
+  },
+  "fighting": {
+   "glow": "#ffb080",
+   "flash": [
+    3.0,
+    2.4,
+    2.0
+   ]
+  },
+  "psychic": {
+   "glow": "#ff90e0",
+   "flash": [
+    3.0,
+    1.9,
+    2.9
+   ],
+   "linger": "#f4b0ff",
+   "linger_mode": "pulse",
+   "linger_time": 0.8
+  },
+  "poison": {
+   "glow": "#c080ff",
+   "flash": [
+    2.5,
+    1.5,
+    3.0
+   ],
+   "linger": "#c890ff",
+   "linger_mode": "pulse",
+   "linger_time": 1.0
+  },
+  "dark": {
+   "glow": "#9070b0",
+   "flash": [
+    1.8,
+    1.5,
+    2.2
+   ],
+   "linger": "#6a6a80",
+   "linger_mode": "fade",
+   "linger_time": 0.9
+  },
+  "ghost": {
+   "glow": "#a890ff",
+   "flash": [
+    2.0,
+    1.7,
+    3.0
+   ],
+   "linger": "#9a8cd0",
+   "linger_mode": "fade",
+   "linger_time": 0.9
+  },
+  "metal": {
+   "glow": "#d8e0f8",
+   "flash": [
+    2.7,
+    2.9,
+    3.0
+   ],
+   "linger": "#d0d8f0",
+   "linger_mode": "fade",
+   "linger_time": 0.4
+  },
+  "dragon": {
+   "glow": "#9090ff",
+   "flash": [
+    2.1,
+    2.1,
+    3.0
+   ],
+   "linger": "#b0b0ff",
+   "linger_mode": "fade",
+   "linger_time": 0.6
+  },
+  "flying": {
+   "glow": "#e8f4ff",
+   "flash": [
+    3.0,
+    3.0,
+    3.0
+   ]
+  },
+  "ground": {
+   "glow": "#e0b070",
+   "flash": [
+    3.0,
+    2.5,
+    1.7
+   ],
+   "linger": "#e0c090",
+   "linger_mode": "fade",
+   "linger_time": 0.5
+  },
+  "rock": {
+   "glow": "#d0b890",
+   "flash": [
+    2.8,
+    2.5,
+    2.0
+   ]
+  },
+  "bug": {
+   "glow": "#c0e850",
+   "flash": [
+    2.5,
+    3.0,
+    1.5
+   ]
+  },
+  "fairy": {
+   "glow": "#ffc0e8",
+   "flash": [
+    3.0,
+    2.3,
+    2.8
+   ],
+   "linger": "#ffd0ec",
+   "linger_mode": "fade",
+   "linger_time": 0.6
+  },
+  "heal": {
+   "glow": "#90ffb0",
+   "flash": [
+    2.0,
+    3.0,
+    2.2
+   ]
+  },
+  "sound": {
+   "glow": "#ffe0b0",
+   "flash": [
+    3.0,
+    2.8,
+    2.4
+   ]
+  }
+ },
+ "sounds": {
+  "hit": "Hit Normal Damage",
+  "hit_weak": "Hit Super Effective",
+  "hit_resist": "Hit Weak Not Very Effective",
+  "bench": "Hit Normal Damage",
+  "stat_up": "Stat Rise Up",
+  "stat_down": "Stat Fall Down"
+ }
+}

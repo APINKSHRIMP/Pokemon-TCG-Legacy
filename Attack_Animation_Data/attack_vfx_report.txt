@@ -1,0 +1,793 @@
+1760 attacks  exact=1735  keyword=18  text=5  utility=2
+
+[Absorb] 3
+    Absorb, Energy Absorption, Parallel Gain
+[Acid] 11
+    Acid, Acidic Poison, Corrosive Acid, Drool, Flick Poison, Harsh Fluid, Poisonous Saliva, Secrete Poison, Spit Poison, Toxic Saliva, Toxic Secretion
+[Agility] 5
+    Agility, Dodge, Float, Run Around, Super Speed
+[AirCutter] 4
+    Air Cutter, Cross Wind, Cutting Wind, Slicing Wind
+[AirSlash] 3
+    Air Slash, Razor Wing, Shot Air
+[Amnesia] 1
+    Amnesia
+[AncientPower] 6
+    Ancestral Memory, Ancient Mantra, Fossil Charge, Genetic Memory, Retro Cave, Stone Generator
+[Anger] 2
+    Anger, Seething Anger
+[AquaRing] 7
+    Aqua Flower, Healing Water, Healing Wave, Mystic Water, Water of Evolution, Water Plant, Water Ring
+[Attract] 5
+    Attract, Fascinate, Sweet Temptation, Tempt, Tempting Eyes
+[AuraSphere] 12
+    Damage Blast, Delta Blast, Energy Bomb, Energy Cannon, Extra Ball, Power Ball, Power Blast, Pulse Blast, Reactive Blast, Speed Ball, Spiral Blast, Syncroblast
+[AuroraBeam] 8
+    Aurora Beam, Aurora Wave, Crystal Beam, Crystal Laser, Crystal Wave, Delta Beam, Freeze Light, Rainbow Wave
+[Avalanche] 4
+    Avalanche, Mountain Crush, Mountain Eater, Mountain Smasher
+[Barrage] 2
+    Scatterbomb, Split Bomb
+[Barrier] 9
+    Barrier, Barrier Attack, Delta Reduction, Light Screen, Protective Swirl, Protective Wave, Psychic Shield, Pulse Guard, Shield Beam
+[BeatUp] 1
+    Beat Up
+[BigFireball] 2
+    Heat Blast, Thermal Blast
+[Bind] 4
+    Bind, Dark Bind, Dragon Bind, Quick Bind
+[Bite] 6
+    Bite, Gnaw, Second Bite, Sharp Fang, Sharp Teeth, Tail Bite
+[BlazeKick] 1
+    Blaze Kick
+[Blizzard] 5
+    Blizzard, Final Blizzard, Heavy Blizzard, Holon Blizzard, Ice Cyclone
+[Block] 4
+    Block Signal, Disable, Disconnect, Limitation
+[BlueFlame] 1
+    White Flames
+[BodySlam] 9
+    Body Slam, Headpress, Jump On, Knock Down, Knock Over, Slam, Smash Turn, Tonnage, Triple Smash (keyword)
+[BoneClub] 4
+    Bone Attack, Bone Smash, Energy Bone, Hard Bone
+[Bonemerang] 1
+    Bonemerang
+[BoneRush] 2
+    Bone Rush, Triple Bone
+[Bounce] 12
+    Bounce, Bounce Off, Bouncing Ball, Bouncy Move, Frog Hop, Hop, Jump Catch, Jump Over, Leap, Leap Out, Pounce, Spring Back
+[BraveBird] 6
+    Dive Bomb, Mid-air Crush, Nosedive, Skill Dive, Spiral Dive, Steep Dive
+[Bubble] 7
+    Bubble, Bubble Jump, Bubbles, Double Attack, Double Bubble, Sleep Bubble, Sleepy Ball
+[Bubblebeam] 6
+    Bubble Bomb, Bubble Shower, Bubblebeam, Max Bubbles, Multi Bubble, Triple Breach
+[BugBuzz] 1
+    Spider Force
+[BugSwarm] 3
+    Cat Fleas, Flock Attack, Pester
+[BulletSeed] 1
+    Needle Ball
+[CallForFamily] 9
+    Baby Outing, Call Back, Call for Family, Call for Friend, Call for Friends, Delta Call, Dragon Bond, Extra Call (text), Team Assembly
+[CatKick] 1
+    Cat Kick
+[ChainLightning] 1
+    Chain Lightning
+[ChantingBell] 1
+    Chime
+[Charge] 14
+    Charge, Charge Up, Collect Fire, Continuous Charge, Extra Circuit, Flame Gift, Negative Ion, Positive Ion, Power Generation, Quick Charge, Self Charge, Special Circuit, Static Electricity, Thunder Gift
+[Charm] 4
+    Alluring Smile, Charm, Strange Scent, Sweet Scent
+[Cheer] 2
+    Cheer Up, Let's Play!
+[Clamp] 3
+    Clamp, Clamp Splash, Shell Grab
+[Clap] 1
+    Helping Hand
+[Combustion] 1
+    Combustion
+[CometPunch] 4
+    Comet Punch, Extra Comet Punch, One-Two Punch, One-Two Strike
+[ConfuseRay] 2
+    Confuse Ray, Eerie Light
+[Confusion] 5
+    Fickle Attack, Losing Control, Mix-Up, Psy Confuse, Strange Dance
+[Constrict] 1
+    Constrict
+[Conversion] 6
+    Conversion 1, Conversion 2, Paint, Paint Trick, Texture Magic, Type Match
+[Copy] 7
+    Assist, Copy, Delta Copy, Mimicry, Mirror Move, Sketch, Skill Copy
+[CottonSpore] 10
+    Addictive Pollen, Energy Powder, Magic Dust, Magic Pollen, Miracle Powder, Mysterious Powder, Paradise Pollen, Rainbow Powder, Rapture Pollen, Stifling Fluff
+[Counter] 11
+    Counter, Crosscounter, Full Retaliation, Get Even, Grind, Metal Reversal, Power Revenge, Retaliate, Retaliation, Return Attack, Vengeance
+[Crabhammer] 1
+    Crabhammer
+[CrossChop] 3
+    Cross Chop, Double Chop, Vortex Chop
+[CrossCut] 3
+    Cross Attack, Cross-Cut, Double Cross
+[CrossPoison] 1
+    Toxic Claws
+[Crunch] 15
+    Big Bite, Bite Off, Black Fang, Chomp, Clamping Jaw, Continuous Bite, Crunch, Delta Fang, Jaw Clamp, Lonely Fang, Mystic Fang, Rending Jaws, Swallow, Swallow Up, Tight Jaw
+[Cry] 6
+    Bawl, Cry for Help, Rainy Day Blues, Snivel, Teary Eyes, Wail
+[Curse] 3
+    Clay Curse, Cursed Reaction, Pendulum Curse
+[CurseCounters] 8
+    Damage Curse, Damage Shift (utility), Darkness Chant (text), Extra Curse, Feedback (text), Pain Amplifier, Random Curse, Souvenir
+[DarkBlast] 3
+    Dark Burst, Dark Impact, Darkness Blast
+[DarkCloud] 1
+    Call of the Night
+[DarkFlame] 2
+    Dark Fire, Dark Flame
+[DarkMind] 2
+    Dark Mind, Delta Mind
+[DarknessEngulf] 1
+    Shadow Crush
+[DarkPowerUp] 2
+    Dark Provide, Darkness Charge
+[DarkPulse] 2
+    Dark Swirl, Shadow Beam
+[DarkSing] 4
+    Dark Song, Dirge, Night Song, Shadow Chant
+[DarkSlash] 1
+    Dark Slash
+[DarkWave] 4
+    Dark Link (keyword), Dark Ring (keyword), Dark Streak (keyword), Dark Wave
+[DataStrike] 7
+    Data Retrieval, Data Sort, Machine Burst, Radar Jam, Scanblast, Skill Hack, Special Formula
+[DestinyBond] 1
+    Destiny Bond
+[Detect] 2
+    Alert, Detect
+[Devolve] 4
+    Devolution Beam, Devolution Wave, Pull Down, Time Spiral (text)
+[Dig] 7
+    Burrow, Dig, Dig Deep, Dig Under, Earthdrill, Mining, Tunneling
+[Discharge] 6
+    Discharge, Gigaspark, High Voltage, Max Voltage, Meta Voltage, Zzzap
+[DizzyPunch] 1
+    Dizziness
+[DoubleClaw] 4
+    Double Claw, Double Scratch, Rend, Spike Rend
+[DoubleKick] 3
+    Double Kick, One-Two Kick, Split Kick
+[DoubleSlap] 3
+    Comet Slap, Doubleslap, Doublslap
+[DoubleSlash] 4
+    Blade Arms, Dual Cut, Triple Cutter, Twin-blade
+[Dragonbreath] 2
+    Dragon Flame, Dragonbreath
+[DragonClaw] 2
+    Dragon Claw, Giant Claw
+[DragonDance] 1
+    Dragon Dance
+[DragonRage] 3
+    Dragon Burst, Dragon Rage, Dragon Wave
+[DrainPunch] 1
+    Draining Cut
+[Draw] 12
+    Collect, Critical Collection, Delta Draw, Down Draw, Dump and Draw, Extra Draw, Grand Loop, Holon Draw, Loving Draw, Power Count, Prize Count, Whimsy Draw
+[DreamEater] 2
+    Dark Drain, Dream Eater
+[DrillPeck] 3
+    Double Peck, Drill Peck, Mega Peck
+[DynamicPunch] 3
+    Corkscrew Punch, Spiral Punch, Split Spiral Punch
+[Earthquake] 5
+    Crushing Earth, Earthquake, Land Crush, Major Earthquake, Raging Tremble
+[EggBomb] 8
+    Big Eggsplosion, Continuous Eggsplosion, Egg Bomb, Egg Surprise, Egg Toss, Eggsplosion, Lateral Eggsplosion, Super Eggsplosion
+[ElectricTackle] 10
+    Body Bolt, Electric Tackle, Electron Crush, Lightning Tackle, Lightning Tail, Lightning Turn, Lightning Wing, Magnetic Tackle, Thunder Spear, Thundertackle
+[ElectroBall] 1
+    Lightning Sphere
+[Ember] 7
+    Ember, Flame, Flickering Flames, Gentle Flames, Ignite, Kindle, Singe
+[Encore] 1
+    Cheer On
+[Endure] 1
+    Endure
+[EnergyAbsorbLong] 2
+    Max Energy Source, Ultra Energy Source
+[EnergyBall] 1
+    Energy Ball
+[EnergyOut] 3
+    Energy Burst, Energy Crush, Energy Press
+[EnergyRemove] 6
+    Minus Energy, Psychic Erase, Psychic Removal, Removal Beam, Removal Pulse, Super Removal
+[EnergyRings] 2
+    Energy Cycle, Energy Loop
+[EnergyUp] 17
+    Aqua Call, Aqua Supply, Burn Booster, Darkness Call, Drawup Power, Energy Call, Energy Catch, Energy Control, Energy Conversion, Energy Draw, Energy Link, Energy Patch, Energy Recall, Energy Recycle, Energy Retrieval, Energy Support, Gather Energy
+[EnergyUpSmall] 2
+    Energy Flip, Plus Energy
+[Eruption] 4
+    Crushing Mantle, Eruption, Melting Mountain, Volcanic Flame
+[EvilForce] 1
+    Black Magic
+[EvilKiss] 1
+    Paralyzing Kiss
+[Exclaim] 2
+    Shake, Surprise
+[Explosion] 5
+    Big Explosion, Explosion, Explosive Evolution, Final Blast, Mass Explosion
+[FeintAttack] 7
+    Ambush, Blindside, Feint Attack, Shadow Attack, Shadow Steal, Surprise Attack, Terror Strike
+[FingerStorm] 1
+    Shining Fingers
+[Fireball] 5
+    Ball of Flame, Burning Ball, Continuous Fireball, Fireball, Flame Ball
+[FireBlast] 12
+    Blaze, Dual Burn, Extra Flame, Fire Blast, Fire Force, Fireblast, Hyper Flame, Mega Burn, Mega Flame, Metal Burn, Multi Burn, Rainbow Burn
+[FireBurst] 4
+    Back Burner, Fire Mane, Fire Payback, Flame Burst
+[FireClaw] 2
+    Burning Claw, Fire Claws
+[FireFang] 1
+    Burning Fang
+[FirePunch] 5
+    Fire Blow, Fire Punch, Flaming Punch, Magma Jab, Magma Punch
+[FireSpin] 8
+    Bonfire, Fire Dance, Fire Ring, Fire Spin, Firestorm, Flame Swirl, Magma Ring, Ring of Fire
+[FireTail] 7
+    Burning Tail, Fire Tail, Fire Tail Slap, Fire Wing, Flame Tail, Flickering Tail, Scorching Wing
+[FireWall] 3
+    Fire Wall, Flame Screen, Protective Flame
+[Fissure] 3
+    Collapse, Earth Rift, Fissure
+[FistSlam] 1
+    Iron Fist
+[FlamePillar] 2
+    Flame Jet, Flame Pillar
+[Flamethrower] 12
+    Burning Fire, Burning Flame, Burning Sensation (keyword), Crushing Flames (keyword), Damage Burn (keyword), Fire Stream, Firebreathing, Flamethrower, Return Burn (keyword), Searing Flame, Searing Flames, Steady Firebreathing
+[FlameWheel] 5
+    Burning Turn, Fire Tackle, Flame Wheel, Heat Tackle, Rushing Flames
+[Flare] 6
+    Burn Off, Char, Flare, Playing with Fire, Stoke, Super Singe
+[Flash] 11
+    Blinding Light, Coral Glow, Dazzle Blast, Dazzle Dance, Flash Touch, Flashing Eyes, Light Wave, Lightning Flash, Miraculous Light, Mysterious Light, Sudden Flash
+[Flatter] 4
+    Even Game, False Charity, Influence, Suggestion
+[Fling] 2
+    Fling, Litter
+[Fly] 4
+    Aerial Maneuvers, Fly, Glide, Supersonic Flight
+[Focus] 1
+    Focus Energy
+[FollowMe] 2
+    Lure, Luring Antenna
+[ForcePalm] 1
+    Powerful Hand
+[Foresight] 4
+    Foresight, Scout, Searchlight, Spy
+[Freeze] 7
+    Freeze, Freeze Dry, Freeze Lock, Freeze Solid, Generate Cold, Ice Barrier, Ice Generator
+[FuryAttack] 4
+    Fury Attack, Fury Strikes, Leek Rush, Random Peck
+[FurySwipes] 7
+    Extra Claws, Fury Cutter, Fury Swipes, Hyper Claws, Mach Claw, Sky-high Claws, Supersonic Claws
+[Future] 2
+    Prophecy, Time Trap
+[GangUp] 10
+    Boyfriends, Dogpile, Double Damage, Gang Up, Group Attack, Rely on Friends, Strength in Numbers, Team Play, Twin Play, Work Together
+[GigaImpact] 11
+    Breakdown, Breaking Impact, Critical Crush, Crushing Blow, Deep Impact, Devastate, Gigacrush, Heavy Impact, Mega Impact, Rocket Tackle, Wreck
+[Gigashock] 5
+    Gigashock, Lightning Storm, Rolling Thunder, Thundersquall, Thunderstorm
+[Glare] 6
+    Dragon Eye, Glare, Hypnotic Gaze, Hypnotic Stare, Intense Glare, Paralyzing Gaze
+[Glitter] 6
+    Ascension, Bay Dance, Fast Evolution, Gold Scale, Rapid Evolution, Signs of Evolution
+[GrabCrush] 4
+    Bound Crush, Grab, Horn Grab, Irongrip
+[GrassKnot] 1
+    Entangling Vines
+[GreenHit] 2
+    Burst, Green Blast
+[Growl] 2
+    Growl, Snarl
+[Growth] 7
+    Full Bloom, Giant Growth, Growth, Growth Spurt, Spiral Growth, Sprout, Sudden Growth
+[Guillotine] 1
+    Guillotine
+[Gust] 1
+    Gust
+[Hail] 1
+    Hailstone
+[Harden] 3
+    Defense Curl, Harden, Stiffen
+[Hatch] 1
+    Hatch
+[Haunt] 4
+    Aftermath, Haunt, Poltergeist, Spook
+[Headbutt] 11
+    Continuous Headbutt, Double Headbutt, Fury Headbutt, Granite Head, Headbutt, Lazy Headbutt, Raging Headbutt, Rock Tackle, Screaming Headbutt, Skull Bash, Triple Headbutt
+[Heal] 13
+    Bind Wound, Dark Aid, Dragon Dew, Energy Heal, Energy Healing, First Aid, Healing Light, Healing Steps, Hyper Healing, Invigorate, Lick Wounds, Mend, Power Heal
+[HealBench] 2
+    Empathic Healing, Group Therapy
+[HealingSong] 3
+    Evolution Song, Healing Sound, Soothing Wave
+[HeatWave] 4
+    Fire Wind, Hot Air, Roasting Heat, Scorching Whirlwind
+[Hidden Power] 1
+    Hidden Power
+[HornAttack] 9
+    Antler Swipe, Gouge, Horn Attack, Horn Hazard, Horn Swipe, Horn Thrust, Mystifying Horns, Pierce, Thrust
+[HornDrill] 4
+    Drill Tackle, Horn Drill, Repeating Drill, Spinning Horn
+[HotRocks] 1
+    Volcanic Ash
+[Hurricane] 2
+    Aeroblast, Hurricane
+[HydroPump] 12
+    Aqua Blast, Core Stream, Double Cannon, Dual Stream, Hydro Pump, Hydrocannon, Hyper Pump, Prehistoric Water, Pump Out, Triple Cannon, Ultra Pump, Water Cannon
+[HyperBeam] 8
+    All-out Blast, Battle Blast, Core Blast, Final Laser, Hyper Beam, MAX Burst, Mega Shot, Wide Laser
+[HyperFang] 3
+    Darkness Fang, Hyper Fang, Super Fang
+[HyperVoice] 5
+    Bass Control, Cracking Voice, Hyper Voice, Sonic Scream, Sound Waves
+[Hypnosis] 12
+    Dream Dance, Hypno Splash, Hypno Wave, Hypnoblast, Hypnoshower, Hypnosis, Hypnosplash, Mind Trip, Sleep Inducer, Spiral Wave, Super Hypno Wave, Super Hypnoblast
+[IceBeam] 2
+    Ice Beam, Star Freeze
+[IceFang] 1
+    Frostbite
+[IcePunch] 1
+    Ice Punch
+[IceShard] 1
+    Ice Throw
+[IceWing] 2
+    Freezing Wing, Ice Wing
+[Icicle] 4
+    Cold Crush, Crushing Ice, Ice Pillar, Iceberg Crush
+[IcyWind] 5
+    Cold Breath, Freezing Breath, Ice Breath, Icy Wind, Super Icy Wind
+[Inferno] 10
+    Burn Away, Burn Down, Burn Up, Bursting Inferno, Crush and Burn, Destructive Fire, Flames of Rage, Incinerate, Roaring Flames, Wildfire
+[Ingrain] 2
+    Energy Plant, Hard Plant
+[IronDefense] 3
+    Advanced Armor, Armor Up, Iron Defense
+[IronTail] 5
+    Iron Head, Iron Tail, Metal Charge, Metal Tail, Steel Headbutt
+[KarateChop] 2
+    Chop, Karate Chop
+[Kick] 8
+    Gentle Kick, Hind Kick, Kick, Light Kick, Low Kick, Rear Kick, Stretch Kick, Zap Kick
+[LeafBlade] 2
+    Leaf Blade, Leaf Slice
+[LeafStorm] 1
+    Spiral Leaf
+[LeechLife] 1
+    Leech Life
+[LeechSeed] 4
+    Dark Seed, Leech Seed, Poison Seed, Sleep Seed
+[Leer] 4
+    Evil Eye, Leer, Night Eyes, Stare
+[Lick] 7
+    Lap Up, Lick, Long Tongue, Tongue Slap, Tongue Stretch, Tongue Whip, Upward Lick
+[LightBall] 1
+    Luster Blast
+[LightningBall] 2
+    Lightning Ball, Pika Ball
+[LightSlash] 4
+    Blinding Scythe, Delta Edge, Lightning Cut, Thunder Slash
+[LockOn] 12
+    Called Shot, Electromark, Hook Shot, Lock-on, Lucky Shot, Sharpshooter, Sharpshooting, Shoot Down, Target Attack, Target Beam, Target Scorch, Target Slash
+[Lunar] 1
+    Lunar Blast
+[MagicalLeaf] 2
+    Miracle Leaf, Psychic Leaf
+[Magma] 9
+    Crushing Lava, Crushing Magma, Lava Burn, Lava Burst, Lava Flow, Magma Burn, Magma Spurt, Rushing Magma, Scorching Lava
+[Magnet] 7
+    Magnetic Force, Magnetic Lines, Magnetic Pull, Magnetic Swirl, Magnetic Trip, Magnetic Wave, Magnetism
+[MagnetBomb] 2
+    Magnetic Blast, Magnetic Bomb
+[Magnitude] 6
+    Earth Bomb, Land Sonic, Magnitude, Rumble, Trembler, Tremor
+[MeanLook] 4
+    Corner, Mean Look, Shadow Bind, Shadow Tag
+[Meditate] 6
+    Calm Mind, Chakra Points, Meditate, Psychic Option, Psychic Select, Spiral Aura
+[MegaDrain] 7
+    Dig Drain, Life Drain, Mega Drain, Sleep Sap, Spiral Drain, Sporadic Sponging, Vital Drain
+[Megahorn] 9
+    Angry Horn, Charging Horn, Dark Horn, Giant Horn, Giant Tusk, Horn Charge, Horn Rush, Impaling Tusk, Megahorn
+[MegaKick] 13
+    Energy Kick, Heel Drop, High Jump Kick, Kick Away, Mega Kick, Moon Kick, Risky Kick, Rolling Kick, Sky Kick, Smash Kick, Spiral Kick, Upward Kick, Wild Kick
+[MegaPunch] 12
+    Desperate Punch, Double Lariat, Energy Punch, Heavy Punch, Lariat, Love Lariat, Magnum Punch, Mega Punch, Power Lariat, Sky Uppercut, Smash Punch, Special Punch
+[MetalBall] 2
+    Double Metal Ball, Metal Ball
+[MetalClaw] 4
+    Metal Claw, Metal Hook, Metal Scoop, Shining Claws
+[MetalSound] 4
+    Breaking Sound, Metal Surge, Resonate, Steel Wave
+[Meteor] 1
+    Mass Destruction
+[Metronome] 3
+    Metronome, Mini-Metronome, Super Metronome
+[MilkDrink] 2
+    Healing Milk, Milk Drink
+[MindReader] 4
+    Psyscan, Synchronize, The Third Eye, Third Eye
+[MindShock] 7
+    ESP, Headache, Migraine, Mind Play, Mind Shock, Random ESP, Shuffle Attack
+[MiniExplosions] 2
+    Fireworks, Shell Rupture
+[Minimize] 1
+    Minimize
+[MirrorShot] 3
+    Mirror Shell, Reflect Energy, Reflected Beam
+[MistBall] 2
+    Luster Purge, Mist Ball
+[MoonAttack] 1
+    Moon Impact
+[Moonlight] 3
+    Lunar Power, Moon Guidance, Moonwatching
+[MudSlap] 4
+    Mud Shot, Mud Slap, Muddy Eye, Mudslide
+[MudSport] 1
+    Mud Splash
+[NastyPlot] 1
+    Pranks
+[NatureBoost] 1
+    Speed Growth
+[NatureRecovery] 7
+    Green Heal, Healing Dust, Healing Oasis, Healing Pollen, Soothing Scent, Sticky Nectar, Sweet Nectar
+[Nightmare] 2
+    Bad Dream, Nightmare
+[NightShade] 2
+    Night Attack, Night Spirits
+[Octazooka] 4
+    Ink Blast, Ink Spurt, Octazooka, Slimy Water
+[OneSlap] 3
+    Slap Down, Slap Push, Super Slap Push
+[Outrage] 7
+    Delta Crush, Devo Crush, Dragon Crush, Dragon Smash, Outrage, Psychic Rage, Violent Rage
+[PainSplit] 2
+    Pain Split, Psychic Exchange
+[Palm] 1
+    Bursting Hand
+[Panic] 2
+    Eeeeeeek, Eek
+[PayDay] 2
+    Coin Hurl, Pay Day
+[Pebbles] 2
+    Pebble Hurl, Pebble Throw
+[Peck] 4
+    Peck, Peck Attack, Sharp Beak, Steel Beak
+[PerishSong] 1
+    Perish Song
+[PetalBlizzard] 1
+    Petal Whirlwind
+[PetalDance] 3
+    Flower Dance, Green Dance, Petal Dance
+[Photosynthesis] 1
+    Sunbathe
+[Pickup] 5
+    Fetch, Hoard, Pickup, Pickup Power, Scavenge
+[PinMissile] 10
+    Hyper Needle, Link Needle, Needle Rush, Needle Storm, Needles, Pin Missile, Spike Barrage, Spike Cannon, Thunder Needle, Vengeful Spikes
+[PoisonClaw] 2
+    Poison Claws, Sludge Punch
+[PoisonFang] 2
+    Poison Bite, Poison Fang
+[PoisonGas] 14
+    Confusion Gas, Foul Gas, Foul Odor, Poison Breath, Poison Gas, Poison Scent, Poison Vapor, Sleeping Gas, Slow Trip Gas, Smelly Gas, Stun Gas, Suffocating Gas, Super Poison Breath, Vile Smell
+[PoisonHorn] 2
+    Poison Antennae, Poison Horn
+[PoisonPowder] 8
+    Break Powder, Horrid Pollen, Leaf Poison, Poison Spore, Poisonpowder, Pollen Hazard, Toxic Spore, Venom Powder
+[PoisonSpray] 2
+    Poison Spray, Poison Spurt
+[PoisonSting] 7
+    Jellyfish Sting, Poison Barb, Poison Needle, Poison Needle Rush, Poison Sting, Poison Sting Tackle, Tail Sting
+[PoisonTentacle] 13
+    Black Suction Cups, Dark Tentacle, Jellyfish Pod, Jellyfish Poison, Long Tentacle, Poison Bind, Poison Tentacles, Poison Vine, Sludge Grip, Tender Tentacles, Tentacle Grip, Tentacle Wrap, Toxic Grip
+[Pound] 2
+    Leek Jab, Pound
+[PowderSnow] 5
+    Diamond Dust, Flurries, Ice Gift, Powder Snow, White Snow
+[PowerfulHit] 8
+    Chaos Crush, Critical Move, Extra Crush, Heavy Blow, Power Blow, Power Crush, Power Move, Special Blow
+[PowerUp] 3
+    Expand, Standing By (utility), Warm Up
+[PowerUpLights] 1
+    Pure Power
+[PowerUpNoRing] 1
+    Belly Drum
+[PowerUpRings] 1
+    Stockpile
+[Present] 2
+    Birthday Surprise, Present
+[Protect] 5
+    Darkness Shield, Deflector, Leaf Shade, Pollen Shield, Reflect Shield
+[Psybeam] 4
+    Distortion Beam, Hypnotic Ray, Psybeam, Psyshot
+[Psychic] 4
+    Psyche, Psychic, Psychic Force, Supernatural
+[PsychicBlast] 10
+    Mind Blast, Miracle Blow, Psyburn, Psyburst, Psychic Boom, Psyimpact, Psystorm, Super Psy, Super Psy Bolt, Supernatural Power
+[PsychicDamage] 1
+    Psychic Damage
+[PsychicLights] 1
+    Psymist
+[Psypunch] 1
+    Psypunch
+[Psyshock] 1
+    Psyshock
+[Psywave] 11
+    Clay Pulse, Dwindling Wave, Fastwave, Multi Pulse, Psychic Pulse, Psycho Waves, Psyloop, Psysplash, Psywave, Super Psywave, Surround
+[Punch] 19
+    Beat, Cat Punch, Child's Punch, Cotton Punch, Hustle Punch, Jab, Knuckle Punch, Lazy Punch, Light Punch, Mach Punch, Pulled Punch, Punch (keyword), Punch and Run, Second Strike, Speedy Uppercut, Steady Punch, Supersonic Jab (keyword), Tail Punch, Upper Hand
+[Pursuit] 1
+    Pursuit
+[Question] 8
+    Bad News, Deceive, Disorder, Liability, Mislead, Scam, Spacing Out, Twiddle
+[QuickAttack] 9
+    Fake Out, Quick Attack, Quick Blow, Quick Touch, Quick Turn, Speed Stroke, Strike and Run, Swift Blow, Swift Turn
+[Rain] 5
+    Drizzle, Energy Shower, Rain Splash, Scattered Shower, Summon Storm
+[RainbowWing] 1
+    Mysterious Wing
+[RapidPunches] 4
+    Beatdown, Fury Punch, Hurricane Punch, Reactive Beating
+[RazorLeaf] 4
+    Double Razor Leaf, Knife Leaf, Razor Leaf, Sharp Leaf
+[RazorWind] 1
+    Razor Wind
+[Recover] 1
+    Recover
+[Rest] 7
+    Afternoon Nap, Nap, Nap Time, Naptime, Rest, Slack Off, Yawn
+[ReverseCharge] 1
+    Recharge
+[Roar] 7
+    Bellow, Black Cry, Destructive Roar, Dragon Roar, Eerie Howl, Roar, Thunderous Roar
+[RoarOfTime] 2
+    Dragon's Vengeance, Ozone Flare
+[RockBlast] 1
+    Rock Blast
+[RockSlide] 2
+    Rock Slide, Stone Barrage
+[RockSmash] 4
+    Brick Smash, Pot Smash, Pulverize, Rock Smash
+[RockThrow] 3
+    Rock Hurl, Rock Throw, Rock Toss
+[RockTomb] 1
+    Stone Crush
+[Rollout] 8
+    Continuous Tumble, Rock Tumble, Rolling Attack, Rolling Tackle, Rollout, Spike Ball Tackle, Spin Ball, Tumbling Attack
+[Roots] 2
+    Flytrap, Grasping Vine
+[SacredFire] 6
+    Bright Flame, Holy Flame, Phoenix Flame, Sacred Fire, Sacred Wing, White-hot Flame
+[SandAttack] 2
+    Sand Attack, Sand-attack
+[Sandstorm] 4
+    Desert Burn, Dust Devil, Sand Swirl, Sandstorm
+[SandTomb] 2
+    Sand Pit, Sand Trap
+[ScaryFace] 4
+    Intimidate, Scary Face, Terrorize, Threaten
+[Scratch] 12
+    Brush Aside, Claw, Claw Swipe, Hook, Knock Off, Nail Flick, Scratch, Scratch and Draw, Stretch Claws, Sudden Swipe, Sweep Away, Swipe
+[Screech] 6
+    Chaotic Noise, Deafen, Screech, Screechy Voice, Sonic Noise, Strange Rasping
+[Search] 13
+    Delta Search, Errand-Running, Friend Search, Holon Search, Important Errands, Limited Delivery, Look for Friends, Messenger, Minor Errand-Running, Pick and Choose, Seek Out, Sniff Out, Synchronized Search
+[Seeds] 1
+    Fruition
+[SeismicToss] 11
+    Fling Away, Flip Over, Horn Toss, Light Touch Throw, Mega Throw, Overhead Toss, Pivot Throw, Seismic Toss, Toss, Toss and Turn, Tusk Toss
+[Selfdestruct] 4
+    Detonate, Detonation, Selfdestruct, Spontaneous Explosion
+[ShadowClaw] 1
+    Sharp Claws
+[ShadowPunch] 2
+    Dark Hand, Shadow Hand
+[ShadowSneak] 1
+    Night Ambush
+[SheerCold] 2
+    Freezing Force, Sheer Cold
+[ShieldBreak] 2
+    Derail, Shatter
+[Shockwave] 2
+    Shock-wave, Shockwave
+[ShootingStar] 2
+    Rainbow Star, Shooting Star
+[SilverWind] 4
+    Flitter, Flutter Trick, Silver Wind, Strange Scale
+[Sing] 9
+    Dragon Song, Gentle Song, Good Night, Good Night Song, Lullaby, Return Trance (text), Set Song, Sing, Sleepy Song
+[Slap] 4
+    Gentle Slap, Leek Slap, Slap (keyword), Smack
+[Slash] 8
+    False Swipe, Ground Slash, Sharp Sickle, Slash, Slashing Strike, Super Slash, Super Slice, Surprise Slash
+[SleepPowder] 2
+    Sleep Powder, Sleep Spore
+[Sludge] 12
+    Blot, Burning Sludge, Burning Venom, Nasty Goo, Paste, Poison Flame, Poison Sludge, Slime, Sludge, Sludge Toss, Spit Up, Splatter
+[SmallBomb] 2
+    Misfire, Sputter
+[Smog] 4
+    Poison Smog, Smog, Smogscreen, Toxic Cloud
+[SmokeBurst] 2
+    Pop, Smash Bomber
+[SmokeEscape] 3
+    Hide, Hide in Shadows, Skedaddle
+[Smokescreen] 4
+    Dragon Mist, Mist Attack, Obscuring Gas, Smokescreen
+[Softboiled] 1
+    Healing Egg
+[Solarbeam] 4
+    Reflected Sunlight, Solar Blast, Solarbeam, Wide Solarbeam
+[Sonicboom] 4
+    Enraged Linear Attack, Linear Attack, Sonic Wing, Sonicboom
+[Spark] 9
+    Bustle, Kerzap, Lightning Spark, Negative Spark, Positive Spark, Random Spark, Return Spark, Spark, Thunderspark
+[Spin] 11
+    Backspin, Double Spin, Rapid Spin, Roll Over (keyword), Spin Tackle, Spinning Attack, Spinning Blow, Spinning Head, Spinning Tail, Spiral Attack, Triple Spin
+[SpinningSlash] 1
+    Rotating Claws
+[Spite] 2
+    Gift of Spite, Grudge
+[Splash] 7
+    Energy Splash, Flop, Holon Splash, Hydro Splash, Hydrosplash, Salt Water, Splash
+[SplashHit] 7
+    Fin Slap, Fin Smack, Flipper Splash, Flipper Stroke, Hydro Punch, Splashing Turn, Water Punch
+[SpoonBend] 1
+    Mind Bend
+[Spore] 3
+    Evolutionary Spore, Spore, Spore Evolution
+[Spotlight] 5
+    Floodlight, Judgement, Revelation, Stadium Play, Stadium Power
+[Squeeze] 9
+    Bear Hug, Cling, Clutch, Crush, Headlock, Hug, Scrunch, Squeeze, Strangle
+[StarBeam] 1
+    Psychic Star
+[StarStrike] 3
+    Holy Star, Metal Star, Shining Star
+[Steal] 7
+    Mug, Pilfer, Plunder, Rob, Snatch, Snatch and Run, Take Away
+[Steam] 3
+    Scalding Steam, Scorching Smoke, Steam Blast
+[SteelOrb] 2
+    Metal Load, Steel Generator
+[SteelPunch] 5
+    Heavy Metal, Iron Smash, Metal Crush, Metal Crusher, Metallic Blow
+[SteelWing] 1
+    Steel Wing
+[Sting] 8
+    Knockout Needle, Sharp Point, Sharp Stinger, Spearhead, Spike Stab, Sting, Sting Turn, Stun Needle
+[Stomp] 6
+    Circular Steps, Crushing Step, Squaredance, Stamp, Stomp, The Hula-la
+[StoneEdge] 1
+    Rock Vengeance
+[StringShot] 6
+    Entagling Thread, Entangling Thread, Gooey Thread, Poison Thread, String Pull, String Shot
+[StunSpore] 2
+    Strange Powder, Stun Spore
+[Submission] 1
+    Submission
+[Substitute] 3
+    Mirage, Shadow Images, Shed
+[Sunburn] 2
+    Scorching Light, Sunburn
+[SunnyDay] 2
+    Forecast, Sunshine
+[Supersonic] 8
+    Confusion Pulse, Confusion Wave, Distorted Wave, Poison Sound Wave, Sonic Distortion, Sonic Signal, Supersonic, Warp Sounds
+[Surf] 11
+    Aqua Wave, Do the Wave, Hydro Wave, Hyper Splash, Land Stream, Rapids, Return Wave, Surf, Undulate, Wash Away, Wave Splash
+[Swagger] 1
+    Gesture
+[Sweat] 2
+    Fidget, Play Dead
+[SweetKiss] 6
+    Alluring Kiss, Blown Kiss, Energy Kiss, Freezing Kiss Goodnight, Psykiss, Sweet Kiss
+[Swift] 4
+    Magic Darts, Speed Shot, Star Boomerang, Swift
+[Switch] 12
+    Baton Pass, Bench Manipulation, Darkness Switch, Detour, Drag Off, Juxtapose, Pull Away, Pull In, Push Aside, Push Away, Quick Change, Reverse Thrust
+[SwordsDance] 2
+    Sharpen, Swords Dance
+[Tackle] 12
+    Double Tack, Double Tackle, Lazy Attack, Lunge, Lunge Out, Ram, Rush, Shove, Spiral Rush (keyword), Tackle, Trip Over, Tripping Turn
+[TailSlap] 9
+    3-Pronged Tail, Fishing Tail, Snap Tail, Stretch Tail, Tail Rap, Tail Slap, Tail Snap, Tail Whap, Trick Tail
+[TailSmash] 8
+    Dragon Tail, Giant Tail, Hyper Tail, Miracle Tail, Quick Tail Smash, Tail Crush, Tail Smash, Tail Strike
+[TailWhip] 5
+    Tail Fan, Tail Shake, Tail Wag, Tail Whip, Wiggle
+[TakeDown] 14
+    Cannonball, Careless Tackle, Double-edge, Full Speed Charge, Gallop, High-Speed Charge, Knock Away, Knock Back, Raging Charge, Reckless Charge, Rising Lunge, Risky Attack, Sudden Charge, Take Down
+[Taunt] 4
+    Pick On, Provoke, Shakedown, Taunt
+[Telekinesis] 4
+    Invisible Hand, Sleight of Hand, Sticky Hands, Telekinesis
+[Teleport] 5
+    Fade Out, Return Home, Teleport, Vanish, Warp Hole
+[TeleportBeam] 2
+    Teleport Blast, Teleportation Burst
+[Thrash] 9
+    Battle Frenzy, Flail, Flail Around, Frenzied Attack, Mega Thrash, Rage, Rampage, Tantrum, Thrash
+[Thunder] 8
+    Gigavolt, Lightning Strike, Mega Thunderbolt, Miraculous Thunder, Raging Thunder, Surprise Thunder, Thunder, Thunder Attack
+[Thunderbolt] 16
+    Dragon Spark, Electric Bolt, Electroburn, Lightning Bolt, Lightning Burn, Lightning Rod, Mega Shock, Pika Bolt, Plasma, Power Bolt, Power Short, Shock Bolt, Thunder Flare, Thunder Force, Thunder Reflection, Thunderbolt
+[ThunderPunch] 3
+    Electric Punch, Thunderous Blow, Thunderpunch
+[ThunderShock] 5
+    Dark Shock, Double Shock, Electric Shock, Thunder Jolt, Thundershock
+[ThunderWave] 8
+    Attract Current, Conduction, Electric Current, Jolt, Stun Wave, Super Thunder Wave, Tail Shock, Thunder Wave
+[TidalWave] 6
+    Crushing Wave, Giant Wave, Major Flood, Super Tidal Wave, Tidal Wave, Tsunami
+[Torment] 1
+    Mischief
+[Toxic] 25
+    Dark Poison, Deadly Poison, Earth Poison, Extra Poison, Fast-Acting Poison, Lizard Poison, Lure Poison, Nerve Poison, Poison Buildup, Poison Power, Poison Pulse, Poison Reaction, Poison Ring, Power Poison, Reactive Poison, Sleep Poison, Slow-Acting Poison, Spread Poison, Stun Poison, Thick Poison, Toxic, Toxic Sleep, Toxic Vibration, Triggered Poison, Triple Poison
+[Trample] 3
+    Overrun, Stampede, Trample
+[TriAttack] 12
+    3-D Attack, Bi-Blast, Curve Attack, Delta Circle, Elemental Blast, Link Blast, Multiple Force, Rainbow Moves, Scramble Trip, Split Blast, Squared Attack, Tri Attack
+[TripleKick] 2
+    Repeating Kick, Triple Kick
+[TripleNeedle] 1
+    Triple Needle
+[Twineedle] 2
+    Double Stab, Twineedle
+[Twister] 2
+    Dragon Tornado, Twister
+[ViceGrip] 6
+    Double Pinchers, Metal Pincer, Prop-up Pinchers, Sleep Pinchers, Snapping Pincers, Vital Pinchers
+[VineWhip] 3
+    Stretch Vine, Vine Slap, Vine Whip
+[VineWrap] 3
+    Entangle, Tickling Vines, Vine Tease
+[WakeUpSlap] 2
+    Good Morning, Slap Awake
+[Waterfall] 9
+    Aqua Crush, Aqua Smash, Aquabomb, Deep Dive, Dive, Quick Dive, Sore Spot, Super Deep Dive, Waterfall
+[WaterGun] 14
+    Aqua Trance (keyword), Aqua Trick (keyword), Aqua Trip (keyword), Auto Fire, Dark Splash (keyword), Energy Stream, Fast Stream, Hydro Shot, Splash About (keyword), Squirt, Water Arrow, Water Bullet, Water Gun, Water Spray
+[WaterPulse] 4
+    Aqua Beam, Aqua Sonic, Hydrokinesis, Surge
+[WaterSlash] 5
+    Aqua Slash, Hydrocutter, Razor Fin, Sharp Fin, Water Slash
+[Web] 2
+    Spider Trap, Spider Web
+[Whirlpool] 10
+    Aqua Reverse, Hydro Reverse, Hyper Reverse, Hyper Whirlpool, Reverse Stream, Riptide, Sludge Whirlpool, Strong Current, Upstream, Whirlpool
+[Whirlwind] 2
+    Repulsion, Whirlwind
+[Whisper] 1
+    Night Murmurs
+[WillOWisp] 5
+    Call Will-o'-the-wisp, Ethereal Flame, Guiding Flame, Luring Flame, Will-o'-the-wisp
+[WingAttack] 3
+    Aerowing, Double Wing Attack, Wing Attack
+[Wish] 7
+    Cosmic Draw, Fairy Power, Make a Wish, Miracle, Miracle Essence, Miraculous Comeback, Star Back
+[Withdraw] 5
+    Hide in Shell, Lie Low, Shell Attack, Spiky Shell, Withdraw
+[Wrap] 5
+    Fish Out, Gentle Wrap, Tail Wrap, Tongue Wrap, Wrap
+[ZapCannon] 4
+    Electric Blast, Electro Beam, Metallic Thunder, Thunder Blast
+
+RECIPES NOT USED BY ANY ATTACK: FireCharge, FlameStar, Misc, NaturalPower, PsychicBall, SignalBeam
+EFFECT PARTS NOT USED BY ANY RECIPE: AtomBurst, BlueCrescent, BlueFireBall, BlueOrb, BlueOrbShrink, BluePulse, BlueRing, BlueRingSpin, BlueRingsIn, CrescentMoon, DarkSmoke, ElectroBall, EnergyBall/000, EnergyBall/001, EnergyUpSmall, Fireball, GlowGrowShrink/001, GoldSparkle, GreenComet, GreenCrescent, GreenCrystal, GreenSeed, IceShardSide, IcyWind/000, LanternFlash, LeafSmall, LeechSeed/000, LightOrb, MiniEmber, MiniIcons/HappyCheer, MiniPunch, MudSport/000, MudSport/001, MultipleClawAttack/001, MultipleClawAttack/002, MultipleClawAttack/003, MultipleClawAttack/004, MultipleClawAttack/005, MultipleClawAttack/006, MultipleClawAttack/007, MultipleClawAttack/009, MultipleClawAttack/010, MultipleClawAttack/011, MultipleClawAttack/013, MultipleClawAttack/014, MultipleClawAttack/015, NaturePowerUp1, OrangeBubbles, OrangeBursts, OrangeOrb, PinkBurst, PinkOrb, PinkOrbBig, PinkOrbSmall, PinkRings, PinkStarBurst, RainRing, RedRings, RedRoar, RockFace, Rocket, SalmonPulse, SeedScatter, ShieldBreak/002, SleepZ, SparkPillar, SparkleRing, SpinningStar, StarRing, StarStrikeBlue, TwinkleDust, WaterDrop, WaterPulse1, WaterSportSplash, WhiteOrbSmall, WhiteRingIn, WhiteSeeds, YellowSparkle

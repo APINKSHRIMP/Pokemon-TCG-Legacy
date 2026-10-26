@@ -1,0 +1,6069 @@
+{
+ "Absorb": {
+  "dur": 3.33,
+  "hit": 2.37,
+  "onsets": [
+   0.0,
+   2.37
+  ],
+  "src": "gen4/Absorb.mp3"
+ },
+ "Absorb part 1": {
+  "dur": 1.82,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Absorb part 1.mp3"
+ },
+ "Absorb part 2": {
+  "dur": 0.98,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Absorb part 2.mp3"
+ },
+ "Acid": {
+  "dur": 0.7,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Acid.mp3"
+ },
+ "Acid Armor": {
+  "dur": 2.21,
+  "hit": 1.73,
+  "onsets": [
+   0.0,
+   1.22,
+   1.73
+  ],
+  "src": "gen4/Acid Armor.mp3"
+ },
+ "Acid Armor part 1": {
+  "dur": 0.68,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Acid Armor part 1.mp3"
+ },
+ "Acid Armor part 2": {
+  "dur": 1.0,
+  "hit": 0.52,
+  "onsets": [
+   0.0,
+   0.52
+  ],
+  "src": "gen4/Acid Armor part 2.mp3"
+ },
+ "Acupressure": {
+  "dur": 1.13,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.19
+  ],
+  "src": "gen4/Acupressure.mp3"
+ },
+ "Aerial Ace": {
+  "dur": 0.86,
+  "hit": 0.36,
+  "onsets": [
+   0.0,
+   0.36
+  ],
+  "src": "gen4/Aerial Ace.mp3"
+ },
+ "Aeroblast": {
+  "dur": 3.84,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Aeroblast.mp3"
+ },
+ "Agility": {
+  "dur": 1.93,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Agility.mp3"
+ },
+ "Air Cutter": {
+  "dur": 0.8,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Air Cutter.mp3"
+ },
+ "Air Slash": {
+  "dur": 0.88,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Air Slash.mp3"
+ },
+ "Amnesia": {
+  "dur": 0.88,
+  "hit": 0.64,
+  "onsets": [
+   0.0,
+   0.64
+  ],
+  "src": "gen4/Amnesia.mp3"
+ },
+ "Ancient Power": {
+  "dur": 2.33,
+  "hit": 1.88,
+  "onsets": [
+   0.0,
+   0.1,
+   0.24,
+   0.6,
+   0.82,
+   1.22,
+   1.88
+  ],
+  "src": "gen4/Ancient Power.mp3"
+ },
+ "Aqua Jet": {
+  "dur": 1.46,
+  "hit": 0.26,
+  "onsets": [
+   0.0,
+   0.26
+  ],
+  "src": "gen4/Aqua Jet.mp3"
+ },
+ "Aqua Ring": {
+  "dur": 1.92,
+  "hit": 1.33,
+  "onsets": [
+   0.0,
+   0.22,
+   0.43,
+   0.64,
+   1.12,
+   1.33,
+   1.54,
+   1.74
+  ],
+  "src": "gen4/Aqua Ring.mp3"
+ },
+ "Aqua Tail": {
+  "dur": 1.9,
+  "hit": 1.18,
+  "onsets": [
+   0.0,
+   0.26,
+   1.18
+  ],
+  "src": "gen4/Aqua Tail.mp3"
+ },
+ "Arm Thrust 1hit": {
+  "dur": 0.39,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Arm Thrust 1hit.mp3"
+ },
+ "Arm Thrust 2hits": {
+  "dur": 1.39,
+  "hit": 1.02,
+  "onsets": [
+   0.0,
+   1.02
+  ],
+  "src": "gen4/Arm Thrust 2hits.mp3"
+ },
+ "Aromatherapy": {
+  "dur": 3.68,
+  "hit": 3.04,
+  "onsets": [
+   0.0,
+   0.17,
+   0.37,
+   0.57,
+   0.77,
+   0.97,
+   1.17,
+   1.37,
+   1.57,
+   1.77,
+   2.08,
+   2.24,
+   2.44,
+   3.04
+  ],
+  "src": "gen4/Aromatherapy.mp3"
+ },
+ "Assist": {
+  "dur": 1.57,
+  "hit": 1.13,
+  "onsets": [
+   0.0,
+   0.4,
+   0.77,
+   1.13
+  ],
+  "src": "gen4/Assist.mp3"
+ },
+ "Assurance": {
+  "dur": 0.79,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Assurance.mp3"
+ },
+ "Astonish": {
+  "dur": 0.65,
+  "hit": 0.53,
+  "onsets": [
+   0.0,
+   0.44,
+   0.53
+  ],
+  "src": "gen4/Astonish.mp3"
+ },
+ "Attack Order": {
+  "dur": 2.4,
+  "hit": 1.0,
+  "onsets": [
+   0.0,
+   0.1,
+   0.57,
+   1.0
+  ],
+  "src": "gen4/Attack Order.mp3"
+ },
+ "Attract": {
+  "dur": 1.24,
+  "hit": 0.93,
+  "onsets": [
+   0.0,
+   0.33,
+   0.65,
+   0.93
+  ],
+  "src": "gen4/Attract.mp3"
+ },
+ "Aura Sphere": {
+  "dur": 3.56,
+  "hit": 2.75,
+  "onsets": [
+   0.0,
+   2.75
+  ],
+  "src": "gen4/Aura Sphere.mp3"
+ },
+ "Aura Sphere part 1": {
+  "dur": 1.86,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Aura Sphere part 1.mp3"
+ },
+ "Aura Sphere part 2": {
+  "dur": 0.82,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Aura Sphere part 2.mp3"
+ },
+ "Aurora Beam": {
+  "dur": 2.55,
+  "hit": 1.64,
+  "onsets": [
+   0.0,
+   0.44,
+   0.84,
+   1.25,
+   1.64
+  ],
+  "src": "gen4/Aurora Beam.mp3"
+ },
+ "Avalanche": {
+  "dur": 2.04,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Avalanche.mp3"
+ },
+ "Barrage 1hit": {
+  "dur": 0.66,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Barrage 1hit.mp3"
+ },
+ "Barrage 2hits": {
+  "dur": 2.77,
+  "hit": 2.12,
+  "onsets": [
+   0.0,
+   0.56,
+   1.58,
+   2.12
+  ],
+  "src": "gen4/Barrage 2hits.mp3"
+ },
+ "Barrier": {
+  "dur": 1.05,
+  "hit": 0.47,
+  "onsets": [
+   0.0,
+   0.17,
+   0.27,
+   0.37,
+   0.47,
+   0.57,
+   0.67
+  ],
+  "src": "gen4/Barrier.mp3"
+ },
+ "Baton Pass": {
+  "dur": 5.18,
+  "hit": 4.67,
+  "onsets": [
+   0.0,
+   1.1,
+   2.48,
+   4.67
+  ],
+  "src": "gen4/Baton Pass.mp3"
+ },
+ "Baton Pass part 1": {
+  "dur": 3.26,
+  "hit": 1.1,
+  "onsets": [
+   0.0,
+   1.1,
+   2.48
+  ],
+  "src": "gen4/Baton Pass part 1.mp3"
+ },
+ "Baton Pass part 2": {
+  "dur": 0.52,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Baton Pass part 2.mp3"
+ },
+ "Beat Up 1hit": {
+  "dur": 0.39,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Beat Up 1hit.mp3"
+ },
+ "Beat Up 2hits": {
+  "dur": 1.09,
+  "hit": 0.71,
+  "onsets": [
+   0.0,
+   0.71
+  ],
+  "src": "gen4/Beat Up 2hits.mp3"
+ },
+ "Belly Drum": {
+  "dur": 1.23,
+  "hit": 0.92,
+  "onsets": [
+   0.0,
+   0.32,
+   0.62,
+   0.92
+  ],
+  "src": "gen4/Belly Drum.mp3"
+ },
+ "Bide": {
+  "dur": 5.67,
+  "hit": 5.18,
+  "onsets": [
+   0.0,
+   2.17,
+   4.58,
+   5.18
+  ],
+  "src": "gen4/Bide.mp3"
+ },
+ "Bide part 1": {
+  "dur": 1.21,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Bide part 1.mp3"
+ },
+ "Bide part 2": {
+  "dur": 1.1,
+  "hit": 0.61,
+  "onsets": [
+   0.0,
+   0.61
+  ],
+  "src": "gen4/Bide part 2.mp3"
+ },
+ "Bind": {
+  "dur": 1.25,
+  "hit": 1.08,
+  "onsets": [
+   0.0,
+   0.71,
+   1.08
+  ],
+  "src": "gen4/Bind.mp3"
+ },
+ "Bind turn damage": {
+  "dur": 0.99,
+  "hit": 0.82,
+  "onsets": [
+   0.0,
+   0.46,
+   0.82
+  ],
+  "src": "gen4/Bind turn damage.mp3"
+ },
+ "Bite": {
+  "dur": 0.35,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Bite.mp3"
+ },
+ "Blast Burn": {
+  "dur": 1.96,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Blast Burn.mp3"
+ },
+ "Blaze Kick": {
+  "dur": 1.2,
+  "hit": 0.39,
+  "onsets": [
+   0.0,
+   0.39
+  ],
+  "src": "gen4/Blaze Kick.mp3"
+ },
+ "Blizzard": {
+  "dur": 3.7,
+  "hit": 2.6,
+  "onsets": [
+   0.0,
+   2.6
+  ],
+  "src": "gen4/Blizzard.mp3"
+ },
+ "Block": {
+  "dur": 0.85,
+  "hit": 0.47,
+  "onsets": [
+   0.0,
+   0.47
+  ],
+  "src": "gen4/Block.mp3"
+ },
+ "Body Slam": {
+  "dur": 0.59,
+  "hit": 0.23,
+  "onsets": [
+   0.0,
+   0.23
+  ],
+  "src": "gen4/Body Slam.mp3"
+ },
+ "Bone Club": {
+  "dur": 0.5,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Bone Club.mp3"
+ },
+ "Bone Rush 1hit": {
+  "dur": 0.6,
+  "hit": 0.22,
+  "onsets": [
+   0.0,
+   0.12,
+   0.22
+  ],
+  "src": "gen4/Bone Rush 1hit.mp3"
+ },
+ "Bone Rush 2hits": {
+  "dur": 1.6,
+  "hit": 1.23,
+  "onsets": [
+   0.0,
+   0.12,
+   0.22,
+   1.02,
+   1.13,
+   1.23
+  ],
+  "src": "gen4/Bone Rush 2hits.mp3"
+ },
+ "Bonemerang 1hit": {
+  "dur": 0.86,
+  "hit": 0.25,
+  "onsets": [
+   0.0,
+   0.25,
+   0.59
+  ],
+  "src": "gen4/Bonemerang 1hit.mp3"
+ },
+ "Bonemerang 2hits": {
+  "dur": 2.03,
+  "hit": 1.18,
+  "onsets": [
+   0.0,
+   0.25,
+   0.59,
+   1.18,
+   1.42,
+   1.76
+  ],
+  "src": "gen4/Bonemerang 2hits.mp3"
+ },
+ "Bounce": {
+  "dur": 2.27,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.65,
+   2.04
+  ],
+  "src": "gen4/Bounce.mp3"
+ },
+ "Bounce part 1": {
+  "dur": 0.79,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Bounce part 1.mp3"
+ },
+ "Bounce part 2": {
+  "dur": 0.66,
+  "hit": 0.4,
+  "onsets": [
+   0.0,
+   0.4
+  ],
+  "src": "gen4/Bounce part 2.mp3"
+ },
+ "Brave Bird": {
+  "dur": 1.31,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Brave Bird.mp3"
+ },
+ "Brick Break": {
+  "dur": 0.48,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Brick Break.mp3"
+ },
+ "Brine": {
+  "dur": 1.48,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.09
+  ],
+  "src": "gen4/Brine.mp3"
+ },
+ "Bubble": {
+  "dur": 1.44,
+  "hit": 0.82,
+  "onsets": [
+   0.0,
+   0.82
+  ],
+  "src": "gen4/Bubble.mp3"
+ },
+ "Bubble Beam": {
+  "dur": 3.73,
+  "hit": 2.54,
+  "onsets": [
+   0.0,
+   2.54
+  ],
+  "src": "gen4/Bubble Beam.mp3"
+ },
+ "Bubble Beam part 1": {
+  "dur": 1.73,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Bubble Beam part 1.mp3"
+ },
+ "Bubble Beam part 2": {
+  "dur": 1.22,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Bubble Beam part 2.mp3"
+ },
+ "Bug Bite": {
+  "dur": 0.91,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Bug Bite.mp3"
+ },
+ "Bug Buzz": {
+  "dur": 1.25,
+  "hit": 0.61,
+  "onsets": [
+   0.0,
+   0.61
+  ],
+  "src": "gen4/Bug Buzz.mp3"
+ },
+ "Bulk Up": {
+  "dur": 1.38,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.7
+  ],
+  "src": "gen4/Bulk Up.mp3"
+ },
+ "Bullet Punch": {
+  "dur": 1.33,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Bullet Punch.mp3"
+ },
+ "Bullet Seed": {
+  "dur": 1.78,
+  "hit": 1.41,
+  "onsets": [
+   0.0,
+   0.15,
+   0.41,
+   0.81,
+   1.41
+  ],
+  "src": "gen4/Bullet Seed.mp3"
+ },
+ "Calm Mind": {
+  "dur": 1.08,
+  "hit": 0.32,
+  "onsets": [
+   0.0,
+   0.32
+  ],
+  "src": "gen4/Calm Mind.mp3"
+ },
+ "Camouflage": {
+  "dur": 0.62,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Camouflage.mp3"
+ },
+ "Captivate": {
+  "dur": 1.39,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Captivate.mp3"
+ },
+ "Charge": {
+  "dur": 3.22,
+  "hit": 2.61,
+  "onsets": [
+   0.0,
+   2.61
+  ],
+  "src": "gen4/Charge.mp3"
+ },
+ "Charge Beam": {
+  "dur": 3.53,
+  "hit": 2.72,
+  "onsets": [
+   0.0,
+   2.72
+  ],
+  "src": "gen4/Charge Beam.mp3"
+ },
+ "Charge Beam part 1": {
+  "dur": 1.67,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Charge Beam part 1.mp3"
+ },
+ "Charge Beam part 2": {
+  "dur": 0.84,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Charge Beam part 2.mp3"
+ },
+ "Charm": {
+  "dur": 1.34,
+  "hit": 1.02,
+  "onsets": [
+   0.0,
+   0.36,
+   0.69,
+   1.02
+  ],
+  "src": "gen4/Charm.mp3"
+ },
+ "Chatter": {
+  "dur": 0.8,
+  "hit": 0.28,
+  "onsets": [
+   0.0,
+   0.28
+  ],
+  "src": "gen4/Chatter.mp3"
+ },
+ "Clamp": {
+  "dur": 1.23,
+  "hit": 0.88,
+  "onsets": [
+   0.0,
+   0.54,
+   0.88
+  ],
+  "src": "gen4/Clamp.mp3"
+ },
+ "Close Combat": {
+  "dur": 1.88,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Close Combat.mp3"
+ },
+ "Comet Punch 1hit": {
+  "dur": 1.19,
+  "hit": 0.81,
+  "onsets": [
+   0.0,
+   0.28,
+   0.54,
+   0.81
+  ],
+  "src": "gen4/Comet Punch 1hit.mp3"
+ },
+ "Comet Punch 2hits": {
+  "dur": 2.82,
+  "hit": 2.45,
+  "onsets": [
+   0.0,
+   0.28,
+   0.54,
+   0.81,
+   1.64,
+   1.91,
+   2.18,
+   2.45
+  ],
+  "src": "gen4/Comet Punch 2hits.mp3"
+ },
+ "Confuse Ray": {
+  "dur": 2.35,
+  "hit": 1.45,
+  "onsets": [
+   0.0,
+   0.24,
+   0.6,
+   0.78,
+   1.45
+  ],
+  "src": "gen4/Confuse Ray.mp3"
+ },
+ "Confusion": {
+  "dur": 0.88,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Confusion.mp3"
+ },
+ "Constrict": {
+  "dur": 1.46,
+  "hit": 1.08,
+  "onsets": [
+   0.0,
+   0.72,
+   0.81,
+   1.08
+  ],
+  "src": "gen4/Constrict.mp3"
+ },
+ "Conversion": {
+  "dur": 2.42,
+  "hit": 1.53,
+  "onsets": [
+   0.0,
+   1.53
+  ],
+  "src": "gen4/Conversion.mp3"
+ },
+ "Conversion 2": {
+  "dur": 3.18,
+  "hit": 2.29,
+  "onsets": [
+   0.0,
+   0.62,
+   1.53,
+   2.21,
+   2.29
+  ],
+  "src": "gen4/Conversion 2.mp3"
+ },
+ "Conversion 2 part 1": {
+  "dur": 1.82,
+  "hit": 1.53,
+  "onsets": [
+   0.0,
+   0.62,
+   1.53
+  ],
+  "src": "gen4/Conversion 2 part 1.mp3"
+ },
+ "Conversion 2 part 2": {
+  "dur": 1.0,
+  "hit": 0.11,
+  "onsets": [
+   0.0,
+   0.11
+  ],
+  "src": "gen4/Conversion 2 part 2.mp3"
+ },
+ "Copycat": {
+  "dur": 2.36,
+  "hit": 2.11,
+  "onsets": [
+   0.0,
+   1.24,
+   1.32,
+   1.47,
+   1.71,
+   1.87,
+   2.11
+  ],
+  "src": "gen4/Copycat.mp3"
+ },
+ "Cosmic Power": {
+  "dur": 3.24,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Cosmic Power.mp3"
+ },
+ "Cotton Spore": {
+  "dur": 1.31,
+  "hit": 1.17,
+  "onsets": [
+   0.0,
+   0.21,
+   0.61,
+   1.01,
+   1.17
+  ],
+  "src": "gen4/Cotton Spore.mp3"
+ },
+ "Counter": {
+  "dur": 1.25,
+  "hit": 0.57,
+  "onsets": [
+   0.0,
+   0.57
+  ],
+  "src": "gen4/Counter.mp3"
+ },
+ "Covet": {
+  "dur": 2.13,
+  "hit": 1.55,
+  "onsets": [
+   0.0,
+   0.15,
+   0.25,
+   0.35,
+   0.76,
+   0.89,
+   0.99,
+   1.09,
+   1.55,
+   1.72,
+   1.9
+  ],
+  "src": "gen4/Covet.mp3"
+ },
+ "Crabhammer": {
+  "dur": 3.24,
+  "hit": 2.71,
+  "onsets": [
+   0.0,
+   2.71
+  ],
+  "src": "gen4/Crabhammer.mp3"
+ },
+ "Crabhammer part 1": {
+  "dur": 1.19,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Crabhammer part 1.mp3"
+ },
+ "Crabhammer part 2": {
+  "dur": 0.54,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Crabhammer part 2.mp3"
+ },
+ "Cross Chop": {
+  "dur": 2.8,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   2.3
+  ],
+  "src": "gen4/Cross Chop.mp3"
+ },
+ "Cross Chop part 1": {
+  "dur": 1.19,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Cross Chop part 1.mp3"
+ },
+ "Cross Chop part 2": {
+  "dur": 0.51,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Cross Chop part 2.mp3"
+ },
+ "Cross Poison": {
+  "dur": 1.06,
+  "hit": 0.66,
+  "onsets": [
+   0.0,
+   0.19,
+   0.49,
+   0.66
+  ],
+  "src": "gen4/Cross Poison.mp3"
+ },
+ "Crunch": {
+  "dur": 0.83,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Crunch.mp3"
+ },
+ "Crush Claw": {
+  "dur": 0.97,
+  "hit": 0.48,
+  "onsets": [
+   0.0,
+   0.48
+  ],
+  "src": "gen4/Crush Claw.mp3"
+ },
+ "Crush Grip": {
+  "dur": 1.4,
+  "hit": 0.76,
+  "onsets": [
+   0.0,
+   0.49,
+   0.76,
+   1.03
+  ],
+  "src": "gen4/Crush Grip.mp3"
+ },
+ "Curse": {
+  "dur": 1.21,
+  "hit": 0.88,
+  "onsets": [
+   0.0,
+   0.45,
+   0.88
+  ],
+  "src": "gen4/Curse.mp3"
+ },
+ "Cut": {
+  "dur": 0.63,
+  "hit": 0.19,
+  "onsets": [
+   0.0,
+   0.19
+  ],
+  "src": "gen4/Cut.mp3"
+ },
+ "Dark Pulse": {
+  "dur": 2.16,
+  "hit": 1.96,
+  "onsets": [
+   0.0,
+   1.96
+  ],
+  "src": "gen4/Dark Pulse.mp3"
+ },
+ "Dark Void": {
+  "dur": 2.37,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.88
+  ],
+  "src": "gen4/Dark Void.mp3"
+ },
+ "Defend Order": {
+  "dur": 4.38,
+  "hit": 3.93,
+  "onsets": [
+   0.0,
+   0.34,
+   0.81,
+   1.28,
+   1.51,
+   1.74,
+   2.21,
+   2.68,
+   3.12,
+   3.21,
+   3.35,
+   3.71,
+   3.93
+  ],
+  "src": "gen4/Defend Order.mp3"
+ },
+ "Defense Curl": {
+  "dur": 0.83,
+  "hit": 0.4,
+  "onsets": [
+   0.0,
+   0.4,
+   0.57
+  ],
+  "src": "gen4/Defense Curl.mp3"
+ },
+ "Defog": {
+  "dur": 1.46,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Defog.mp3"
+ },
+ "Destiny Bond": {
+  "dur": 2.1,
+  "hit": 1.08,
+  "onsets": [
+   0.0,
+   1.0,
+   1.08
+  ],
+  "src": "gen4/Destiny Bond.mp3"
+ },
+ "Detect": {
+  "dur": 0.84,
+  "hit": 0.35,
+  "onsets": [
+   0.0,
+   0.35
+  ],
+  "src": "gen4/Detect.mp3"
+ },
+ "Dig": {
+  "dur": 2.94,
+  "hit": 2.57,
+  "onsets": [
+   0.0,
+   0.12,
+   0.42,
+   0.52,
+   0.82,
+   0.92,
+   1.02,
+   2.07,
+   2.21,
+   2.34,
+   2.57
+  ],
+  "src": "gen4/Dig.mp3"
+ },
+ "Dig part 1": {
+  "dur": 1.32,
+  "hit": 1.02,
+  "onsets": [
+   0.0,
+   0.12,
+   0.42,
+   0.52,
+   0.82,
+   0.92,
+   1.02
+  ],
+  "src": "gen4/Dig part 1.mp3"
+ },
+ "Dig part 2": {
+  "dur": 0.89,
+  "hit": 0.52,
+  "onsets": [
+   0.0,
+   0.16,
+   0.29,
+   0.52
+  ],
+  "src": "gen4/Dig part 2.mp3"
+ },
+ "Disable": {
+  "dur": 1.38,
+  "hit": 0.48,
+  "onsets": [
+   0.0,
+   0.48
+  ],
+  "src": "gen4/Disable.mp3"
+ },
+ "Discharge": {
+  "dur": 1.63,
+  "hit": 1.02,
+  "onsets": [
+   0.0,
+   0.19,
+   0.52,
+   0.69,
+   1.02
+  ],
+  "src": "gen4/Discharge.mp3"
+ },
+ "Dive": {
+  "dur": 2.94,
+  "hit": 1.8,
+  "onsets": [
+   0.0,
+   1.8
+  ],
+  "src": "gen4/Dive.mp3"
+ },
+ "Dive part 1": {
+  "dur": 0.75,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Dive part 1.mp3"
+ },
+ "Dive part 2": {
+  "dur": 1.15,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Dive part 2.mp3"
+ },
+ "Dizzy Punch": {
+  "dur": 2.26,
+  "hit": 0.93,
+  "onsets": [
+   0.0,
+   0.6,
+   0.76,
+   0.93,
+   1.57,
+   1.73,
+   1.9,
+   2.07,
+   2.22
+  ],
+  "src": "gen4/Dizzy Punch.mp3"
+ },
+ "Doom Desire": {
+  "dur": 4.85,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   4.25
+  ],
+  "src": "gen4/Doom Desire.mp3"
+ },
+ "Double Edge": {
+  "dur": 1.61,
+  "hit": 0.82,
+  "onsets": [
+   0.0,
+   0.82
+  ],
+  "src": "gen4/Double Edge.mp3"
+ },
+ "Double Hit": {
+  "dur": 0.95,
+  "hit": 0.58,
+  "onsets": [
+   0.0,
+   0.58
+  ],
+  "src": "gen4/Double Hit.mp3"
+ },
+ "Double Kick": {
+  "dur": 0.78,
+  "hit": 0.41,
+  "onsets": [
+   0.0,
+   0.41
+  ],
+  "src": "gen4/Double Kick.mp3"
+ },
+ "Double Slap 1hit": {
+  "dur": 0.81,
+  "hit": 0.58,
+  "onsets": [
+   0.0,
+   0.58
+  ],
+  "src": "gen4/Double Slap 1hit.mp3"
+ },
+ "Double Slap 2hits": {
+  "dur": 1.98,
+  "hit": 1.74,
+  "onsets": [
+   0.0,
+   0.58,
+   1.17,
+   1.74
+  ],
+  "src": "gen4/Double Slap 2hits.mp3"
+ },
+ "Double Team": {
+  "dur": 2.79,
+  "hit": 2.21,
+  "onsets": [
+   0.0,
+   0.37,
+   2.21
+  ],
+  "src": "gen4/Double Team.mp3"
+ },
+ "Draco Meteor": {
+  "dur": 5.56,
+  "hit": 2.16,
+  "onsets": [
+   0.0,
+   2.16
+  ],
+  "src": "gen4/Draco Meteor.mp3"
+ },
+ "Draco Meteor part 1": {
+  "dur": 1.04,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Draco Meteor part 1.mp3"
+ },
+ "Draco Meteor part 2": {
+  "dur": 3.41,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Draco Meteor part 2.mp3"
+ },
+ "Dragon Breath": {
+  "dur": 1.42,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Dragon Breath.mp3"
+ },
+ "Dragon Claw": {
+  "dur": 2.13,
+  "hit": 1.63,
+  "onsets": [
+   0.0,
+   1.63
+  ],
+  "src": "gen4/Dragon Claw.mp3"
+ },
+ "Dragon Dance": {
+  "dur": 1.65,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Dragon Dance.mp3"
+ },
+ "Dragon Pulse": {
+  "dur": 1.56,
+  "hit": 0.59,
+  "onsets": [
+   0.0,
+   0.59
+  ],
+  "src": "gen4/Dragon Pulse.mp3"
+ },
+ "Dragon Rage": {
+  "dur": 1.94,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Dragon Rage.mp3"
+ },
+ "Dragon Rush": {
+  "dur": 0.85,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.24
+  ],
+  "src": "gen4/Dragon Rush.mp3"
+ },
+ "Drain Punch": {
+  "dur": 2.33,
+  "hit": 0.53,
+  "onsets": [
+   0.0,
+   0.53
+  ],
+  "src": "gen4/Drain Punch.mp3"
+ },
+ "Dream Eater": {
+  "dur": 1.43,
+  "hit": 0.78,
+  "onsets": [
+   0.0,
+   0.23,
+   0.6,
+   0.78
+  ],
+  "src": "gen4/Dream Eater.mp3"
+ },
+ "Drill Peck": {
+  "dur": 1.98,
+  "hit": 0.66,
+  "onsets": [
+   0.0,
+   0.66
+  ],
+  "src": "gen4/Drill Peck.mp3"
+ },
+ "Drill Peck part 1": {
+  "dur": 0.42,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Drill Peck part 1.mp3"
+ },
+ "Drill Peck part 2": {
+  "dur": 1.32,
+  "hit": 0.27,
+  "onsets": [
+   0.0,
+   0.27
+  ],
+  "src": "gen4/Drill Peck part 2.mp3"
+ },
+ "Dynamic Punch": {
+  "dur": 1.47,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Dynamic Punch.mp3"
+ },
+ "Earth Power": {
+  "dur": 3.07,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Earth Power.mp3"
+ },
+ "Earthquake": {
+  "dur": 3.41,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Earthquake.mp3"
+ },
+ "Egg Bomb": {
+  "dur": 0.79,
+  "hit": 0.34,
+  "onsets": [
+   0.0,
+   0.17,
+   0.34
+  ],
+  "src": "gen4/Egg Bomb.mp3"
+ },
+ "Embargo": {
+  "dur": 1.32,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Embargo.mp3"
+ },
+ "Ember": {
+  "dur": 0.66,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Ember.mp3"
+ },
+ "Encore": {
+  "dur": 2.4,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Encore.mp3"
+ },
+ "Endeavor": {
+  "dur": 2.82,
+  "hit": 2.45,
+  "onsets": [
+   0.0,
+   0.17,
+   0.44,
+   0.74,
+   0.87,
+   1.11,
+   1.43,
+   1.57,
+   1.78,
+   2.12,
+   2.45
+  ],
+  "src": "gen4/Endeavor.mp3"
+ },
+ "Endure": {
+  "dur": 1.66,
+  "hit": 1.43,
+  "onsets": [
+   0.0,
+   0.1,
+   0.23,
+   0.36,
+   0.5,
+   0.64,
+   1.0,
+   1.21,
+   1.43
+  ],
+  "src": "gen4/Endure.mp3"
+ },
+ "Energy Ball": {
+  "dur": 2.91,
+  "hit": 2.81,
+  "onsets": [
+   0.0,
+   1.09,
+   1.68,
+   1.84,
+   1.99,
+   2.14,
+   2.29,
+   2.44,
+   2.52,
+   2.67,
+   2.81
+  ],
+  "src": "gen4/Energy Ball.mp3"
+ },
+ "Energy Ball part 1": {
+  "dur": 1.44,
+  "hit": 1.09,
+  "onsets": [
+   0.0,
+   1.09
+  ],
+  "src": "gen4/Energy Ball part 1.mp3"
+ },
+ "Energy Ball part 2": {
+  "dur": 1.24,
+  "hit": 1.07,
+  "onsets": [
+   0.0,
+   0.17,
+   0.32,
+   0.47,
+   0.62,
+   0.77,
+   0.92,
+   1.07
+  ],
+  "src": "gen4/Energy Ball part 2.mp3"
+ },
+ "Eruption": {
+  "dur": 3.7,
+  "hit": 2.05,
+  "onsets": [
+   0.0,
+   2.05
+  ],
+  "src": "gen4/Eruption.mp3"
+ },
+ "Eruption part 1": {
+  "dur": 1.69,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Eruption part 1.mp3"
+ },
+ "Eruption part 2": {
+  "dur": 1.66,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Eruption part 2.mp3"
+ },
+ "Explosion": {
+  "dur": 3.58,
+  "hit": 2.09,
+  "onsets": [
+   0.0,
+   1.5,
+   2.09
+  ],
+  "src": "gen4/Explosion.mp3"
+ },
+ "Extrasensory": {
+  "dur": 4.26,
+  "hit": 3.21,
+  "onsets": [
+   0.0,
+   3.21
+  ],
+  "src": "gen4/Extrasensory.mp3"
+ },
+ "Extrasensory part 1": {
+  "dur": 1.06,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Extrasensory part 1.mp3"
+ },
+ "Extrasensory part 2": {
+  "dur": 2.37,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Extrasensory part 2.mp3"
+ },
+ "Extreme Speed": {
+  "dur": 3.9,
+  "hit": 3.49,
+  "onsets": [
+   0.0,
+   0.93,
+   1.77,
+   2.6,
+   3.49
+  ],
+  "src": "gen4/Extreme Speed.mp3"
+ },
+ "Facade": {
+  "dur": 1.99,
+  "hit": 1.52,
+  "onsets": [
+   0.0,
+   0.32,
+   0.62,
+   0.92,
+   1.22,
+   1.52
+  ],
+  "src": "gen4/Facade.mp3"
+ },
+ "Fake Out": {
+  "dur": 0.41,
+  "hit": 0.25,
+  "onsets": [
+   0.0,
+   0.25
+  ],
+  "src": "gen4/Fake Out.mp3"
+ },
+ "Fake Tears": {
+  "dur": 1.26,
+  "hit": 1.07,
+  "onsets": [
+   0.0,
+   0.17,
+   0.33,
+   0.47,
+   0.63,
+   0.77,
+   0.93,
+   1.07
+  ],
+  "src": "gen4/Fake Tears.mp3"
+ },
+ "False Swipe": {
+  "dur": 0.67,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.25
+  ],
+  "src": "gen4/False Swipe.mp3"
+ },
+ "Feather Dance": {
+  "dur": 2.23,
+  "hit": 0.77,
+  "onsets": [
+   0.0,
+   0.17,
+   0.37,
+   0.77,
+   0.97,
+   1.17,
+   1.57,
+   1.77
+  ],
+  "src": "gen4/Feather Dance.mp3"
+ },
+ "Feint": {
+  "dur": 1.42,
+  "hit": 1.04,
+  "onsets": [
+   0.0,
+   1.04
+  ],
+  "src": "gen4/Feint.mp3"
+ },
+ "Feint Attack": {
+  "dur": 1.46,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.15
+  ],
+  "src": "gen4/Feint Attack.mp3"
+ },
+ "Feint part 1": {
+  "dur": 0.48,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Feint part 1.mp3"
+ },
+ "Feint part 2": {
+  "dur": 0.39,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Feint part 2.mp3"
+ },
+ "Fire Blast": {
+  "dur": 2.68,
+  "hit": 1.83,
+  "onsets": [
+   0.0,
+   0.23,
+   0.4,
+   0.57,
+   0.74,
+   0.91,
+   1.07,
+   1.24,
+   1.41,
+   1.57,
+   1.83
+  ],
+  "src": "gen4/Fire Blast.mp3"
+ },
+ "Fire Fang": {
+  "dur": 1.09,
+  "hit": 0.35,
+  "onsets": [
+   0.0,
+   0.35
+  ],
+  "src": "gen4/Fire Fang.mp3"
+ },
+ "Fire Punch": {
+  "dur": 1.39,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Fire Punch.mp3"
+ },
+ "Fire Spin": {
+  "dur": 1.54,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Fire Spin.mp3"
+ },
+ "Fissure": {
+  "dur": 3.41,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.51
+  ],
+  "src": "gen4/Fissure.mp3"
+ },
+ "Flail": {
+  "dur": 1.46,
+  "hit": 1.1,
+  "onsets": [
+   0.0,
+   1.1
+  ],
+  "src": "gen4/Flail.mp3"
+ },
+ "Flame Wheel": {
+  "dur": 2.43,
+  "hit": 1.54,
+  "onsets": [
+   0.0,
+   0.2,
+   0.34,
+   0.47,
+   0.6,
+   0.87,
+   1.01,
+   1.14,
+   1.27,
+   1.41,
+   1.54
+  ],
+  "src": "gen4/Flame Wheel.mp3"
+ },
+ "Flamethrower": {
+  "dur": 3.08,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Flamethrower.mp3"
+ },
+ "Flare Blitz": {
+  "dur": 1.95,
+  "hit": 1.24,
+  "onsets": [
+   0.0,
+   1.24
+  ],
+  "src": "gen4/Flare Blitz.mp3"
+ },
+ "Flash": {
+  "dur": 1.06,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Flash.mp3"
+ },
+ "Flash Cannon": {
+  "dur": 4.18,
+  "hit": 2.02,
+  "onsets": [
+   0.0,
+   0.1,
+   0.23,
+   0.37,
+   0.5,
+   0.63,
+   0.77,
+   0.9,
+   1.04,
+   1.17,
+   1.31,
+   1.47,
+   1.81,
+   2.02,
+   3.1
+  ],
+  "src": "gen4/Flash Cannon.mp3"
+ },
+ "Flash Cannon part 1": {
+  "dur": 2.47,
+  "hit": 2.02,
+  "onsets": [
+   0.0,
+   0.1,
+   0.23,
+   0.37,
+   0.5,
+   0.63,
+   0.77,
+   0.9,
+   1.04,
+   1.17,
+   1.31,
+   1.47,
+   1.81,
+   2.02
+  ],
+  "src": "gen4/Flash Cannon part 1.mp3"
+ },
+ "Flash Cannon part 2": {
+  "dur": 1.12,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Flash Cannon part 2.mp3"
+ },
+ "Flatter": {
+  "dur": 2.34,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Flatter.mp3"
+ },
+ "Fling": {
+  "dur": 1.21,
+  "hit": 0.5,
+  "onsets": [
+   0.0,
+   0.5
+  ],
+  "src": "gen4/Fling.mp3"
+ },
+ "Fly": {
+  "dur": 4.36,
+  "hit": 3.67,
+  "onsets": [
+   0.0,
+   1.08,
+   2.6,
+   3.67,
+   4.08
+  ],
+  "src": "gen4/Fly.mp3"
+ },
+ "Fly part 1": {
+  "dur": 1.7,
+  "hit": 1.08,
+  "onsets": [
+   0.0,
+   1.08
+  ],
+  "src": "gen4/Fly part 1.mp3"
+ },
+ "Fly part 2": {
+  "dur": 1.77,
+  "hit": 1.49,
+  "onsets": [
+   0.0,
+   1.08,
+   1.49
+  ],
+  "src": "gen4/Fly part 2.mp3"
+ },
+ "Focus Blast": {
+  "dur": 4.1,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.43,
+   0.83,
+   1.63,
+   2.76
+  ],
+  "src": "gen4/Focus Blast.mp3"
+ },
+ "Focus Energy": {
+  "dur": 1.27,
+  "hit": 0.82,
+  "onsets": [
+   0.0,
+   0.1,
+   0.24,
+   0.6,
+   0.82
+  ],
+  "src": "gen4/Focus Energy.mp3"
+ },
+ "Focus Punch": {
+  "dur": 2.72,
+  "hit": 2.34,
+  "onsets": [
+   0.0,
+   0.1,
+   0.24,
+   0.6,
+   0.81,
+   1.03,
+   2.34
+  ],
+  "src": "gen4/Focus Punch.mp3"
+ },
+ "Focus Punch part 1": {
+  "dur": 1.26,
+  "hit": 1.03,
+  "onsets": [
+   0.0,
+   0.1,
+   0.24,
+   0.6,
+   0.81,
+   1.03
+  ],
+  "src": "gen4/Focus Punch part 1.mp3"
+ },
+ "Focus Punch part 2": {
+  "dur": 0.43,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Focus Punch part 2.mp3"
+ },
+ "Follow Me": {
+  "dur": 2.5,
+  "hit": 2.17,
+  "onsets": [
+   0.0,
+   1.49,
+   1.65,
+   1.84,
+   1.98,
+   2.17
+  ],
+  "src": "gen4/Follow Me.mp3"
+ },
+ "Follow Me part 1": {
+  "dur": 0.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Follow Me part 1.mp3"
+ },
+ "Follow Me part 2": {
+  "dur": 1.03,
+  "hit": 0.7,
+  "onsets": [
+   0.0,
+   0.18,
+   0.37,
+   0.51,
+   0.7
+  ],
+  "src": "gen4/Follow Me part 2.mp3"
+ },
+ "Force Palm": {
+  "dur": 0.56,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Force Palm.mp3"
+ },
+ "Foresight": {
+  "dur": 4.27,
+  "hit": 3.22,
+  "onsets": [
+   0.0,
+   0.55,
+   1.09,
+   1.62,
+   2.15,
+   2.69,
+   3.22
+  ],
+  "src": "gen4/Foresight.mp3"
+ },
+ "Frenzy Plant": {
+  "dur": 4.34,
+  "hit": 3.28,
+  "onsets": [
+   0.0,
+   3.28
+  ],
+  "src": "gen4/Frenzy Plant.mp3"
+ },
+ "Frenzy Plant part 1": {
+  "dur": 1.98,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Frenzy Plant part 1.mp3"
+ },
+ "Frenzy Plant part 2": {
+  "dur": 1.07,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Frenzy Plant part 2.mp3"
+ },
+ "Frustration": {
+  "dur": 1.81,
+  "hit": 1.24,
+  "onsets": [
+   0.0,
+   0.1,
+   0.26,
+   0.6,
+   0.81,
+   1.24
+  ],
+  "src": "gen4/Frustration.mp3"
+ },
+ "Fury Attack 1hit": {
+  "dur": 0.49,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Fury Attack 1hit.mp3"
+ },
+ "Fury Attack 2hits": {
+  "dur": 1.45,
+  "hit": 0.97,
+  "onsets": [
+   0.0,
+   0.97
+  ],
+  "src": "gen4/Fury Attack 2hits.mp3"
+ },
+ "Fury Cutter": {
+  "dur": 1.55,
+  "hit": 1.05,
+  "onsets": [
+   0.0,
+   1.05
+  ],
+  "src": "gen4/Fury Cutter.mp3"
+ },
+ "Fury Swipes": {
+  "dur": 0.76,
+  "hit": 0.36,
+  "onsets": [
+   0.0,
+   0.36
+  ],
+  "src": "gen4/Fury Swipes.mp3"
+ },
+ "Future Sight": {
+  "dur": 2.72,
+  "hit": 1.47,
+  "onsets": [
+   0.0,
+   1.47
+  ],
+  "src": "gen4/Future Sight.mp3"
+ },
+ "Gastro Acid": {
+  "dur": 0.96,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Gastro Acid.mp3"
+ },
+ "Giga Drain": {
+  "dur": 2.96,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Giga Drain.mp3"
+ },
+ "Giga Impact": {
+  "dur": 1.93,
+  "hit": 1.39,
+  "onsets": [
+   0.0,
+   0.79,
+   1.39
+  ],
+  "src": "gen4/Giga Impact.mp3"
+ },
+ "Glare": {
+  "dur": 1.05,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.29,
+   0.58,
+   0.84
+  ],
+  "src": "gen4/Glare.mp3"
+ },
+ "Grass Knot": {
+  "dur": 0.49,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Grass Knot.mp3"
+ },
+ "Grass Whistle": {
+  "dur": 3.04,
+  "hit": 1.22,
+  "onsets": [
+   0.0,
+   0.92,
+   1.22
+  ],
+  "src": "gen4/Grass Whistle.mp3"
+ },
+ "Gravity": {
+  "dur": 1.35,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Gravity.mp3"
+ },
+ "Growl": {
+  "dur": 1.4,
+  "hit": 0.48,
+  "onsets": [
+   0.0,
+   0.48,
+   0.78
+  ],
+  "src": "gen4/Growl.mp3"
+ },
+ "Growth": {
+  "dur": 0.82,
+  "hit": 0.24,
+  "onsets": [
+   0.0,
+   0.24
+  ],
+  "src": "gen4/Growth.mp3"
+ },
+ "Grudge": {
+  "dur": 1.86,
+  "hit": 1.61,
+  "onsets": [
+   0.0,
+   1.05,
+   1.61
+  ],
+  "src": "gen4/Grudge.mp3"
+ },
+ "Guard Swap": {
+  "dur": 3.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Guard Swap.mp3"
+ },
+ "Guillotine": {
+  "dur": 1.21,
+  "hit": 0.74,
+  "onsets": [
+   0.0,
+   0.14,
+   0.74
+  ],
+  "src": "gen4/Guillotine.mp3"
+ },
+ "Gunk Shot": {
+  "dur": 3.16,
+  "hit": 1.58,
+  "onsets": [
+   0.0,
+   0.65,
+   1.58
+  ],
+  "src": "gen4/Gunk Shot.mp3"
+ },
+ "Gunk Shot part 1": {
+  "dur": 1.31,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.65
+  ],
+  "src": "gen4/Gunk Shot part 1.mp3"
+ },
+ "Gunk Shot part 2": {
+  "dur": 1.59,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Gunk Shot part 2.mp3"
+ },
+ "Gust": {
+  "dur": 2.75,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Gust.mp3"
+ },
+ "Gyro Ball": {
+  "dur": 2.32,
+  "hit": 1.43,
+  "onsets": [
+   0.0,
+   1.43
+  ],
+  "src": "gen4/Gyro Ball.mp3"
+ },
+ "Gyro Ball part 1": {
+  "dur": 0.98,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Gyro Ball part 1.mp3"
+ },
+ "Gyro Ball part 2": {
+  "dur": 0.91,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Gyro Ball part 2.mp3"
+ },
+ "Hail": {
+  "dur": 1.59,
+  "hit": 1.22,
+  "onsets": [
+   0.0,
+   0.15,
+   0.28,
+   0.42,
+   0.55,
+   0.68,
+   0.82,
+   0.95,
+   1.08,
+   1.22,
+   1.5
+  ],
+  "src": "gen4/Hail.mp3"
+ },
+ "Hail turn damage": {
+  "dur": 0.72,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hail turn damage.mp3"
+ },
+ "Hammer Arm": {
+  "dur": 0.81,
+  "hit": 0.14,
+  "onsets": [
+   0.0,
+   0.14
+  ],
+  "src": "gen4/Hammer Arm.mp3"
+ },
+ "Harden": {
+  "dur": 0.76,
+  "hit": 0.53,
+  "onsets": [
+   0.0,
+   0.09,
+   0.45,
+   0.53
+  ],
+  "src": "gen4/Harden.mp3"
+ },
+ "Haze": {
+  "dur": 2.7,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Haze.mp3"
+ },
+ "Head Smash": {
+  "dur": 0.85,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Head Smash.mp3"
+ },
+ "Headbutt": {
+  "dur": 0.41,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Headbutt.mp3"
+ },
+ "Heal Bell": {
+  "dur": 1.27,
+  "hit": 0.17,
+  "onsets": [
+   0.0,
+   0.17
+  ],
+  "src": "gen4/Heal Bell.mp3"
+ },
+ "Heal Block": {
+  "dur": 2.07,
+  "hit": 0.57,
+  "onsets": [
+   0.0,
+   0.17,
+   0.37,
+   0.57,
+   1.01,
+   1.17,
+   1.42,
+   1.57,
+   1.87,
+   1.97
+  ],
+  "src": "gen4/Heal Block.mp3"
+ },
+ "Heal Order": {
+  "dur": 4.03,
+  "hit": 1.74,
+  "onsets": [
+   0.0,
+   0.11,
+   0.34,
+   0.81,
+   1.28,
+   1.74,
+   2.21,
+   2.68,
+   3.13
+  ],
+  "src": "gen4/Heal Order.mp3"
+ },
+ "Healing Wish": {
+  "dur": 3.21,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   2.3
+  ],
+  "src": "gen4/Healing Wish.mp3"
+ },
+ "Healing Wish part 1": {
+  "dur": 1.58,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Healing Wish part 1.mp3"
+ },
+ "Healing Wish part 2": {
+  "dur": 0.98,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Healing Wish part 2.mp3"
+ },
+ "Heart Swap": {
+  "dur": 4.43,
+  "hit": 2.86,
+  "onsets": [
+   0.0,
+   2.86
+  ],
+  "src": "gen4/Heart Swap.mp3"
+ },
+ "Heat Wave": {
+  "dur": 2.15,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Heat Wave.mp3"
+ },
+ "Helping Hand": {
+  "dur": 0.65,
+  "hit": 0.45,
+  "onsets": [
+   0.0,
+   0.15,
+   0.45
+  ],
+  "src": "gen4/Helping Hand.mp3"
+ },
+ "Hidden Power": {
+  "dur": 3.72,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.4,
+   2.8,
+   3.34
+  ],
+  "src": "gen4/Hidden Power.mp3"
+ },
+ "Hidden Power part 1": {
+  "dur": 0.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hidden Power part 1.mp3"
+ },
+ "Hidden Power part 2": {
+  "dur": 2.4,
+  "hit": 1.42,
+  "onsets": [
+   0.0,
+   1.42,
+   1.96
+  ],
+  "src": "gen4/Hidden Power part 2.mp3"
+ },
+ "High Jump Kick": {
+  "dur": 0.99,
+  "hit": 0.16,
+  "onsets": [
+   0.0,
+   0.16,
+   0.51
+  ],
+  "src": "gen4/High Jump Kick.mp3"
+ },
+ "Hit Alt Super Effective": {
+  "dur": 1.21,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hit Alt Super Effective.mp3"
+ },
+ "Hit Alt Weak": {
+  "dur": 0.37,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hit Alt Weak.mp3"
+ },
+ "Hit Normal Damage": {
+  "dur": 0.49,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hit Normal Damage.mp3"
+ },
+ "Hit Super Effective": {
+  "dur": 1.12,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hit Super Effective.mp3"
+ },
+ "Hit Weak Not Very Effective": {
+  "dur": 0.36,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hit Weak Not Very Effective.mp3"
+ },
+ "Horn Attack": {
+  "dur": 0.39,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Horn Attack.mp3"
+ },
+ "Horn Drill": {
+  "dur": 1.87,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.31
+  ],
+  "src": "gen4/Horn Drill.mp3"
+ },
+ "Howl": {
+  "dur": 0.95,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Howl.mp3"
+ },
+ "Hydro Cannon": {
+  "dur": 3.01,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hydro Cannon.mp3"
+ },
+ "Hydro Pump": {
+  "dur": 1.59,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hydro Pump.mp3"
+ },
+ "Hyper Beam": {
+  "dur": 2.4,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hyper Beam.mp3"
+ },
+ "Hyper Fang": {
+  "dur": 1.25,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Hyper Fang.mp3"
+ },
+ "Hyper Voice": {
+  "dur": 2.23,
+  "hit": 0.53,
+  "onsets": [
+   0.0,
+   0.53
+  ],
+  "src": "gen4/Hyper Voice.mp3"
+ },
+ "Hypnosis": {
+  "dur": 2.41,
+  "hit": 1.89,
+  "onsets": [
+   0.0,
+   1.09,
+   1.61,
+   1.89
+  ],
+  "src": "gen4/Hypnosis.mp3"
+ },
+ "Ice Ball": {
+  "dur": 1.37,
+  "hit": 0.79,
+  "onsets": [
+   0.0,
+   0.79
+  ],
+  "src": "gen4/Ice Ball.mp3"
+ },
+ "Ice Beam": {
+  "dur": 1.3,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Ice Beam.mp3"
+ },
+ "Ice Fang": {
+  "dur": 1.03,
+  "hit": 0.7,
+  "onsets": [
+   0.0,
+   0.35,
+   0.7
+  ],
+  "src": "gen4/Ice Fang.mp3"
+ },
+ "Ice Punch": {
+  "dur": 0.79,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Ice Punch.mp3"
+ },
+ "Ice Shard": {
+  "dur": 4.32,
+  "hit": 3.4,
+  "onsets": [
+   0.0,
+   1.1,
+   1.92,
+   3.32,
+   3.4,
+   3.6,
+   3.74,
+   3.83,
+   3.97
+  ],
+  "src": "gen4/Ice Shard.mp3"
+ },
+ "Ice Shard part 1": {
+  "dur": 1.5,
+  "hit": 1.1,
+  "onsets": [
+   0.0,
+   1.1
+  ],
+  "src": "gen4/Ice Shard part 1.mp3"
+ },
+ "Ice Shard part 2": {
+  "dur": 2.41,
+  "hit": 1.49,
+  "onsets": [
+   0.0,
+   1.41,
+   1.49,
+   1.69,
+   1.83,
+   1.92,
+   2.06,
+   2.34
+  ],
+  "src": "gen4/Ice Shard part 2.mp3"
+ },
+ "Icicle Spear 1hit": {
+  "dur": 1.23,
+  "hit": 0.85,
+  "onsets": [
+   0.0,
+   0.15,
+   0.25,
+   0.39,
+   0.85
+  ],
+  "src": "gen4/Icicle Spear 1hit.mp3"
+ },
+ "Icicle Spear 2hits": {
+  "dur": 2.94,
+  "hit": 2.55,
+  "onsets": [
+   0.0,
+   0.15,
+   0.25,
+   0.39,
+   0.85,
+   1.72,
+   1.86,
+   1.95,
+   2.09,
+   2.19,
+   2.32,
+   2.55
+  ],
+  "src": "gen4/Icicle Spear 2hits.mp3"
+ },
+ "Icy Wind": {
+  "dur": 2.13,
+  "hit": 1.77,
+  "onsets": [
+   0.0,
+   1.63,
+   1.77,
+   2.05
+  ],
+  "src": "gen4/Icy Wind.mp3"
+ },
+ "Imprison": {
+  "dur": 0.85,
+  "hit": 0.47,
+  "onsets": [
+   0.0,
+   0.47
+  ],
+  "src": "gen4/Imprison.mp3"
+ },
+ "In-Battle Faint No Health": {
+  "dur": 0.55,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/In-Battle Faint No Health.mp3"
+ },
+ "In-Battle Heal HP Restore": {
+  "dur": 0.98,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/In-Battle Heal HP Restore.mp3"
+ },
+ "In-Battle Health Low": {
+  "dur": 2.23,
+  "hit": 1.91,
+  "onsets": [
+   0.0,
+   0.2,
+   0.56,
+   0.76,
+   1.13,
+   1.33,
+   1.7,
+   1.91
+  ],
+  "src": "gen4/In-Battle Health Low.mp3"
+ },
+ "In-Battle Health Low Loop": {
+  "dur": 4.5,
+  "hit": 4.18,
+  "onsets": [
+   0.0,
+   0.2,
+   0.56,
+   0.76,
+   1.13,
+   1.33,
+   1.7,
+   1.91,
+   2.27,
+   2.47,
+   2.83,
+   3.03,
+   3.4,
+   3.6,
+   3.97,
+   4.18
+  ],
+  "src": "gen4/In-Battle Health Low Loop.mp3"
+ },
+ "In-Battle Held Item Activate": {
+  "dur": 0.9,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/In-Battle Held Item Activate.mp3"
+ },
+ "In-Battle Recall Switch Pokeball": {
+  "dur": 0.6,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/In-Battle Recall Switch Pokeball.mp3"
+ },
+ "In-Battle Switch Flee Run": {
+  "dur": 0.7,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.63
+  ],
+  "src": "gen4/In-Battle Switch Flee Run.mp3"
+ },
+ "Ingrain": {
+  "dur": 2.55,
+  "hit": 0.94,
+  "onsets": [
+   0.0,
+   0.63,
+   0.94
+  ],
+  "src": "gen4/Ingrain.mp3"
+ },
+ "Iron Defense": {
+  "dur": 0.63,
+  "hit": 0.39,
+  "onsets": [
+   0.0,
+   0.09,
+   0.31,
+   0.39
+  ],
+  "src": "gen4/Iron Defense.mp3"
+ },
+ "Iron Head": {
+  "dur": 1.02,
+  "hit": 0.37,
+  "onsets": [
+   0.0,
+   0.37
+  ],
+  "src": "gen4/Iron Head.mp3"
+ },
+ "Iron Tail": {
+  "dur": 1.75,
+  "hit": 1.33,
+  "onsets": [
+   0.0,
+   0.09,
+   0.32,
+   1.16,
+   1.33
+  ],
+  "src": "gen4/Iron Tail.mp3"
+ },
+ "Judgment": {
+  "dur": 3.04,
+  "hit": 1.1,
+  "onsets": [
+   0.0,
+   1.1
+  ],
+  "src": "gen4/Judgment.mp3"
+ },
+ "Judgment part 1": {
+  "dur": 0.68,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Judgment part 1.mp3"
+ },
+ "Judgment part 2": {
+  "dur": 1.95,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Judgment part 2.mp3"
+ },
+ "Jump Kick": {
+  "dur": 1.63,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Jump Kick.mp3"
+ },
+ "Karate Chop": {
+  "dur": 0.61,
+  "hit": 0.21,
+  "onsets": [
+   0.0,
+   0.21
+  ],
+  "src": "gen4/Karate Chop.mp3"
+ },
+ "Kinesis": {
+  "dur": 3.31,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.02,
+   1.72,
+   2.63,
+   2.98
+  ],
+  "src": "gen4/Kinesis.mp3"
+ },
+ "Knock Off": {
+  "dur": 0.83,
+  "hit": 0.5,
+  "onsets": [
+   0.0,
+   0.5
+  ],
+  "src": "gen4/Knock Off.mp3"
+ },
+ "Last Resort": {
+  "dur": 1.36,
+  "hit": 0.92,
+  "onsets": [
+   0.0,
+   0.92
+  ],
+  "src": "gen4/Last Resort.mp3"
+ },
+ "Lava Plume": {
+  "dur": 1.14,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Lava Plume.mp3"
+ },
+ "Leaf Blade": {
+  "dur": 1.22,
+  "hit": 0.79,
+  "onsets": [
+   0.0,
+   0.79
+  ],
+  "src": "gen4/Leaf Blade.mp3"
+ },
+ "Leaf Storm": {
+  "dur": 2.55,
+  "hit": 1.27,
+  "onsets": [
+   0.0,
+   1.27
+  ],
+  "src": "gen4/Leaf Storm.mp3"
+ },
+ "Leech Life": {
+  "dur": 2.44,
+  "hit": 0.75,
+  "onsets": [
+   0.0,
+   0.34,
+   0.75
+  ],
+  "src": "gen4/Leech Life.mp3"
+ },
+ "Leech Seed": {
+  "dur": 2.96,
+  "hit": 1.14,
+  "onsets": [
+   0.0,
+   0.55,
+   1.14
+  ],
+  "src": "gen4/Leech Seed.mp3"
+ },
+ "Leer": {
+  "dur": 1.08,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Leer.mp3"
+ },
+ "Lick": {
+  "dur": 0.6,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Lick.mp3"
+ },
+ "Light Screen": {
+  "dur": 1.0,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Light Screen.mp3"
+ },
+ "Lock On": {
+  "dur": 1.67,
+  "hit": 1.01,
+  "onsets": [
+   0.0,
+   0.34,
+   0.68,
+   1.01,
+   1.35
+  ],
+  "src": "gen4/Lock On.mp3"
+ },
+ "Lovely Kiss": {
+  "dur": 0.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Lovely Kiss.mp3"
+ },
+ "Low Kick": {
+  "dur": 0.46,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Low Kick.mp3"
+ },
+ "Lucky Chant": {
+  "dur": 1.39,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Lucky Chant.mp3"
+ },
+ "Lunar Dance": {
+  "dur": 4.58,
+  "hit": 1.64,
+  "onsets": [
+   0.0,
+   1.64,
+   3.66
+  ],
+  "src": "gen4/Lunar Dance.mp3"
+ },
+ "Lunar Dance part 1": {
+  "dur": 2.94,
+  "hit": 1.64,
+  "onsets": [
+   0.0,
+   1.64
+  ],
+  "src": "gen4/Lunar Dance part 1.mp3"
+ },
+ "Lunar Dance part 2": {
+  "dur": 0.98,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Lunar Dance part 2.mp3"
+ },
+ "Luster Purge": {
+  "dur": 4.39,
+  "hit": 4.01,
+  "onsets": [
+   0.0,
+   2.85,
+   3.01,
+   3.18,
+   3.35,
+   3.51,
+   3.68,
+   3.85,
+   4.01
+  ],
+  "src": "gen4/Luster Purge.mp3"
+ },
+ "Mach Punch": {
+  "dur": 0.96,
+  "hit": 0.58,
+  "onsets": [
+   0.0,
+   0.58
+  ],
+  "src": "gen4/Mach Punch.mp3"
+ },
+ "Magic Coat": {
+  "dur": 0.98,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Magic Coat.mp3"
+ },
+ "Magical Leaf": {
+  "dur": 2.32,
+  "hit": 1.3,
+  "onsets": [
+   0.0,
+   0.12,
+   0.73,
+   1.3
+  ],
+  "src": "gen4/Magical Leaf.mp3"
+ },
+ "Magma Storm": {
+  "dur": 2.66,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Magma Storm.mp3"
+ },
+ "Magnet Bomb": {
+  "dur": 2.97,
+  "hit": 1.58,
+  "onsets": [
+   0.0,
+   0.66,
+   0.75,
+   1.35,
+   1.58,
+   2.09
+  ],
+  "src": "gen4/Magnet Bomb.mp3"
+ },
+ "Magnet Rise": {
+  "dur": 2.09,
+  "hit": 1.21,
+  "onsets": [
+   0.0,
+   1.21
+  ],
+  "src": "gen4/Magnet Rise.mp3"
+ },
+ "Magnitude": {
+  "dur": 1.28,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Magnitude.mp3"
+ },
+ "Me First": {
+  "dur": 2.49,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.24
+  ],
+  "src": "gen4/Me First.mp3"
+ },
+ "Mean Look": {
+  "dur": 3.13,
+  "hit": 2.44,
+  "onsets": [
+   0.0,
+   2.44
+  ],
+  "src": "gen4/Mean Look.mp3"
+ },
+ "Meditate": {
+  "dur": 1.15,
+  "hit": 0.38,
+  "onsets": [
+   0.0,
+   0.38
+  ],
+  "src": "gen4/Meditate.mp3"
+ },
+ "Mega Drain": {
+  "dur": 3.96,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   3.05
+  ],
+  "src": "gen4/Mega Drain.mp3"
+ },
+ "Mega Drain part 1": {
+  "dur": 2.84,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mega Drain part 1.mp3"
+ },
+ "Mega Drain part 2": {
+  "dur": 0.98,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mega Drain part 2.mp3"
+ },
+ "Mega Kick": {
+  "dur": 0.82,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mega Kick.mp3"
+ },
+ "Mega Punch": {
+  "dur": 0.82,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mega Punch.mp3"
+ },
+ "Megahorn": {
+  "dur": 1.16,
+  "hit": 0.78,
+  "onsets": [
+   0.0,
+   0.1,
+   0.24,
+   0.6,
+   0.78
+  ],
+  "src": "gen4/Megahorn.mp3"
+ },
+ "Memento": {
+  "dur": 1.69,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.87,
+   1.06,
+   1.51
+  ],
+  "src": "gen4/Memento.mp3"
+ },
+ "Metal Burst": {
+  "dur": 2.27,
+  "hit": 0.89,
+  "onsets": [
+   0.0,
+   0.09,
+   0.22,
+   0.35,
+   0.48,
+   0.62,
+   0.76,
+   0.89,
+   1.06
+  ],
+  "src": "gen4/Metal Burst.mp3"
+ },
+ "Metal Claw": {
+  "dur": 2.06,
+  "hit": 1.57,
+  "onsets": [
+   0.0,
+   0.09,
+   0.31,
+   0.39,
+   1.1,
+   1.57
+  ],
+  "src": "gen4/Metal Claw.mp3"
+ },
+ "Metal Claw part 1": {
+  "dur": 0.62,
+  "hit": 0.39,
+  "onsets": [
+   0.0,
+   0.09,
+   0.31,
+   0.39
+  ],
+  "src": "gen4/Metal Claw part 1.mp3"
+ },
+ "Metal Claw part 2": {
+  "dur": 0.97,
+  "hit": 0.48,
+  "onsets": [
+   0.0,
+   0.48
+  ],
+  "src": "gen4/Metal Claw part 2.mp3"
+ },
+ "Metal Sound": {
+  "dur": 1.27,
+  "hit": 0.66,
+  "onsets": [
+   0.0,
+   0.49,
+   0.66
+  ],
+  "src": "gen4/Metal Sound.mp3"
+ },
+ "Meteor Mash": {
+  "dur": 2.22,
+  "hit": 1.24,
+  "onsets": [
+   0.0,
+   0.89,
+   1.24
+  ],
+  "src": "gen4/Meteor Mash.mp3"
+ },
+ "Metronome": {
+  "dur": 1.41,
+  "hit": 1.08,
+  "onsets": [
+   0.0,
+   0.47,
+   0.61,
+   0.77,
+   0.91,
+   1.08
+  ],
+  "src": "gen4/Metronome.mp3"
+ },
+ "Milk Drink": {
+  "dur": 2.03,
+  "hit": 1.07,
+  "onsets": [
+   0.0,
+   0.53,
+   1.07
+  ],
+  "src": "gen4/Milk Drink.mp3"
+ },
+ "Mimic": {
+  "dur": 1.81,
+  "hit": 0.92,
+  "onsets": [
+   0.0,
+   0.92
+  ],
+  "src": "gen4/Mimic.mp3"
+ },
+ "Mind Reader": {
+  "dur": 2.03,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.04
+  ],
+  "src": "gen4/Mind Reader.mp3"
+ },
+ "Minimize": {
+  "dur": 2.11,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Minimize.mp3"
+ },
+ "Miracle Eye": {
+  "dur": 1.74,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.93
+  ],
+  "src": "gen4/Miracle Eye.mp3"
+ },
+ "Mirror Coat": {
+  "dur": 0.97,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mirror Coat.mp3"
+ },
+ "Mirror Shot": {
+  "dur": 3.1,
+  "hit": 1.76,
+  "onsets": [
+   0.0,
+   1.76
+  ],
+  "src": "gen4/Mirror Shot.mp3"
+ },
+ "Mist": {
+  "dur": 1.05,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mist.mp3"
+ },
+ "Mist Ball": {
+  "dur": 2.5,
+  "hit": 1.76,
+  "onsets": [
+   0.0,
+   1.76
+  ],
+  "src": "gen4/Mist Ball.mp3"
+ },
+ "Mist Ball part 1": {
+  "dur": 1.27,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mist Ball part 1.mp3"
+ },
+ "Mist Ball part 2": {
+  "dur": 0.75,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mist Ball part 2.mp3"
+ },
+ "Moonlight": {
+  "dur": 4.51,
+  "hit": 3.21,
+  "onsets": [
+   0.0,
+   0.41,
+   0.81,
+   1.22,
+   1.62,
+   2.41,
+   2.81,
+   3.21,
+   3.62,
+   4.01
+  ],
+  "src": "gen4/Moonlight.mp3"
+ },
+ "Morning Sun": {
+  "dur": 1.27,
+  "hit": 0.38,
+  "onsets": [
+   0.0,
+   0.17,
+   0.38,
+   0.98
+  ],
+  "src": "gen4/Morning Sun.mp3"
+ },
+ "Mud Bomb": {
+  "dur": 1.72,
+  "hit": 0.73,
+  "onsets": [
+   0.0,
+   0.73
+  ],
+  "src": "gen4/Mud Bomb.mp3"
+ },
+ "Mud Bomb part 1": {
+  "dur": 0.53,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mud Bomb part 1.mp3"
+ },
+ "Mud Bomb part 2": {
+  "dur": 1.01,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mud Bomb part 2.mp3"
+ },
+ "Mud Shot": {
+  "dur": 1.9,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mud Shot.mp3"
+ },
+ "Mud Slap": {
+  "dur": 1.25,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mud Slap.mp3"
+ },
+ "Mud Sport": {
+  "dur": 4.47,
+  "hit": 2.78,
+  "onsets": [
+   0.0,
+   0.48,
+   0.91,
+   2.78
+  ],
+  "src": "gen4/Mud Sport.mp3"
+ },
+ "Mud Sport part 1": {
+  "dur": 2.39,
+  "hit": 0.91,
+  "onsets": [
+   0.0,
+   0.48,
+   0.91
+  ],
+  "src": "gen4/Mud Sport part 1.mp3"
+ },
+ "Mud Sport part 2": {
+  "dur": 1.7,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Mud Sport part 2.mp3"
+ },
+ "Muddy Water": {
+  "dur": 2.58,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Muddy Water.mp3"
+ },
+ "Nasty Plot": {
+  "dur": 2.51,
+  "hit": 2.18,
+  "onsets": [
+   0.0,
+   2.18
+  ],
+  "src": "gen4/Nasty Plot.mp3"
+ },
+ "Natural Gift": {
+  "dur": 1.92,
+  "hit": 1.39,
+  "onsets": [
+   0.0,
+   0.19,
+   1.39
+  ],
+  "src": "gen4/Natural Gift.mp3"
+ },
+ "Nature Power": {
+  "dur": 1.93,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Nature Power.mp3"
+ },
+ "Needle Arm": {
+  "dur": 1.1,
+  "hit": 0.72,
+  "onsets": [
+   0.0,
+   0.72
+  ],
+  "src": "gen4/Needle Arm.mp3"
+ },
+ "Night Shade": {
+  "dur": 1.41,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.64
+  ],
+  "src": "gen4/Night Shade.mp3"
+ },
+ "Night Slash": {
+  "dur": 1.68,
+  "hit": 1.2,
+  "onsets": [
+   0.0,
+   0.37,
+   0.89,
+   1.2
+  ],
+  "src": "gen4/Night Slash.mp3"
+ },
+ "Nightmare": {
+  "dur": 1.42,
+  "hit": 0.32,
+  "onsets": [
+   0.0,
+   0.11,
+   0.21,
+   0.32
+  ],
+  "src": "gen4/Nightmare.mp3"
+ },
+ "Octazooka": {
+  "dur": 0.69,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Octazooka.mp3"
+ },
+ "Odor Sleuth": {
+  "dur": 1.39,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Odor Sleuth.mp3"
+ },
+ "Ominous Wind": {
+  "dur": 1.84,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Ominous Wind.mp3"
+ },
+ "Outrage": {
+  "dur": 2.91,
+  "hit": 0.99,
+  "onsets": [
+   0.0,
+   0.1,
+   0.27,
+   0.41,
+   0.77,
+   0.99,
+   1.73
+  ],
+  "src": "gen4/Outrage.mp3"
+ },
+ "Outrage part 1": {
+  "dur": 1.43,
+  "hit": 0.99,
+  "onsets": [
+   0.0,
+   0.1,
+   0.27,
+   0.41,
+   0.77,
+   0.99
+  ],
+  "src": "gen4/Outrage part 1.mp3"
+ },
+ "Outrage part 2": {
+  "dur": 1.2,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Outrage part 2.mp3"
+ },
+ "Overheat": {
+  "dur": 2.17,
+  "hit": 1.42,
+  "onsets": [
+   0.0,
+   0.1,
+   0.24,
+   0.6,
+   0.82,
+   1.42
+  ],
+  "src": "gen4/Overheat.mp3"
+ },
+ "Pain Split": {
+  "dur": 1.21,
+  "hit": 0.32,
+  "onsets": [
+   0.0,
+   0.32
+  ],
+  "src": "gen4/Pain Split.mp3"
+ },
+ "Pay Day": {
+  "dur": 1.13,
+  "hit": 0.58,
+  "onsets": [
+   0.0,
+   0.4,
+   0.58
+  ],
+  "src": "gen4/Pay Day.mp3"
+ },
+ "Payback": {
+  "dur": 3.13,
+  "hit": 2.73,
+  "onsets": [
+   0.0,
+   2.42,
+   2.73
+  ],
+  "src": "gen4/Payback.mp3"
+ },
+ "Peck": {
+  "dur": 0.4,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Peck.mp3"
+ },
+ "Perish Song": {
+  "dur": 2.97,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Perish Song.mp3"
+ },
+ "Petal Dance": {
+  "dur": 3.59,
+  "hit": 1.41,
+  "onsets": [
+   0.0,
+   0.17,
+   0.37,
+   0.57,
+   0.77,
+   0.97,
+   1.17,
+   1.41,
+   2.61,
+   3.01,
+   3.21
+  ],
+  "src": "gen4/Petal Dance.mp3"
+ },
+ "Pin Missile 1hit": {
+  "dur": 1.32,
+  "hit": 0.93,
+  "onsets": [
+   0.0,
+   0.2,
+   0.67,
+   0.93
+  ],
+  "src": "gen4/Pin Missile 1hit.mp3"
+ },
+ "Pin Missile 2hits": {
+  "dur": 3.02,
+  "hit": 2.64,
+  "onsets": [
+   0.0,
+   0.2,
+   0.67,
+   0.93,
+   1.72,
+   1.9,
+   2.07,
+   2.37,
+   2.64
+  ],
+  "src": "gen4/Pin Missile 2hits.mp3"
+ },
+ "Pluck": {
+  "dur": 0.68,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Pluck.mp3"
+ },
+ "Poison Fang": {
+  "dur": 1.76,
+  "hit": 1.36,
+  "onsets": [
+   0.0,
+   0.45,
+   0.76,
+   1.06,
+   1.36
+  ],
+  "src": "gen4/Poison Fang.mp3"
+ },
+ "Poison Gas": {
+  "dur": 3.32,
+  "hit": 2.92,
+  "onsets": [
+   0.0,
+   0.7,
+   0.88,
+   1.04,
+   2.64,
+   2.92
+  ],
+  "src": "gen4/Poison Gas.mp3"
+ },
+ "Poison Jab": {
+  "dur": 1.23,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Poison Jab.mp3"
+ },
+ "Poison Powder": {
+  "dur": 1.24,
+  "hit": 0.87,
+  "onsets": [
+   0.0,
+   0.2,
+   0.37,
+   0.54,
+   0.7,
+   0.87
+  ],
+  "src": "gen4/Poison Powder.mp3"
+ },
+ "Poison Sting": {
+  "dur": 1.62,
+  "hit": 1.22,
+  "onsets": [
+   0.0,
+   0.27,
+   0.37,
+   0.61,
+   0.92,
+   1.22
+  ],
+  "src": "gen4/Poison Sting.mp3"
+ },
+ "Poison Tail": {
+  "dur": 1.83,
+  "hit": 1.44,
+  "onsets": [
+   0.0,
+   0.22,
+   0.63,
+   0.9,
+   1.17,
+   1.44
+  ],
+  "src": "gen4/Poison Tail.mp3"
+ },
+ "Pound": {
+  "dur": 0.39,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Pound.mp3"
+ },
+ "Powder Snow": {
+  "dur": 2.48,
+  "hit": 1.99,
+  "onsets": [
+   0.0,
+   1.3,
+   1.75,
+   1.89,
+   1.99,
+   2.12,
+   2.4
+  ],
+  "src": "gen4/Powder Snow.mp3"
+ },
+ "Power Gem": {
+  "dur": 3.12,
+  "hit": 2.91,
+  "onsets": [
+   0.0,
+   2.2,
+   2.41,
+   2.57,
+   2.74,
+   2.91
+  ],
+  "src": "gen4/Power Gem.mp3"
+ },
+ "Power Swap": {
+  "dur": 3.78,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Power Swap.mp3"
+ },
+ "Power Trick": {
+  "dur": 1.79,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Power Trick.mp3"
+ },
+ "Power Whip": {
+  "dur": 1.14,
+  "hit": 0.4,
+  "onsets": [
+   0.0,
+   0.4
+  ],
+  "src": "gen4/Power Whip.mp3"
+ },
+ "Present": {
+  "dur": 1.817,
+  "hit": 0.79,
+  "onsets": [
+   0.0,
+   0.17,
+   0.79
+  ],
+  "src": "gen4/Present.mp3"
+ },
+ "Protect": {
+  "dur": 0.97,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Protect.mp3"
+ },
+ "Psybeam": {
+  "dur": 2.42,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.89,
+   1.98
+  ],
+  "src": "gen4/Psybeam.mp3"
+ },
+ "Psych Up": {
+  "dur": 0.94,
+  "hit": 0.2,
+  "onsets": [
+   0.0,
+   0.2,
+   0.65
+  ],
+  "src": "gen4/Psych Up.mp3"
+ },
+ "Psychic": {
+  "dur": 1.05,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Psychic.mp3"
+ },
+ "Psycho Boost": {
+  "dur": 3.68,
+  "hit": 2.18,
+  "onsets": [
+   0.0,
+   0.43,
+   0.62,
+   0.83,
+   1.01,
+   1.21,
+   1.41,
+   2.18
+  ],
+  "src": "gen4/Psycho Boost.mp3"
+ },
+ "Psycho Boost part 1": {
+  "dur": 1.73,
+  "hit": 1.41,
+  "onsets": [
+   0.0,
+   0.43,
+   0.62,
+   0.83,
+   1.01,
+   1.21,
+   1.41
+  ],
+  "src": "gen4/Psycho Boost part 1.mp3"
+ },
+ "Psycho Boost part 2": {
+  "dur": 1.52,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Psycho Boost part 2.mp3"
+ },
+ "Psycho Cut": {
+  "dur": 2.7,
+  "hit": 1.57,
+  "onsets": [
+   0.0,
+   1.57
+  ],
+  "src": "gen4/Psycho Cut.mp3"
+ },
+ "Psycho Cut part 1": {
+  "dur": 1.38,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Psycho Cut part 1.mp3"
+ },
+ "Psycho Cut part 2": {
+  "dur": 1.17,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Psycho Cut part 2.mp3"
+ },
+ "Psycho Shift": {
+  "dur": 1.75,
+  "hit": 0.58,
+  "onsets": [
+   0.0,
+   0.58
+  ],
+  "src": "gen4/Psycho Shift.mp3"
+ },
+ "Psywave": {
+  "dur": 1.43,
+  "hit": 0.86,
+  "onsets": [
+   0.0,
+   0.86
+  ],
+  "src": "gen4/Psywave.mp3"
+ },
+ "Punishment": {
+  "dur": 0.63,
+  "hit": 0.4,
+  "onsets": [
+   0.0,
+   0.24,
+   0.4
+  ],
+  "src": "gen4/Punishment.mp3"
+ },
+ "Pursuit": {
+  "dur": 0.86,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.33
+  ],
+  "src": "gen4/Pursuit.mp3"
+ },
+ "Quick Attack": {
+  "dur": 0.94,
+  "hit": 0.57,
+  "onsets": [
+   0.0,
+   0.57
+  ],
+  "src": "gen4/Quick Attack.mp3"
+ },
+ "Rage": {
+  "dur": 2.1,
+  "hit": 1.71,
+  "onsets": [
+   0.0,
+   1.71
+  ],
+  "src": "gen4/Rage.mp3"
+ },
+ "Rain Dance": {
+  "dur": 1.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Rain Dance.mp3"
+ },
+ "Rapid Spin": {
+  "dur": 1.09,
+  "hit": 0.56,
+  "onsets": [
+   0.0,
+   0.09,
+   0.33,
+   0.56
+  ],
+  "src": "gen4/Rapid Spin.mp3"
+ },
+ "Razor Leaf": {
+  "dur": 3.06,
+  "hit": 2.17,
+  "onsets": [
+   0.0,
+   1.47,
+   2.17
+  ],
+  "src": "gen4/Razor Leaf.mp3"
+ },
+ "Razor Wind": {
+  "dur": 4.15,
+  "hit": 2.85,
+  "onsets": [
+   0.0,
+   0.77,
+   2.85
+  ],
+  "src": "gen4/Razor Wind.mp3"
+ },
+ "Razor Wind part 1": {
+  "dur": 2.59,
+  "hit": 0.77,
+  "onsets": [
+   0.0,
+   0.77
+  ],
+  "src": "gen4/Razor Wind part 1.mp3"
+ },
+ "Razor Wind part 2": {
+  "dur": 1.353,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Razor Wind part 2.mp3"
+ },
+ "Recover": {
+  "dur": 1.18,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Recover.mp3"
+ },
+ "Recycle": {
+  "dur": 2.05,
+  "hit": 1.51,
+  "onsets": [
+   0.0,
+   0.13,
+   0.26,
+   0.38,
+   0.51,
+   0.63,
+   0.76,
+   0.88,
+   1.01,
+   1.13,
+   1.26,
+   1.38,
+   1.51,
+   1.63,
+   1.76,
+   1.88
+  ],
+  "src": "gen4/Recycle.mp3"
+ },
+ "Reflect": {
+  "dur": 0.98,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.52
+  ],
+  "src": "gen4/Reflect.mp3"
+ },
+ "Refresh": {
+  "dur": 2.77,
+  "hit": 1.88,
+  "onsets": [
+   0.0,
+   1.52,
+   1.68,
+   1.88,
+   2.48
+  ],
+  "src": "gen4/Refresh.mp3"
+ },
+ "Rest": {
+  "dur": 0.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Rest.mp3"
+ },
+ "Return": {
+  "dur": 1.63,
+  "hit": 1.21,
+  "onsets": [
+   0.0,
+   0.17,
+   0.63,
+   1.21
+  ],
+  "src": "gen4/Return.mp3"
+ },
+ "Revenge": {
+  "dur": 1.57,
+  "hit": 1.26,
+  "onsets": [
+   0.0,
+   1.26
+  ],
+  "src": "gen4/Revenge.mp3"
+ },
+ "Reversal": {
+  "dur": 2.68,
+  "hit": 2.25,
+  "onsets": [
+   0.0,
+   0.54,
+   2.25
+  ],
+  "src": "gen4/Reversal.mp3"
+ },
+ "Reversal part 1": {
+  "dur": 1.76,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.54
+  ],
+  "src": "gen4/Reversal part 1.mp3"
+ },
+ "Reversal part 2": {
+  "dur": 0.44,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Reversal part 2.mp3"
+ },
+ "Roar": {
+  "dur": 1.33,
+  "hit": 0.41,
+  "onsets": [
+   0.0,
+   0.41
+  ],
+  "src": "gen4/Roar.mp3"
+ },
+ "Roar of Time": {
+  "dur": 5.96,
+  "hit": 2.95,
+  "onsets": [
+   0.0,
+   0.25,
+   0.46,
+   1.83,
+   2.95
+  ],
+  "src": "gen4/Roar of Time.mp3"
+ },
+ "Rock Blast 1hit": {
+  "dur": 0.97,
+  "hit": 0.32,
+  "onsets": [
+   0.0,
+   0.32
+  ],
+  "src": "gen4/Rock Blast 1hit.mp3"
+ },
+ "Rock Blast 2hits": {
+  "dur": 2.37,
+  "hit": 1.72,
+  "onsets": [
+   0.0,
+   0.32,
+   1.41,
+   1.72
+  ],
+  "src": "gen4/Rock Blast 2hits.mp3"
+ },
+ "Rock Climb": {
+  "dur": 2.34,
+  "hit": 1.89,
+  "onsets": [
+   0.0,
+   1.1,
+   1.89
+  ],
+  "src": "gen4/Rock Climb.mp3"
+ },
+ "Rock Polish": {
+  "dur": 2.42,
+  "hit": 1.52,
+  "onsets": [
+   0.0,
+   1.31,
+   1.52
+  ],
+  "src": "gen4/Rock Polish.mp3"
+ },
+ "Rock Slide": {
+  "dur": 1.93,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Rock Slide.mp3"
+ },
+ "Rock Smash": {
+  "dur": 0.89,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Rock Smash.mp3"
+ },
+ "Rock Throw": {
+  "dur": 0.94,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Rock Throw.mp3"
+ },
+ "Rock Tomb": {
+  "dur": 1.77,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.94,
+   1.18,
+   1.41
+  ],
+  "src": "gen4/Rock Tomb.mp3"
+ },
+ "Rock Wrecker": {
+  "dur": 1.53,
+  "hit": 0.82,
+  "onsets": [
+   0.0,
+   0.1,
+   0.24,
+   0.6,
+   0.82
+  ],
+  "src": "gen4/Rock Wrecker.mp3"
+ },
+ "Role Play": {
+  "dur": 0.88,
+  "hit": 0.62,
+  "onsets": [
+   0.0,
+   0.62
+  ],
+  "src": "gen4/Role Play.mp3"
+ },
+ "Rolling Kick": {
+  "dur": 1.12,
+  "hit": 0.74,
+  "onsets": [
+   0.0,
+   0.74
+  ],
+  "src": "gen4/Rolling Kick.mp3"
+ },
+ "Rollout": {
+  "dur": 1.28,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Rollout.mp3"
+ },
+ "Roost": {
+  "dur": 2.74,
+  "hit": 1.85,
+  "onsets": [
+   0.0,
+   1.49,
+   1.65,
+   1.85,
+   2.45
+  ],
+  "src": "gen4/Roost.mp3"
+ },
+ "Sacred Fire": {
+  "dur": 2.76,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Sacred Fire.mp3"
+ },
+ "Safeguard": {
+  "dur": 0.96,
+  "hit": 0.47,
+  "onsets": [
+   0.0,
+   0.13,
+   0.47
+  ],
+  "src": "gen4/Safeguard.mp3"
+ },
+ "Sand Attack": {
+  "dur": 0.44,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Sand Attack.mp3"
+ },
+ "Sand Tomb": {
+  "dur": 2.12,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Sand Tomb.mp3"
+ },
+ "Sandstorm": {
+  "dur": 1.86,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Sandstorm.mp3"
+ },
+ "Scary Face": {
+  "dur": 1.81,
+  "hit": 0.77,
+  "onsets": [
+   0.0,
+   0.77,
+   1.05,
+   1.34,
+   1.6
+  ],
+  "src": "gen4/Scary Face.mp3"
+ },
+ "Scratch": {
+  "dur": 0.48,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Scratch.mp3"
+ },
+ "Screech": {
+  "dur": 1.38,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Screech.mp3"
+ },
+ "Secret Power": {
+  "dur": 1.1,
+  "hit": 0.72,
+  "onsets": [
+   0.0,
+   0.72
+  ],
+  "src": "gen4/Secret Power.mp3"
+ },
+ "Seed Bomb": {
+  "dur": 2.02,
+  "hit": 1.57,
+  "onsets": [
+   0.0,
+   0.9,
+   1.24,
+   1.57
+  ],
+  "src": "gen4/Seed Bomb.mp3"
+ },
+ "Seed Flare": {
+  "dur": 2.85,
+  "hit": 1.68,
+  "onsets": [
+   0.0,
+   1.68
+  ],
+  "src": "gen4/Seed Flare.mp3"
+ },
+ "Seed Flare part 1": {
+  "dur": 1.17,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Seed Flare part 1.mp3"
+ },
+ "Seed Flare part 2": {
+  "dur": 1.18,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Seed Flare part 2.mp3"
+ },
+ "Seismic Toss": {
+  "dur": 1.75,
+  "hit": 0.7,
+  "onsets": [
+   0.0,
+   0.7
+  ],
+  "src": "gen4/Seismic Toss.mp3"
+ },
+ "Seismic Toss part 1": {
+  "dur": 0.41,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Seismic Toss part 1.mp3"
+ },
+ "Seismic Toss part 2": {
+  "dur": 1.06,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Seismic Toss part 2.mp3"
+ },
+ "Self Destruct": {
+  "dur": 1.37,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Self Destruct.mp3"
+ },
+ "Shadow Ball": {
+  "dur": 2.75,
+  "hit": 1.88,
+  "onsets": [
+   0.0,
+   1.88
+  ],
+  "src": "gen4/Shadow Ball.mp3"
+ },
+ "Shadow Claw": {
+  "dur": 0.6,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Shadow Claw.mp3"
+ },
+ "Shadow Force": {
+  "dur": 4.28,
+  "hit": 2.86,
+  "onsets": [
+   0.0,
+   2.13,
+   2.86
+  ],
+  "src": "gen4/Shadow Force.mp3"
+ },
+ "Shadow Force part 1": {
+  "dur": 1.33,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Shadow Force part 1.mp3"
+ },
+ "Shadow Force part 2": {
+  "dur": 2.16,
+  "hit": 0.74,
+  "onsets": [
+   0.0,
+   0.74
+  ],
+  "src": "gen4/Shadow Force part 2.mp3"
+ },
+ "Shadow Punch": {
+  "dur": 0.63,
+  "hit": 0.23,
+  "onsets": [
+   0.0,
+   0.23
+  ],
+  "src": "gen4/Shadow Punch.mp3"
+ },
+ "Shadow Sneak": {
+  "dur": 1.87,
+  "hit": 1.12,
+  "onsets": [
+   0.0,
+   1.12
+  ],
+  "src": "gen4/Shadow Sneak.mp3"
+ },
+ "Shadow Sneak part 1": {
+  "dur": 0.59,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Shadow Sneak part 1.mp3"
+ },
+ "Shadow Sneak part 2": {
+  "dur": 0.76,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Shadow Sneak part 2.mp3"
+ },
+ "Sharpen": {
+  "dur": 1.52,
+  "hit": 0.55,
+  "onsets": [
+   0.0,
+   0.55
+  ],
+  "src": "gen4/Sharpen.mp3"
+ },
+ "Sheer Cold": {
+  "dur": 2.36,
+  "hit": 1.99,
+  "onsets": [
+   0.0,
+   0.18,
+   0.35,
+   0.51,
+   0.68,
+   0.85,
+   1.02,
+   1.19,
+   1.35,
+   1.52,
+   1.69,
+   1.85,
+   1.99,
+   2.27
+  ],
+  "src": "gen4/Sheer Cold.mp3"
+ },
+ "Shock Wave": {
+  "dur": 4.17,
+  "hit": 3.09,
+  "onsets": [
+   0.0,
+   0.1,
+   0.24,
+   0.4,
+   0.54,
+   0.9,
+   1.11,
+   1.33,
+   1.88,
+   2.75,
+   3.09
+  ],
+  "src": "gen4/Shock Wave.mp3"
+ },
+ "Signal Beam": {
+  "dur": 2.73,
+  "hit": 1.48,
+  "onsets": [
+   0.0,
+   1.08,
+   1.48
+  ],
+  "src": "gen4/Signal Beam.mp3"
+ },
+ "Silver Wind": {
+  "dur": 4.102,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Silver Wind.mp3"
+ },
+ "Sing": {
+  "dur": 3.78,
+  "hit": 2.41,
+  "onsets": [
+   0.0,
+   1.21,
+   1.81,
+   2.41
+  ],
+  "src": "gen4/Sing.mp3"
+ },
+ "Sketch": {
+  "dur": 3.63,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Sketch.mp3"
+ },
+ "Skill Swap": {
+  "dur": 3.79,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Skill Swap.mp3"
+ },
+ "Skull Bash": {
+  "dur": 4.07,
+  "hit": 3.65,
+  "onsets": [
+   0.0,
+   1.21,
+   2.47,
+   3.65
+  ],
+  "src": "gen4/Skull Bash.mp3"
+ },
+ "Skull Bash part 1": {
+  "dur": 2.01,
+  "hit": 1.21,
+  "onsets": [
+   0.0,
+   1.21
+  ],
+  "src": "gen4/Skull Bash part 1.mp3"
+ },
+ "Skull Bash part 2": {
+  "dur": 1.61,
+  "hit": 1.19,
+  "onsets": [
+   0.0,
+   1.19
+  ],
+  "src": "gen4/Skull Bash part 2.mp3"
+ },
+ "Sky Attack": {
+  "dur": 2.67,
+  "hit": 1.73,
+  "onsets": [
+   0.0,
+   1.73
+  ],
+  "src": "gen4/Sky Attack.mp3"
+ },
+ "Sky Attack part 1": {
+  "dur": 1.41,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Sky Attack part 1.mp3"
+ },
+ "Sky Attack part 2": {
+  "dur": 0.96,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Sky Attack part 2.mp3"
+ },
+ "Sky Uppercut": {
+  "dur": 1.4,
+  "hit": 1.0,
+  "onsets": [
+   0.0,
+   0.7,
+   1.0
+  ],
+  "src": "gen4/Sky Uppercut.mp3"
+ },
+ "Slack Off": {
+  "dur": 2.0,
+  "hit": 1.04,
+  "onsets": [
+   0.0,
+   1.04
+  ],
+  "src": "gen4/Slack Off.mp3"
+ },
+ "Slack Off part 1": {
+  "dur": 1.042,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Slack Off part 1.mp3"
+ },
+ "Slack Off part 2": {
+  "dur": 0.97,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Slack Off part 2.mp3"
+ },
+ "Slam": {
+  "dur": 0.43,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Slam.mp3"
+ },
+ "Slash": {
+  "dur": 0.51,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Slash.mp3"
+ },
+ "Sleep Powder": {
+  "dur": 1.24,
+  "hit": 0.87,
+  "onsets": [
+   0.0,
+   0.2,
+   0.37,
+   0.54,
+   0.7,
+   0.87
+  ],
+  "src": "gen4/Sleep Powder.mp3"
+ },
+ "Sleep Talk": {
+  "dur": 1.11,
+  "hit": 0.11,
+  "onsets": [
+   0.0,
+   0.11
+  ],
+  "src": "gen4/Sleep Talk.mp3"
+ },
+ "Sludge": {
+  "dur": 1.38,
+  "hit": 0.99,
+  "onsets": [
+   0.0,
+   0.41,
+   0.88,
+   0.99
+  ],
+  "src": "gen4/Sludge.mp3"
+ },
+ "Sludge Bomb": {
+  "dur": 1.98,
+  "hit": 1.57,
+  "onsets": [
+   0.0,
+   0.14,
+   0.24,
+   0.35,
+   0.45,
+   0.76,
+   0.86,
+   0.96,
+   1.16,
+   1.26,
+   1.36,
+   1.57
+  ],
+  "src": "gen4/Sludge Bomb.mp3"
+ },
+ "Smelling Salts": {
+  "dur": 0.42,
+  "hit": 0.19,
+  "onsets": [
+   0.0,
+   0.19
+  ],
+  "src": "gen4/Smelling Salts.mp3"
+ },
+ "Smog": {
+  "dur": 1.05,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Smog.mp3"
+ },
+ "Smokescreen": {
+  "dur": 1.62,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.54
+  ],
+  "src": "gen4/Smokescreen.mp3"
+ },
+ "Snatch": {
+  "dur": 0.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Snatch.mp3"
+ },
+ "Snore": {
+  "dur": 1.51,
+  "hit": 0.28,
+  "onsets": [
+   0.0,
+   0.28,
+   0.73,
+   1.31
+  ],
+  "src": "gen4/Snore.mp3"
+ },
+ "Soft-Boiled": {
+  "dur": 2.14,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.0,
+   1.25
+  ],
+  "src": "gen4/Soft-Boiled.mp3"
+ },
+ "Solar Beam": {
+  "dur": 4.79,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Solar Beam.mp3"
+ },
+ "Solar Beam part 1": {
+  "dur": 1.17,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Solar Beam part 1.mp3"
+ },
+ "Solar Beam part 2": {
+  "dur": 3.12,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.09
+  ],
+  "src": "gen4/Solar Beam part 2.mp3"
+ },
+ "Sonic Boom": {
+  "dur": 1.311,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Sonic Boom.mp3"
+ },
+ "Spacial Rend": {
+  "dur": 2.45,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.11
+  ],
+  "src": "gen4/Spacial Rend.mp3"
+ },
+ "Spacial Rend part 1": {
+  "dur": 0.68,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Spacial Rend part 1.mp3"
+ },
+ "Spacial Rend part 2": {
+  "dur": 1.35,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Spacial Rend part 2.mp3"
+ },
+ "Spark": {
+  "dur": 2.49,
+  "hit": 1.89,
+  "onsets": [
+   0.0,
+   1.89
+  ],
+  "src": "gen4/Spark.mp3"
+ },
+ "Spark part 1": {
+  "dur": 1.36,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Spark part 1.mp3"
+ },
+ "Spark part 2": {
+  "dur": 0.61,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Spark part 2.mp3"
+ },
+ "Spider Web": {
+  "dur": 2.08,
+  "hit": 0.56,
+  "onsets": [
+   0.0,
+   0.56,
+   1.67
+  ],
+  "src": "gen4/Spider Web.mp3"
+ },
+ "Spike Cannon": {
+  "dur": 1.21,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Spike Cannon.mp3"
+ },
+ "Spikes": {
+  "dur": 1.2,
+  "hit": 0.95,
+  "onsets": [
+   0.0,
+   0.25,
+   0.48,
+   0.72,
+   0.95
+  ],
+  "src": "gen4/Spikes.mp3"
+ },
+ "Spit Up": {
+  "dur": 2.37,
+  "hit": 1.8,
+  "onsets": [
+   0.0,
+   0.93,
+   1.8
+  ],
+  "src": "gen4/Spit Up.mp3"
+ },
+ "Spite": {
+  "dur": 0.66,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Spite.mp3"
+ },
+ "Splash": {
+  "dur": 2.0,
+  "hit": 1.48,
+  "onsets": [
+   0.0,
+   0.75,
+   1.48
+  ],
+  "src": "gen4/Splash.mp3"
+ },
+ "Spore": {
+  "dur": 1.87,
+  "hit": 0.57,
+  "onsets": [
+   0.0,
+   0.17,
+   0.57
+  ],
+  "src": "gen4/Spore.mp3"
+ },
+ "Stat Fall Down": {
+  "dur": 1.23,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.96
+  ],
+  "src": "gen4/Stat Fall Down.mp3"
+ },
+ "Stat Rise Up": {
+  "dur": 1.23,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Stat Rise Up.mp3"
+ },
+ "Status Burned": {
+  "dur": 0.38,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Status Burned.mp3"
+ },
+ "Status Confused": {
+  "dur": 0.7,
+  "hit": 0.51,
+  "onsets": [
+   0.0,
+   0.17,
+   0.34,
+   0.51
+  ],
+  "src": "gen4/Status Confused.mp3"
+ },
+ "Status Frozen": {
+  "dur": 0.82,
+  "hit": 0.45,
+  "onsets": [
+   0.0,
+   0.15,
+   0.31,
+   0.45,
+   0.72
+  ],
+  "src": "gen4/Status Frozen.mp3"
+ },
+ "Status Paralyzed": {
+  "dur": 0.65,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Status Paralyzed.mp3"
+ },
+ "Status Poisoned": {
+  "dur": 0.73,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Status Poisoned.mp3"
+ },
+ "Status Sleep": {
+  "dur": 0.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Status Sleep.mp3"
+ },
+ "Stealth Rock": {
+  "dur": 1.54,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Stealth Rock.mp3"
+ },
+ "Steel Wing": {
+  "dur": 1.86,
+  "hit": 1.57,
+  "onsets": [
+   0.0,
+   0.09,
+   0.58,
+   0.84,
+   1.1,
+   1.33,
+   1.57
+  ],
+  "src": "gen4/Steel Wing.mp3"
+ },
+ "Stockpile": {
+  "dur": 1.98,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Stockpile.mp3"
+ },
+ "Stomp": {
+  "dur": 0.51,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Stomp.mp3"
+ },
+ "Stone Edge": {
+  "dur": 2.03,
+  "hit": 0.91,
+  "onsets": [
+   0.0,
+   0.91
+  ],
+  "src": "gen4/Stone Edge.mp3"
+ },
+ "Strength": {
+  "dur": 1.69,
+  "hit": 1.27,
+  "onsets": [
+   0.0,
+   0.24,
+   1.27
+  ],
+  "src": "gen4/Strength.mp3"
+ },
+ "Strength part 1": {
+  "dur": 0.79,
+  "hit": 0.24,
+  "onsets": [
+   0.0,
+   0.24
+  ],
+  "src": "gen4/Strength part 1.mp3"
+ },
+ "Strength part 2": {
+  "dur": 0.43,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Strength part 2.mp3"
+ },
+ "String Shot": {
+  "dur": 2.23,
+  "hit": 1.72,
+  "onsets": [
+   0.0,
+   1.72
+  ],
+  "src": "gen4/String Shot.mp3"
+ },
+ "Struggle": {
+  "dur": 0.97,
+  "hit": 0.55,
+  "onsets": [
+   0.0,
+   0.12,
+   0.22,
+   0.32,
+   0.55
+  ],
+  "src": "gen4/Struggle.mp3"
+ },
+ "Stun Spore": {
+  "dur": 1.23,
+  "hit": 0.87,
+  "onsets": [
+   0.0,
+   0.2,
+   0.36,
+   0.53,
+   0.7,
+   0.87
+  ],
+  "src": "gen4/Stun Spore.mp3"
+ },
+ "Submission": {
+  "dur": 3.0,
+  "hit": 2.64,
+  "onsets": [
+   0.0,
+   0.3,
+   0.63,
+   0.96,
+   1.3,
+   1.63,
+   1.97,
+   2.3,
+   2.64
+  ],
+  "src": "gen4/Submission.mp3"
+ },
+ "Substitute": {
+  "dur": 0.91,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Substitute.mp3"
+ },
+ "Sucker Punch": {
+  "dur": 0.84,
+  "hit": 0.59,
+  "onsets": [
+   0.0,
+   0.59
+  ],
+  "src": "gen4/Sucker Punch.mp3"
+ },
+ "Sunny Day": {
+  "dur": 2.23,
+  "hit": 0.38,
+  "onsets": [
+   0.0,
+   0.38,
+   0.98,
+   1.38,
+   1.58,
+   1.98
+  ],
+  "src": "gen4/Sunny Day.mp3"
+ },
+ "Super Fang": {
+  "dur": 1.07,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Super Fang.mp3"
+ },
+ "Superpower": {
+  "dur": 1.8,
+  "hit": 1.38,
+  "onsets": [
+   0.0,
+   1.38
+  ],
+  "src": "gen4/Superpower.mp3"
+ },
+ "Superpower part 1": {
+  "dur": 1.18,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Superpower part 1.mp3"
+ },
+ "Superpower part 2": {
+  "dur": 0.43,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Superpower part 2.mp3"
+ },
+ "Supersonic": {
+  "dur": 0.89,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Supersonic.mp3"
+ },
+ "Surf": {
+  "dur": 2.58,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Surf.mp3"
+ },
+ "Swagger": {
+  "dur": 1.66,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.05,
+   1.16,
+   1.39,
+   1.49
+  ],
+  "src": "gen4/Swagger.mp3"
+ },
+ "Swallow": {
+  "dur": 2.12,
+  "hit": 1.2,
+  "onsets": [
+   0.0,
+   1.2
+  ],
+  "src": "gen4/Swallow.mp3"
+ },
+ "Sweet Kiss": {
+  "dur": 3.42,
+  "hit": 2.62,
+  "onsets": [
+   0.0,
+   2.62
+  ],
+  "src": "gen4/Sweet Kiss.mp3"
+ },
+ "Sweet Scent": {
+  "dur": 2.74,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Sweet Scent.mp3"
+ },
+ "Swift": {
+  "dur": 1.44,
+  "hit": 1.24,
+  "onsets": [
+   0.0,
+   0.91,
+   1.08,
+   1.24
+  ],
+  "src": "gen4/Swift.mp3"
+ },
+ "Switcheroo": {
+  "dur": 2.83,
+  "hit": 2.55,
+  "onsets": [
+   0.0,
+   0.19,
+   0.87,
+   1.38,
+   1.81,
+   2.28,
+   2.55
+  ],
+  "src": "gen4/Switcheroo.mp3"
+ },
+ "Swords Dance": {
+  "dur": 1.21,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Swords Dance.mp3"
+ },
+ "Synthesis": {
+  "dur": 2.35,
+  "hit": 1.38,
+  "onsets": [
+   0.0,
+   1.38
+  ],
+  "src": "gen4/Synthesis.mp3"
+ },
+ "Tackle": {
+  "dur": 0.66,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Tackle.mp3"
+ },
+ "Tail Glow": {
+  "dur": 2.94,
+  "hit": 2.05,
+  "onsets": [
+   0.0,
+   0.17,
+   0.38,
+   0.91,
+   1.01,
+   1.21,
+   1.74,
+   2.05,
+   2.65
+  ],
+  "src": "gen4/Tail Glow.mp3"
+ },
+ "Tail Whip": {
+  "dur": 1.05,
+  "hit": 0.48,
+  "onsets": [
+   0.0,
+   0.48
+  ],
+  "src": "gen4/Tail Whip.mp3"
+ },
+ "Tailwind": {
+  "dur": 4.25,
+  "hit": 3.61,
+  "onsets": [
+   0.0,
+   3.61
+  ],
+  "src": "gen4/Tailwind.mp3"
+ },
+ "Tailwind part 1": {
+  "dur": 3.07,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Tailwind part 1.mp3"
+ },
+ "Tailwind part 2": {
+  "dur": 0.65,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Tailwind part 2.mp3"
+ },
+ "Take Down": {
+  "dur": 1.58,
+  "hit": 0.77,
+  "onsets": [
+   0.0,
+   0.77
+  ],
+  "src": "gen4/Take Down.mp3"
+ },
+ "Taunt": {
+  "dur": 2.98,
+  "hit": 2.8,
+  "onsets": [
+   0.0,
+   1.06,
+   1.21,
+   1.63,
+   2.32,
+   2.43,
+   2.69,
+   2.8
+  ],
+  "src": "gen4/Taunt.mp3"
+ },
+ "Teeter Dance": {
+  "dur": 1.74,
+  "hit": 1.11,
+  "onsets": [
+   0.0,
+   0.18,
+   0.35,
+   0.51,
+   0.68,
+   0.85,
+   1.11,
+   1.38
+  ],
+  "src": "gen4/Teeter Dance.mp3"
+ },
+ "Teleport": {
+  "dur": 0.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Teleport.mp3"
+ },
+ "Thief": {
+  "dur": 0.44,
+  "hit": 0.11,
+  "onsets": [
+   0.0,
+   0.11
+  ],
+  "src": "gen4/Thief.mp3"
+ },
+ "Thrash": {
+  "dur": 1.06,
+  "hit": 0.68,
+  "onsets": [
+   0.0,
+   0.19,
+   0.68
+  ],
+  "src": "gen4/Thrash.mp3"
+ },
+ "Thunder": {
+  "dur": 1.07,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Thunder.mp3"
+ },
+ "Thunder Fang": {
+  "dur": 0.94,
+  "hit": 0.34,
+  "onsets": [
+   0.0,
+   0.34
+  ],
+  "src": "gen4/Thunder Fang.mp3"
+ },
+ "Thunder Punch": {
+  "dur": 1.26,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Thunder Punch.mp3"
+ },
+ "Thunder Shock": {
+  "dur": 1.03,
+  "hit": 0.47,
+  "onsets": [
+   0.0,
+   0.47
+  ],
+  "src": "gen4/Thunder Shock.mp3"
+ },
+ "Thunder Wave": {
+  "dur": 1.85,
+  "hit": 1.19,
+  "onsets": [
+   0.0,
+   1.19
+  ],
+  "src": "gen4/Thunder Wave.mp3"
+ },
+ "Thunderbolt": {
+  "dur": 2.75,
+  "hit": 2.19,
+  "onsets": [
+   0.0,
+   2.19
+  ],
+  "src": "gen4/Thunderbolt.mp3"
+ },
+ "Thunderbolt part 1": {
+  "dur": 1.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Thunderbolt part 1.mp3"
+ },
+ "Thunderbolt part 2": {
+  "dur": 0.57,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Thunderbolt part 2.mp3"
+ },
+ "Tickle": {
+  "dur": 0.99,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.67
+  ],
+  "src": "gen4/Tickle.mp3"
+ },
+ "Torment": {
+  "dur": 3.94,
+  "hit": 2.23,
+  "onsets": [
+   0.0,
+   0.62,
+   1.43,
+   1.83,
+   2.23,
+   3.3,
+   3.41,
+   3.67,
+   3.77
+  ],
+  "src": "gen4/Torment.mp3"
+ },
+ "Torment part 1": {
+  "dur": 2.83,
+  "hit": 2.48,
+  "onsets": [
+   0.0,
+   0.62,
+   1.43,
+   1.83,
+   2.23,
+   2.48
+  ],
+  "src": "gen4/Torment part 1.mp3"
+ },
+ "Torment part 2": {
+  "dur": 0.67,
+  "hit": 0.48,
+  "onsets": [
+   0.0,
+   0.12,
+   0.37,
+   0.48
+  ],
+  "src": "gen4/Torment part 2.mp3"
+ },
+ "Toxic": {
+  "dur": 1.41,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.41,
+   0.51,
+   0.81,
+   0.91,
+   1.01
+  ],
+  "src": "gen4/Toxic.mp3"
+ },
+ "Toxic Spikes": {
+  "dur": 1.2,
+  "hit": 0.96,
+  "onsets": [
+   0.0,
+   0.26,
+   0.49,
+   0.72,
+   0.96
+  ],
+  "src": "gen4/Toxic Spikes.mp3"
+ },
+ "Transform": {
+  "dur": 0.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Transform.mp3"
+ },
+ "Tri Attack": {
+  "dur": 3.29,
+  "hit": 1.24,
+  "onsets": [
+   0.0,
+   0.32,
+   0.63,
+   1.24,
+   1.98
+  ],
+  "src": "gen4/Tri Attack.mp3"
+ },
+ "Tri Attack part 1": {
+  "dur": 0.88,
+  "hit": 0.63,
+  "onsets": [
+   0.0,
+   0.32,
+   0.63
+  ],
+  "src": "gen4/Tri Attack part 1.mp3"
+ },
+ "Tri Attack part 2": {
+  "dur": 2.06,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.75
+  ],
+  "src": "gen4/Tri Attack part 2.mp3"
+ },
+ "Trick": {
+  "dur": 2.84,
+  "hit": 2.56,
+  "onsets": [
+   0.0,
+   0.19,
+   0.88,
+   1.38,
+   1.82,
+   2.29,
+   2.56
+  ],
+  "src": "gen4/Trick.mp3"
+ },
+ "Trick Room": {
+  "dur": 0.91,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Trick Room.mp3"
+ },
+ "Triple Kick": {
+  "dur": 0.51,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Triple Kick.mp3"
+ },
+ "Trump Card": {
+  "dur": 2.27,
+  "hit": 1.42,
+  "onsets": [
+   0.0,
+   0.24,
+   0.44,
+   0.62,
+   0.82,
+   1.02,
+   1.22,
+   1.42
+  ],
+  "src": "gen4/Trump Card.mp3"
+ },
+ "Twineedle": {
+  "dur": 0.92,
+  "hit": 0.5,
+  "onsets": [
+   0.0,
+   0.38,
+   0.5
+  ],
+  "src": "gen4/Twineedle.mp3"
+ },
+ "Twister": {
+  "dur": 2.59,
+  "hit": 0.76,
+  "onsets": [
+   0.0,
+   0.76
+  ],
+  "src": "gen4/Twister.mp3"
+ },
+ "U-turn": {
+  "dur": 1.64,
+  "hit": 0.41,
+  "onsets": [
+   0.0,
+   0.41,
+   1.31
+  ],
+  "src": "gen4/U-turn.mp3"
+ },
+ "Uproar": {
+  "dur": 2.4,
+  "hit": 2.03,
+  "onsets": [
+   0.0,
+   1.03,
+   2.03
+  ],
+  "src": "gen4/Uproar.mp3"
+ },
+ "Vacuum Wave": {
+  "dur": 1.65,
+  "hit": 1.17,
+  "onsets": [
+   0.0,
+   0.18,
+   1.17
+  ],
+  "src": "gen4/Vacuum Wave.mp3"
+ },
+ "Vice Grip": {
+  "dur": 0.56,
+  "hit": 0.14,
+  "onsets": [
+   0.0,
+   0.14
+  ],
+  "src": "gen4/Vice Grip.mp3"
+ },
+ "Vine Whip": {
+  "dur": 0.57,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.36
+  ],
+  "src": "gen4/Vine Whip.mp3"
+ },
+ "Vital Throw": {
+  "dur": 2.55,
+  "hit": 2.24,
+  "onsets": [
+   0.0,
+   0.11,
+   0.78,
+   0.87,
+   1.55,
+   1.64,
+   2.24
+  ],
+  "src": "gen4/Vital Throw.mp3"
+ },
+ "Volt Tackle": {
+  "dur": 2.96,
+  "hit": 2.27,
+  "onsets": [
+   0.0,
+   0.78,
+   1.18,
+   2.27
+  ],
+  "src": "gen4/Volt Tackle.mp3"
+ },
+ "Volt Tackle part 1": {
+  "dur": 1.75,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   0.78,
+   1.18
+  ],
+  "src": "gen4/Volt Tackle part 1.mp3"
+ },
+ "Volt Tackle part 2": {
+  "dur": 0.73,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Volt Tackle part 2.mp3"
+ },
+ "Wake Up Slap": {
+  "dur": 1.26,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Wake Up Slap.mp3"
+ },
+ "Water Gun": {
+  "dur": 1.84,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Water Gun.mp3"
+ },
+ "Water Pulse": {
+  "dur": 1.37,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Water Pulse.mp3"
+ },
+ "Water Sport": {
+  "dur": 3.81,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Water Sport.mp3"
+ },
+ "Water Spout": {
+  "dur": 2.83,
+  "hit": 0.99,
+  "onsets": [
+   0.0,
+   0.99,
+   1.63
+  ],
+  "src": "gen4/Water Spout.mp3"
+ },
+ "Waterfall": {
+  "dur": 2.67,
+  "hit": 0.63,
+  "onsets": [
+   0.0,
+   0.63,
+   1.7
+  ],
+  "src": "gen4/Waterfall.mp3"
+ },
+ "Weather Ball": {
+  "dur": 2.34,
+  "hit": 2.03,
+  "onsets": [
+   0.0,
+   0.52,
+   1.38,
+   2.03
+  ],
+  "src": "gen4/Weather Ball.mp3"
+ },
+ "Weather Ball part 1": {
+  "dur": 0.99,
+  "hit": 0.52,
+  "onsets": [
+   0.0,
+   0.52
+  ],
+  "src": "gen4/Weather Ball part 1.mp3"
+ },
+ "Weather Ball part 2": {
+  "dur": 0.98,
+  "hit": 0.67,
+  "onsets": [
+   0.0,
+   0.67
+  ],
+  "src": "gen4/Weather Ball part 2.mp3"
+ },
+ "Whirlpool": {
+  "dur": 1.9,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Whirlpool.mp3"
+ },
+ "Whirlwind": {
+  "dur": 3.07,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Whirlwind.mp3"
+ },
+ "Will O Wisp": {
+  "dur": 2.04,
+  "hit": 1.68,
+  "onsets": [
+   0.0,
+   0.58,
+   1.68
+  ],
+  "src": "gen4/Will O Wisp.mp3"
+ },
+ "Wing Attack": {
+  "dur": 0.47,
+  "hit": 0.32,
+  "onsets": [
+   0.0,
+   0.32
+  ],
+  "src": "gen4/Wing Attack.mp3"
+ },
+ "Wish": {
+  "dur": 2.79,
+  "hit": 2.25,
+  "onsets": [
+   0.0,
+   1.12,
+   1.68,
+   2.25
+  ],
+  "src": "gen4/Wish.mp3"
+ },
+ "Withdraw": {
+  "dur": 1.72,
+  "hit": 0.68,
+  "onsets": [
+   0.0,
+   0.68
+  ],
+  "src": "gen4/Withdraw.mp3"
+ },
+ "Wood Hammer": {
+  "dur": 0.7,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Wood Hammer.mp3"
+ },
+ "Worry Seed": {
+  "dur": 1.15,
+  "hit": 0.58,
+  "onsets": [
+   0.0,
+   0.58
+  ],
+  "src": "gen4/Worry Seed.mp3"
+ },
+ "Wrap": {
+  "dur": 1.16,
+  "hit": 0.0,
+  "onsets": [
+   0.0,
+   1.02
+  ],
+  "src": "gen4/Wrap.mp3"
+ },
+ "Wring Out": {
+  "dur": 2.32,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Wring Out.mp3"
+ },
+ "X-Scissor": {
+  "dur": 0.78,
+  "hit": 0.18,
+  "onsets": [
+   0.0,
+   0.18
+  ],
+  "src": "gen4/X-Scissor.mp3"
+ },
+ "Yawn": {
+  "dur": 1.53,
+  "hit": 1.22,
+  "onsets": [
+   0.0,
+   1.03,
+   1.22
+  ],
+  "src": "gen4/Yawn.mp3"
+ },
+ "Zap Cannon": {
+  "dur": 2.06,
+  "hit": 1.48,
+  "onsets": [
+   0.0,
+   1.48
+  ],
+  "src": "gen4/Zap Cannon.mp3"
+ },
+ "Zap Cannon part 1": {
+  "dur": 1.21,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Zap Cannon part 1.mp3"
+ },
+ "Zap Cannon part 2": {
+  "dur": 0.6,
+  "hit": 0.0,
+  "onsets": [
+   0.0
+  ],
+  "src": "gen4/Zap Cannon part 2.mp3"
+ },
+ "Zen Headbutt": {
+  "dur": 2.23,
+  "hit": 1.49,
+  "onsets": [
+   0.0,
+   1.49
+  ],
+  "src": "gen4/Zen Headbutt.mp3"
+ }
+}

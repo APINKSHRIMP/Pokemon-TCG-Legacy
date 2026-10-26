@@ -60,6 +60,7 @@ const DECLARE_SHAKE_PX := 6.0       # every attack, as "X used Y!" opens
 const DECLARE_SHAKE_STEP := 0.045
 const DECLARE_SHAKES := 3           # left-right pairs
 const INFLICT_DELAY := 0.5          # attacker sways, then the defender joins in after this
+const INFLICT_SWAYS := 1            # side-to-side sways each card makes (was 2)
 const HOP_PX := 16.0
 const HOP_TIME := 0.16              # up, and the same back down
 const SELF_HOPS := 3
@@ -73,10 +74,11 @@ const TEETER_PERIOD := 0.3
 const TEETER_CYCLES := 3
 
 # ── TWEAKABLE: Knock Out (ISSUE #486) ──────────────────────────────────────────────────
-const KO_DARK := Color(0.75, 0.75, 0.75)   # 25% towards black
+const KO_DARK := Color(0.5, 0.5, 0.5)     # 50% towards black - twice as dark as the old 0.75 (25%)
 const KO_DARK_TIME := 2.0
 const KO_SWAY_PX := 10.0
 const KO_SWAY_PERIOD := 1.0
+const KO_SWAY_CYCLES := 2                   # back-and-forth sways, then it holds still (was endless)
 const KO_UNFADE_TIME := 0.5
 
 # card instance id -> {"card", "ghost", "offset", "rot", "tint", "users", "ko", "extras"}
@@ -96,6 +98,9 @@ func _process(_delta: float) -> void:
 ## kind: "Poisoned" / "Toxic" / "Burned" / "Paralyzed" / "Confused" / "Asleep".
 func status(card: card_object, kind: String) -> void:
 	print("ISSUE #471 FIX ACTIVE: status fx '", kind, "' on ", _name(card))
+	# Attack VFX: the condition's own effect (poison bubbles, flames, sparks...) plays over the card too.
+	if main != null and main.attack_vfx != null:
+		main.attack_vfx.play_status(card, kind)
 	match kind:
 		"Poisoned", "Toxic":
 			await _sway(card, POISON_SWAY_PX, POISON_SWAY_PERIOD, POISON_SWAY_CYCLES, POISON_TINT, 0.0)
@@ -122,10 +127,10 @@ func attack_intent(attacker: card_object, defender: card_object, attack: Diction
 	match kind:
 		"inflict":
 			# 1) the attacker sways; half a second in, the defender sways too.
-			_sway(attacker, POISON_SWAY_PX, POISON_SWAY_PERIOD, 2, Color.WHITE, 0.0)
+			_sway(attacker, POISON_SWAY_PX, POISON_SWAY_PERIOD, INFLICT_SWAYS, Color.WHITE, 0.0)
 			await _wait(INFLICT_DELAY)
 			if defender != null:
-				await _sway(defender, POISON_SWAY_PX, POISON_SWAY_PERIOD, 2, Color.WHITE, 0.0)
+				await _sway(defender, POISON_SWAY_PX, POISON_SWAY_PERIOD, INFLICT_SWAYS, Color.WHITE, 0.0)
 		"self":
 			# 2) three hops on the spot, then two quick shakes.
 			await _hops(attacker, SELF_HOPS)
@@ -143,6 +148,37 @@ func attack_intent(attacker: card_object, defender: card_object, attack: Diction
 func power_used(card: card_object) -> void:
 	print("ISSUE #474 FIX ACTIVE: power shake on ", _name(card))
 	await _jolt(card, POWER_SHAKE_PX, POWER_SHAKE_STEP, POWER_SHAKES * 2, Color.WHITE)
+
+
+## Attack VFX body motions: a special attack hops / sways / shakes its attacker on the spot.
+func hop(card: card_object, n: int) -> void:
+	await _hops(card, n)
+
+func sway(card: card_object, cycles: int) -> void:
+	await _sway(card, POISON_SWAY_PX, POISON_SWAY_PERIOD, cycles, Color.WHITE, 0.0)
+
+func shake(card: card_object) -> void:
+	await _jolt(card, DECLARE_SHAKE_PX, DECLARE_SHAKE_STEP, DECLARE_SHAKES * 4, Color.WHITE)
+
+func jolt(card: card_object, px: float, step: float, count: int) -> void:
+	await _jolt(card, px, step, count, Color.WHITE)
+
+## Attack VFX: drives fn(entry, 0..1) on `card`'s ghost for `dur` REAL seconds (the caller has already
+## applied match_time). The entry's "offset" / "rot" / "scale" (Vector2) / "tint" / "alpha" / "z" are what
+## fn may set; all go back to rest when it ends. Several can run on one card at once (last write wins).
+func motion(card: card_object, dur: float, fn: Callable) -> void:
+	await _run(card, dur, fn)
+
+## The ghost currently standing in for `card` (afterimages copy it), or null.
+func ghost_of(card: card_object) -> TextureRect:
+	if card == null or not _entries.has(card.get_instance_id()):
+		return null
+	return _entries[card.get_instance_id()]["ghost"]
+
+
+## True while one of these animations is standing in for `card` (its real node is hidden meanwhile).
+func has_ghost(card: card_object) -> bool:
+	return card != null and _entries.has(card.get_instance_id())
 
 
 ## ISSUE #474: a very simple reading of a 0-damage attack's text.
@@ -167,7 +203,8 @@ func classify_attack(attacker: card_object, attack: Dictionary) -> String:
 	return "other"
 
 
-## ISSUE #486: `card` has just been Knocked Out -- it slowly darkens and sways until end_ko().
+## ISSUE #486: `card` has just been Knocked Out -- it slowly darkens and sways KO_SWAY_CYCLES
+## times, then stays dark and still until end_ko().
 func start_ko(card: card_object) -> void:
 	if card == null or (_entries.has(card.get_instance_id()) and _entries[card.get_instance_id()]["ko"]):
 		return
@@ -183,7 +220,9 @@ func start_ko(card: card_object) -> void:
 	e["ko_fn"] = func():
 		var t: float = float(Time.get_ticks_msec() - start_t) / 1000.0
 		e["tint"] = Color.WHITE.lerp(KO_DARK, clampf(t / dark_time, 0.0, 1.0))
-		e["offset"] = Vector2(sin(TAU * t / period) * KO_SWAY_PX, 0.0)
+		# KO_SWAY_CYCLES full sways, then still at centre (sin is 0 at a whole cycle).
+		var cycles: float = minf(t / period, float(KO_SWAY_CYCLES))
+		e["offset"] = Vector2(sin(TAU * cycles) * KO_SWAY_PX, 0.0)
 
 
 ## ISSUE #486: the Knock Out message has been read -- the card lightens again as it leaves.
@@ -307,6 +346,8 @@ func _spawn_zs(e: Dictionary, is_opp: bool) -> void:
 
 
 func _wait(seconds: float) -> void:
+	if GameState.is_motion_reduced():
+		return
 	var t: float = GameState.match_time(seconds)
 	if t > 0.0:
 		await get_tree().create_timer(t).timeout
@@ -325,6 +366,9 @@ func _run(card: card_object, dur: float, fn: Callable) -> void:
 	e["offset"] = Vector2.ZERO
 	e["rot"] = 0.0
 	e["tint"] = Color.WHITE
+	e["scale"] = Vector2.ONE
+	e["alpha"] = 1.0
+	e["z"] = 0
 	_release(e)
 
 
@@ -349,7 +393,7 @@ func _entry(card: card_object) -> Dictionary:
 	g.z_index = GHOST_Z
 	main.add_child(g)
 	var e := {"card": card, "ghost": g, "offset": Vector2.ZERO, "rot": 0.0, "tint": Color.WHITE,
-		"users": 0, "ko": false}
+		"scale": Vector2.ONE, "alpha": 1.0, "z": 0, "users": 0, "ko": false}
 	_entries[id] = e
 	_sync(e)
 	return e
@@ -378,9 +422,17 @@ func _sync(e: Dictionary) -> void:
 		g.texture = node.texture
 	g.size = node.size * node.get_global_transform().get_scale()
 	g.pivot_offset = g.size / 2.0
-	g.global_position = node.global_position + e["offset"]
+	# Set in the PARENT's space, not via global_position: Godot 4's Control global_position
+	# setter subtracts the rotation/pivot transform, so with the ghost rotated it pinned the
+	# rotated TOP-LEFT corner to the card's corner and the teeter swung about that corner
+	# instead of the pivot. `position` is the un-rotated top-left, so pivot_offset (the
+	# centre) is what the card turns about.
 	g.rotation = e["rot"]
-	g.modulate = e["tint"]
+	g.scale = e["scale"]
+	g.z_index = GHOST_Z + int(e["z"])
+	g.position = main.get_global_transform().affine_inverse() * (node.global_position + e["offset"])
+	var t: Color = e["tint"]
+	g.modulate = Color(t.r, t.g, t.b, t.a * float(e["alpha"]))
 
 
 func _release(e: Dictionary) -> void:

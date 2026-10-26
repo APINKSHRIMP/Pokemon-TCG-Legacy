@@ -454,8 +454,10 @@ var _turn_divider_label : Label = null
 var _duel_divider_x : float = 0.0
 
 ## ISSUE #212: the board furniture _set_board_furniture_visible() toggles.
-var _stadium_slot : Control = null
-var _stadium_caption : Label = null
+## The two stadium slots in the centre column: [opponent's (above the turn label), yours
+## (below it)]. One stadium card node moves between them - see place_stadium_card().
+var _stadium_slots : Array = []
+var _stadium_captions : Array = []
 var _turn_divider_rules : Array = []
 
 # The two action-panel holders, filled by _build_action_panel().
@@ -466,9 +468,11 @@ var _end_turn_btn : Button = null
 ## ISSUE #239: the two attachment-row captions per side, so #212 can hide them
 ## with the rest of the board furniture.
 var _attach_captions: Array = []
-# The board captions are a tutorial aid: the Energy/Tools captions above and the extra
-# ones _apply_tutorial_labels() adds only show while a tutorial is running.
-var _tutorial_labels_on: bool = false
+# The board captions follow the Options "Board labels" row (GameState.board_labels_on()),
+# not the tutorial: the Energy/Tools captions above, the Stadium captions and the ones
+# _apply_board_labels() adds all show only while it is on.
+var _board_labels_on: bool = false
+var _board_labels_built: bool = false
 ## ISSUE #214 / #235: true while a single card is being shown full-screen.
 var _card_showcase_active: bool = false
 
@@ -524,6 +528,8 @@ var powers_and_bodies: Node
 var card_ops: Node
 var match_effects: Node
 var card_fx: Node   # ISSUE #471/#474/#486: Card_FX.gd -- status / gesture / Knock Out animations
+var attack_vfx: Node   # Attack_VFX.gd -- the Mystery Dungeon move effect every attack plays
+var _vfx_debugger: CanvasLayer = null   # DEL in a debug build: Attack_VFX_Debugger.gd
 # Tutorial_Director.gd: Olly's tutorial matches and the Options "tutorial for next
 # match". Always present; every call is a no-op when no tutorial is running.
 var tutorial: Node
@@ -889,11 +895,12 @@ func _board_screen_nodes() -> Array:
 		opponent_prize_container, player_prize_container,
 		player_deck_icon, opponent_deck_icon, player_discard_icon, opponent_discard_icon,
 		player_attached_cards_container, opponent_attached_cards_container,
-		_turn_chip, _turn_divider_label, _stadium_slot, _stadium_caption,
+		_turn_chip, _turn_divider_label,
 		_player_action_panel, _opp_action_panel, _end_turn_btn,
 		get_node_or_null("CARD_COLLECTIONS/stadium_card")]
 	nodes.append_array(_turn_divider_rules)
-	nodes.append_array(_attach_captions)
+	nodes.append_array(_stadium_slots)
+	nodes.append_array(_attach_captions)   # the stadium captions are in here
 	return nodes.filter(func(n): return n != null and is_instance_valid(n) and n is CanvasItem)
 
 
@@ -1339,14 +1346,17 @@ const PLAYER_HAND_W  := 1300.0
 const PLAYER_HAND_X  := (1920.0 - PLAYER_HAND_W) * 0.5
 ## The opponent's fan is centred on its own box the same way.
 const OPP_HAND_W     := 420.0
+## The stadium sits in the centre column between the two Active Pokemon now (it used
+## to be in the header's top-right corner, ISSUE #266): the OPPONENT's slot above the
+## top divider rule and YOURS below the bottom one, with the "Your / Their turn" label
+## between. A Stadium is shown in the slot of whoever played it. TWEAKABLE.
 const STADIUM_SIZE   := Vector2(48.0, 66.0)
-## ISSUE #266: 1740 -> 1848, i.e. hard against the right end of the header
-## (STADIUM_EDGE_PAD clear of the screen edge) instead of 132px short of it. Its
-## caption is right-aligned in the 120px immediately to its left, so the pair
-## still reads as one label-and-slot unit.
-const STADIUM_EDGE_PAD := 24.0
-const STADIUM_X      := 1920.0 - STADIUM_EDGE_PAD - STADIUM_SIZE.x
-const STADIUM_Y      := 13.0
+## Gap between a divider rule and its stadium slot. Wide enough on the bottom side for
+## your "Stadium" caption to sit between the rule and the slot; the top uses the same
+## gap so the pair stays symmetric about the turn label.
+const STADIUM_RULE_GAP := 30.0
+const STADIUM_CAPTION_GAP := 4.0   # caption bottom -> slot top
+const STADIUM_CAPTION_W := 120.0   # centred on the column; wider than the text needs
 
 ## The opponent's hand is a fan of face-down sleeves on the top bar, so it is
 ## smaller than yours.
@@ -1584,8 +1594,8 @@ func set_card_showcase_visible(shown: bool) -> void:
 ## Called from the same two places that hide and show the rest of the board:
 ## show_enlarged_array_selection_mode() and hide_selection_mode_display_main().
 func _set_board_furniture_visible(shown: bool) -> void:
-	for node in [_turn_chip, _turn_divider_label, _stadium_slot, _stadium_caption,
-			_player_action_panel, _opp_action_panel]:
+	for node in [_turn_chip, _turn_divider_label,
+			_player_action_panel, _opp_action_panel] + _stadium_slots:
 		if node != null and is_instance_valid(node):
 			node.visible = shown
 	for rule in _turn_divider_rules:
@@ -1595,7 +1605,7 @@ func _set_board_furniture_visible(shown: bool) -> void:
 	# They are tutorial-only now (with the tutorial's own captions, which share the list).
 	for cap in _attach_captions:
 		if cap != null and is_instance_valid(cap):
-			cap.visible = shown and _tutorial_labels_on
+			cap.visible = shown and _board_labels_on
 	# ISSUE #229: End Turn is REPARENTED INTO the footer bar, so it is no longer a
 	# child of main_buttons_container and the wholesale
 	# `main_buttons_container.visible = false` that hides the rest of the footer
@@ -1733,14 +1743,19 @@ func _add_attach_caption(text: String, row_x: float, row_y: float, is_opponent: 
 
 
 # ============================================================
-# TUTORIAL LABELS
+# BOARD LABELS
 # ============================================================
-# While a tutorial runs (Tutorial_Director.labels_on()) the board names its parts:
-# "Attacks" over each Pokemon's action rows, "Opponent's hand" (their fan moves right to
-# make room), "Your hand", and the two bench captions, which draw OVER the bench so an
-# attached Energy sits beneath them. The Energy cards / Tools captions show only then too.
+# While the Options "Board labels" row is on (GameState.board_labels_on()) the board names
+# its parts: "Attacks" over each Pokemon's action rows, "Opponent's hand" (their fan moves
+# right to make room), "Your hand", and the two bench captions, which draw OVER the bench
+# so an attached Energy sits beneath them. The Energy cards / Tools and Stadium captions
+# follow it too. Used to be tutorial-only (Tutorial_Director.labels_on()); split out into
+# its own option so it can be on in any match and off in a tutorial.
+#
+# The captions are ALWAYS built and only shown or hidden, so changing the row from the
+# in-match pause menu applies the moment the options close (refresh_board_labels()).
 
-## TWEAKABLE -- tutorial label placement.
+## TWEAKABLE -- board label placement.
 const TUT_ATTACKS_GAP      := 4.0    # px between the "Attacks" caption and the top action row
 const TUT_OPP_HAND_SHIFT   := 170.0  # the opponent's hand moves this far right for its caption
 const TUT_HAND_LABEL_GAP   := 4.0    # px between "Your hand" and the footer
@@ -1748,14 +1763,26 @@ const TUT_BENCH_LABEL_GAP  := 2.0    # px between a bench caption and its bench 
 const TUT_CAPTION_H        := 22.0
 
 
-func _apply_tutorial_labels() -> void:
-	_tutorial_labels_on = tutorial.labels_on()
+func _apply_board_labels() -> void:
+	if not _board_labels_built:
+		_board_labels_built = true
+		_build_board_labels()
+	refresh_board_labels()
+
+
+## Re-reads the Options row and shows / hides every caption to match. Called at match
+## start and again when the in-match options overlay closes.
+func refresh_board_labels() -> void:
+	_board_labels_on = GameState.board_labels_on()
+	var board_up: bool = not card_selection_mode_enabled and not _card_showcase_active
 	for cap in _attach_captions:
 		if cap != null and is_instance_valid(cap):
-			cap.visible = _tutorial_labels_on
-	if not _tutorial_labels_on:
-		return
+			cap.visible = _board_labels_on and board_up
+	# The opponent's fan moves right only while its caption is there to make room for.
+	opponent_hand_container.position.x = OPP_HAND_X + (TUT_OPP_HAND_SHIFT if _board_labels_on else 0.0)
 
+
+func _build_board_labels() -> void:
 	# "Attacks", centred over each action panel, just above its first row.
 	for panel in [_player_action_panel, _opp_action_panel]:
 		if panel == null or not is_instance_valid(panel):
@@ -1765,7 +1792,6 @@ func _apply_tutorial_labels() -> void:
 			panel.size.x, HORIZONTAL_ALIGNMENT_CENTER)
 
 	# "Opponent's hand" where the fan started; the fan moves right to make room.
-	opponent_hand_container.position.x += TUT_OPP_HAND_SHIFT
 	_add_tutorial_caption("Opponent's hand",
 		Vector2(OPP_HAND_X, OPP_HAND_Y + (OPP_HAND_CARD.y - TUT_CAPTION_H) * 0.5),
 		TUT_OPP_HAND_SHIFT - 10.0, HORIZONTAL_ALIGNMENT_LEFT, "chrome_fg", true)
@@ -1907,38 +1933,7 @@ func _place_bars() -> void:
 	if opponent_hand_container is HBoxContainer:
 		(opponent_hand_container as HBoxContainer).alignment = BoxContainer.ALIGNMENT_BEGIN
 
-	# The stadium gets a caption and a slot in the top right, which is the one
-	# piece of empty chrome on the board. Clicking it is stage 7.
-	# An empty slot behind the stadium, so the corner reads as a place a card goes
-	# rather than as blank chrome when none is in play.
-	var stadium_slot := UIKit.make_slot(STADIUM_SIZE)
-	stadium_slot.position = Vector2(STADIUM_X, STADIUM_Y)
-	stadium_slot.z_index = UIKit.Z_CHROME + 1
-	stadium_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(stadium_slot)
-	_stadium_slot = stadium_slot   # ISSUE #212
-
-	var stadium := get_node_or_null("CARD_COLLECTIONS/stadium_card")
-	if stadium is Control:
-		# Clickable: at 48x66 the card is unreadable, so pressing it opens a full
-		# view with any activatable ability as a button — the same shape the bench
-		# power buttons use.
-		(stadium as Control).mouse_filter = Control.MOUSE_FILTER_STOP
-		(stadium as Control).gui_input.connect(_on_stadium_slot_input)
-		# The scene left scale = (0.4, 0.4) on this node from when it sat mid-board
-		# at full card size. Sized properly now, so the shrink has to go.
-		(stadium as Control).scale = Vector2.ONE
-		_set_rect(stadium as Control, Vector2(STADIUM_X, STADIUM_Y), STADIUM_SIZE)
-		(stadium as Control).z_index = UIKit.Z_CHROME + 1
-
-	var caption := Label.new()
-	UIKit.set_label(caption, "small_label", "Stadium", "chrome_fg")
-	caption.position = Vector2(STADIUM_X - 130.0, STADIUM_Y + 20.0)
-	caption.size = Vector2(120.0, 22.0)
-	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	caption.z_index = UIKit.Z_CHROME + 1
-	add_child(caption)
-	_stadium_caption = caption   # ISSUE #212
+	# The stadium slots are placed by _place_turn_divider(), which owns the centre column.
 	print("ISSUE #269 FIX ACTIVE: opponent hand cards ", OPP_HAND_CARD,
 		" at y ", OPP_HAND_Y, " - header ", BOARD_TOP_H,
 		", so ", OPP_HAND_Y, "px clear above and below")
@@ -2047,6 +2042,85 @@ func _place_turn_divider() -> void:
 	_turn_divider_label.z_index = DUEL_DIVIDER_Z
 	add_child(_turn_divider_label)
 	_refresh_turn_divider()
+	_place_stadium_slots(mid_x)
+
+
+## Where a side's stadium slot sits: the opponent's above the top divider rule, yours
+## below the bottom one.
+func _stadium_slot_rect(is_opponent: bool) -> Rect2:
+	var x: float = _duel_divider_x + (DUEL_COL_DIVIDE - STADIUM_SIZE.x) * 0.5
+	var rule_edge: float = DIVIDER_RULE_GAP + DIVIDER_RULE_H + STADIUM_RULE_GAP
+	var y: float = (DUEL_MID_Y - rule_edge - STADIUM_SIZE.y) if is_opponent else (DUEL_MID_Y + rule_edge)
+	return Rect2(Vector2(x, y), STADIUM_SIZE)
+
+
+## The two empty stadium slots (opponent above the turn label, you below) and their
+## "Stadium" captions. The captions are board labels: they show only while the Options
+## "Board labels" row is on (they are registered in _attach_captions).
+func _place_stadium_slots(mid_x: float) -> void:
+	for is_opp in [true, false]:
+		var r := _stadium_slot_rect(is_opp)
+		var slot := UIKit.make_slot(STADIUM_SIZE)
+		slot.position = r.position
+		slot.z_index = UIKit.Z_CHROME + 1
+		slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(slot)
+		_stadium_slots.append(slot)   # ISSUE #212
+
+		var caption := Label.new()
+		caption.theme = null
+		UIKit.set_label(caption, "small_label", "Stadium", "field_mute")
+		caption.size = Vector2(STADIUM_CAPTION_W, TUT_CAPTION_H)
+		caption.position = Vector2(mid_x - STADIUM_CAPTION_W * 0.5,
+			r.position.y - STADIUM_CAPTION_GAP - TUT_CAPTION_H)
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		caption.z_index = UIKit.Z_CHROME + 1
+		add_child(caption)
+		_stadium_captions.append(caption)
+		_attach_captions.append(caption)
+
+	var stadium := get_node_or_null("CARD_COLLECTIONS/stadium_card")
+	if stadium is Control:
+		# Clickable: at 48x66 the card is unreadable, so pressing it opens a full
+		# view with any activatable ability as a button — the same shape the bench
+		# power buttons use.
+		(stadium as Control).mouse_filter = Control.MOUSE_FILTER_STOP
+		(stadium as Control).gui_input.connect(_on_stadium_slot_input)
+		# The scene left scale = (0.4, 0.4) on this node from when it sat mid-board
+		# at full card size. Sized properly now, so the shrink has to go.
+		(stadium as Control).scale = Vector2.ONE
+		(stadium as Control).z_index = UIKit.Z_CHROME + 2
+	place_stadium_card(current_stadium_owner_is_opponent)
+
+
+## The empty slot a Stadium played by that side lands in (a card flight's target).
+func stadium_slot_for(is_opponent: bool) -> Control:
+	if _stadium_slots.size() < 2:
+		return stadium_card_container
+	return _stadium_slots[0 if is_opponent else 1]
+
+
+## Moves the one stadium card node onto its owner's slot. Trainer_Effects.display_stadium_card()
+## calls this whenever the stadium changes.
+func place_stadium_card(is_opponent: bool) -> void:
+	var stadium := get_node_or_null("CARD_COLLECTIONS/stadium_card")
+	if stadium is Control:
+		_set_rect(stadium as Control, _stadium_slot_rect(is_opponent).position, STADIUM_SIZE)
+		# The card image inside still had the scene's old fixed 150x206 box and "keep texture size",
+		# which only looked right while the parent was scaled to 0.4 -- unscaled, the stadium drew at
+		# full card size over the Actives. It fills the slot now, and lets the click reach the slot.
+		var img := stadium.get_node_or_null("stadium_card_image")
+		if img is TextureRect:
+			var t := img as TextureRect
+			t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			t.set_anchors_preset(Control.PRESET_FULL_RECT)
+			t.offset_left = 0.0
+			t.offset_top = 0.0
+			t.offset_right = 0.0
+			t.offset_bottom = 0.0
+			t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 ## Repaints the divider label for whoever is to move.
@@ -5068,11 +5142,19 @@ const HIT_FLASH_TIME := 0.22
 const HIT_Z := 150
 
 ## ISSUE #474: a 0-damage attack (no printed damage at all) makes a gesture instead of the lunge.
+## Attack VFX: every attack is remembered here for its hit (Attack_VFX.set_pending); a non-damaging one
+## plays its effect now, and only falls back to the gesture when it has none.
 func play_attack_intent(attacker: card_object, defender: card_object, attack: Dictionary) -> void:
 	if card_fx == null or attacker == null:
 		return
+	if attack_vfx != null:
+		attack_vfx.set_pending(attacker, attack)
 	if attack_effects.parse_attack_base_damage(attack) > 0 or str(attack.get("damage", "")).strip_edges() != "":
 		return
+	if attack_vfx != null:
+		var played: bool = await attack_vfx.play_intent(attacker, defender, attack)
+		if played:
+			return
 	await card_fx.attack_intent(attacker, defender, attack)
 
 
@@ -5089,6 +5171,26 @@ const HIT_RESIST_MULT := 0.5
 func play_attack_hit(attacker: card_object, defender: card_object, damage: int = 1, weak: bool = false, resisted: bool = false) -> void:
 	if attacker == null or defender == null:
 		return
+	# Attack VFX: the hit of a just-declared attack plays that attack's effect (Attack_VFX.play_hit),
+	# which drives the lunge / knock-back below itself.
+	if attack_vfx != null:
+		var pend: Dictionary = attack_vfx.take_pending(attacker, defender)
+		if not pend.is_empty():
+			await attack_vfx.play_hit(attacker, defender, pend, damage, weak, resisted)
+			return
+	await attack_hit_motion(attacker, defender, damage, weak, resisted)
+
+
+## The lunge and bump of play_attack_hit, callable on its own by Attack_VFX:
+##   lunge = false  -- the attacker stays put (it hops / sways for a special attack); only the defender
+##                     flashes and is knocked back.
+##   on_bump        -- called the moment the cards touch (or, with no lunge, straight away), so impact
+##                     effects land with the bump.
+func attack_hit_motion(attacker: card_object, defender: card_object, damage: int = 1, weak: bool = false,
+		resisted: bool = false, lunge: bool = true, on_bump: Callable = Callable()) -> void:
+	if attacker == null or defender == null:
+		if on_bump.is_valid(): on_bump.call()
+		return
 	var mult: float = HIT_WEAK_MULT if weak else (HIT_RESIST_MULT if resisted else 1.0)
 	var flash_col: Color = HIT_FLASH_WEAK if weak else (HIT_FLASH_RESIST if resisted else HIT_FLASH)
 	var react: bool = damage > 0
@@ -5098,48 +5200,62 @@ func play_attack_hit(attacker: card_object, defender: card_object, damage: int =
 	# Only Active against Active: bench hits and self-damage have no lunge.
 	var actives := [player_active_pokemon, opponent_active_pokemon]
 	if not (attacker in actives and defender in actives) or attacker == defender:
+		if on_bump.is_valid(): on_bump.call()
 		return
 	var a_node := find_card_ui_for_object(attacker)
 	var d_node := find_card_ui_for_object(defender)
 	if a_node == null or d_node == null or not a_node.is_visible_in_tree() or not d_node.is_visible_in_tree():
+		if on_bump.is_valid(): on_bump.call()
 		return
 
-	var a_ghost := _hit_ghost(a_node)
+	# Without the lunge the attacker gets no ghost (Attack_VFX is hopping / swaying it through Card_FX).
+	var a_ghost: TextureRect = _hit_ghost(a_node) if lunge else null
 	var d_ghost := _hit_ghost(d_node)
-	var a_home: Vector2 = a_ghost.position
+	var a_size: Vector2 = a_node.size * a_node.get_global_transform().get_scale()
+	var a_home: Vector2 = a_ghost.position if lunge else get_global_transform().affine_inverse() * a_node.global_position
 	var d_home: Vector2 = d_ghost.position
-	var a_centre: Vector2 = a_home + a_ghost.size / 2.0
+	var a_centre: Vector2 = a_home + a_size / 2.0
 	var d_centre: Vector2 = d_home + d_ghost.size / 2.0
 	var dir: Vector2 = (d_centre - a_centre).normalized()
 	if dir == Vector2.ZERO:
 		dir = Vector2.RIGHT
 	# How far until the edges meet along the line between them, plus a little overlap.
-	var reach: float = absf(dir.x) * (a_ghost.size.x + d_ghost.size.x) / 2.0 \
-		+ absf(dir.y) * (a_ghost.size.y + d_ghost.size.y) / 2.0
+	var reach: float = absf(dir.x) * (a_size.x + d_ghost.size.x) / 2.0 \
+		+ absf(dir.y) * (a_size.y + d_ghost.size.y) / 2.0
 	var travel: float = maxf(0.0, a_centre.distance_to(d_centre) - reach + HIT_OVERLAP)
 	# Tip the top of the card toward the defender.
 	var tilt: float = HIT_TILT * (1.0 if dir.x >= 0.0 else -1.0)
-	a_node.set_meta("hit_alpha", a_node.modulate.a)
-	d_node.set_meta("hit_alpha", d_node.modulate.a)
-	a_node.modulate.a = 0.0
+	# A card Card_FX is ghosting right now (the declare shake, a hop, a quake) has alpha 0 only because
+	# Card_FX hid it -- remembering that 0 left the card invisible once both were done. Remember 1.0:
+	# Card_FX re-hides it every frame for as long as it still needs to.
+	if not lunge:
+		a_node = null   # untouched, so _end_attack_hit leaves its alpha alone
+	else:
+		a_node.set_meta("hit_alpha", 1.0 if card_fx != null and card_fx.has_ghost(attacker) else a_node.modulate.a)
+		a_node.modulate.a = 0.0
+	d_node.set_meta("hit_alpha", 1.0 if card_fx != null and card_fx.has_ghost(defender) else d_node.modulate.a)
 	d_node.modulate.a = 0.0
 
-	var lunge := create_tween()
-	lunge.tween_property(a_ghost, "position", a_home - dir * HIT_WINDUP, GameState.match_time(HIT_WINDUP_TIME)) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	lunge.parallel().tween_property(a_ghost, "rotation", tilt, GameState.match_time(HIT_WINDUP_TIME))
-	lunge.tween_property(a_ghost, "position", a_home + dir * travel, GameState.match_time(HIT_LUNGE_TIME)) \
-		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	await lunge.finished
-	if _should_bail():
-		_end_attack_hit(a_node, d_node, a_ghost, d_ghost)
-		return
-
-	# THE BUMP: attacker back home, defender flashes, is knocked back and wiggles.
-	var back := create_tween()
-	back.tween_property(a_ghost, "position", a_home, GameState.match_time(HIT_RETURN_TIME)) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	back.parallel().tween_property(a_ghost, "rotation", 0.0, GameState.match_time(HIT_RETURN_TIME))
+	var back: Tween = null
+	if lunge:
+		var dart := create_tween()
+		dart.tween_property(a_ghost, "position", a_home - dir * HIT_WINDUP, GameState.match_time(HIT_WINDUP_TIME)) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		dart.parallel().tween_property(a_ghost, "rotation", tilt, GameState.match_time(HIT_WINDUP_TIME))
+		dart.tween_property(a_ghost, "position", a_home + dir * travel, GameState.match_time(HIT_LUNGE_TIME)) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		await dart.finished
+		if _should_bail():
+			_end_attack_hit(a_node, d_node, a_ghost, d_ghost)
+			if on_bump.is_valid(): on_bump.call()
+			return
+		# THE BUMP: attacker back home, defender flashes, is knocked back and wiggles.
+		back = create_tween()
+		back.tween_property(a_ghost, "position", a_home, GameState.match_time(HIT_RETURN_TIME)) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		back.parallel().tween_property(a_ghost, "rotation", 0.0, GameState.match_time(HIT_RETURN_TIME))
+	if on_bump.is_valid():
+		on_bump.call()
 	if react or resisted:
 		d_ghost.modulate = flash_col
 		var flash := create_tween()
@@ -5160,7 +5276,7 @@ func play_attack_hit(attacker: card_object, defender: card_object, damage: int =
 	await wiggle.finished
 	if knock.is_running():
 		await knock.finished
-	if back.is_running():
+	if back != null and back.is_running():
 		await back.finished
 	_end_attack_hit(a_node, d_node, a_ghost, d_ghost)
 
@@ -6042,6 +6158,7 @@ func _close_options_overlay(restore_menu: bool = true) -> void:
 		remove_child(options_overlay)
 		options_overlay.queue_free()
 	options_overlay = null
+	refresh_board_labels()   # the Board labels row may have just changed
 	if not restore_menu:
 		return
 
@@ -6838,6 +6955,9 @@ func draw_card_from_deck(is_opponent: bool, speed_multiplier: float = 1.0) -> ca
 const TURN_LABEL_GAP := 0.9
 
 func turn_label_gap() -> void:
+	# Reduce motion removes the beat outright (match_time alone would leave a 0.01s blip).
+	if GameState.is_motion_reduced():
+		return
 	var t: float = GameState.match_time(TURN_LABEL_GAP)
 	print("ISSUE #495 FIX ACTIVE: ", snappedf(t, 0.01), "s between End turn and Start turn")
 	if t > 0.0:
@@ -6860,6 +6980,11 @@ func note_card_landed_in_hand() -> void:
 
 func settle_after_draw() -> void:
 	if _draw_landed_msec == 0:
+		return
+	# Reduce motion removes the beat outright. Slow / medium / fast stretch it through
+	# match_time (1.0s base -> ~1.1s slow, ~0.73s medium, ~0.41s fast).
+	if GameState.is_motion_reduced():
+		_draw_landed_msec = 0
 		return
 	var left: float = GameState.match_time(DRAW_SETTLE_TIME) - float(Time.get_ticks_msec() - _draw_landed_msec) / 1000.0
 	_draw_landed_msec = 0
@@ -8764,7 +8889,9 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	attack_effects.note_attack_damage(defender, final_damage)
 	
 	if final_damage > 0:
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+		# Attack VFX plays the Gen 4 hit thump with the impact; the old generic one only when it didn't.
+		if attack_vfx == null or not attack_vfx.hit_sound_recent():
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
 		await powers_and_bodies.dispatch_on_damage(defender, attacker, final_damage, !is_opponent)
 		# [PERFORM] (neo4-58 Unown [P]): record damage taken while Active for next turn's Hidden Power bonus
 		var def_is_opp = (defender == opponent_active_pokemon)
@@ -9828,7 +9955,9 @@ func apply_status_effect(effect: Dictionary, attacker: card_object, defender: ca
 		await show_message(target_pokemon.metadata.get("name", "").to_upper() + " IS UNAFFECTED!")
 		return
 
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_status_sound)
+	# With move sounds on, the condition's own sound plays as it lands (Card_FX.status -> Attack_VFX).
+	if attack_vfx == null or not attack_vfx.sfx_on():
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_status_sound)
 	await show_message(target_pokemon.metadata["name"].to_upper() + " IS NOW " + status.to_upper() + "!")
 	print("STATUS APPLIED: ", target_pokemon.metadata["name"], " is now ", status)
 	update_status_icons(target_pokemon, is_target_opponent)
@@ -9847,7 +9976,8 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 		var poison_tick = match_effects.poison_tick_damage(pokemon.poison_damage, is_opponent)
 		pokemon.current_hp = max(0, pokemon.current_hp - poison_tick)
 		var label = "TOXIC" if pokemon.poison_damage == 20 else "POISON"
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_poison_sound)
+		if attack_vfx == null or not attack_vfx.sfx_on():
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_poison_sound)
 		if card_fx != null: card_fx.status(pokemon, "Poisoned")   # ISSUE #471
 		float_label_over(pokemon, "-" + str(poison_tick) + "HP", Color.PURPLE, is_opponent)   # ISSUE #501: on the card
 		display_hp_circles_above_align(pokemon, is_opponent)
@@ -11739,6 +11869,10 @@ func _exit_tree() -> void:
 
 func _input(event: InputEvent) -> void:
 
+	# The attack animation tester owns every key and click while it is open (it closes itself).
+	if vfx_debugger_open():
+		return
+
 	# (DEV hold-Ctrl reveal is polled in _process, so no blocker or swallowed event can stop it.)
 
 	# -- Hold Shift to enlarge the card under the mouse -------------------------
@@ -11902,6 +12036,9 @@ func _input(event: InputEvent) -> void:
 			debug_key_heal_actives()
 		elif event.keycode == KEY_B:
 			debug_key_heal_bench()
+		elif event.keycode == KEY_DELETE and not event.is_echo():
+			get_viewport().set_input_as_handled()
+			open_vfx_debugger()
 			
 	if event is InputEventMouseButton and event.pressed:
 
@@ -12039,6 +12176,24 @@ func debug_key_heal_bench() -> void:
 		await card_ops.heal_pokemon(p, p.get_max_hp(), true)
 		if _should_bail(): return
 
+# DEL: the attack animation tester (Scripts/Utilities/Attack_VFX_Debugger.gd). While it is open the
+# match takes no input at all (_input returns first thing).
+func open_vfx_debugger() -> void:
+	if _vfx_debugger != null and is_instance_valid(_vfx_debugger):
+		return
+	_vfx_debugger = CanvasLayer.new()
+	_vfx_debugger.set_script(load("res://Scripts/Utilities/Attack_VFX_Debugger.gd"))
+	_vfx_debugger.set("main", self)
+	add_child(_vfx_debugger)
+
+func close_vfx_debugger() -> void:
+	if _vfx_debugger != null and is_instance_valid(_vfx_debugger):
+		_vfx_debugger.queue_free()
+	_vfx_debugger = null
+
+func vfx_debugger_open() -> bool:
+	return _vfx_debugger != null and is_instance_valid(_vfx_debugger)
+
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	# Chrome and board geometry first: everything below draws into the positions
@@ -12095,6 +12250,11 @@ func _ready() -> void:
 	add_child(card_fx)
 	card_fx.main = self
 
+	attack_vfx = Node.new()
+	attack_vfx.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Attack_VFX.gd"))
+	attack_vfx.main = self
+	add_child(attack_vfx)
+
 	# Register all on-damage and pre-KO power hooks, then let attack_effects add its own.
 	powers_and_bodies._register_all_power_hooks()
 	attack_effects.register_on_damage_hooks(powers_and_bodies)
@@ -12149,7 +12309,7 @@ func _ready() -> void:
 	match_effects.initialize(opponent_data)
 	# Which tutorial (if any) this match runs -- before setup_player, which stacks the decks.
 	tutorial.setup(self)
-	_apply_tutorial_labels()
+	_apply_board_labels()
 
 	# Load the opponent's coin texture for "opponent flips" animations.
 	# Falls back to the player's coin (tex_heads) at flip time if absent.

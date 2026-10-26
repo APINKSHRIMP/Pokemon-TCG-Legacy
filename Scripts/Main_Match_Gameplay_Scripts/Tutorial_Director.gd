@@ -16,9 +16,9 @@ extends Node
 #             to the player's, and the CPU cannot retreat for its first 3 turns. The
 #             GENERIC messages play; nothing is blocked except End Turn before the hand
 #             is first opened. (KnowRulesTutorialMatch.txt)
-#   "generic" Options > "Tutorial messages for next match". The generic messages and the
-#             board labels in any match, no stacking, no overrides. The option switches
-#             itself off when the match ends.
+#   "generic" Options > "Tutorial messages for next match". The generic messages in any
+#             match, no stacking, no overrides. The option switches itself off when the
+#             match ends. (Board labels are their own Options row now - see labels_on().)
 #   The newby player's SECOND match (after Olly's scripted one) is "generic" too, with
 #             _newby_followup set (ISSUE #485 -- it used to be a "tips" mode with only the key
 #             tips). Armed by GameState.TUTORIAL_TIPS_KEY, cleared when the match ends. Its
@@ -88,10 +88,11 @@ func active() -> bool:
 	return mode in ["newby", "rules", "generic"]
 
 
-## Board labels ("Your hand", "Attacks", the bench captions, Energy/Tools) are a
-## tutorial-only aid.
+## Board labels ("Your hand", "Attacks", the bench captions, Energy/Tools, Stadium) are
+## NOT tied to the tutorial any more: they are their own Options row, "Board labels",
+## which a new game defaults from the intro profile. Kept so a tutorial line can ask.
 func labels_on() -> bool:
-	return active()
+	return GameState.board_labels_on()
 
 
 func _stacked() -> bool:

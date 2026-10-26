@@ -1829,7 +1829,17 @@ func motion_reduced() -> bool:
 ## title, chip and button inside a bar keeps drawing, in the same place, at the
 ## same size, in the same colour, so the contents appear to float over the field.
 ## The bar also keeps its height, so nothing on any screen moves.
+##
+## SCRAPPED AS AN OPTION (2026-10-26): the bars are ALWAYS hidden. Playing with and
+## without them, the game read better with the field running edge to edge, so the
+## Options "Hide header/footer" row was removed rather than left as a choice. The
+## feature itself is intact: set BARS_ALWAYS_HIDDEN to false and uncomment the
+## "hide_bars" row (and its plumbing) in Options_Script.gd to bring the choice back.
+const BARS_ALWAYS_HIDDEN := true
+
 func bars_hidden() -> bool:
+	if BARS_ALWAYS_HIDDEN:
+		return true
 	var gs := get_node_or_null("/root/GameState")
 	if gs == null:
 		return false

@@ -1007,6 +1007,11 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool, fr
 		print("ISSUE #294 FIX ACTIVE: bench damage to ", pokemon.metadata.get("name", ""), " fully prevented")
 		return
 	pokemon.current_hp = max(0, pokemon.current_hp - damage)
+	# Attack VFX: the benched card flashes and shakes under a small copy of the attack's effect. Each hit
+	# waits its turn after the last one, so several benched Pokémon go one after another.
+	if main.attack_vfx != null:
+		await main.attack_vfx.bench_hit(pokemon, damage, from_attack)
+		if main._should_bail(): return
 	# ISSUE #501: the label used the card's centre as the LEFT edge of show_floating_label's 300px box,
 	# so it sat ~150px right of the card. float_label_over centres it properly.
 	if not main.get_pokemon_screen_location(pokemon).is_empty():

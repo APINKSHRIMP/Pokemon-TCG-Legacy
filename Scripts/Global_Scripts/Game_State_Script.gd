@@ -239,6 +239,10 @@ var intro_outro_setting: String       = DEFAULT_INTRO_OUTRO
 # copy of the name would be one more thing to drift. See set_ui_theme().
 var ui_theme_setting: String = ""
 
+# SCRAPPED AS AN OPTION (2026-10-26): the bars are now ALWAYS hidden - see
+# UITheme.BARS_ALWAYS_HIDDEN. Kept so the feature can be switched back on; while
+# that const is true this setting is read by nothing.
+#
 # Hides the PAINT of the header and footer bars, and nothing else. The bars keep
 # their space and every title, chip and button inside them keeps drawing exactly
 # where it was, so the contents appear to float over the field. See
@@ -247,8 +251,26 @@ const HIDE_BARS_OPTIONS := ["no", "yes"]
 const DEFAULT_HIDE_BARS := "no"
 var hide_bars_setting: String = DEFAULT_HIDE_BARS
 
-# "Tutorial messages for next match": "on" plays the generic tutorial messages (and
-# board labels) in the NEXT match the player starts, whoever it is against, then turns
+# "Board labels": the small captions that name the parts of the match board ("Your
+# hand", "Opponent's hand", the benches, Attacks, Energy cards / Tools, Stadium). Its
+# own row now rather than part of the tutorial; a new game sets it from the intro
+# profile's "board_labels" (on for new / rules, off for played / expert).
+const BOARD_LABELS_OPTIONS := ["off", "on"]
+const DEFAULT_BOARD_LABELS := "on"
+var board_labels_setting: String = DEFAULT_BOARD_LABELS
+
+func set_board_labels(choice: String, save: bool = true) -> void:
+	if not choice in BOARD_LABELS_OPTIONS:
+		push_warning("GameState: unknown board labels choice '" + choice + "'")
+		return
+	board_labels_setting = choice
+	if save:
+		_save_setting_field("board_labels", board_labels_setting)
+
+func board_labels_on() -> bool:
+	return board_labels_setting == "on"
+
+# "Tutorial messages for next match": "on" plays the generic tutorial messages in the NEXT match the player starts, whoever it is against, then turns
 # itself back off once that match ends. See Tutorial_Director.gd.
 const TUTORIAL_NEXT_MATCH_OPTIONS := ["off", "on"]
 var tutorial_next_match_setting: String = "off"
@@ -414,6 +436,9 @@ func _load_animation_speed() -> void:
 	if not bars in HIDE_BARS_OPTIONS:
 		bars = DEFAULT_HIDE_BARS
 	set_hide_bars(bars, false)
+
+	var labels: String = str(data.get("board_labels", DEFAULT_BOARD_LABELS))
+	set_board_labels(labels if labels in BOARD_LABELS_OPTIONS else DEFAULT_BOARD_LABELS, false)
 
 	var tut: String = str(data.get("tutorial_next_match", "off"))
 	set_tutorial_next_match(tut if tut in TUTORIAL_NEXT_MATCH_OPTIONS else "off", false)
@@ -1227,6 +1252,7 @@ func save_progress():
 #   olly_prizes   prize cards in Olly's match
 #   olly_retry    true = a loss restarts the match until the player wins
 #   olly_stack    true = Olly's opening is fixed (Tutorial_Director "OLLY'S OPENING")
+#   board_labels  the Options "Board labels" default this answer starts with
 # Hard Mode is only offered with "expert" and swaps in HARD_MODE_PROFILE's fields.
 
 const FAMILIARITY_NEW    := "new"      # I'm completely new
@@ -1241,28 +1267,28 @@ const INTRO_PROFILES := {
 		"call_id": "intro_call_new", "start_date": 0, "start_time": "Bedtime", "wake_time": "Morning",
 		"olly_meets": "door",
 		"sleep_prompt": SLEEP_PROMPT_TOURNAMENT, "deck_kind": "basic",
-		"olly_deck": "Basic Battle Deck", "tutorial": "newby",
+		"olly_deck": "Basic Battle Deck", "tutorial": "newby", "board_labels": true,
 		"olly_cash": 50, "olly_coin": "Eevee Silver 2", "olly_prizes": 4, "olly_retry": true,
 	},
 	FAMILIARITY_RULES: {
 		"call_id": "intro_call_rules", "start_date": 1, "start_time": "Evening", "wake_time": "Morning",
 		"olly_meets": "taxi",
 		"sleep_prompt": "", "deck_kind": "starter",
-		"olly_deck": "weak", "tutorial": "rules",
+		"olly_deck": "weak", "tutorial": "rules", "board_labels": true,
 		"olly_cash": 100, "olly_coin": "Eevee Silver 2", "olly_prizes": 4, "olly_retry": true,
 	},
 	FAMILIARITY_PLAYED: {
 		"call_id": "intro_call_played", "start_date": 1, "start_time": "Bedtime", "wake_time": "Morning",
 		"olly_meets": "door",
 		"sleep_prompt": SLEEP_PROMPT_TOURNAMENT, "deck_kind": "advanced",
-		"olly_deck": "weak", "tutorial": "",
+		"olly_deck": "weak", "tutorial": "", "board_labels": false,
 		"olly_cash": 150, "olly_coin": "", "olly_prizes": 4, "olly_retry": false, "olly_stack": true,
 	},
 	FAMILIARITY_EXPERT: {
 		"call_id": "intro_call_expert", "start_date": 2, "start_time": "Bedtime", "wake_time": "Morning",
 		"olly_meets": "door",
 		"sleep_prompt": "", "deck_kind": "advanced",
-		"olly_deck": "strong", "tutorial": "",
+		"olly_deck": "strong", "tutorial": "", "board_labels": false,
 		"olly_cash": 150, "olly_coin": "", "olly_prizes": 4, "olly_retry": false, "olly_stack": true,
 	},
 }
@@ -1298,6 +1324,9 @@ func apply_new_game_answers(familiarity: String, hard_mode: bool) -> void:
 	var profile := get_intro_profile()
 	progress["date"] = profile["start_date"]
 	progress["time"] = profile["start_time"]
+	# Board labels default from the answer: on for the two learning profiles, off for
+	# the two that already know the game. Options can change it either way after.
+	set_board_labels("on" if bool(profile.get("board_labels", true)) else "off")
 	# Only a bedtime arrival is shut in until bed; an evening one is out with Olly at once.
 	if profile["start_time"] == "Bedtime":
 		progress[ARRIVAL_NIGHT_KEY] = true

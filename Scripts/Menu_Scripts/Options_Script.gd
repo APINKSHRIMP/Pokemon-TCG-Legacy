@@ -33,13 +33,14 @@ extends Control
 # and they never appear in `pending`. See THEME_LOOK / THEME_MODE.
 #
 # ── THE ROWS THAT PREVIEW THEMSELVES ─────────────────────────
-# Five rows apply the moment you touch them, because their effect is visible on
+# These rows apply the moment you touch them, because their effect is visible on
 # THIS screen and waiting for Save would mean choosing blind:
 #
-#   the two volume sliders   you hear it
+#   the volume sliders       you hear it
 #   reduce motion            the chevrons stop
 #   colour theme / mode      every colour on the page changes
-#   hide header/footer       the banners go
+#   (hide header/footer      SCRAPPED 2026-10-26 - bars are always hidden, see
+#                            UITheme.BARS_ALWAYS_HIDDEN; its code is commented below)
 #
 # All five follow the same contract: applied live, written to disk only by Save,
 # and put back by Cancel and Escape (_revert_live_changes). Live and saved are
@@ -181,7 +182,9 @@ func _ready() -> void:
 		"sfx_volume":   func(percent: int) -> void: GameState.set_sfx_volume(percent / 100.0),
 		"cries_volume": func(percent: int) -> void: GameState.set_cries_volume(percent / 100.0),
 		"ui_theme":     GameState.set_ui_theme,
-		"hide_bars":    GameState.set_hide_bars,
+		# SCRAPPED: "hide_bars" - see UITheme.BARS_ALWAYS_HIDDEN.
+		# "hide_bars":    GameState.set_hide_bars,
+		"board_labels": GameState.set_board_labels,
 		"tutorial_next_match": GameState.set_tutorial_next_match,
 	}
 
@@ -326,16 +329,26 @@ func _build_rows() -> void:
 	_add_slider_row(body, "sfx_volume", "Sound effects")
 	_add_slider_row(body, "cries_volume", "Cries")
 	_add_theme_row(body)
-	# Stored as "no"/"yes" rather than off/on to match the question the row asks.
-	_add_button_row(body, "hide_bars", "Hide header/footer", [
-		["no",  "No"],
-		["yes", "Yes"],
-	], "(hides the banners only, nothing moves)")
+	# SCRAPPED 2026-10-26: the header/footer are always hidden now, in favour of one
+	# consistent look with no colour bars. The feature still works - to offer it again,
+	# set UITheme.BARS_ALWAYS_HIDDEN false and uncomment this row and every "hide_bars"
+	# line below (section_setters, _current_values, the live preview and the revert).
+	# # Stored as "no"/"yes" rather than off/on to match the question the row asks.
+	# _add_button_row(body, "hide_bars", "Hide header/footer", [
+	# 	["no",  "No"],
+	# 	["yes", "Yes"],
+	# ], "(hides the banners only, nothing moves)")
+	# The little captions that name the board in a match. Split out of the tutorial row
+	# below so they can be on in any match; a new game defaults it from the intro answer.
+	_add_button_row(body, "board_labels", "Board labels", [
+		["off", "Off"],
+		["on",  "On"],
+	], "(names the hands, benches, attacks...)")
 	# One match only: it switches itself back off when that match ends.
 	_add_button_row(body, "tutorial_next_match", "Tutorial messages for next match", [
 		["off", "Off"],
 		["on",  "On"],
-	], "(hints and board labels, one match)")
+	], "(hint messages, one match)")
 
 
 ## The colour picker, as TWO rows: the look, then Dark/Light.
@@ -496,7 +509,8 @@ func _current_values() -> Dictionary:
 		"sfx_volume":    _to_percent(GameState.sfx_volume_setting),
 		"cries_volume":  _to_percent(GameState.cries_volume_setting),
 		"ui_theme":      GameState.ui_theme_setting,
-		"hide_bars":     GameState.hide_bars_setting,
+		# "hide_bars":     GameState.hide_bars_setting,   # SCRAPPED, see _build_rows()
+		"board_labels":  GameState.board_labels_setting,
 		"tutorial_next_match": "on" if GameState.tutorial_option_locked() else GameState.tutorial_next_match_setting,
 	}
 
@@ -535,11 +549,12 @@ func _on_option_pressed(section: String, option: String) -> void:
 		"reduce_motion":
 			GameState.set_reduce_motion(option, false)
 			_refresh_chevrons()
-		"hide_bars":
-			GameState.set_hide_bars(option, false)
-			# The bars' paint follows the signal, but the labels and the chrome
-			# buttons are decided at build time, so the screen is rebuilt.
-			_rebuild()
+		# SCRAPPED, see _build_rows().
+		# "hide_bars":
+		# 	GameState.set_hide_bars(option, false)
+		# 	# The bars' paint follows the signal, but the labels and the chrome
+		# 	# buttons are decided at build time, so the screen is rebuilt.
+		# 	_rebuild()
 
 
 ## Highlights whichever button in a section matches the pending selection.
@@ -580,11 +595,40 @@ func _refresh_section(section: String) -> void:
 	for option in section_buttons[section]:
 		var btn: Button = section_buttons[section][option]
 		UIKit.style_button(btn, "selected" if chosen == option else "secondary")
+		# The chosen colour theme also wears the spinning selection ring, which is
+		# painted in the theme's own chrome gradient - with the header/footer gone it is
+		# the one place on the screen that gradient is still shown.
+		if section == THEME_LOOK:
+			_set_theme_ring(btn, chosen == option)
 		# ISSUE #470: a must-finish tutorial keeps the row On and greyed out.
 		if section == "tutorial_next_match" and GameState.tutorial_option_locked():
 			btn.disabled = true
 			btn.modulate = Color(1, 1, 1, 0.45)
 			print("ISSUE #470 FIX ACTIVE: tutorial option locked On")
+
+
+## Adds or removes the selection ring on one colour-theme button.
+##
+## The ring is a CHILD of the button, unlike add_selection_ring's usual flat-layer
+## sibling: these buttons never pulse (the reason rings are kept off their targets),
+## and they live in a ScrollContainer, so a ring on a separate layer would stay put
+## while the list scrolled. Anchored full-rect and pushed out by the ring's inset, so
+## it needs no settled layout to size itself.
+func _set_theme_ring(btn: Button, on: bool) -> void:
+	var old := btn.get_node_or_null("SelectionRing")
+	if old != null:
+		btn.remove_child(old)
+		old.queue_free()
+	if not on:
+		return
+	var ring := UIKit.add_selection_ring(btn, btn)
+	ring.name = "SelectionRing"
+	var inset: float = UITheme.SEL_RING_PX + 2.0
+	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ring.offset_left = -inset
+	ring.offset_top = -inset
+	ring.offset_right = inset
+	ring.offset_bottom = inset
 
 
 ## Pushes the current reduce-motion state into every scrolling/spinning node on
@@ -645,8 +689,9 @@ func _revert_live_changes() -> void:
 	# only flash the old theme back for a frame.
 	if GameState.ui_theme_setting != saved["ui_theme"]:
 		GameState.set_ui_theme(saved["ui_theme"], false)
-	if GameState.hide_bars_setting != saved["hide_bars"]:
-		GameState.set_hide_bars(saved["hide_bars"], false)
+	# SCRAPPED, see _build_rows().
+	# if GameState.hide_bars_setting != saved["hide_bars"]:
+	# 	GameState.set_hide_bars(saved["hide_bars"], false)
 
 
 # The save button only lights up while there is an unsaved change in any section.

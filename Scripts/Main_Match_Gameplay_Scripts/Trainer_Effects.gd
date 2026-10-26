@@ -1222,6 +1222,13 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 		if paid.size() < rule_discard_cost:
 			return
 
+	# ISSUE #472 follow-up: the draw beat has to land BEFORE the card leaves the hand and goes
+	# full-screen. It used to be waited out by the "...played X" message instead, so a Bill's
+	# draw was followed by the next Trainer leaving the hand and showcasing at once, then the
+	# pause, then its message. Waiting here holds the play itself together with its message.
+	await main.settle_after_draw()
+	if main._should_bail(): return
+
 	# Remove from hand first
 	hand.erase(card)
 	main.refresh_hand_display(is_opponent)
@@ -1382,9 +1389,12 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 		# Don't animate here - attached trainers animate to their target in resolve_attached_trainer
 		pass
 	elif is_stadium_trainer(card):
-		# Stadium cards animate to the stadium zone (the resolve_stadium_trainer function handles the rest)
-		var land: Dictionary = main.landing_rect_node(main.stadium_card_container, main.STADIUM_SIZE)
-		await main.animate_card_a_to_b(hand_container_node, main.stadium_card_container, 0.3, card_texture, from_size,
+		# Stadium cards animate to the playing side's OWN stadium slot (opponent's above the turn
+		# label, yours below). The card node may still be showing the previous stadium on its
+		# owner's slot, which resolve_stadium_trainer discards from, so the flight targets the slot.
+		var stadium_slot: Control = main.stadium_slot_for(is_opponent)
+		var land: Dictionary = main.landing_rect_node(stadium_slot, main.STADIUM_SIZE)
+		await main.animate_card_a_to_b(hand_container_node, stadium_slot, 0.3, card_texture, from_size,
 			land["size"], land["position"], false, from_pos, main.PLAY_HOLD_TIME)
 	else:
 		# Standard trainers animate to the discard pile
@@ -2278,6 +2288,7 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 # message is shown, then hide it — used for "show this card to your opponent" moments so the player
 # actually sees the card on screen (like a played trainer) before it animates to its destination.
 func show_card_with_message(card: card_object, message: String) -> void:
+	await main.settle_after_draw()   # ISSUE #472 follow-up: the beat comes before the showcase, not between it and its message
 	# ISSUE #214 / #235: the WHOLE board goes, not a hand-written list of four
 	# icons plus a white sheet over the rest. The attack rows beside the active
 	# Pokemon were the ones this list kept missing, so they sat over the card that
@@ -5405,6 +5416,9 @@ func resolve_stadium_trainer(card: card_object, is_opponent: bool) -> void:
 
 # Renders the current stadium card image inside the stadium_card_container node
 func display_stadium_card() -> void:
+	# The card node sits on its owner's slot in the centre column.
+	if main.current_stadium_card != null:
+		main.place_stadium_card(main.current_stadium_owner_is_opponent)
 	# Clear any existing child card display
 	for child in main.stadium_card_container.get_children():
 		if child.name == "stadium_card_image":
