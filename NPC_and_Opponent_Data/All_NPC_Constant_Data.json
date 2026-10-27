@@ -792,7 +792,7 @@
       "prize_cards": 4,
       "coin_reward": "Bellsprout Green",
       "sprite": "AromaLady",
-      "music": "REPLACEMUSIC",
+      "music": "Calm Battle 2 (PMD Crystal_Cave)",
       "cash_reward": "90",
       "deck": "Strange Plants",
       "message_colour": "green"
@@ -883,7 +883,7 @@
     },
     "Bug Catcher Frankie": {
       "coin_reward": "Pinsir Brown",
-      "music": "REPLACEMUSIC",
+      "music": "Easy_battle (PMD beach cave)",
       "deck": "Big Bad Bugs!",
       "prize_cards": 4,
       "costume_reward": "BUGCATCHER2",
@@ -1854,7 +1854,7 @@
       "prize_cards": 4,
       "cash_reward": "100",
       "pack_reward": "base1_c",
-      "cpu_retreat_rate": 0.0
+      "cpu_retreat_rate": 0
     }
   }
 }

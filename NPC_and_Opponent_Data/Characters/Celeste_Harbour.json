@@ -1774,7 +1774,9 @@
           "days": "3-4,7-8",
           "times": "M,A,E"
         }
-      ]
+      ],
+      "sleeve": "Starter_Venusaur",
+      "sleeve_reward": "Starter_Venusaur"
     },
     "Bad Dude Paul": {
       "at": [-810, 2550],
@@ -1987,7 +1989,9 @@
           "days": "3-4,7-8",
           "times": "M,A,E"
         }
-      ]
+      ],
+      "sleeve": "Scizor",
+      "sleeve_reward": "Scizor"
     },
     "Engineer Allan": {
       "at": [-800, 2620],
