@@ -11,10 +11,11 @@ const CELESTE_HARBOUR  := "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
 ## across the bottom of the screen let the coins go up without crowding anything. Native coin
 ## art is ~315px square, so 250 is still a downscale. The scene positions the container to
 ## match — change these and move coin_grid_container's offsets in Coin_Shop.tscn to suit.
-const COIN_SIZE        := Vector2(250, 250)
-const COIN_SEPARATION  := 90
+## Both grow with the screen (UIKit.item_scale()), so a wider or taller screen shows bigger coins.
+var COIN_SIZE          := Vector2(250, 250) * UIKit.item_scale()
+var COIN_SEPARATION    := int(round(90.0 * UIKit.item_scale()))
 const COLUMNS          := 5
-const GIFT_COIN_SIZE   := Vector2(250, 250)
+var GIFT_COIN_SIZE     := Vector2(250, 250) * UIKit.item_scale()
 const GIFT_FLIP_TOTAL  := 1.5
 
 # ISSUE #92: fallback price for an inventory entry with no "cost" field. TWEAKABLE, but the real
@@ -168,10 +169,14 @@ func _build_coin_grid() -> void:
 	var placed : int = grid.get_child_count()
 	if placed > 0:
 		var cols : int = mini(placed, COLUMNS)
-		var gap : int = int(ShopChrome.spread_gap(UIKit.SCREEN_W, cols, COIN_SIZE.x, COIN_SEPARATION))
+		var gap : int = int(ShopChrome.spread_gap(UIKit.screen_w(), cols, COIN_SIZE.x, COIN_SEPARATION))
 		grid.add_theme_constant_override("h_separation", gap)
-		grid.position.x = ShopChrome.spread_left(UIKit.SCREEN_W, cols, COIN_SIZE.x, gap)
+		grid.position.x = ShopChrome.spread_left(UIKit.screen_w(), cols, COIN_SIZE.x, gap)
 		grid.size.x = cols * COIN_SIZE.x + (cols - 1) * gap
+		# A taller screen: the shelf stays centred in the band between the bars.
+		if not grid.has_meta("_screen_shifted"):
+			grid.set_meta("_screen_shifted", true)
+			grid.position.y += UIKit.screen_extra().y * 0.5
 
 	_refresh_pills()
 
@@ -352,7 +357,7 @@ func _show_purchase_display(coin_filename: String) -> void:
 	var label := Label.new()
 	label.text                = "You received the " + _format_coin_name(coin_filename)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.position            = Vector2(160.0, coin_pos.y + GIFT_COIN_SIZE.y + 20.0)
+	label.position            = Vector2((vp_size.x - 1600.0) / 2.0, coin_pos.y + GIFT_COIN_SIZE.y + 20.0)
 	label.size                = Vector2(1600.0, 80.0)
 	label.add_theme_font_size_override("font_size", 50)
 	label.add_theme_color_override("font_color", Color.WHITE)

@@ -73,7 +73,8 @@ signal search_reset()
 const HEADER_H      := 96.0
 # ISSUE #146 (retest): +4px so the NAME box does not sit hard against the bottom of the top border.
 const CONTENT_TOP   := 108.0
-const FOOTER_TOP    := 996.0
+const FOOTER_TOP_BASE := 996.0
+var FOOTER_TOP        := FOOTER_TOP_BASE   # live, see _compute_layout()
 
 # ISSUE #142: how much clear space is left at the right-hand edge of the screen.
 const RIGHT_MARGIN := 40.0
@@ -108,7 +109,7 @@ const LABEL_COLOR := Color(0.957, 0.929, 0.980, 1.0)
 const CTRL_X      := 330.0
 
 # ISSUE #142: the width every row has to play with — CTRL_X across to the right margin. 1530px.
-const CTRL_W := 1920.0 - RIGHT_MARGIN - CTRL_X
+var CTRL_W := 1920.0 - RIGHT_MARGIN - CTRL_X   # live: runs to the right edge
 
 # Vertical gap left between one filter row and the next.
 # ISSUE #145 (retest): back up to 16 (it had been cut to 8) — killing the power row's dead 94px
@@ -117,7 +118,9 @@ const CTRL_W := 1920.0 - RIGHT_MARGIN - CTRL_X
 ## Cut from 16 when the icon rows became wrapping chips: the SET block alone grew
 ## from 5 fixed lines to 7, and at 16 the SORT BY row ran under the footer. Every
 ## 1px here costs ~12px of screen across the twelve rows.
-const ROW_GAP := 9.0
+const ROW_GAP_BASE := 9.0
+## Live: a taller screen shares its extra height out between the rows.
+var ROW_GAP := ROW_GAP_BASE
 
 # ISSUE #142 spreading, for the ICON rows only — the button rows use the fixed BTN_W/BTN_GAP pair
 # below (ISSUE #146 retest asked for consistent button sizing and spacing, which a fill-the-width
@@ -176,12 +179,12 @@ const POWER_ICON  := 30.0
 # Illustrator free-text row (ISSUE #143). Height matches the NAME box so the screen's two text
 # fields read as a pair. ISSUE #146: height and font -25%. ISSUE #142: full width.
 const ILLUS_H    := 54.0
-const ILLUS_W    := CTRL_W
+var ILLUS_W      := CTRL_W
 const ILLUS_FONT := 22
 
 # Name free-text row. ISSUE #146: height and font -25%. ISSUE #142: full width.
 const NAME_H    := 54.0
-const NAME_W    := CTRL_W
+var NAME_W      := CTRL_W
 const NAME_FONT := 22
 
 # Rarity symbol icons. ISSUE #146: -40%, the biggest cut on the screen — they are pure symbols
@@ -206,17 +209,17 @@ const BTN_FONT  := 15
 
 # Header controls
 const TITLE_FONT  := 46
-const RESET_X     := 1560.0
+var RESET_X       := 1560.0   # live: 360 from the right edge
 const RESET_Y     := 21.0
 const RESET_W     := 300.0
 const RESET_H     := 54.0
 
 # Footer controls
-const FOOT_BTN_Y := 1004.0
+var FOOT_BTN_Y   := 1004.0   # live: 76 above the bottom
 const FOOT_BTN_W := 320.0
 const FOOT_BTN_H := 56.0
-const SEARCH_X   := 600.0
-const CANCEL_X   := 1100.0
+var SEARCH_X     := 600.0    # live: shifted by half the extra width
+var CANCEL_X     := 1100.0
 
 # ISSUE #141 (retest): z for everything the player interacts with. The deck scene's
 # `filter_border` — the patterned strip this screen now shows across the top — is an OPAQUE
@@ -450,12 +453,29 @@ func setup(unlocked_set_ids: Array, set_list: Array) -> void:
 	z_index = 10
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 
+	_compute_layout()
 	_build_backdrop()
 	_build_header()
 	_build_rows()
 	_build_footer()
 
 	_refresh_confirm_button()
+
+
+## Screen-dependent geometry, from the live canvas (UIKit.screen_size()). The filter
+## controls keep their size; wider screens give the icon rows more width to spread
+## across, taller ones more space between the rows. Built once per open.
+func _compute_layout() -> void:
+	var extra := UIKit.screen_extra()
+	CTRL_W = UIKit.screen_w() - RIGHT_MARGIN - CTRL_X
+	ILLUS_W = CTRL_W
+	NAME_W = CTRL_W
+	RESET_X = UIKit.screen_w() - 360.0
+	FOOTER_TOP = FOOTER_TOP_BASE + extra.y
+	FOOT_BTN_Y = UIKit.screen_h() - 76.0
+	SEARCH_X = 600.0 + extra.x * 0.5
+	CANCEL_X = 1100.0 + extra.x * 0.5
+	ROW_GAP = ROW_GAP_BASE + extra.y / 12.0   # twelve filter rows share the extra height
 
 
 func _build_backdrop() -> void:
@@ -475,7 +495,7 @@ func _build_backdrop() -> void:
 	var panel := ColorRect.new()
 	panel.color = PANEL_COLOR if SHOW_FILTER_PANEL else Color(0.0, 0.0, 0.0, 0.0)
 	panel.position = Vector2(0.0, HEADER_H)
-	panel.size     = Vector2(1920.0, FOOTER_TOP - HEADER_H)
+	panel.size     = Vector2(UIKit.screen_w(), FOOTER_TOP - HEADER_H)
 	panel.z_index  = 51
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(panel)
@@ -489,7 +509,7 @@ func _build_header() -> void:
 	title.add_theme_color_override("font_color", UITheme.col("field_fg"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	title.position = Vector2(360.0, 0.0)
+	title.position = Vector2((UIKit.screen_w() - 1200.0) * 0.5, 0.0)
 	title.size     = Vector2(1200.0, HEADER_H)
 	title.z_index  = CONTENT_Z
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE

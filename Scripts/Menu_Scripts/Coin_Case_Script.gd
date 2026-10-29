@@ -4,9 +4,15 @@ extends Control
 
 const COIN_FOLDER        := "res://Image_Assets/Coins"
 const COIN_BACK_IMAGE    := "Back Basic.png"
-const COIN_SIZE          := Vector2(100, 100)
-const COIN_SEPARATION    := 10
-const COLUMNS            := 17
+const COIN_SIZE_BASE     := Vector2(100, 100)
+## Live coin size, columns and gap: the design numbers above grown and fitted to the
+## screen by UIKit.fit_grid() in _apply_grid_layout().
+var COIN_SIZE            := COIN_SIZE_BASE
+const COIN_SEPARATION_BASE := 10
+var COIN_SEPARATION      := COIN_SEPARATION_BASE
+var COIN_SEPARATION_V    := COIN_SEPARATION_BASE
+const COLUMNS_BASE       := 17
+var COLUMNS              := COLUMNS_BASE
 # ISSUE #397: room around the grid, inside the scroll clip, for the selected coin's
 # pulse. Must be at least COIN_SIZE * (SELECT_PULSE - 1) / 2 (10px at 1.2). TWEAKABLE.
 const PULSE_ROOM         := 12.0
@@ -104,6 +110,8 @@ func _ready() -> void:
 
 	_build_chrome()
 	_wrap_grid_in_scroll_container()
+	_apply_grid_layout()
+	UIKit.on_screen_resized(_apply_grid_layout)
 	# ISSUE #32: block input behind a loading overlay while the (potentially large) coin grid builds.
 	# Retest: shrink the blocker 142px top / 134px bottom so the banner buttons (Cancel) stay clickable.
 	# The hide button sits in that unblocked top strip, so disable it outright while a build runs.
@@ -150,7 +158,45 @@ func _build_chrome() -> void:
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
-	grid.size = Vector2(1920.0 - GRID_INSET_X * 2.0, UIKit.CONTENT_H - GRID_INSET_Y * 2.0)
+	grid.size = _grid_area()
+
+
+## The band the coins fill: the whole screen width and the whole content band,
+## less the insets. Grows with the screen.
+func _grid_area() -> Vector2:
+	return Vector2(UIKit.screen_w() - GRID_INSET_X * 2.0, UIKit.content_h() - GRID_INSET_Y * 2.0)
+
+
+## Coin size, columns and gaps for the live screen (UIKit.fit_grid: the coins grow
+## with UIKit.item_scale() and as many columns fit as the width holds), applied to
+## the scroll box, the grid and every coin already in it. Re-run on a resize.
+func _apply_grid_layout() -> void:
+	var area := _grid_area()
+	var fit := UIKit.fit_grid(area, COIN_SIZE_BASE,
+		Vector2(COIN_SEPARATION_BASE, COIN_SEPARATION_BASE))
+	COIN_SIZE = (fit["cell"] as Vector2).floor()
+	COLUMNS = int(fit["columns"])
+	COIN_SEPARATION = int(floor((fit["gap"] as Vector2).x))
+	COIN_SEPARATION_V = int(round((fit["gap"] as Vector2).y))
+	if _scroll != null and is_instance_valid(_scroll):
+		var room := Vector2(PULSE_ROOM, PULSE_ROOM)
+		_scroll.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y) - room
+		_scroll.size = area + room * 2.0
+	grid.columns = COLUMNS
+	grid.add_theme_constant_override("h_separation", COIN_SEPARATION)
+	grid.add_theme_constant_override("v_separation", COIN_SEPARATION_V)
+	for child in grid.get_children():
+		if child is Control:
+			var tile := child as Control
+			tile.custom_minimum_size = COIN_SIZE
+			tile.size = COIN_SIZE
+			tile.pivot_offset = COIN_SIZE / 2.0
+			for sub in tile.get_children():
+				if sub is Control:
+					(sub as Control).custom_minimum_size = COIN_SIZE
+					(sub as Control).size = COIN_SIZE
+	print("SCREEN LAYOUT: coin case ", COLUMNS, " columns of ", COIN_SIZE, " (item scale ",
+		snappedf(UIKit.item_scale(), 0.01), ")")
 
 
 ## Rebuilds the "n / N" owned chip in the header. Cheap enough to throw away and

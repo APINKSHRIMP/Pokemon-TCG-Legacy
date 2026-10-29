@@ -17,7 +17,8 @@ const OPPONENT_DECKS_FOLDER := "res://NPC_and_Opponent_Data/Opponent_Deck_Data/"
 # TWEAKABLE. The sidebar keeps its authored x band (1690..1916); only the grid and
 # the header furniture are placed from here.
 const GRID_X          := 3.0
-const GRID_W          := 1678.0
+const GRID_W_BASE     := 1678.0
+var GRID_W            := GRID_W_BASE      # live, see _compute_layout()
 ## Zero: the card grid runs edge to edge between the two bars, so the first and
 ## last rows line up with the header and footer instead of floating inside a
 ## dark band.
@@ -36,7 +37,7 @@ const DECK_NAME_FONT     := 26
 
 # ── Deck viewer contents list ────────────────────────────────────────────────
 # TWEAKABLE. Sits in the same right-hand band the sidebar uses.
-const VIEWER_LIST_X   := 1690.0
+var VIEWER_LIST_X     := 1690.0           # live: the sidebar band, see _compute_layout()
 const VIEWER_LIST_W   := 226.0
 const VIEWER_LIST_PAD := 10.0
 const VIEWER_ROW_H    := 34.0
@@ -50,14 +51,17 @@ const SEARCH_BTN_W    := 300.0
 # ── Right sidebar ────────────────────────────────────────────────────────────
 # TWEAKABLE. The sidebar keeps the x band the scene authored (1690..1916).
 # Top to bottom: energies, composition, then the three deck tools at the bottom.
-const SIDE_X          := 1690.0
+const SIDE_X_BASE     := 1690.0
+## Live: pinned to the right edge (screen width - 230), see _compute_layout().
+var SIDE_X            := SIDE_X_BASE
 const SIDE_W          := 226.0
 const SIDE_PAD        := 10.0
 
 const ENERGY_PANEL_Y  := 100.0
 const ENERGY_PANEL_H  := 252.0
 const ENERGY_ICON     := Vector2(66.0, 90.0)
-const ENERGY_COL_X    := [1699.0, 1772.0, 1845.0]
+const ENERGY_COL_DX   := [9.0, 82.0, 155.0]   # from SIDE_X
+var ENERGY_COL_X      := [1699.0, 1772.0, 1845.0]
 const ENERGY_ROW_Y    := [146.0, 246.0]
 ## Outline behind the per-energy count, so it reads on light card art.
 const ENERGY_COUNT_OUTLINE := 7
@@ -79,13 +83,16 @@ const COMP_ROW_FONT     := 16
 ## The three deck tools, bottom-aligned so they sit under the composition box.
 const TOOL_BTN_H      := 66.0
 const TOOL_BTN_GAP    := 10.0
-const TOOL_STACK_BOT  := 972.0
+const TOOL_STACK_GAP  := 16.0   # tool stack bottom -> footer
+var TOOL_STACK_BOT    := 972.0
 
 ## EIGHT columns, with the cards shrunk to take up exactly the same room.
 ## Sized so eight columns plus CARD_H_SEP still fit GRID_W:
 ## 8 * 201 + 7 * 10 = 1678, exactly GRID_W. Raising the gap means shrinking this,
 ## and the height must keep the 177:246 card aspect (201 * 1.3898 = 279).
-const CARD_SIZE     := Vector2(201, 279)
+const CARD_SIZE_BASE := Vector2(201, 279)
+## Live: grown with UIKit.item_scale() and fitted to GRID_W, see _compute_layout().
+var CARD_SIZE         := CARD_SIZE_BASE
 ## Raised from 2: at 2px the cards read as one solid sheet rather than as a grid
 ## of separate items.
 ## Composition rows, in display order, with their headings.
@@ -98,13 +105,16 @@ const COMP_LABEL := {
 	"energy":  "Energy",
 }
 
-const CARD_H_SEP    := 10
-const CARD_V_SEP    := 10
+const CARD_H_SEP_BASE := 10
+var CARD_H_SEP        := CARD_H_SEP_BASE
+const CARD_V_SEP_BASE := 10
+var CARD_V_SEP        := CARD_V_SEP_BASE
 
 ## The "n / N" strip across the bottom of every card cell.
 const COUNT_STRIP_H    := 30
 const COUNT_STRIP_FONT := 17
-const COLUMNS       := 8
+const COLUMNS_BASE  := 8
+var COLUMNS           := COLUMNS_BASE
 const MAX_COPIES    := 4
 const DECK_SIZE     := 60
 
@@ -418,8 +428,11 @@ func _ready() -> void:
 		"psychic": psychic_energy_count, "fighting": fighting_energy_count,
 	}
 
+	_compute_layout()
 	_build_chrome()
 	_wrap_grid_in_scroll_container()
+	_pin_sidebar()
+	UIKit.on_screen_resized(_on_screen_resized)
 	if _draft_mode:
 		# Save, alone and centred on the footer, is the only way off this screen.
 		cancel_btn.visible = false
@@ -462,6 +475,55 @@ func _ready() -> void:
 ## a tall sidebar right — so this is a chrome swap plus one move: Save and Cancel
 ## come OUT of the sidebar and onto the slim footer, which is what frees the
 ## sidebar's bottom for the deck tools.
+# ── ANY SCREEN SHAPE ─────────────────────────────────────────
+# The sidebar (energies, composition, count pill, the deck tools, the deck viewer's
+# contents list) keeps its size and stays pinned to the RIGHT edge, the tools to the
+# bottom-right corner. The card grid takes everything to the left of it: the cards
+# grow with UIKit.item_scale() and as many columns fit as the width holds.
+
+## Sets the screen-dependent geometry from the live canvas. Runs before the build.
+func _compute_layout() -> void:
+	SIDE_X = UIKit.screen_w() - (UIKit.SCREEN_W - SIDE_X_BASE)
+	VIEWER_LIST_X = SIDE_X
+	ENERGY_COL_X = []
+	for dx in ENERGY_COL_DX:
+		ENERGY_COL_X.append(SIDE_X + float(dx))
+	TOOL_STACK_BOT = UIKit.content_bottom() - TOOL_STACK_GAP
+	GRID_W = SIDE_X - (SIDE_X_BASE - GRID_W_BASE)
+	var fit := UIKit.fit_grid(Vector2(GRID_W, UIKit.content_h()), CARD_SIZE_BASE,
+		Vector2(CARD_H_SEP_BASE, CARD_V_SEP_BASE))
+	CARD_SIZE = (fit["cell"] as Vector2).floor()
+	COLUMNS = int(fit["columns"])
+	CARD_H_SEP = int(floor((fit["gap"] as Vector2).x))
+	CARD_V_SEP = int(round((fit["gap"] as Vector2).y))
+	print("SCREEN LAYOUT: deck builder ", COLUMNS, " columns of ", CARD_SIZE,
+		" (item scale ", snappedf(UIKit.item_scale(), 0.01), "), sidebar at x ", SIDE_X)
+
+
+## Everything built in the sidebar band follows the right edge on a live resize
+## (UIKit.follow_screen); the deck tools follow the bottom-right corner.
+func _pin_sidebar() -> void:
+	var tools: Array = [view_deck_btn, load_btn, empty_btn, _load_opp_btn]
+	for child in get_children():
+		if child is Control and (child as Control).position.x >= SIDE_X - 2.0:
+			UIKit.follow_screen(child as Control,
+				Vector2(1.0, 1.0) if child in tools else Vector2(1.0, 0.0))
+
+
+## A live resize: the sidebar moves itself (follow_screen); the grid takes the new
+## width and its cards are rebuilt at the new size.
+func _on_screen_resized() -> void:
+	_compute_layout()
+	var scroll := grid.get_parent() as ScrollContainer
+	if scroll != null:
+		scroll.position = Vector2(GRID_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
+		scroll.size = Vector2(GRID_W, UIKit.content_h() - GRID_INSET_Y * 2.0)
+	grid.columns = COLUMNS
+	grid.add_theme_constant_override("h_separation", CARD_H_SEP)
+	grid.add_theme_constant_override("v_separation", CARD_V_SEP)
+	_refresh_card_grid()
+
+
 func _build_chrome() -> void:
 	var bars := UIKit.convert_legacy_screen(self, "")
 	_header = bars["header"]
@@ -572,7 +634,7 @@ func _build_chrome() -> void:
 	change_energy_btn.visible = false
 
 	grid.position = Vector2(GRID_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
-	grid.size = Vector2(GRID_W, UIKit.CONTENT_H - GRID_INSET_Y * 2.0)
+	grid.size = Vector2(GRID_W, UIKit.content_h() - GRID_INSET_Y * 2.0)
 
 
 ## The "energies in deck" box. Keeps the real energy card art the screen has
@@ -1376,7 +1438,8 @@ func _on_change_energy_style_pressed() -> void:
 	# ── Build a ScrollContainer + GridContainer for the card grid ──
 	var picker_scroll := ScrollContainer.new()
 	picker_scroll.position = Vector2(70, 140)
-	picker_scroll.size = Vector2(1605, 905)
+	# Everything left of the sidebar, down to the bottom of the screen.
+	picker_scroll.size = Vector2(SIDE_X - 85.0, UIKit.screen_h() - 175.0)
 	picker_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	picker_scroll.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_AUTO
 	picker_scroll.z_index = 5   # above the transparent click blocker
@@ -1384,7 +1447,7 @@ func _on_change_energy_style_pressed() -> void:
 	energy_picker_overlay.add_child(picker_scroll)
 
 	var picker_grid := GridContainer.new()
-	picker_grid.columns = 6
+	picker_grid.columns = maxi(6, int(floor((picker_scroll.size.x - 30.0 + 28.0) / (picker_card_size.x + 28.0))))
 	picker_grid.add_theme_constant_override("h_separation", 28)
 	picker_grid.add_theme_constant_override("v_separation", 14)
 	picker_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1403,7 +1466,7 @@ func _on_change_energy_style_pressed() -> void:
 	var picker_save_btn := Button.new()
 	picker_save_btn.text = "save style"
 	picker_save_btn.custom_minimum_size = Vector2(226, 63)
-	picker_save_btn.position = Vector2(1689, 902)
+	picker_save_btn.position = Vector2(SIDE_X - 1.0, UIKit.screen_h() - 178.0)
 	picker_save_btn.z_index = 55
 	UIKit.style_button(picker_save_btn, "primary")
 	picker_save_btn.add_theme_font_size_override("font_size", 23)
@@ -1416,7 +1479,7 @@ func _on_change_energy_style_pressed() -> void:
 	var picker_cancel_btn := Button.new()
 	picker_cancel_btn.text = "cancel"
 	picker_cancel_btn.custom_minimum_size = Vector2(224, 63)
-	picker_cancel_btn.position = Vector2(1690, 986)
+	picker_cancel_btn.position = Vector2(SIDE_X, UIKit.screen_h() - 94.0)
 	picker_cancel_btn.z_index = 55
 	UIKit.style_button(picker_cancel_btn, "negative")   # ISSUE #379
 	picker_cancel_btn.add_theme_font_size_override("font_size", 23)
@@ -1699,7 +1762,7 @@ func _clear_viewer_chrome() -> void:
 func _build_viewer_contents(sorted_ids: Array) -> void:
 	var scroll := ScrollContainer.new()
 	scroll.position = Vector2(VIEWER_LIST_X, UIKit.CONTENT_TOP + VIEWER_LIST_PAD)
-	scroll.size = Vector2(VIEWER_LIST_W, UIKit.CONTENT_H - VIEWER_LIST_PAD * 2.0)
+	scroll.size = Vector2(VIEWER_LIST_W, UIKit.content_h() - VIEWER_LIST_PAD * 2.0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	scroll.z_index = 55
@@ -1957,7 +2020,7 @@ func _on_view_deck_pressed() -> void:
 	# clickable while everything behind the cards stays blocked.
 	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backdrop.offset_top     = UIKit.CONTENT_TOP
-	backdrop.offset_bottom  = UIKit.CONTENT_BOTTOM - UIKit.SCREEN_H
+	backdrop.offset_bottom  = UIKit.content_bottom() - UIKit.screen_h()
 	backdrop.z_index        = 0
 	deck_viewer_overlay.add_child(backdrop)
 
@@ -1973,7 +2036,7 @@ func _on_view_deck_pressed() -> void:
 	# first row. It matches the deck-mode grid exactly now: same x, same width,
 	# and the full 92..988 band between the bars.
 	viewer_scroll.position              = Vector2(GRID_X, UIKit.CONTENT_TOP)
-	viewer_scroll.size                  = Vector2(GRID_W, UIKit.CONTENT_H)
+	viewer_scroll.size                  = Vector2(GRID_W, UIKit.content_h())
 	viewer_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	viewer_scroll.vertical_scroll_mode  = ScrollContainer.SCROLL_MODE_AUTO
 	viewer_scroll.z_index               = 5   # ISSUE #151: above the transparent click blocker

@@ -30,6 +30,12 @@ const STEPPER_NAME_W       := 620.0
 const STEPPER_Y            := 112.0
 const STEPPER_H            := 62.0
 const STEPPER_GAP          := 18
+## The pack row as authored at 1920x1080 (247..941), and the limits it may grow into on a
+## bigger screen: not above the set stepper, not into the price pills over the footer.
+const PACK_ROW_H           := 694.0
+const PACK_ROW_MID_Y       := 594.0
+const PACK_ROW_MIN_TOP     := 190.0
+const PACK_ROW_BOTTOM_GAP  := 47.0
 const HEADER_WEIGHTED      := "Select WEIGHTED pack to purchase"
 
 ## THE DISCOUNT DISPLAY LIVES ON THE PACKS NOW. It used to be a centred row above them —
@@ -305,14 +311,23 @@ func _load_pack_images(pack_id: String) -> void:
 	# TWEAKABLE — the four-pack row was 50..1682, an asymmetric 1632 wide that left 238px of
 	# dead margin on the right. Widened and centred now the money labels no longer need the
 	# room: 1800 wide takes each pack from ~385 to ~427, still under the 455px native art.
+	# ANY SCREEN SHAPE: the row keeps its side margins against the live screen edges, and the
+	# packs (sized by the row's HEIGHT - EXPAND_FIT_WIDTH_PROPORTIONAL) grow with
+	# UIKit.item_scale(), as far as the band between the set stepper and the price pills allows.
+	var sw: float = UIKit.screen_w()
 	if pack_hbox.get_child_count() >= 4:
-		pack_hbox.add_theme_constant_override("separation", 30)
+		pack_hbox.add_theme_constant_override("separation", int(round(30.0 * UIKit.item_scale())))
 		pack_hbox.offset_left  = 60.0
-		pack_hbox.offset_right = 1860.0
+		pack_hbox.offset_right = sw - 60.0
 	else:
 		pack_hbox.remove_theme_constant_override("separation")
 		pack_hbox.offset_left  = 155.0
-		pack_hbox.offset_right = 1787.0
+		pack_hbox.offset_right = sw - 133.0
+	var row_h: float = minf(PACK_ROW_H * UIKit.item_scale(),
+		UIKit.content_bottom() - PACK_ROW_BOTTOM_GAP - PACK_ROW_MIN_TOP)
+	var mid_y: float = PACK_ROW_MID_Y + UIKit.screen_extra().y * 0.5
+	pack_hbox.offset_top    = maxf(PACK_ROW_MIN_TOP, mid_y - row_h * 0.5)
+	pack_hbox.offset_bottom = pack_hbox.offset_top + row_h
 
 
 ## ISSUE #207: pack art is CACHED for the life of the screen.

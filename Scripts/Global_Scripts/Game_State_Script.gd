@@ -270,6 +270,102 @@ func set_board_labels(choice: String, save: bool = true) -> void:
 func board_labels_on() -> bool:
 	return board_labels_setting == "on"
 
+# ─── Display ─────────────────────────────────────────────────────────────────
+# "Display mode" and "Window size". The game lays itself out on a canvas that is
+# never smaller than 1920x1080 and grows to the screen's shape (stretch aspect
+# "expand" in project.godot), so ANY size works: a 16:10 laptop gets a taller
+# canvas, an ultrawide a wider one. Screens read the live size from UIKit.screen_size().
+#   fullscreen  exclusive fullscreen at the monitor's own resolution
+#   borderless  a borderless window covering the monitor (alt-tab friendly)
+#   windowed    a normal window at window_size_setting
+const WINDOW_MODE_OPTIONS := ["fullscreen", "borderless", "windowed"]
+const DEFAULT_WINDOW_MODE := "fullscreen"
+var window_mode_setting: String = DEFAULT_WINDOW_MODE
+
+## Windowed sizes, "WxH". Any aspect is fine. Options only lists the ones that fit
+## the monitor (window_size_options_fitting()). TWEAKABLE: add or remove entries freely.
+const WINDOW_SIZE_OPTIONS := ["1280x720", "1280x800", "1600x900", "1680x1050",
+	"1920x1080", "1920x1200", "2560x1080", "2560x1440", "3440x1440", "3840x2160"]
+const DEFAULT_WINDOW_SIZE := "1600x900"
+var window_size_setting: String = DEFAULT_WINDOW_SIZE
+
+func set_window_mode(choice: String, save: bool = true) -> void:
+	if not choice in WINDOW_MODE_OPTIONS:
+		push_warning("GameState: unknown window mode '" + choice + "'")
+		return
+	window_mode_setting = choice
+	if save:
+		_save_setting_field("window_mode", window_mode_setting)
+	apply_display()
+
+func set_window_size(choice: String, save: bool = true) -> void:
+	if not choice in WINDOW_SIZE_OPTIONS:
+		push_warning("GameState: unknown window size '" + choice + "'")
+		return
+	window_size_setting = choice
+	if save:
+		_save_setting_field("window_size", window_size_setting)
+	apply_display()
+
+## The windowed sizes that fit inside the current monitor's usable area.
+func window_size_options_fitting() -> Array:
+	var usable := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen()).size
+	var out: Array = []
+	for opt in WINDOW_SIZE_OPTIONS:
+		var s := _parse_window_size(opt)
+		if s.x <= usable.x and s.y <= usable.y:
+			out.append(opt)
+	if out.is_empty():
+		out.append(WINDOW_SIZE_OPTIONS[0])
+	return out
+
+func _parse_window_size(opt: String) -> Vector2i:
+	var parts := opt.split("x")
+	if parts.size() != 2:
+		return Vector2i(1920, 1080)
+	return Vector2i(int(parts[0]), int(parts[1]))
+
+## Puts the window into the saved mode and size. Safe to call any time; a no-op
+## headless (the autotester) where there is no window to change.
+func apply_display() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	match window_mode_setting:
+		"fullscreen":
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+		"borderless":
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		_:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
+			var want := _parse_window_size(window_size_setting)
+			var screen := DisplayServer.window_get_current_screen()
+			var usable := DisplayServer.screen_get_usable_rect(screen)
+			want = Vector2i(mini(want.x, usable.size.x), mini(want.y, usable.size.y))
+			DisplayServer.window_set_size(want)
+			DisplayServer.window_set_position(usable.position + (usable.size - want) / 2)
+	print("DISPLAY: ", window_mode_setting, " ", window_size_setting,
+		" -> canvas ", get_tree().root.get_visible_rect().size if is_inside_tree() else Vector2.ZERO)
+
+func _load_display() -> void:
+	var data := _read_settings()
+	var mode: String = str(data.get("window_mode", DEFAULT_WINDOW_MODE))
+	window_mode_setting = mode if mode in WINDOW_MODE_OPTIONS else DEFAULT_WINDOW_MODE
+	var wsize: String = str(data.get("window_size", DEFAULT_WINDOW_SIZE))
+	window_size_setting = wsize if wsize in WINDOW_SIZE_OPTIONS else DEFAULT_WINDOW_SIZE
+	# `-- --window=WxH` opens a plain window of that size for this run only (nothing is
+	# saved), so a screen SHAPE can be tested on any monitor: 1280x800 is 16:10, 1720x720
+	# is 21:9, 1920x540 is 32:9. Godot's own --windowed does not beat the project's
+	# exclusive-fullscreen mode, hence our own flag.
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--window="):
+			var want := _parse_window_size(a.trim_prefix("--window="))
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			DisplayServer.window_set_size(want)
+			print("DISPLAY: --window=", want, " for this run")
+			return
+	apply_display()
+
 # "Tutorial messages for next match": "on" plays the generic tutorial messages in the NEXT match the player starts, whoever it is against, then turns
 # itself back off once that match ends. See Tutorial_Director.gd.
 const TUTORIAL_NEXT_MATCH_OPTIONS := ["off", "on"]
@@ -965,6 +1061,7 @@ func get_last_interior_scene() -> String:
 
 func _ready():
 	_load_animation_speed()   # ISSUE #34: apply the saved Options animation-speed preset
+	_load_display()
 	_load_walking_speed()     # ISSUE #34: apply the saved Options overworld walking-speed preset
 	_load_rule_settings()     # ISSUE #34: apply the saved Options confusion / burn rule choices
 	_load_audio_volumes()     # apply the saved Options music / SFX volume levels to the audio buses

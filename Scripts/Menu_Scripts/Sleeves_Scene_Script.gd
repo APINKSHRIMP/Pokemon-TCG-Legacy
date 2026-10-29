@@ -4,10 +4,14 @@ extends Control
 
 const SLEEVE_FOLDER  := "res://Image_Assets/Sleeves"          # full-size originals (.jpg or .png)
 const SLEEVE_SMALL_FOLDER := "res://Image_Assets/Sleeves/small" # 412px-tall .jpg copies used for the grid
-const COLUMNS        := 8
-const CELL_SIZE      := Vector2(234, 327)
-const H_SEP          := 2
-const V_SEP          := 2
+const COLUMNS_BASE   := 8
+var COLUMNS          := COLUMNS_BASE   # live, see _apply_grid_layout()
+const CELL_SIZE_BASE := Vector2(234, 327)
+var CELL_SIZE        := CELL_SIZE_BASE
+const H_SEP_BASE     := 2
+var H_SEP            := H_SEP_BASE
+const V_SEP_BASE     := 2
+var V_SEP            := V_SEP_BASE
 
 # Inset of the grid inside the band between the two chrome bars, and the fixed
 # width of the owned-only toggle so it does not resize between its two labels.
@@ -89,6 +93,8 @@ func _ready() -> void:
 
 	_build_chrome()
 	_wrap_grid_in_scroll_container()
+	_apply_grid_layout()
+	UIKit.on_screen_resized(_on_screen_resized)
 	# ISSUE #32: block input behind a loading overlay while the (potentially large) sleeve grid builds.
 	# The hide button sits in the overlay's unblocked top strip, so disable it while a build runs.
 	hide_btn.disabled = true
@@ -179,7 +185,7 @@ func _build_chrome() -> void:
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
-	grid.size = Vector2(1920.0 - GRID_INSET_X * 2.0, UIKit.CONTENT_H - GRID_INSET_Y * 2.0)
+	grid.size = _grid_area()
 
 
 ## Rebuilds the "n / N" owned chip in the header.
@@ -190,6 +196,38 @@ func _refresh_count_chip() -> void:
 		c.queue_free()
 	_count_chip_holder.add_child(
 		UIKit.make_chip("%d / %d" % [_owned_sleeves.size(), _total_sleeves], "on_chrome"))
+
+
+## The band the sleeves fill: the whole screen width and content band, less the insets.
+func _grid_area() -> Vector2:
+	return Vector2(UIKit.screen_w() - GRID_INSET_X * 2.0, UIKit.content_h() - GRID_INSET_Y * 2.0)
+
+
+## Cell size, columns and gaps for the live screen: sleeves grow with
+## UIKit.item_scale() and as many columns fit as the width holds (UIKit.fit_grid).
+## On a resize the grid is rebuilt, since each sleeve's crop is sized when it is made.
+func _apply_grid_layout(rebuild: bool = false) -> void:
+	var area := _grid_area()
+	var fit := UIKit.fit_grid(area, CELL_SIZE_BASE, Vector2(H_SEP_BASE, V_SEP_BASE))
+	CELL_SIZE = (fit["cell"] as Vector2).floor()
+	COLUMNS = int(fit["columns"])
+	H_SEP = int(floor((fit["gap"] as Vector2).x))
+	V_SEP = int(round((fit["gap"] as Vector2).y))
+	var scroll := grid.get_parent() as ScrollContainer
+	if scroll != null:
+		scroll.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
+		scroll.size = area
+	grid.columns = COLUMNS
+	grid.add_theme_constant_override("h_separation", H_SEP)
+	grid.add_theme_constant_override("v_separation", V_SEP)
+	print("SCREEN LAYOUT: sleeves ", COLUMNS, " columns of ", CELL_SIZE, " (item scale ",
+		snappedf(UIKit.item_scale(), 0.01), ")")
+	if rebuild and not _is_rebuilding and grid.get_child_count() > 0:
+		_rebuild_grid()
+
+
+func _on_screen_resized() -> void:
+	_apply_grid_layout(true)
 
 
 func _wrap_grid_in_scroll_container() -> void:
@@ -625,13 +663,14 @@ func _show_zoom(wrapper: Control) -> void:
 # Fit within 980px tall (50px margin top+bottom), up to 1000px wide
 func _apply_zoom_texture(zoom_texture: Texture2D) -> void:
 	var tex_size  := zoom_texture.get_size()
-	var target    := Vector2(1000.0, 980.0)
+	var target    := Vector2(1000.0, 980.0) * UIKit.item_scale()
+	target.y = minf(target.y, UIKit.screen_h() - 100.0)
 	var s         := minf(target.x / tex_size.x, target.y / tex_size.y)
 	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)
 
 	zoom_image.texture  = zoom_texture
 	zoom_image.size     = disp_size
-	zoom_image.position = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
+	zoom_image.position = (UIKit.screen_size() - disp_size) / 2.0
 
 
 func _hide_zoom() -> void:

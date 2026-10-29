@@ -15,6 +15,8 @@ extends Node
 #   --turn-limit=N      abort a match that reaches this turn (default 120; it counts each player's turn) — catches stall loops
 #   --timescale=N       Engine.time_scale (default 4; --watch uses 1)
 #   --watch             normal-looking speed so a person can follow it
+#   --snap=N            with --watch: save a screenshot of the match every N real seconds to the run folder
+#                       (snap_001.png ...), for checking the layout at a window shape set with --resolution WxH
 #   --stack=UID         stacked deck for the BOT: its opening hand is UID's whole evolution line plus the Energy its
 #                       untested attack costs (the rest of that Energy is drawn next; the Prizes get filler). Use to
 #                       reach expensive attacks a shuffled deck rarely powers up, e.g. --stack=ex15-100 --matches=10
@@ -54,6 +56,9 @@ var opt_cards: Array = []
 var opt_turn_limit := 120
 var opt_timescale := 4.0
 var opt_watch := false
+var opt_snap := 0.0                # --snap=N: screenshot every N real seconds (layout checks)
+var _snap_clock := 0.0
+var _snap_count := 0
 var opt_stack := ""
 var opt_strict := false
 const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")
@@ -244,6 +249,7 @@ func _parse_args() -> void:
 				opt_watch = true
 				opt_timescale = 1.0
 			"strict": opt_strict = true
+			"snap": opt_snap = float(v)
 			"tune":
 				opt_tune = true
 				opt_real = true
@@ -427,6 +433,7 @@ func _play_match(i: int) -> void:
 	while not match_done:
 		await get_tree().process_frame
 		_watch(get_process_delta_time())
+		_maybe_snap()
 
 	_drain_errors()
 	_cpu_close_turn()
@@ -1201,6 +1208,21 @@ func report_stuck(kind: String, detail: String) -> void:
 
 
 # ───────────────────────────── watchdog + invariants ─────────────────────────────
+
+## --snap: one PNG of the whole canvas every opt_snap real seconds.
+func _maybe_snap() -> void:
+	if opt_snap <= 0.0:
+		return
+	_snap_clock += get_process_delta_time() / maxf(Engine.time_scale, 0.001)
+	if _snap_clock < opt_snap:
+		return
+	_snap_clock = 0.0
+	_snap_count += 1
+	var img := get_viewport().get_texture().get_image()
+	var path := run_dir + "snap_%03d.png" % _snap_count
+	img.save_png(path)
+	print("AUTOTEST SNAP: ", ProjectSettings.globalize_path(path), " canvas ", get_viewport().get_visible_rect().size)
+
 
 func _watch(delta: float) -> void:
 	if match_done or not is_instance_valid(current_main):

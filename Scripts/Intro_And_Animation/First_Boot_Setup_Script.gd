@@ -3,8 +3,11 @@ extends Control
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 const SPRITE_FOLDER := "res://Image_Assets/Character_Sprites/In_Battle_Sprites"
-const CELL_SIZE     := Vector2(260, 260)  # SQUARE cell — makes minf constrain all sprites to same height
-const COLUMNS       := 6
+const CELL_SIZE_BASE := Vector2(260, 260)  # SQUARE cell — makes minf constrain all sprites to same height
+## Live: grown with UIKit.item_scale() and fitted to the screen width (see the sprite grid).
+var CELL_SIZE         := CELL_SIZE_BASE
+const COLUMNS_BASE  := 6
+var COLUMNS           := COLUMNS_BASE
 const H_SEP         := 15
 const V_SEP         := 15
 
@@ -119,10 +122,17 @@ func _build_ui() -> void:
 	_dob_box = _make_field("Birthday (DD/MM)", 5, DOB_W, DOB_Y, FIELD_FONT - 2)
 
 	# ── Sprite grid ──────────────────────────────────────────
-	# Width = 6 x 260 + 5 x 15 = 1635 -> start x = (1920 - 1635) / 2 = 142
+	# Width = 6 x 260 + 5 x 15 = 1635 -> start x = (1920 - 1635) / 2 = 142 at 1920x1080.
+	# ANY SCREEN SHAPE: the cells grow with UIKit.item_scale() and as many columns fit as
+	# the width (less the same 142 margins) holds; the grid stays centred.
+	var fit := UIKit.fit_grid(Vector2(UIKit.screen_w() - 284.0, UIKit.content_h()), CELL_SIZE_BASE,
+		Vector2(H_SEP, V_SEP))
+	CELL_SIZE = (fit["cell"] as Vector2).floor()
+	COLUMNS = int(fit["columns"])
+	var grid_w: float = COLUMNS * CELL_SIZE.x + (COLUMNS - 1) * H_SEP + 1.0
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(142, GRID_Y)
-	scroll.size = Vector2(1636, UIKit.CONTENT_BOTTOM - GRID_Y - 18.0)
+	scroll.position = Vector2((UIKit.screen_w() - grid_w) * 0.5, GRID_Y)
+	scroll.size = Vector2(grid_w, UIKit.content_bottom() - GRID_Y - 18.0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	_pages[0].add_child(scroll)
@@ -158,7 +168,7 @@ func _build_ui() -> void:
 func _make_field(placeholder: String, max_len: int, w: float, y: float,
 		font_size: int) -> LineEdit:
 	var box := LineEdit.new()
-	box.position = Vector2(960.0 - w * 0.5, y)
+	box.position = Vector2(UIKit.screen_w() * 0.5 - w * 0.5, y)
 	box.size = Vector2(w, FIELD_H)
 	box.custom_minimum_size = box.size
 	box.max_length = max_len
@@ -484,7 +494,7 @@ func _new_page(page_name: String) -> Control:
 	var page := Control.new()
 	page.name = page_name
 	page.position = Vector2.ZERO
-	page.size = Vector2(UIKit.SCREEN_W, UIKit.SCREEN_H)
+	page.size = Vector2(UIKit.screen_w(), UIKit.screen_h())
 	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(page)
 	return page
@@ -511,7 +521,7 @@ func _build_familiarity_page() -> void:
 	var accents := [good, good.lerp(warn, 0.5), warn, UITheme.col("danger")]
 
 	var count: int = FAMILIARITY_ANSWERS.size()
-	var w: float = (UIKit.SCREEN_W - FAM_SIDE * 2.0 - FAM_GAP * (count - 1)) / count
+	var w: float = (UIKit.screen_w() - FAM_SIDE * 2.0 - FAM_GAP * (count - 1)) / count
 	for i in count:
 		var holder := _build_answer_column(Vector2(w, FAM_BOTTOM - FAM_TOP), accents[i],
 			FAMILIARITY_ANSWERS[i], ANSWER_FONT, FAMILIARITY_ROWS[i],
@@ -535,13 +545,13 @@ func _build_hard_mode_page() -> void:
 	# they are being asked. Filled in each time the page opens.
 	var chip_row := CenterContainer.new()
 	chip_row.position = Vector2(0.0, MODE_CHIP_Y)
-	chip_row.size = Vector2(UIKit.SCREEN_W, 40.0)
+	chip_row.size = Vector2(UIKit.screen_w(), 40.0)
 	chip_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(chip_row)
 	_mode_context_chip = chip_row
 
 	var accents := [UITheme.col("good"), UITheme.col("danger")]
-	var left: float = (UIKit.SCREEN_W - MODE_W * 2.0 - MODE_GAP) * 0.5
+	var left: float = (UIKit.screen_w() - MODE_W * 2.0 - MODE_GAP) * 0.5
 	for i in 2:
 		var holder := _build_answer_column(Vector2(MODE_W, MODE_BOTTOM - MODE_TOP), accents[i],
 			MODE_TITLES[i], MODE_TITLE_FONT, MODE_ROWS[i], _on_mode_clicked.bind(i == 1))
@@ -556,7 +566,7 @@ func _build_hard_mode_page() -> void:
 	note.add_theme_color_override("font_color", UITheme.col("field_mute"))
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.position = Vector2(0.0, MODE_NOTE_Y)
-	note.size = Vector2(UIKit.SCREEN_W, 40.0)
+	note.size = Vector2(UIKit.screen_w(), 40.0)
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(note)
 
@@ -579,7 +589,7 @@ func _add_heading(page: Control, text: String) -> void:
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	heading.position = Vector2(0.0, HEADING_Y)
-	heading.size = Vector2(UIKit.SCREEN_W, HEADING_H)
+	heading.size = Vector2(UIKit.screen_w(), HEADING_H)
 	heading.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(heading)
 

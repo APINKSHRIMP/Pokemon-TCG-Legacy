@@ -57,7 +57,7 @@ static func show_popup(parent: Node,
 	title_lbl.add_theme_font_size_override("font_size", 44)
 	title_lbl.add_theme_color_override("font_color", Color.WHITE)
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_lbl.position = Vector2(200, 25)
+	title_lbl.position = Vector2((UIKit.screen_w() - 1520.0) * 0.5, 25)
 	title_lbl.size     = Vector2(1520, 60)
 	title_lbl.z_index  = 10
 	overlay.add_child(title_lbl)
@@ -80,7 +80,7 @@ static func show_popup(parent: Node,
 		body_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
 		body_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		body_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		body_lbl.position = Vector2(200, 90)
+		body_lbl.position = Vector2((UIKit.screen_w() - 1520.0) * 0.5, 90)
 		body_lbl.size     = Vector2(1520, 130)
 		body_lbl.z_index  = 10
 		overlay.add_child(body_lbl)
@@ -88,11 +88,16 @@ static func show_popup(parent: Node,
 
 	var grid_top := 95.0 + body_height + 15.0
 	var grid_bottom_margin := 110.0
-	var grid_height := 1080.0 - grid_top - grid_bottom_margin
+	var grid_height := UIKit.screen_h() - grid_top - grid_bottom_margin
 
 	var scroll := ScrollContainer.new()
 	scroll.position = Vector2(5, grid_top)
-	scroll.size = Vector2(1910, grid_height)
+	scroll.size = Vector2(UIKit.screen_w() - 10.0, grid_height)
+	# The cards grow with the screen and as many columns fit as the width holds.
+	var fit := UIKit.fit_grid(Vector2(COLUMNS * CARD_SIZE.x + (COLUMNS - 1) * CARD_H_SEP + UIKit.screen_extra().x,
+		grid_height), CARD_SIZE,
+		Vector2(CARD_H_SEP, CARD_V_SEP))
+	var card_size: Vector2 = (fit["cell"] as Vector2).floor()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_AUTO
 	scroll.clip_contents = true
@@ -108,7 +113,7 @@ static func show_popup(parent: Node,
 	scroll.add_child(margin)
 
 	var grid := GridContainer.new()
-	grid.columns = COLUMNS
+	grid.columns = int(fit["columns"])
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", CARD_H_SEP)
 	grid.add_theme_constant_override("v_separation", CARD_V_SEP)
@@ -122,8 +127,8 @@ static func show_popup(parent: Node,
 			card_texture = load(tex_path)
 		if card_texture != null:
 			card_rect.texture = card_texture
-		card_rect.custom_minimum_size = CARD_SIZE
-		card_rect.size = CARD_SIZE
+		card_rect.custom_minimum_size = card_size
+		card_rect.size = card_size
 		card_rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
 		card_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		card_rect.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -134,7 +139,7 @@ static func show_popup(parent: Node,
 	var close_btn := Button.new()
 	close_btn.text = "close"
 	close_btn.custom_minimum_size = Vector2(226, 63)
-	close_btn.position = Vector2(1689, 1003)
+	close_btn.position = Vector2(1689, 1003) + UIKit.screen_extra()
 	close_btn.z_index = 20
 	var red_theme = UIKit.button_theme("negative")   # ISSUE #379: Close backs out, it destroys nothing
 	if red_theme:

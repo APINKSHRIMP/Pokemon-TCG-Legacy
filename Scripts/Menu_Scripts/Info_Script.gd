@@ -91,7 +91,8 @@ const LEFT_TOP_H     := BOX_Y + BOX_H - LEFT_Y
 const LEFT_BOT_Y     := SETS_Y
 const LEFT_BOT_H     := SETS_H
 const RIGHT_X        := 518.0
-const RIGHT_W        := 1368.0
+## Live: the right column takes all of a wider screen's extra width (see _ready).
+var RIGHT_W          := 1368.0 + UIKit.screen_extra().x
 
 ## ISSUE #203: EVERY font on this screen is 50% larger except the "Trainer card"
 ## title in the header and the button labels — those two are chrome and take their
@@ -287,7 +288,7 @@ func _build_chrome() -> void:
 	# stats_control is the parent every stat panel is added to; it spans the whole
 	# content band now rather than the nine painted bars it used to sit on.
 	stats_control.position = Vector2.ZERO
-	stats_control.size = Vector2(UIKit.SCREEN_W, UIKit.SCREEN_H)
+	stats_control.size = UIKit.screen_size()
 	# ISSUE #201: THIS IS WHY THE NAME BOX COULD NOT BE CLICKED. stats_control now
 	# spans the whole screen, it is a later sibling than player_name, and Godot
 	# picks GUI input by walking siblings in REVERSE order — so a Control with the

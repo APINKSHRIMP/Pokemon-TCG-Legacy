@@ -157,10 +157,14 @@ func _compute_card_layout() -> Rect2:
 	if cardback_tex != null and cardback_tex.get_height() > 0:
 		cb_aspect = float(cardback_tex.get_width()) / float(cardback_tex.get_height())
 
-	if cb_aspect >= CARD_DISPLAY_SIZE.x / CARD_DISPLAY_SIZE.y:
-		_actual_card_size = Vector2(CARD_DISPLAY_SIZE.x, CARD_DISPLAY_SIZE.x / cb_aspect)
+	# ANY SCREEN SHAPE: the card grows with UIKit.item_scale(), but never taller than the
+	# design's share of the screen height (a 32:9 screen is no taller, so it stays put).
+	var display: Vector2 = CARD_DISPLAY_SIZE * minf(UIKit.item_scale(),
+		viewport_size.y / UIKit.SCREEN_H)
+	if cb_aspect >= display.x / display.y:
+		_actual_card_size = Vector2(display.x, display.x / cb_aspect)
 	else:
-		_actual_card_size = Vector2(CARD_DISPLAY_SIZE.y * cb_aspect, CARD_DISPLAY_SIZE.y)
+		_actual_card_size = Vector2(display.y * cb_aspect, display.y)
 
 	_card_pos = (viewport_size - _actual_card_size) / 2.0
 	return Rect2(_card_pos, _actual_card_size)

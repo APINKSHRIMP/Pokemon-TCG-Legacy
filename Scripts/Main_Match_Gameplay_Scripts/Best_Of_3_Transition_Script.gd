@@ -168,7 +168,7 @@ func _build_title(current_round: int, result: String) -> void:
 # counting them.
 func _build_slots(round_results: Array) -> void:
 	var row_w := SLOT_D * 3.0 + SLOT_GAP * 2.0
-	var left := BattleFrame.COL_BADGE_X - row_w * 0.5
+	var left := BattleFrame.col_badge_x() - row_w * 0.5
 	# The slots are taller than a chip but shorter than the badge, so they are
 	# centred in the badge slot rather than filling it.
 	var top := (frame.badge_slot.size.y - SLOT_D) * 0.5

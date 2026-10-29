@@ -468,6 +468,9 @@ var _end_turn_btn : Button = null
 ## ISSUE #239: the two attachment-row captions per side, so #212 can hide them
 ## with the rest of the board furniture.
 var _attach_captions: Array = []
+## Every caption the layout builds, by a fixed key, so a re-layout after a window
+## resize moves the existing label instead of adding a second one.
+var _board_captions: Dictionary = {}
 # The board captions follow the Options "Board labels" row (GameState.board_labels_on()),
 # not the tutorial: the Energy/Tools captions above, the Stadium captions and the ones
 # _apply_board_labels() adds all show only while it is on.
@@ -678,12 +681,14 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 	# The white zone is the usable display area between the hint label bottom and the action buttons.
 	# Screen height = 816. Hint label bottom ≈ 165. Button top ≈ 771. Padding = 20px each side.
 	# This gives a usable content height of ~586px and a center at y ≈ 468.
+	# On a taller screen the zone's bottom drops by the extra height, so a row of big
+	# cards has more room before it is shrunk to fit.
 	const WHITE_ZONE_TOP: float = 165.0
-	const WHITE_ZONE_BOTTOM: float = 771.0
-	const WHITE_ZONE_CENTER_Y: float = (WHITE_ZONE_TOP + WHITE_ZONE_BOTTOM) / 2.0  # ≈ 468
-	const WHITE_ZONE_HEIGHT: float = WHITE_ZONE_BOTTOM - WHITE_ZONE_TOP            # = 606
+	var WHITE_ZONE_BOTTOM: float = 771.0 + UIKit.screen_extra().y
+	var WHITE_ZONE_CENTER_Y: float = (WHITE_ZONE_TOP + WHITE_ZONE_BOTTOM) / 2.0  # ≈ 468 at 1080
+	var WHITE_ZONE_HEIGHT: float = WHITE_ZONE_BOTTOM - WHITE_ZONE_TOP            # = 606 at 1080
 	const ZONE_PADDING: float = 20.0
-	const USABLE_HEIGHT: float = WHITE_ZONE_HEIGHT - (ZONE_PADDING * 2.0)          # = 566
+	var USABLE_HEIGHT: float = WHITE_ZONE_HEIGHT - (ZONE_PADDING * 2.0)          # = 566 at 1080
 	
 	if amount_of_cards_to_show > 7:
 		# Large scroller: use fixed card_scales[5] as before — scroller handles overflow.
@@ -846,7 +851,7 @@ func _layout_bottom_buttons() -> void:
 	_bottom_buttons_layout_queued = false
 	if action_button == null or cancel_button == null:
 		return
-	var centre_x: float = 1920.0 * 0.5
+	var centre_x: float = UIKit.screen_w() * 0.5
 	var a_on: bool = action_button.visible
 	var c_on: bool = cancel_button.visible
 	if a_on and c_on:
@@ -1079,6 +1084,14 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 		hand_container.remove_child(child)
 		child.queue_free()
 		
+	# The two hands on the bars take the width their boxes actually have, which grows
+	# on a wider screen - so more cards sit side by side before they start to overlap.
+	if hand_container == player_hand_container or hand_container == opponent_hand_container:
+		var box_w: float = PLAYER_HAND_W if hand_container == player_hand_container else OPP_HAND_W - 20.0
+		max_hand_width = maxf(max_hand_width, box_w)
+		var fits: int = int(floor((box_w + HAND_SEPARATION) / maxf(card_size.x + HAND_SEPARATION, 1.0)))
+		max_before_overlap = maxi(max_before_overlap, fits)
+
 	if hand_container is HBoxContainer:
 		var is_inside_scroller = hand_container.get_parent() is ScrollContainer
 		if not is_inside_scroller and hand.size() > max_before_overlap:
@@ -1185,20 +1198,31 @@ func display_hand_cards_array(hand: Array, hand_container, card_size: Vector2, f
 # you, so their piles are diagonally opposite yours: your deck is bottom-right,
 # theirs is top-left. Reading it as a vertical mirror is the easy mistake.
 #
-# Everything here is absolute at 1920x1080 and applied in _build_board_layout(),
-# which runs once. The scene's own offsets are overwritten wholesale - do not try
-# to keep the two in step, the scene is only a node list now.
+# The numbers here are the 1920x1080 DESIGN. _build_board_layout() applies them,
+# and the scene's own offsets are overwritten wholesale - do not try to keep the
+# two in step, the scene is only a node list now.
+#
+# ── ANY SCREEN SHAPE ─────────────────────────────────────────
+# The canvas is never smaller than 1920x1080 but can be wider (ultrawide) or
+# taller (16:10) - see UIKit.screen_size(). The board PINS rather than scales:
+#   the rails stick to the left/right screen edges (piles and prizes in the corners),
+#   the top bar furniture sticks to the top, the footer and your bench/hand to the bottom,
+#   the benches, the duel row, the stadium and your hand stay centred,
+#   and the extra height goes to the field, with the duel row centred in it.
+# Every value that depends on the screen is a VAR, set in _compute_board_metrics()
+# (the *_BASE consts are their 1920x1080 values). The layout re-runs when the
+# window changes size (_on_board_screen_resized).
 # ============================================================
 
 const BOARD_TOP_H    := 92.0
 const BOARD_BOT_H    := 162.0
 const FIELD_TOP      := BOARD_TOP_H
-const FIELD_BOT      := 1080.0 - BOARD_BOT_H
+var FIELD_BOT        := 1080.0 - BOARD_BOT_H
 
 const RAIL_W         := 180.0
 const RAIL_PAD       := 29.0
 const LEFT_RAIL_X    := RAIL_PAD
-const RIGHT_RAIL_X   := 1920.0 - RAIL_PAD - RAIL_W
+var RIGHT_RAIL_X     := 1920.0 - RAIL_PAD - RAIL_W
 
 ## Deck and discard piles: SIDE BY SIDE, never stacked. 77x107 with 13 between.
 const PILE_SIZE      := Vector2(77.0, 107.0)
@@ -1209,7 +1233,7 @@ const PILE_TOP_Y     := 132.0    # opponent's, in the left rail
 ## from the footer so the two stay in step: pile bottom sits PILE_FOOT_GAP above
 ## the 162px match footer, and its caption rides 26px above the pile.
 const PILE_FOOT_GAP  := 5.0
-const PILE_BOT_Y     := 1080.0 - BOARD_BOT_H - PILE_FOOT_GAP - PILE_SIZE.y
+var PILE_BOT_Y       := 1080.0 - BOARD_BOT_H - PILE_FOOT_GAP - PILE_SIZE.y
 
 ## Prize cards: 3 x 2 of the owner's sleeve. Taken ones stay in place, greyed -
 ## the count is spatial.
@@ -1250,7 +1274,7 @@ const PRIZE_TOP_Y    := 132.0    # opponent's, in the right rail
 ## from the footer exactly like PILE_BOT_Y beside it, so a change to either the
 ## footer height or the card size keeps the gap.
 const PRIZE_FOOT_GAP := 5.0
-const PRIZE_BOT_Y    := 1080.0 - BOARD_BOT_H - PRIZE_FOOT_GAP - PRIZE_SIZE.y
+var PRIZE_BOT_Y      := 1080.0 - BOARD_BOT_H - PRIZE_FOOT_GAP - PRIZE_SIZE.y
 ## ISSUE #247: how far each side's whole column - active card, HP, damage
 ## counters, status icons, action rows and attachment stacks - moves OUTWARD from
 ## the centre line. It buys clearance from the bench rows above and below, whose
@@ -1287,14 +1311,16 @@ const BENCH_GAP      := 22
 const BENCH_ROW_H    := BENCH_CARD.y + 44.0
 ## ISSUE #259: +10.
 const OPP_BENCH_Y    := 116.0
-const PLAYER_BENCH_Y := 1080.0 - BOARD_BOT_H - 5.0 - BENCH_ROW_H
+var PLAYER_BENCH_Y   := 1080.0 - BOARD_BOT_H - 5.0 - BENCH_ROW_H
 
 ## The duel row. Seven columns; see the diagram above. You are on the LEFT.
 ## ISSUE #219: 470 -> 486. The opponent's bench damage counters hang 22px below
 ## their cards (dmg_bench_drop) and the top of the active card was landing on
 ## them. There is spare field under the actives, so the whole duel row drops 16px
 ## rather than the counters moving up into the card art.
-const DUEL_MID_Y     := 486.0
+const DUEL_MID_Y_BASE := 486.0
+## On a taller screen it moves down by half the extra height, staying centred in the field.
+var DUEL_MID_Y       := DUEL_MID_Y_BASE
 ## ISSUE #267: THE CARD IS BIGGER THAN ITS COLUMN, ON PURPOSE.
 ##
 ## +15% (230x319 -> 265x367), and it has to grow INWARD - the player's active to
@@ -1338,14 +1364,20 @@ const DUEL_GAP        := 10.5
 
 ## Top and bottom bar furniture.
 const HAND_X         := 40.0
-const PLAYER_HAND_Y  := 936.0
+const PLAYER_HAND_Y_BASE := 936.0
+var PLAYER_HAND_Y    := PLAYER_HAND_Y_BASE
 ## ISSUE #244: the player's hand is CENTRED on the footer rather than starting at
 ## HAND_X. It was laid out as a 1300px box at x=40, so its middle sat at x=690 -
 ## 270px left of the screen centre, which is the "might as well be central".
-const PLAYER_HAND_W  := 1300.0
-const PLAYER_HAND_X  := (1920.0 - PLAYER_HAND_W) * 0.5
-## The opponent's fan is centred on its own box the same way.
-const OPP_HAND_W     := 420.0
+## On a wider screen the box takes ALL the extra width, so more cards fit before
+## they start to overlap (display_hand_cards_array reads it).
+const PLAYER_HAND_W_BASE := 1300.0
+var PLAYER_HAND_W    := PLAYER_HAND_W_BASE
+var PLAYER_HAND_X    := (1920.0 - PLAYER_HAND_W) * 0.5
+## The opponent's fan is centred on its own box the same way. It takes HALF the
+## extra width - it runs from the top-left corner towards the turn chip in the middle.
+const OPP_HAND_W_BASE := 420.0
+var OPP_HAND_W       := OPP_HAND_W_BASE
 ## The stadium sits in the centre column between the two Active Pokemon now (it used
 ## to be in the header's top-right corner, ISSUE #266): the OPPONENT's slot above the
 ## top divider rule and YOURS below the bottom one, with the "Your / Their turn" label
@@ -1379,9 +1411,85 @@ const OPP_HAND_Y     := (BOARD_TOP_H - OPP_HAND_CARD.y) * 0.5
 const OPP_HAND_X     := HAND_X
 
 
+## Sets every screen-dependent board value from the live canvas size. See the
+## ANY SCREEN SHAPE note at the top of BOARD LAYOUT.
+func _compute_board_metrics() -> void:
+	var s: Vector2 = UIKit.screen_size()
+	var extra: Vector2 = UIKit.screen_extra()
+	FIELD_BOT = s.y - BOARD_BOT_H
+	RIGHT_RAIL_X = s.x - RAIL_PAD - RAIL_W
+	PILE_BOT_Y = s.y - BOARD_BOT_H - PILE_FOOT_GAP - PILE_SIZE.y
+	PRIZE_BOT_Y = s.y - BOARD_BOT_H - PRIZE_FOOT_GAP - PRIZE_SIZE.y
+	PLAYER_BENCH_Y = s.y - BOARD_BOT_H - 5.0 - BENCH_ROW_H
+	DUEL_MID_Y = DUEL_MID_Y_BASE + extra.y * 0.5
+	PLAYER_HAND_Y = PLAYER_HAND_Y_BASE + extra.y
+	PLAYER_HAND_W = PLAYER_HAND_W_BASE + extra.x
+	PLAYER_HAND_X = (s.x - PLAYER_HAND_W) * 0.5
+	OPP_HAND_W = OPP_HAND_W_BASE + extra.x * 0.5
+	STADIUM_DETAIL_Y = STADIUM_DETAIL_Y_BASE + extra.y * 0.5
+	SELECT_ROW_RIGHT = s.x - 20.0
+	SELECT_ROW_MAX_W = s.x - 60.0
+
+
+## How much the scene-authored nodes that the layout does NOT rebuild (the footer
+## button holder, the selection scroller, the coin flip, the trainer showcase)
+## have already been shifted for the screen. They move by the DIFFERENCE, so a
+## resize part-way through a match lands them in the same place a fresh build would.
+var _scene_nodes_extra := Vector2.ZERO
+
+func _shift_scene_nodes_for_screen() -> void:
+	var extra: Vector2 = UIKit.screen_extra()
+	var d: Vector2 = extra - _scene_nodes_extra
+	if d == Vector2.ZERO:
+		return
+	_scene_nodes_extra = extra
+	# Footer buttons: down with the footer, and half the extra width so the row they
+	# budget against (_attack_row_metrics) stays centred. _layout_bottom_buttons
+	# re-centres the pair horizontally on its own.
+	var buttons := get_node_or_null("BUTTONS")
+	if buttons is Control:
+		(buttons as Control).position += Vector2(d.x * 0.5, d.y)
+	# The big selection scroller hangs off a 40x40 stub: centre it in the extra height
+	# and widen it to the screen.
+	if selection_scroller is Control:
+		(selection_scroller as Control).position.y += d.y * 0.5
+		(selection_scroller as Control).offset_right = SELECT_ROW_RIGHT
+	# The coin and the trainer showcase card sit mid-screen.
+	if coin_container is Control:
+		(coin_container as Control).position += d * 0.5
+	if played_trainer_container != null and is_instance_valid(played_trainer_container):
+		played_trainer_container.position += d * 0.5
+	print("SCREEN LAYOUT: match scene nodes shifted by ", d, " (canvas ", UIKit.screen_size(), ")")
+
+
+## The window changed size mid-match (Options, or a resized window): lay the board
+## out again. Every _place_* function is safe to re-run - each one reuses the nodes
+## it built the first time.
+func _on_board_screen_resized() -> void:
+	if not is_inside_tree():
+		return
+	_compute_board_metrics()
+	_place_duel_row()
+	_place_rails()
+	_place_benches()
+	_place_bars()
+	_place_turn_divider()
+	_style_selection_labels()
+	_style_trainer_screen()
+	_shift_scene_nodes_for_screen()
+	if _board_labels_built:
+		_build_board_labels()
+		refresh_board_labels()
+	if _match_msgbox != null and is_instance_valid(_match_msgbox):
+		_match_msgbox.set_panel_bottom(UIKit.screen_h() - (BOARD_BOT_H - MATCH_MSGBOX_HEIGHT) * 0.5)
+	refresh_both_hands()
+	queue_bottom_buttons_layout()
+
+
 ## Lays the whole board out and swaps the old scrolling background for the new
 ## chrome. Called once from _ready.
 func _build_board_layout() -> void:
+	_compute_board_metrics()
 	# The old background was a scrolling border texture behind everything. The
 	# field and the two bars replace it; the match footer is the 162px variant,
 	# which is the ONLY place in the game that uses it.
@@ -1410,6 +1518,8 @@ func _build_board_layout() -> void:
 	_raise_bar_content()
 	_style_trainer_screen()
 	_fix_button_pick_order()
+	_shift_scene_nodes_for_screen()
+	UIKit.on_screen_resized(_on_board_screen_resized)
 
 
 ## ISSUE #246: SOMETHING WAS EATING THE RIGHT HALF OF THE ACTION BUTTON.
@@ -1530,8 +1640,8 @@ func _style_trainer_screen() -> void:
 	var old_top: float = trainer_block_container.offset_top
 	trainer_block_container.offset_left   = 0.0
 	trainer_block_container.offset_top    = 0.0
-	trainer_block_container.offset_right  = 1920.0
-	trainer_block_container.offset_bottom = 1080.0
+	trainer_block_container.offset_right  = UIKit.screen_w()
+	trainer_block_container.offset_bottom = UIKit.screen_h()
 	# The card container is positioned RELATIVE to the rect that just moved, so it
 	# is pushed back down by the same amount and lands where it always did.
 	if played_trainer_container != null and is_instance_valid(played_trainer_container):
@@ -1628,7 +1738,7 @@ func _place_duel_row() -> void:
 	# attack buttons instead.
 	var total := (DUEL_COL_ATTACH * 2.0 + DUEL_COL_INFO * 2.0 + ACTIVE_COL_W * 2.0
 		+ DUEL_COL_DIVIDE + DUEL_GAP * 6.0)
-	var x := (1920.0 - total) * 0.5
+	var x := (UIKit.screen_w() - total) * 0.5
 
 	# ISSUE #247: EVERY column on the player's side moves DUEL_SIDE_SHIFT left and
 	# every column on the opponent's the same distance right. The bench rows sit
@@ -1681,10 +1791,10 @@ func _place_duel_row() -> void:
 	# ISSUE #239: the attachment rows get captions, like the prizes and the piles
 	# already had. Without one a lone Rainbow Energy beside the active reads as a
 	# loose card rather than as "what is attached to this Pokemon".
-	_add_attach_caption("Energy cards", you_attach_row_x, active_y + ATTACH_ENERGY_DY, false)
-	_add_attach_caption("Tools", you_attach_row_x, active_y + ATTACH_TOOL_DY, false)
-	_add_attach_caption("Energy cards", opp_attach_row_x, active_y + ATTACH_ENERGY_DY, true)
-	_add_attach_caption("Tools", opp_attach_row_x, active_y + ATTACH_TOOL_DY, true)
+	_add_attach_caption("Energy cards", you_attach_row_x, active_y + ATTACH_ENERGY_DY, false, "you_energy")
+	_add_attach_caption("Tools", you_attach_row_x, active_y + ATTACH_TOOL_DY, false, "you_tools")
+	_add_attach_caption("Energy cards", opp_attach_row_x, active_y + ATTACH_ENERGY_DY, true, "opp_energy")
+	_add_attach_caption("Tools", opp_attach_row_x, active_y + ATTACH_TOOL_DY, true, "opp_tools")
 
 	# ISSUE #233: HP blocks and status chips share the ACTION PANEL's left edge
 	# rather than the whole info column's, so the readout, the counters and the
@@ -1715,10 +1825,10 @@ func _place_duel_row() -> void:
 	var panel_h := maxf(ACTIVE_CARD.y - ACTION_PANEL_TOP + ACTION_PANEL_OVERHANG, rows_h)
 	# ISSUE #223 / #216: ACTION_PANEL_W wide, pinned to the side of the info column
 	# that touches the active card — right for you, left for the opponent.
-	_player_action_panel = _make_action_holder(
+	_player_action_panel = _make_action_holder(_player_action_panel,
 		Vector2(you_info_x + DUEL_COL_INFO - ACTION_PANEL_W, panel_top),
 		Vector2(ACTION_PANEL_W, panel_h))
-	_opp_action_panel = _make_action_holder(Vector2(opp_info_x, panel_top),
+	_opp_action_panel = _make_action_holder(_opp_action_panel, Vector2(opp_info_x, panel_top),
 		Vector2(ACTION_PANEL_W, panel_h))
 
 
@@ -1728,13 +1838,19 @@ func _place_duel_row() -> void:
 ## opponent - so the caption is anchored at the row origin and grows the same
 ## way, or it would sit over the board on one side and off the screen on the
 ## other. Registered as board furniture so a selection screen hides it (#212).
-func _add_attach_caption(text: String, row_x: float, row_y: float, is_opponent: bool) -> void:
+func _add_attach_caption(text: String, row_x: float, row_y: float, is_opponent: bool,
+		key: String) -> void:
+	var pos := Vector2(row_x if is_opponent else row_x + ATTACH_CARD_SIZE.x - ATTACH_CAPTION_W,
+		row_y - ATTACH_CAPTION_DY)
+	if _board_captions.has(key) and is_instance_valid(_board_captions[key]):
+		(_board_captions[key] as Control).position = pos
+		return
 	var lbl := Label.new()
 	lbl.theme = null
 	UIKit.set_label(lbl, "small_label", text, "field_mute")
 	lbl.size = Vector2(ATTACH_CAPTION_W, 22.0)
-	lbl.position = Vector2(row_x if is_opponent else row_x + ATTACH_CARD_SIZE.x - ATTACH_CAPTION_W,
-		row_y - ATTACH_CAPTION_DY)
+	lbl.position = pos
+	_board_captions[key] = lbl
 	lbl.horizontal_alignment = (HORIZONTAL_ALIGNMENT_LEFT if is_opponent
 		else HORIZONTAL_ALIGNMENT_RIGHT)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1784,37 +1900,47 @@ func refresh_board_labels() -> void:
 
 func _build_board_labels() -> void:
 	# "Attacks", centred over each action panel, just above its first row.
-	for panel in [_player_action_panel, _opp_action_panel]:
+	var panel_keys := ["attacks_you", "attacks_opp"]
+	var panels := [_player_action_panel, _opp_action_panel]
+	for i in panels.size():
+		var panel: Control = panels[i]
 		if panel == null or not is_instance_valid(panel):
 			continue
 		_add_tutorial_caption("Attacks",
 			Vector2(panel.position.x, panel.position.y - TUT_CAPTION_H - TUT_ATTACKS_GAP),
-			panel.size.x, HORIZONTAL_ALIGNMENT_CENTER)
+			panel.size.x, HORIZONTAL_ALIGNMENT_CENTER, "field_mute", false, panel_keys[i])
 
 	# "Opponent's hand" where the fan started; the fan moves right to make room.
 	_add_tutorial_caption("Opponent's hand",
 		Vector2(OPP_HAND_X, OPP_HAND_Y + (OPP_HAND_CARD.y - TUT_CAPTION_H) * 0.5),
-		TUT_OPP_HAND_SHIFT - 10.0, HORIZONTAL_ALIGNMENT_LEFT, "chrome_fg", true)
+		TUT_OPP_HAND_SHIFT - 10.0, HORIZONTAL_ALIGNMENT_LEFT, "chrome_fg", true, "opp_hand")
 
 	# "Your hand", just above the footer, over the middle of the hand.
 	_add_tutorial_caption("Your hand",
-		Vector2(PLAYER_HAND_X, 1080.0 - BOARD_BOT_H - TUT_CAPTION_H - TUT_HAND_LABEL_GAP),
-		PLAYER_HAND_W, HORIZONTAL_ALIGNMENT_CENTER)
+		Vector2(PLAYER_HAND_X, UIKit.screen_h() - BOARD_BOT_H - TUT_CAPTION_H - TUT_HAND_LABEL_GAP),
+		PLAYER_HAND_W, HORIZONTAL_ALIGNMENT_CENTER, "field_mute", false, "your_hand")
 
 	# The benches: over the middle slot, drawn above whatever is attached there.
 	var row_w := BENCH_CARD.x * 5.0 + float(BENCH_GAP) * 4.0
-	var bench_x := (1920.0 - row_w) * 0.5
+	var bench_x := (UIKit.screen_w() - row_w) * 0.5
 	_add_tutorial_caption("Your bench",
 		Vector2(bench_x, PLAYER_BENCH_Y - TUT_CAPTION_H - TUT_BENCH_LABEL_GAP),
-		row_w, HORIZONTAL_ALIGNMENT_CENTER, "field_mute", true)
+		row_w, HORIZONTAL_ALIGNMENT_CENTER, "field_mute", true, "your_bench")
 	_add_tutorial_caption("Opponent's bench",
 		Vector2(bench_x, OPP_BENCH_Y - TUT_CAPTION_H - TUT_BENCH_LABEL_GAP),
-		row_w, HORIZONTAL_ALIGNMENT_CENTER, "field_mute", true)
+		row_w, HORIZONTAL_ALIGNMENT_CENTER, "field_mute", true, "opp_bench")
 
 
 func _add_tutorial_caption(text: String, pos: Vector2, width: float, align: int,
-		colour_key: String = "field_mute", on_top: bool = false) -> void:
+		colour_key: String = "field_mute", on_top: bool = false, key: String = "") -> void:
+	if key != "" and _board_captions.has(key) and is_instance_valid(_board_captions[key]):
+		var existing := _board_captions[key] as Control
+		existing.position = pos
+		existing.size = Vector2(width, TUT_CAPTION_H)
+		return
 	var lbl := Label.new()
+	if key != "":
+		_board_captions[key] = lbl
 	lbl.theme = null
 	UIKit.set_label(lbl, "small_label", text, colour_key)
 	lbl.size = Vector2(width, TUT_CAPTION_H)
@@ -1860,7 +1986,7 @@ func _place_rails() -> void:
 	# clamped to PRIZE_EDGE_PAD, which lets it overhang INWARD into the empty band
 	# beside the rail instead.
 	var opp_prize_x: float = minf(RIGHT_RAIL_X + (RAIL_W - prize_row_w) * 0.5,
-		1920.0 - PRIZE_EDGE_PAD - prize_row_w)
+		UIKit.screen_w() - PRIZE_EDGE_PAD - prize_row_w)
 	var you_prize_x: float = maxf(LEFT_RAIL_X + (RAIL_W - prize_row_w) * 0.5, PRIZE_EDGE_PAD)
 	_set_rect(opponent_prize_container, Vector2(opp_prize_x, PRIZE_TOP_Y),
 		Vector2(prize_row_w, prize_h))
@@ -1900,7 +2026,7 @@ func _place_rail_label(lbl: Label, text: String, x: float, y: float, w: float = 
 ## Five slots each, centred, opponent above and you below.
 func _place_benches() -> void:
 	var row_w := BENCH_CARD.x * 5.0 + float(BENCH_GAP) * 4.0
-	var x := (1920.0 - row_w) * 0.5
+	var x := (UIKit.screen_w() - row_w) * 0.5
 	for c in [opponent_bench_container, player_bench_container]:
 		if c is HBoxContainer:
 			(c as HBoxContainer).add_theme_constant_override("separation", BENCH_GAP)
@@ -1910,6 +2036,8 @@ func _place_benches() -> void:
 	_set_rect(player_bench_container, Vector2(x, PLAYER_BENCH_Y),
 		Vector2(row_w, BENCH_ROW_H))
 
+
+var _bars_styled := false
 
 ## Hands, turn chip and stadium, on the two chrome bars.
 func _place_bars() -> void:
@@ -1934,9 +2062,12 @@ func _place_bars() -> void:
 		(opponent_hand_container as HBoxContainer).alignment = BoxContainer.ALIGNMENT_BEGIN
 
 	# The stadium slots are placed by _place_turn_divider(), which owns the centre column.
-	print("ISSUE #269 FIX ACTIVE: opponent hand cards ", OPP_HAND_CARD,
-		" at y ", OPP_HAND_Y, " - header ", BOARD_TOP_H,
-		", so ", OPP_HAND_Y, "px clear above and below")
+
+	# Everything below restyles and nudges scene nodes by a fixed amount, so it runs
+	# ONCE - a re-layout after a window resize must not lift the buttons a second time.
+	if _bars_styled:
+		return
+	_bars_styled = true
 
 	# ATTACK, POWER and RETREAT are gone from the footer — they are rows on the
 	# Pokemon now. Only End Turn is left, and it is REPARENTED INTO the footer bar
@@ -2001,13 +2132,13 @@ func _style_selection_labels() -> void:
 		header_label.theme = null
 		UIKit.style_label(header_label, "title", "field_fg")
 		header_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_set_rect(header_label, Vector2(0.0, SELECT_TITLE_Y), Vector2(1920.0, 44.0))
+		_set_rect(header_label, Vector2(0.0, SELECT_TITLE_Y), Vector2(UIKit.screen_w(), 44.0))
 		header_label.z_index = UIKit.Z_CHROME + 5
 	if hint_label != null and is_instance_valid(hint_label):
 		hint_label.theme = null
 		UIKit.style_label(hint_label, "subtitle", "field_mute")
 		hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_set_rect(hint_label, Vector2(0.0, SELECT_HINT_Y), Vector2(1920.0, 34.0))
+		_set_rect(hint_label, Vector2(0.0, SELECT_HINT_Y), Vector2(UIKit.screen_w(), 34.0))
 		hint_label.z_index = UIKit.Z_CHROME + 5
 
 
@@ -2015,6 +2146,16 @@ func _style_selection_labels() -> void:
 func _place_turn_divider() -> void:
 	var mid_x := _duel_divider_x + DUEL_COL_DIVIDE * 0.5
 	var half := ACTIVE_CARD.y * 0.5
+
+	# A re-layout (window resized) moves what the first pass built.
+	if _turn_divider_label != null and is_instance_valid(_turn_divider_label):
+		var dys := [-DIVIDER_RULE_H - DIVIDER_RULE_GAP, DIVIDER_RULE_GAP]
+		for i in mini(_turn_divider_rules.size(), dys.size()):
+			(_turn_divider_rules[i] as Control).position = Vector2(mid_x - DIVIDER_RULE_W * 0.5,
+				DUEL_MID_Y + float(dys[i]))
+		_turn_divider_label.position = Vector2(mid_x - DUEL_COL_DIVIDE * 0.5, DUEL_MID_Y - 34.0)
+		_place_stadium_slots(mid_x)
+		return
 
 	# ISSUE #221: SHORTER, THICKER, CLOSER. They were 2x76 rules starting 46px
 	# clear of the card, which read as two long hairlines with a caption stranded
@@ -2058,6 +2199,16 @@ func _stadium_slot_rect(is_opponent: bool) -> Rect2:
 ## "Stadium" captions. The captions are board labels: they show only while the Options
 ## "Board labels" row is on (they are registered in _attach_captions).
 func _place_stadium_slots(mid_x: float) -> void:
+	# Re-layout: move the two slots and captions the first pass built.
+	if _stadium_slots.size() == 2:
+		for i in 2:
+			var rr := _stadium_slot_rect(i == 0)
+			(_stadium_slots[i] as Control).position = rr.position
+			if i < _stadium_captions.size():
+				(_stadium_captions[i] as Control).position = Vector2(mid_x - STADIUM_CAPTION_W * 0.5,
+					rr.position.y - STADIUM_CAPTION_GAP - TUT_CAPTION_H)
+		place_stadium_card(current_stadium_owner_is_opponent)
+		return
 	for is_opp in [true, false]:
 		var r := _stadium_slot_rect(is_opp)
 		var slot := UIKit.make_slot(STADIUM_SIZE)
@@ -2177,7 +2328,7 @@ func _show_stadium_detail() -> void:
 	card.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	card.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	card.size = STADIUM_DETAIL_SIZE
-	card.position = Vector2((1920.0 - STADIUM_DETAIL_SIZE.x) * 0.5, STADIUM_DETAIL_Y)
+	card.position = Vector2((UIKit.screen_w() - STADIUM_DETAIL_SIZE.x) * 0.5, STADIUM_DETAIL_Y)
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_stadium_overlay.add_child(card)
 
@@ -2196,7 +2347,7 @@ func _show_stadium_detail() -> void:
 			y -= 56.0
 
 	var close := UIKit.make_footer_button("Close", "negative")   # ISSUE #379
-	close.position = Vector2((1920.0 - UIKit.FOOTER_BTN_W) * 0.5,
+	close.position = Vector2((UIKit.screen_w() - UIKit.FOOTER_BTN_W) * 0.5,
 		STADIUM_DETAIL_Y + STADIUM_DETAIL_SIZE.y + 24.0)
 	close.pressed.connect(_close_stadium_detail)
 	_stadium_overlay.add_child(close)
@@ -2208,8 +2359,13 @@ func _close_stadium_detail() -> void:
 	_stadium_overlay = null
 
 
-## A free-layout Control the action rows are built into.
-func _make_action_holder(pos: Vector2, holder_size: Vector2) -> Control:
+## A free-layout Control the action rows are built into. `existing` is the holder
+## from an earlier layout pass, which is moved rather than replaced.
+func _make_action_holder(existing: Control, pos: Vector2, holder_size: Vector2) -> Control:
+	if existing != null and is_instance_valid(existing):
+		existing.position = pos
+		existing.size = holder_size
+		return existing
 	var holder := Control.new()
 	holder.position = pos
 	holder.size = holder_size
@@ -2298,7 +2454,8 @@ const BENCH_POWER_FONT := 13
 
 ## The stadium reader opened by clicking the header slot.
 const STADIUM_DETAIL_SIZE := Vector2(400.0, 550.0)
-const STADIUM_DETAIL_Y    := 210.0
+const STADIUM_DETAIL_Y_BASE := 210.0
+var STADIUM_DETAIL_Y      := STADIUM_DETAIL_Y_BASE
 const STADIUM_OVERLAY_Z   := 300
 
 ## The selection screens' title and hint, just below the header bar.
@@ -2314,9 +2471,9 @@ const SELECT_HINT_Y  := 150.0
 ## anchor space. Its parent SELECTION_MODE is the usual 40x40 scene stub, so its
 ## centre anchor resolves to x = 20 - hence -20 and 1900 for a 0..1920 box.
 const SELECT_ROW_LEFT  := -20.0
-const SELECT_ROW_RIGHT := 1900.0
+var SELECT_ROW_RIGHT   := 1900.0          # screen width - 20
 ## The widest a row may be before its cards are shrunk to fit.
-const SELECT_ROW_MAX_W := 1860.0
+var SELECT_ROW_MAX_W   := 1860.0          # screen width - 60
 ## Slack left for the focus Pokemon's 1.05x blow-up and its 25px spacer.
 const SELECT_FOCUS_EXTRA := 60.0
 
@@ -2831,6 +2988,12 @@ func _set_reveal_hidden(on: bool) -> void:
 	refresh_hand_display(true)
 	display_prize_cards(true)
 	display_prize_cards(false)
+
+
+## Both hands, e.g. after the window changed size and their boxes moved.
+func refresh_both_hands() -> void:
+	refresh_hand_display(false)
+	refresh_hand_display(true)
 
 
 func refresh_hand_display(is_opponent: bool) -> void:
@@ -3679,10 +3842,8 @@ const ATTACK_BTN_FLOOR_W: float    = 120.0  # absolute floor; only reachable on 
 # Used only if the container's own offsets ever read as zero. Matches the width
 # authored in Main_Match_Core_GamePlay_Scene.tscn (offset_left -1843 -> right 57).
 const ATTACK_ROW_FALLBACK_W: float = 1900.0
-# The project's reference resolution, as used by every other code-built screen
-# (DynamicMessageBox.SCREEN_W, CardDetailPanel.SCREEN_W). The row is clamped to
-# this because the button container is authored wider than the display.
-const ATTACK_SCREEN_W: float = 1920.0
+# The row is clamped to the screen width (UIKit.screen_w(), read in
+# _attack_row_metrics) because the button container is authored wider than the display.
 # Contents scale against this width. A button at or above it draws at full size;
 # narrower buttons scale their icons, padding and fonts down proportionally.
 const ATTACK_SCALE_REF_W: float    = 420.0
@@ -3745,11 +3906,12 @@ func _attack_row_metrics() -> Dictionary:
 	#      it worked out.
 	# So: take the authored width, but clamp it to what fits on screen, mirroring the
 	# container's own left inset on the right so the row sits evenly.
-	var left_x: float = clampf(attack_buttons_container.global_position.x, 0.0, ATTACK_SCREEN_W)
+	var screen_w: float = UIKit.screen_w()
+	var left_x: float = clampf(attack_buttons_container.global_position.x, 0.0, screen_w)
 	var authored: float = attack_buttons_container.offset_right - attack_buttons_container.offset_left
 	if authored <= 0.0:
 		authored = ATTACK_ROW_FALLBACK_W
-	var row_w: float = minf(authored, ATTACK_SCREEN_W - left_x * 2.0)
+	var row_w: float = minf(authored, screen_w - left_x * 2.0)
 	if row_w <= 0.0:
 		row_w = ATTACK_ROW_FALLBACK_W
 
@@ -4014,9 +4176,9 @@ func _ensure_match_msgbox() -> DynamicMessageBox:
 	_match_msgbox = DynamicMessageBox.new()
 	_match_msgbox.configure(MATCH_MSGBOX_HEIGHT, MATCH_MSGBOX_FONT_SIZE, false)
 	var footer_pad: float = (BOARD_BOT_H - MATCH_MSGBOX_HEIGHT) * 0.5
-	_match_msgbox.set_panel_bottom(1080.0 - footer_pad)
+	_match_msgbox.set_panel_bottom(UIKit.screen_h() - footer_pad)
 	_match_msgbox.set_fill_alpha(MATCH_MSGBOX_FILL_ALPHA)
-	print("ISSUE #412 FIX ACTIVE: match message box bottom at ", 1080.0 - footer_pad,
+	print("ISSUE #412 FIX ACTIVE: match message box bottom at ", UIKit.screen_h() - footer_pad,
 		" (", footer_pad, "px inside the footer each side), fill ", MATCH_MSGBOX_FILL_ALPHA)
 	# show_as_plain() first: it drops both chip rows, which is what keeps the box chipless.
 	# apply_theme() after it, because show_as_plain() resets the colour to the default grey.
@@ -5110,7 +5272,7 @@ const TURN_FLOAT_GAP := 46.0
 ## drift DOWN, the way yours rise up out of "You". TWEAKABLE: the offset from
 ## the caption's top (positive = lower down the screen).
 const OPP_TURN_FLOAT_GAP := 0.0
-static func _turn_float_anchor(is_opponent: bool = false) -> Vector2:
+func _turn_float_anchor(is_opponent: bool = false) -> Vector2:
 	if is_opponent:
 		return Vector2(LEFT_RAIL_X + RAIL_W * 0.5 - 150.0,
 			PILE_TOP_Y - 26.0 + OPP_TURN_FLOAT_GAP)
@@ -6910,7 +7072,7 @@ func game_end_logic(loser_is_player: bool, is_draw: bool = false) -> void:
 	# resume after the scene change.
 	var overlay = ColorRect.new()
 	overlay.color = Color(0, 0, 0, 0)
-	overlay.size = Vector2(1920, 1080)
+	overlay.size = UIKit.screen_size()
 	overlay.z_index = 1000
 	# Add to the tree root so it persists through scene change
 	get_tree().root.add_child(overlay)

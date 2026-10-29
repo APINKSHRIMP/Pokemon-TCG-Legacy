@@ -212,6 +212,10 @@ class DriftCard extends TextureRect:
 # ─── Nodes ───────────────────────────────────────────────────────────────────
 
 var _title_layer: Control
+## The centred lockup (mark, rule, wordmark, prompt), authored at 1920x1080 and offset by
+## half the extra canvas so it stays centred on any screen shape. The drifting cards sit
+## beside it in _title_layer and span the whole screen.
+var _lockup: Control
 var _mark: Control
 var _text_block: Control
 var _rule_left: Control
@@ -298,7 +302,7 @@ func _build() -> void:
 	_title_layer = Control.new()
 	_title_layer.name = "title"
 	_title_layer.position = Vector2.ZERO
-	_title_layer.size = Vector2(SCREEN_W, SCREEN_H)
+	_title_layer.size = UIKit.screen_size()
 	_title_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_title_layer)
 
@@ -315,6 +319,13 @@ func _build() -> void:
 		# Scanned during the six seconds rather than at the moment the first card
 		# is wanted, so the directory walk cannot land on the prompt appearing.
 		_build_card_pool.call_deferred()
+
+	_lockup = Control.new()
+	_lockup.name = "lockup"
+	_lockup.position = UIKit.screen_extra() * 0.5
+	_lockup.size = Vector2(SCREEN_W, SCREEN_H)
+	_lockup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_title_layer.add_child(_lockup)
 
 	_build_mark()
 	_build_rule()
@@ -333,7 +344,7 @@ func _build_mark() -> void:
 	mat.set_shader_parameter("lower_a", UITheme.splash_col("mark_lower_a"))
 	mat.set_shader_parameter("lower_b", UITheme.splash_col("mark_lower_b"))
 
-	_title_layer.add_child(_mark)
+	_lockup.add_child(_mark)
 
 
 # The rule is TWO segments, not one line with a hole in it: each grows outward
@@ -355,7 +366,7 @@ func _build_rule() -> void:
 	ml.set_shader_parameter("mid_stop", RULE_MID_STOP)
 	ml.set_shader_parameter("radius", RULE_RADIUS)
 	ml.set_shader_parameter("from_right", true)
-	_title_layer.add_child(_rule_left)
+	_lockup.add_child(_rule_left)
 
 	_rule_right = _shader_rect(SHADER_RULE, Vector2(seg_w, RULE_THICK))
 	_rule_right.position = Vector2(far_right - seg_w, top)
@@ -366,7 +377,7 @@ func _build_rule() -> void:
 	mr.set_shader_parameter("mid_stop", RULE_MID_STOP)
 	mr.set_shader_parameter("radius", RULE_RADIUS)
 	mr.set_shader_parameter("from_right", false)
-	_title_layer.add_child(_rule_right)
+	_lockup.add_child(_rule_right)
 
 
 # POKEMON above the mark's gap, TCG threading it, LEGACY below. The block is
@@ -432,7 +443,7 @@ func _build_text() -> void:
 	var ink_top: float = pokemon_baseline - pokemon_cap
 	_text_block.pivot_offset = Vector2(CENTRE_X, (ink_top + legacy_baseline) * 0.5)
 
-	_title_layer.add_child(_text_block)
+	_lockup.add_child(_text_block)
 
 
 ## "Press any key to continue", rendered once into a SubViewport and shown as a
@@ -463,14 +474,14 @@ func _build_prompt() -> void:
 	_prompt.name = "prompt"
 	_prompt.texture = _prompt_vp.get_texture()
 	_prompt.size = Vector2(SCREEN_W, box_h)
-	_prompt.position = Vector2(0.0, PROMPT_CENTRE_Y - box_h * 0.5)
+	_prompt.position = Vector2(0.0, PROMPT_CENTRE_Y + UIKit.screen_extra().y * 0.5 - box_h * 0.5)
 	_prompt.pivot_offset = _prompt.size * 0.5
 	_prompt.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	_prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_prompt.material = _premult_material()
 	_prompt.scale = Vector2.ONE / PROMPT_SCALE_MAX
 	_prompt.modulate.a = 0.0
-	_title_layer.add_child(_prompt)
+	_lockup.add_child(_prompt)
 
 	Input.joy_connection_changed.connect(func(_device: int, _connected: bool) -> void:
 		_refresh_prompt_text())
@@ -748,13 +759,13 @@ func _spawn_drift_card() -> void:
 	var speed: float = randf_range(DRIFT_SPEED_MIN, DRIFT_SPEED_MAX)
 	card.speed = speed if rightward else -speed
 	card.left_bound = -40.0
-	card.right_bound = SCREEN_W + 40.0
+	card.right_bound = UIKit.screen_w() + 40.0
 
 	# Started fully off the edge it enters from, and allowed to hang off the top
 	# and bottom so the band of cards does not sit in a neat horizontal stripe.
 	card.position = Vector2(
-		-card.size.x - 20.0 if rightward else SCREEN_W + 20.0,
-		randf_range(-card.size.y * 0.35, SCREEN_H - card.size.y * 0.65))
+		-card.size.x - 20.0 if rightward else UIKit.screen_w() + 20.0,
+		randf_range(-card.size.y * 0.35, UIKit.screen_h() - card.size.y * 0.65))
 
 	_drift_layer.add_child(card)
 
@@ -960,7 +971,7 @@ func _tcg_ink_width() -> float:
 
 ## Top of the button row, for the save select.
 func button_row_y() -> float:
-	return SCREEN_H - BTN_BOTTOM_INSET - _button_height()
+	return UIKit.screen_h() - BTN_BOTTOM_INSET - _button_height()
 
 
 ## The gap between a pair of buttons. The GAP is centred on the screen, not

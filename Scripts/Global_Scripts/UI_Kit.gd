@@ -31,10 +31,134 @@ const SHADER_FIELD  := "res://Scripts/Shaders/UI_Field.gdshader"
 const SHADER_RING   := "res://Scripts/Shaders/UI_Selection_Ring.gdshader"
 const SHADER_SLOT   := "res://Scripts/Shaders/UI_Slot.gdshader"
 
-# Reference screen. Every absolute number in this file is a pixel in this
-# space, matching DynamicMessageBox.SCREEN_W and CardDetailPanel.SCREEN_W.
+# The DESIGN screen: the smallest canvas the game ever gets. Every absolute
+# number in this file is a pixel in this space.
+#
+# ── THE CANVAS IS NOT ALWAYS 1920x1080 ───────────────────────
+# project.godot stretches with aspect "expand": the canvas keeps 1920x1080 as a
+# MINIMUM and grows to the screen's shape - 1920x1200 on 16:10, 2560x1080 on a
+# 21:9 ultrawide, 3840x1080 on 32:9. Nothing is ever squeezed, only given more
+# room. Anything placed at an absolute position must read screen_size() and pin
+# itself to an edge or the centre; SCREEN_W / SCREEN_H are only for "how big is
+# the design" questions (a minimum, a ratio), never for "where is the right edge".
 const SCREEN_W := 1920.0
 const SCREEN_H := 1080.0
+
+
+## The live canvas size, in the same units as every position in the game.
+## Never smaller than SCREEN_W x SCREEN_H.
+static func screen_size() -> Vector2:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return Vector2(SCREEN_W, SCREEN_H)
+	return tree.root.get_visible_rect().size
+
+
+static func screen_w() -> float:
+	return screen_size().x
+
+
+static func screen_h() -> float:
+	return screen_size().y
+
+
+## How much bigger than the design screen the canvas is (both >= 0).
+static func screen_extra() -> Vector2:
+	return screen_size() - Vector2(SCREEN_W, SCREEN_H)
+
+
+## The canvas centre.
+static func screen_centre() -> Vector2:
+	return screen_size() * 0.5
+
+
+## The live content band between the header and the slim footer (CONTENT_TOP /
+## CONTENT_BOTTOM / CONTENT_H are its 1920x1080 values).
+static func content_bottom() -> float:
+	return screen_h() - (SCREEN_H - CONTENT_BOTTOM)
+
+
+static func content_h() -> float:
+	return content_bottom() - CONTENT_TOP
+
+
+## How much each extra screen-fraction grows a menu's main items (cards, coins,
+## sleeves, costumes). TWEAKABLE: 0.2 = a 32:9 screen (twice as wide) shows items
+## 20% bigger, 24:9 10% bigger, 4:3 (a third taller) ~7% bigger.
+const ITEM_GROWTH := 0.2
+
+
+## The size multiplier for a menu's main items on the live canvas. Never below 1:
+## the canvas is never smaller than the design, so items never shrink. A grid takes
+## its cell size from this and then fits as many rows / columns as the space holds
+## (see fit_grid()).
+static func item_scale() -> float:
+	var e := screen_extra()
+	return 1.0 + ITEM_GROWTH * (e.x / SCREEN_W + e.y / SCREEN_H)
+
+
+## Lays out a grid of identical cells inside `area` (width, height). `cell` is the
+## design (1920x1080) cell size, `gap` the design gap; both grow by item_scale().
+## Returns {columns, rows, cell, gap}: as many columns/rows as fit, with the leftover
+## width shared out into the gaps so the row spans the area instead of leaving a
+## margin. `min_cols` keeps a design's column count as a floor.
+static func fit_grid(area: Vector2, cell: Vector2, gap: Vector2, min_cols: int = 1) -> Dictionary:
+	var s := item_scale()
+	var c := cell * s
+	var g := gap * s
+	var cols := maxi(min_cols, int(floor((area.x + g.x) / maxf(c.x + g.x, 1.0))))
+	var rows := maxi(1, int(floor((area.y + g.y) / maxf(c.y + g.y, 1.0))))
+	# Spread what is left over into the column gaps, so the grid fills its width.
+	if cols > 1:
+		var used := c.x * cols + g.x * (cols - 1)
+		g.x += maxf(0.0, area.x - used) / float(cols - 1)
+	return {"columns": cols, "rows": rows, "cell": c, "gap": g}
+
+
+## Nodes placed at an absolute position that must stay pinned to an edge when the
+## window is RESIZED after they were built. `follow` is how much of the change in
+## extra width / height the node moves by: (1, 0) = stays on the right edge,
+## (1, 1) = bottom-right corner, (0.5, 0) = stays centred horizontally.
+## A screen that lays itself out from screen_size() when it is built only needs
+## this for live resizes - the first placement is already right.
+static var _followers: Array = []
+static var _follow_hooked := false
+
+static func follow_screen(node: Control, follow: Vector2) -> void:
+	node.set_meta("_follow", follow)
+	node.set_meta("_follow_extra", screen_extra())
+	_followers.append(node)
+	if not _follow_hooked:
+		_follow_hooked = true
+		var tree := Engine.get_main_loop() as SceneTree
+		if tree != null and tree.root != null:
+			tree.root.size_changed.connect(_move_followers)
+
+
+static func _move_followers() -> void:
+	var extra := screen_extra()
+	var alive: Array = []
+	for n in _followers:
+		if n == null or not is_instance_valid(n) or not (n as Node).is_inside_tree():
+			continue
+		var c := n as Control
+		var before: Vector2 = c.get_meta("_follow_extra", extra)
+		var f: Vector2 = c.get_meta("_follow", Vector2.ZERO)
+		c.position += (extra - before) * f
+		c.set_meta("_follow_extra", extra)
+		alive.append(c)
+	_followers = alive
+
+
+## Calls `method` whenever the canvas changes size (window resized, display mode
+## changed in Options). Bound to a method of a node, so it disconnects itself
+## when that node is freed.
+static func on_screen_resized(method: Callable) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return
+	if not tree.root.size_changed.is_connected(method):
+		tree.root.size_changed.connect(method)
 
 # z bands. Chrome sits above content but below the selection ring, which must
 # be visible over a card that overlaps its neighbour, and below anything modal.

@@ -369,7 +369,7 @@ func _build() -> void:
 	_rig = Control.new()
 	_rig.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rig.size = _phone_size
-	_rig.position = Vector2(PHONE_CENTRE_X - _phone_size.x * 0.5, _offscreen_y())
+	_rig.position = Vector2(PHONE_CENTRE_X + UIKit.screen_extra().x * 0.5 - _phone_size.x * 0.5, _offscreen_y())
 	add_child(_rig)
 
 	# ── The screen: everything inside it is clipped to the hole ──
@@ -438,7 +438,7 @@ func _compute_rest_y() -> void:
 			continue  # a reveal step puts up MapManager's box, not this one
 		var spoken := _split_emotion(String(line))
 		tallest = maxf(tallest, _box.measure_panel_height(String(spoken["text"])))
-	var box_top: float = DynamicMessageBox.PANEL_BOTTOM_Y - tallest
+	var box_top: float = (UIKit.screen_h() - DynamicMessageBox.PANEL_BOTTOM_INSET) - tallest
 	_rest_y = maxf(PHONE_TOP_Y_MIN, box_top - PHONE_BOTTOM_GAP - _phone_size.y)
 
 
@@ -922,7 +922,7 @@ func _auto_hold_for(text: String) -> float:
 
 
 func _offscreen_y() -> float:
-	return SCREEN_H + PHONE_OFFSCREEN_PAD
+	return UIKit.screen_h() + PHONE_OFFSCREEN_PAD
 
 
 # ============================================================

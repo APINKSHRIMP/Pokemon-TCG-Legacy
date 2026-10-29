@@ -1009,16 +1009,16 @@ func _show_gift(tex: Texture2D, kind: String) -> void:
 	_gift_overlay.color        = Color(0, 0, 0, 0.92)   # nearly-opaque dark bg
 	_gift_overlay.offset_left  = 0.0
 	_gift_overlay.offset_top   = 0.0
-	_gift_overlay.offset_right = 1920.0
-	_gift_overlay.offset_bottom = 1080.0
+	_gift_overlay.offset_right = UIKit.screen_w()
+	_gift_overlay.offset_bottom = UIKit.screen_h()
 	_gift_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_gift_overlay)
 
 	_gift_container = Control.new()
 	_gift_container.offset_left   = 0.0
 	_gift_container.offset_top    = 0.0
-	_gift_container.offset_right  = 1920.0
-	_gift_container.offset_bottom = 1080.0
+	_gift_container.offset_right  = UIKit.screen_w()
+	_gift_container.offset_bottom = UIKit.screen_h()
 	_gift_container.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	add_child(_gift_container)
 
@@ -1044,8 +1044,8 @@ func _show_gift(tex: Texture2D, kind: String) -> void:
 			sz = Vector2(orig_w * fit_scale, orig_h * fit_scale)
 
 	# Centre the item on screen using explicit offsets (anchor stays at 0)
-	var cx := 960.0
-	var cy := 540.0
+	var cx := UIKit.screen_w() * 0.5
+	var cy := UIKit.screen_h() * 0.5
 	var rect := TextureRect.new()
 	rect.texture             = tex
 	rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE

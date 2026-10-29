@@ -74,8 +74,11 @@ const BAND_WORD := {
 ## proportions. At the old size a rotated card's corners reached about 20px past its box
 ## and the outer cards of neighbouring groups just clipped each other; the 148px of clear
 ## air between groups at this size absorbs that with room to spare.
-const FAN_CARD_SIZE  := Vector2(240, 333)
-const FAN_X_STEP     := 116.0     # horizontal gap between one card's left edge and the next
+const FAN_CARD_SIZE_BASE := Vector2(240, 333)
+## Live: grown with UIKit.item_scale() (the fans, their labels and buttons spread with the
+## screen too - see _layout_home_for_screen()).
+var FAN_CARD_SIZE      := FAN_CARD_SIZE_BASE * UIKit.item_scale()
+var FAN_X_STEP       := 116.0 * UIKit.item_scale()    # horizontal gap between one card's left edge and the next
 ## 220, down 30 from the original 190, with the price labels and all four sell buttons
 ## moved 30 the other way in the scene. Shrinking the cards left ~94px of dead air in the
 ## middle of the screen; closing it from both sides puts the whole cluster — fans at
@@ -105,24 +108,28 @@ const FAN_CARDS := [
 ## the target, 129x179 at 12 columns is the size that gives it.
 ## COLUMNS is derived, not guessed: 18*91 + 17*2 separation = 1672, just inside the
 ## 1676-wide scroller. Change one and the other has to follow.
-const LIST_CARD_SIZE   := Vector2(91, 126)
+const LIST_CARD_SIZE_BASE := Vector2(91, 126)
+var LIST_CARD_SIZE     := LIST_CARD_SIZE_BASE   # live, see _compute_list_layout()
 ## ISSUE #209: 18 -> 17. At 18 the grid was 1672px wide from x=5, so its last
 ## column ended at 1681 and ran under the sale panel at PANEL_X 1652 — which only
 ## became visible once that panel grew to 248px to fix its text padding. 17
 ## columns are 1547 + 32 separation = 1579, ending at 1584, a clear 68px short of
 ## the panel. Derived rather than guessed: LIST_SCROLL_SIZE follows it below.
-const LIST_COLUMNS     := 17
+const LIST_COLUMNS_BASE := 17
+var LIST_COLUMNS       := LIST_COLUMNS_BASE
 const LIST_H_SEP       := 2
 const LIST_V_SEP       := 2
 ## ISSUE #194: the confirm grid runs the full band BETWEEN the two chrome bars,
 ## exactly like the deck builder's. It used to start 18px late (a black strip above
 ## the first row) and run to y=1079, which hid the bottom rows behind the footer.
 const LIST_SCROLL_POS  := Vector2(5, UIKit.CONTENT_TOP)
-const LIST_SCROLL_SIZE := Vector2(
-	LIST_CARD_SIZE.x * float(LIST_COLUMNS) + float(LIST_H_SEP) * float(LIST_COLUMNS - 1) + 5.0,
+var LIST_SCROLL_SIZE := Vector2(
+	LIST_CARD_SIZE_BASE.x * float(LIST_COLUMNS_BASE) + float(LIST_H_SEP) * float(LIST_COLUMNS_BASE - 1) + 5.0,
 	UIKit.CONTENT_H)
 ## The side list stops higher than the deck viewer's 990 because this screen stacks TWO
 ## buttons under it (sell + cancel) where the viewer has only Close.
+## The design list width (17 columns of 91 + gaps + 5), which fixes the sale panel band.
+const LIST_SCROLL_SIZE_BASE_W := 1584.0
 const LIST_SIDE_BOTTOM := 930.0
 ## Cards added to the grid between frames. The deck viewer adds one per frame, which is
 ## fine for 60 cards and hopeless for the thousands this screen can be asked for. Three
@@ -142,8 +149,8 @@ const LIST_BUILD_BATCH := 54
 ## card column -> box). Hardcoding x meant every change to LIST_COLUMNS or PANEL_W
 ## silently unbalanced it; now the two gaps cannot drift apart.
 const PANEL_W       := 258.0
-const LIST_RIGHT_EDGE := LIST_SCROLL_POS.x + LIST_SCROLL_SIZE.x
-const PANEL_X       := LIST_RIGHT_EDGE + (UIKit.SCREEN_W - LIST_RIGHT_EDGE - PANEL_W) * 0.5
+var LIST_RIGHT_EDGE   := LIST_SCROLL_POS.x + LIST_SCROLL_SIZE.x
+var PANEL_X         := LIST_RIGHT_EDGE + (UIKit.SCREEN_W - LIST_RIGHT_EDGE - PANEL_W) * 0.5
 const PANEL_Y       := 140.0
 const PANEL_PAD     := 18.0
 const PANEL_ROW_GAP := 14
@@ -311,7 +318,9 @@ func _ready() -> void:
 	wallet_chip = ShopChrome.add_wallet_chip(self, GameState.get_cash())
 
 	_scan_spares()
+	_compute_list_layout()
 	_build_card_fans()
+	_layout_home_for_screen()
 	_show_home()
 
 
@@ -368,7 +377,7 @@ func _place_footer_button(btn: Button, variant: String, slot: int) -> void:
 	UIKit.style_button(btn, variant)
 	var w := UIKit.FOOTER_BTN_W
 	var gap := float(UIKit.FOOTER_BTN_GAP)
-	var centre_x := UIKit.SCREEN_W * 0.5
+	var centre_x := UIKit.screen_w() * 0.5
 	var x := centre_x - w * 0.5
 	if slot < 0:
 		x = centre_x - w - gap * 0.5
@@ -377,8 +386,8 @@ func _place_footer_button(btn: Button, variant: String, slot: int) -> void:
 	btn.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	btn.offset_left   = x
 	btn.offset_right  = x + w
-	btn.offset_top    = FOOTER_BTN_Y
-	btn.offset_bottom = FOOTER_BTN_Y + FOOTER_BTN_H
+	btn.offset_top    = FOOTER_BTN_Y + UIKit.screen_extra().y
+	btn.offset_bottom = FOOTER_BTN_Y + UIKit.screen_extra().y + FOOTER_BTN_H
 
 
 # ─── Card metadata ───────────────────────────────────────────────────────────
@@ -538,6 +547,55 @@ func _copies_in(selection: Dictionary) -> int:
 
 # ─── Home screen ─────────────────────────────────────────────────────────────
 
+# ── ANY SCREEN SHAPE ─────────────────────────────────────────
+# Home: the three fans sit at the same FRACTION of the screen width they do at 1920,
+# the cards grow with UIKit.item_scale(), and the whole cluster (fans, rate labels,
+# sell buttons) stays centred in the height. List: the card grid takes everything left
+# of the sale panel, which keeps its width on the right edge.
+
+func _fan_centre_x(group_idx: int) -> float:
+	return float(FAN_CENTERS[group_idx]) / UIKit.SCREEN_W * UIKit.screen_w()
+
+## How much bigger the fan cards are than the design, in height.
+func _fan_growth() -> float:
+	return FAN_CARD_SIZE.y - FAN_CARD_SIZE_BASE.y
+
+## The fans move up by half their growth (and down by half the extra screen height),
+## the labels and buttons under them down by the other half, so the cluster stays centred.
+func _fan_top_y() -> float:
+	return FAN_TOP_Y + UIKit.screen_extra().y * 0.5 - _fan_growth() * 0.5
+
+
+## Moves the scene-authored rate labels and sell buttons under their fans. Runs once.
+func _layout_home_for_screen() -> void:
+	var dy: float = UIKit.screen_extra().y * 0.5 + _fan_growth() * 0.5
+	var per_group := [[common_price_label, sell_common_btn],
+		[uncommon_price_label, sell_uncommon_btn], [rare_price_label, sell_rare_btn]]
+	for i in per_group.size():
+		var dx: float = _fan_centre_x(i) - float(FAN_CENTERS[i])
+		for n in per_group[i]:
+			(n as Control).position += Vector2(dx, dy)
+	sell_all_btn.position += Vector2(UIKit.screen_extra().x * 0.5, dy)
+	# The list screen's two side buttons sit under the sale panel, bottom-right.
+	for b in [list_sell_btn, list_cancel_btn]:
+		(b as Control).position += UIKit.screen_extra()
+
+
+## Card size, columns and the sale panel's x for the live screen.
+func _compute_list_layout() -> void:
+	var panel_band: float = UIKit.SCREEN_W - (LIST_SCROLL_POS.x + LIST_SCROLL_SIZE_BASE_W)
+	var avail_w: float = UIKit.screen_w() - LIST_SCROLL_POS.x - panel_band
+	var fit := UIKit.fit_grid(Vector2(avail_w - 5.0, UIKit.content_h()), LIST_CARD_SIZE_BASE,
+		Vector2(LIST_H_SEP, LIST_V_SEP))
+	LIST_CARD_SIZE = (fit["cell"] as Vector2).floor()
+	LIST_COLUMNS = int(fit["columns"])
+	LIST_SCROLL_SIZE = Vector2(LIST_CARD_SIZE.x * float(LIST_COLUMNS)
+		+ float(LIST_H_SEP) * float(LIST_COLUMNS - 1) + 5.0, UIKit.content_h())
+	LIST_RIGHT_EDGE = LIST_SCROLL_POS.x + LIST_SCROLL_SIZE.x
+	PANEL_X = UIKit.screen_w() - panel_band + (panel_band - PANEL_W) * 0.5
+	print("SCREEN LAYOUT: bulk sell list ", LIST_COLUMNS, " columns of ", LIST_CARD_SIZE)
+
+
 ## Builds the three fanned card groups. Done in code rather than the scene because the
 ## per-card rotation, pivot and draw order are all derived from the card's position in
 ## its group, and hand-writing nine rotated nodes into the .tscn invites them to drift.
@@ -545,7 +603,7 @@ func _build_card_fans() -> void:
 	for group_idx in FAN_CARDS.size():
 		var ids : Array = FAN_CARDS[group_idx]
 		var group_w : float = FAN_CARD_SIZE.x + FAN_X_STEP * (ids.size() - 1)
-		var left : float = FAN_CENTERS[group_idx] - group_w / 2.0
+		var left : float = _fan_centre_x(group_idx) - group_w / 2.0
 
 		for i in ids.size():
 			var cid : String = ids[i]
@@ -559,7 +617,7 @@ func _build_card_fans() -> void:
 			rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			rect.custom_minimum_size = FAN_CARD_SIZE
 			rect.size                = FAN_CARD_SIZE
-			rect.position            = Vector2(left + FAN_X_STEP * i, FAN_TOP_Y)
+			rect.position            = Vector2(left + FAN_X_STEP * i, _fan_top_y())
 			rect.pivot_offset        = FAN_CARD_SIZE / 2.0
 			# Left card leans anticlockwise, right card clockwise, middle stays square.
 			if i == 0:

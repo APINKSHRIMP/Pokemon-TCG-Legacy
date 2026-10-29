@@ -325,8 +325,8 @@ var _current_uid : String = ""
 func _init() -> void:
 	offset_left   = 0.0
 	offset_top    = 0.0
-	offset_right  = SCREEN_W
-	offset_bottom = SCREEN_H
+	offset_right  = UIKit.screen_w()
+	offset_bottom = UIKit.screen_h()
 	mouse_filter  = Control.MOUSE_FILTER_IGNORE
 
 	# The striped, slowly scrolling field every other screen sits on. Added
@@ -345,11 +345,30 @@ func _init() -> void:
 	_box_root = Control.new()
 	_box_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_box_root)
+	UIKit.on_screen_resized(_on_screen_resized)
+
+
+## The card is as tall as the screen allows and the text column runs to the right
+## edge, so a taller screen gets a bigger card and a wider one a wider column.
+## A resize re-fits both and redraws the card on show.
+func _fit_to_screen() -> void:
+	offset_right  = UIKit.screen_w()
+	offset_bottom = UIKit.screen_h()
+	_card_image.size     = Vector2(card_width(), card_height())
+	_card_image.position = Vector2(card_left(), MARGIN_TOP)
+
+
+func _on_screen_resized() -> void:
+	_fit_to_screen()
+	var uid := _current_uid
+	_current_uid = ""
+	if uid != "":
+		show_card(uid)
 
 
 # ── Card rect, exposed so a caller can line anything else up with it ──
 static func card_height() -> float:
-	return SCREEN_H - MARGIN_TOP - MARGIN_BOTTOM
+	return UIKit.screen_h() - MARGIN_TOP - MARGIN_BOTTOM
 
 static func card_width() -> float:
 	return card_height() * CARD_ASPECT
@@ -363,7 +382,7 @@ static func panel_x0() -> float:
 	return CARD_MARGIN_LEFT + card_width() + CARD_TO_PANEL_GAP
 
 static func panel_x1() -> float:
-	return SCREEN_W - PANEL_MARGIN_RIGHT
+	return UIKit.screen_w() - PANEL_MARGIN_RIGHT
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -447,7 +466,7 @@ func _build(card: Dictionary) -> void:
 ##
 ## Public so a test harness can ask what a card measures without drawing it.
 func measure_stack(card: Dictionary) -> Dictionary:
-	var avail := SCREEN_H - MARGIN_TOP - MARGIN_BOTTOM
+	var avail := UIKit.screen_h() - MARGIN_TOP - MARGIN_BOTTOM
 	var sections := _describe(card)
 	var shrink := 0
 	var measured: Array = []

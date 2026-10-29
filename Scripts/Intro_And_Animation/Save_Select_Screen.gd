@@ -94,7 +94,7 @@ func setup(host: Node) -> void:
 
 func _ready() -> void:
 	position = Vector2.ZERO
-	size = Vector2(UIKit.SCREEN_W, UIKit.SCREEN_H)
+	size = Vector2(UIKit.screen_w(), UIKit.screen_h())
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	_slot_root = Control.new()
@@ -139,7 +139,7 @@ func _refresh_slots() -> void:
 
 	var count: int = GameState.SAVE_SLOT_COUNT
 	var total_w: float = SLOT_W * count + SLOT_GAP * (count - 1)
-	var left: float = (UIKit.SCREEN_W - total_w) * 0.5
+	var left: float = (UIKit.screen_w() - total_w) * 0.5
 
 	for s in range(1, count + 1):
 		_summaries[s] = GameState.get_slot_summary(s)
@@ -400,7 +400,7 @@ func _build_buttons() -> void:
 	_cancel_holder = _host._make_button("Cancel", w,
 		UITheme.splash_col("cancel_top"), UITheme.splash_col("cancel_bot"),
 		UITheme.splash_col("cancel_fg"))
-	_cancel_holder.position = Vector2(UIKit.SCREEN_W * 0.5 - gap * 0.5 - w, y)
+	_cancel_holder.position = Vector2(UIKit.screen_w() * 0.5 - gap * 0.5 - w, y)
 	_cancel_btn = _cancel_holder.get_node("btn")
 	_cancel_btn.pressed.connect(_on_cancel_pressed)
 	add_child(_cancel_holder)
@@ -408,7 +408,7 @@ func _build_buttons() -> void:
 	_primary_holder = _host._make_button("New Game", w,
 		UITheme.splash_col("new_game_top"), UITheme.splash_col("new_game_bot"),
 		UITheme.splash_col("new_game_fg"))
-	_primary_holder.position = Vector2(UIKit.SCREEN_W * 0.5 + gap * 0.5, y)
+	_primary_holder.position = Vector2(UIKit.screen_w() * 0.5 + gap * 0.5, y)
 	_primary_btn = _primary_holder.get_node("btn")
 	_primary_btn.pressed.connect(_on_primary_pressed)
 	add_child(_primary_holder)
@@ -436,7 +436,7 @@ func _build_bin() -> void:
 	_bin.focus_mode = Control.FOCUS_NONE
 	_bin.custom_minimum_size = Vector2(BIN_SIZE, BIN_SIZE)
 	_bin.size = Vector2(BIN_SIZE, BIN_SIZE)
-	_bin.position = Vector2(UIKit.SCREEN_W - BIN_MARGIN - BIN_SIZE, BIN_MARGIN)
+	_bin.position = Vector2(UIKit.screen_w() - BIN_MARGIN - BIN_SIZE, BIN_MARGIN)
 
 	# MOUSE_FILTER_IGNORE so the glyph never eats the click meant for the button.
 	var glyph := Control.new()

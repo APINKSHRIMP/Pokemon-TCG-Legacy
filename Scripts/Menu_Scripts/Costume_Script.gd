@@ -18,9 +18,13 @@ const SPRITE_FOLDER      := "res://Image_Assets/Character_Sprites/In_Battle_Spri
 # columns are sized so nine of them plus their gaps fill the width exactly, so
 # there is no leftover for EXPAND_FILL to hand out.
 #   9 * 200 + 8 * 12 = 1896, inside the 1920 band with room for the scrollbar.
-const COLUMNS            := 9
-const CELL_SIZE          := Vector2(200.0, 200.0)
-const SPRITE_SEPARATION  := 12
+const COLUMNS_BASE       := 9
+var COLUMNS              := COLUMNS_BASE   # live, see _apply_grid_layout()
+const CELL_SIZE_BASE     := Vector2(200.0, 200.0)
+var CELL_SIZE            := CELL_SIZE_BASE
+const SPRITE_SEPARATION_BASE := 12
+var SPRITE_SEPARATION    := SPRITE_SEPARATION_BASE
+var SPRITE_SEPARATION_V  := SPRITE_SEPARATION_BASE
 ## ISSUE #199: the sprite is drawn at this much of the cell, so it sits INSIDE its
 ## box with a margin rather than filling it edge to edge.
 const SPRITE_FIT         := 0.84
@@ -110,6 +114,8 @@ func _ready() -> void:
 
 	_build_chrome()
 	_wrap_grid_in_scroll_container()
+	_apply_grid_layout()
+	UIKit.on_screen_resized(_on_screen_resized)
 	# ISSUE #32: block input behind a loading overlay while the (potentially large) costume grid builds.
 	# Retest: shrink the blocker 142px top / 134px bottom so the banner buttons (Cancel) stay clickable.
 	# The hide button sits in that unblocked top strip, so disable it outright while a build runs.
@@ -205,7 +211,7 @@ func _build_chrome() -> void:
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
-	grid.size = Vector2(1920.0 - GRID_INSET_X * 2.0, UIKit.CONTENT_H - GRID_INSET_Y * 2.0)
+	grid.size = _grid_area()
 
 
 ## Rebuilds the "n / N" owned chip in the header.
@@ -216,6 +222,39 @@ func _refresh_count_chip() -> void:
 		c.queue_free()
 	_count_chip_holder.add_child(
 		UIKit.make_chip("%d / %d" % [_owned_costumes.size(), _total_costumes], "on_chrome"))
+
+
+## The band the costumes fill: the whole screen width and content band, less the insets.
+func _grid_area() -> Vector2:
+	return Vector2(UIKit.screen_w() - GRID_INSET_X * 2.0, UIKit.content_h() - GRID_INSET_Y * 2.0)
+
+
+## Cell size, columns and gaps for the live screen: cells grow with
+## UIKit.item_scale() and as many columns fit as the width holds (UIKit.fit_grid).
+## On a resize the grid is rebuilt, since each cell's art is sized when it is made.
+func _apply_grid_layout(rebuild: bool = false) -> void:
+	var area := _grid_area()
+	var fit := UIKit.fit_grid(Vector2(area.x - 24.0, area.y), CELL_SIZE_BASE,
+		Vector2(SPRITE_SEPARATION_BASE, SPRITE_SEPARATION_BASE))
+	CELL_SIZE = (fit["cell"] as Vector2).floor()
+	COLUMNS = int(fit["columns"])
+	SPRITE_SEPARATION = int(floor((fit["gap"] as Vector2).x))
+	SPRITE_SEPARATION_V = int(round((fit["gap"] as Vector2).y))
+	var scroll := grid.get_parent() as ScrollContainer
+	if scroll != null:
+		scroll.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
+		scroll.size = area
+	grid.columns = COLUMNS
+	grid.add_theme_constant_override("h_separation", SPRITE_SEPARATION)
+	grid.add_theme_constant_override("v_separation", SPRITE_SEPARATION_V)
+	print("SCREEN LAYOUT: costumes ", COLUMNS, " columns of ", CELL_SIZE, " (item scale ",
+		snappedf(UIKit.item_scale(), 0.01), ")")
+	if rebuild and not _is_rebuilding and grid.get_child_count() > 0:
+		_rebuild_grid()
+
+
+func _on_screen_resized() -> void:
+	_apply_grid_layout(true)
 
 
 func _wrap_grid_in_scroll_container() -> void:
@@ -239,7 +278,7 @@ func _wrap_grid_in_scroll_container() -> void:
 	# ISSUE #144 FIX: the scroll container spans the full 1920 and the columns share the leftover
 	# width (see the EXPAND_FILL in _add_character_to_grid), so the last costume in a row finishes
 	# against the scrollbar instead of ~120px short of it.
-	grid.add_theme_constant_override("v_separation", SPRITE_SEPARATION)
+	grid.add_theme_constant_override("v_separation", SPRITE_SEPARATION_V)
 
 
 # ─── Character loading ───────────────────────────────────────────────────────
@@ -658,7 +697,7 @@ func _apply_zoom_texture(tex: Texture2D) -> void:
 
 	zoom_image.texture  = tex
 	zoom_image.size     = disp_size
-	zoom_image.position = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0)
+	zoom_image.position = (UIKit.screen_size() - disp_size) / 2.0
 
 
 func _hide_zoom() -> void:

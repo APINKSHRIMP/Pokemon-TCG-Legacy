@@ -13,10 +13,14 @@ extends Control
 ## Add a new key item by adding a row here.
 
 ## TWEAKABLE — grid shape and text.
-const COLUMNS     := 6
-const CELL_SIZE   := Vector2(280.0, 300.0)
+## Live: the cells and art grow with UIKit.item_scale(), and a wider screen fits more
+## columns (UIKit.fit_grid). The _BASE values are the 1920x1080 design.
+const COLUMNS_BASE := 6
+var COLUMNS       := COLUMNS_BASE
+const CELL_SIZE_BASE := Vector2(280.0, 300.0)
+var CELL_SIZE     := CELL_SIZE_BASE
 const CELL_SEP    := 24
-const ART_BOX     := 200.0   ## the most room the art gets, above the caption
+var ART_BOX       := 200.0 * UIKit.item_scale()  ## the most room the art gets, above the caption
 const NAME_FONT   := 26
 const GRID_INSET_Y := 30.0
 const EMPTY_TEXT  := "Your bag is empty."
@@ -46,6 +50,10 @@ func _ready() -> void:
 	_count_chip_holder = bars["header"].left
 	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 
+	var fit := UIKit.fit_grid(Vector2(UIKit.screen_w() - 120.0, UIKit.content_h()), CELL_SIZE_BASE,
+		Vector2(CELL_SEP, CELL_SEP))
+	CELL_SIZE = (fit["cell"] as Vector2).floor()
+	COLUMNS = int(fit["columns"])
 	grid.columns = COLUMNS
 	grid.add_theme_constant_override("h_separation", CELL_SEP)
 	grid.add_theme_constant_override("v_separation", CELL_SEP)
@@ -76,8 +84,8 @@ func _build() -> void:
 		var empty := Label.new()
 		UIKit.set_label(empty, "body", EMPTY_TEXT)
 		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		empty.position = Vector2(0.0, UIKit.CONTENT_TOP + UIKit.CONTENT_H * 0.4)
-		empty.size = Vector2(UIKit.SCREEN_W, 60.0)
+		empty.position = Vector2(0.0, UIKit.CONTENT_TOP + UIKit.content_h() * 0.4)
+		empty.size = Vector2(UIKit.screen_w(), 60.0)
 		add_child(empty)
 		return
 
@@ -91,7 +99,7 @@ func _build() -> void:
 	var content := Vector2(cols * CELL_SIZE.x + (cols - 1) * CELL_SEP,
 			rows * CELL_SIZE.y + (rows - 1) * CELL_SEP)
 	grid.size = content
-	grid.position = Vector2((UIKit.SCREEN_W - content.x) * 0.5, UIKit.CONTENT_TOP + GRID_INSET_Y)
+	grid.position = Vector2((UIKit.screen_w() - content.x) * 0.5, UIKit.CONTENT_TOP + GRID_INSET_Y)
 
 
 func _make_cell(entry: Dictionary) -> Control:

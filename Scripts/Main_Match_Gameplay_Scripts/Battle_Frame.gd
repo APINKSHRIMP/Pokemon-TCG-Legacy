@@ -192,8 +192,8 @@ func setup(kind: String) -> void:
 
 	field = UIKit.add_field(self)
 	_build_bands()
-	player = _build_fighter(COL_PLAYER_X, true)
-	opponent = _build_fighter(COL_OPPONENT_X, false)
+	player = _build_fighter(_col_x(COL_PLAYER_X), true)
+	opponent = _build_fighter(_col_x(COL_OPPONENT_X), false)
 	_build_badge_column()
 	_build_top_slot()
 	set_kind(kind)
@@ -219,7 +219,7 @@ func kind() -> String:
 func _build_bands() -> void:
 	# The band as designed: 21.5% of the screen plus the overhang that keeps the
 	# slow second phase from dragging its far edge into view.
-	var band_h := SCREEN_H * BAND_H_FRACTION + BAND_OVERHANG
+	var band_h := _sh() * BAND_H_FRACTION + BAND_OVERHANG
 	# Phase 1 starts the band 65px BEHIND rest, which is further than the overhang
 	# covers. Rather than change the authored overhang, the RECT is extended off
 	# the screen by the whole entrance travel and the cut fractions are remapped so
@@ -248,7 +248,7 @@ func _build_bands() -> void:
 	bottom_band_drift.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom_band_fast.add_child(bottom_band_drift)
 	_add_band_rect(bottom_band_drift,
-			Vector2(0.0, SCREEN_H + BAND_OVERHANG - band_h), full_h,
+			Vector2(0.0, _sh() + BAND_OVERHANG - band_h), full_h,
 			Vector2(BAND_BOTTOM_CUT.x * band_h / full_h,
 					BAND_BOTTOM_CUT.y * band_h / full_h), true)
 
@@ -259,7 +259,7 @@ func _add_band_rect(parent: Control, at: Vector2, h: float,
 	rect.color = Color.WHITE            # the shader replaces this entirely
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rect.position = at
-	rect.size = Vector2(SCREEN_W, h)
+	rect.size = Vector2(_sw(), h)
 
 	var mat := ShaderMaterial.new()
 	mat.shader = load(BAND_SHADER)
@@ -286,7 +286,7 @@ func _build_fighter(centre_x: float, is_player: bool) -> Fighter:
 	# the name block all hang off the same two numbers.
 	var block_h := NAME_FONT + RULE_GAP + RULE_H + DECK_GAP + DECK_FONT + 12.0
 	var stage_h := SPRITE_H + NAME_GAP + block_h
-	var sprite_top := STAGE_CENTRE_Y - stage_h * 0.5
+	var sprite_top := _stage_centre_y() - stage_h * 0.5
 	var feet_y := sprite_top + SPRITE_H
 
 	f.fast = Control.new()
@@ -420,8 +420,8 @@ func desaturate(f: Fighter) -> void:
 func _build_badge_column() -> void:
 	badge_slot = Control.new()
 	badge_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	badge_slot.position = Vector2(0.0, BADGE_CENTRE_Y - BADGE_D * 0.5)
-	badge_slot.size = Vector2(SCREEN_W, BADGE_D)
+	badge_slot.position = Vector2(0.0, _badge_centre_y() - BADGE_D * 0.5)
+	badge_slot.size = Vector2(_sw(), BADGE_D)
 	add_child(badge_slot)
 
 	# Wrapper is animated, the VBox inside it is laid out. Never both on one node.
@@ -432,8 +432,8 @@ func _build_badge_column() -> void:
 	below_badge = VBoxContainer.new()
 	below_badge.alignment = BoxContainer.ALIGNMENT_BEGIN
 	below_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	below_badge.position = Vector2(COL_BADGE_X - BELOW_BADGE_W * 0.5,
-			BADGE_CENTRE_Y + BADGE_D * 0.5 + BELOW_BADGE_GAP)
+	below_badge.position = Vector2(col_badge_x() - BELOW_BADGE_W * 0.5,
+			_badge_centre_y() + BADGE_D * 0.5 + BELOW_BADGE_GAP)
 	below_badge.size = Vector2(BELOW_BADGE_W, 0.0)
 	_below_badge_anim.add_child(below_badge)
 
@@ -445,8 +445,8 @@ func _build_top_slot() -> void:
 
 	top_slot = Control.new()
 	top_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top_slot.position = Vector2(0.0, SCREEN_H * TOP_SLOT_FRACTION)
-	top_slot.size = Vector2(SCREEN_W, TOP_SLOT_H)
+	top_slot.position = Vector2(0.0, _sh() * TOP_SLOT_FRACTION)
+	top_slot.size = Vector2(_sw(), TOP_SLOT_H)
 	_top_slot_anim.add_child(top_slot)
 
 
@@ -460,7 +460,7 @@ func make_badge(text: String, text_kind: String, font_size: int) -> Control:
 	var ui := _ui()
 	var holder := Control.new()
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.position = Vector2(COL_BADGE_X - BADGE_D * 0.5, 0.0)
+	holder.position = Vector2(col_badge_x() - BADGE_D * 0.5, 0.0)
 	holder.size = Vector2(BADGE_D, BADGE_D)
 
 	var well := _Disc.new()
@@ -754,6 +754,31 @@ func make_stat(stat_label: String, value: String) -> VBoxContainer:
 	box.add_child(v)
 
 	return box
+
+
+# ── ANY SCREEN SHAPE ─────────────────────────────────────────
+# The layout constants above are the 1920x1080 design. On a wider canvas the two
+# trainer columns spread out by the same fraction of the screen and the badge stays
+# on the centre line; on a taller one the bands (a fraction of the height) grow and
+# the stage and badge stay centred in the middle.
+func _sw() -> float:
+	return UIKit.screen_w()
+
+func _sh() -> float:
+	return UIKit.screen_h()
+
+## A design column x, at the same fraction of the live screen width.
+func _col_x(design_x: float) -> float:
+	return design_x / SCREEN_W * _sw()
+
+static func col_badge_x() -> float:
+	return UIKit.screen_w() * 0.5
+
+func _stage_centre_y() -> float:
+	return STAGE_CENTRE_Y + UIKit.screen_extra().y * 0.5
+
+func _badge_centre_y() -> float:
+	return BADGE_CENTRE_Y + UIKit.screen_extra().y * 0.5
 
 
 func _ui() -> Node:

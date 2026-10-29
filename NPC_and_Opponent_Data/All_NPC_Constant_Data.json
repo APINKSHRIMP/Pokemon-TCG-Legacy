@@ -979,7 +979,7 @@
       "prize_cards": 3,
       "coin_reward": "Voltorb Gold",
       "sprite": "Worker",
-      "music": "REPLACEMUSIC",
+      "music": "Medium_Battle 3 (PMD Thunderwave_Cave)",
       "cash_reward": "65",
       "deck": "Zzzap",
       "message_colour": "yellow"
@@ -1561,7 +1561,7 @@
       "prize_cards": 6,
       "coin_reward": "Blastoise Silver",
       "sprite": "TeamRocketArcher",
-      "music": "REPLACEMUSIC",
+      "music": "Dark_battle_2 (PTCG2 Colorless Altar A Dark Dwelling)",
       "cash_reward": "180",
       "deck": "Jet Shell",
       "message_colour": "black"
@@ -1580,7 +1580,7 @@
       "prize_cards": 6,
       "coin_reward": "Arbok Purple",
       "sprite": "TeamRocketPetrel",
-      "music": "REPLACEMUSIC",
+      "music": "Worrying_Battle (PTCG2 GRs Fire Fighting Forts)",
       "cash_reward": "180",
       "deck": "Relentless Poison",
       "message_colour": "black"
@@ -1589,7 +1589,7 @@
       "prize_cards": 6,
       "coin_reward": "Dragonite Gold",
       "sprite": "TeamRocketProton",
-      "music": "REPLACEMUSIC",
+      "music": "Dark_battle (PTCG2 Duel Vs Team GR)",
       "cash_reward": "180",
       "deck": "Under The Shadow Of Wings",
       "message_colour": "black"

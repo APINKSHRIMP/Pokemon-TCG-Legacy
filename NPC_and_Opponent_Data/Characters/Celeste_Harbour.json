@@ -669,7 +669,7 @@
         },
         {
           "days": "3",
-          "times": "M,A",
+          "times": "M",
           "says": {
             "meet": "The lighthouse electrics have been a bit iffy since I replaced the bulb the other day so I've gotta go back up and take a look.",
             "repeat": "This is the only excercise I do and even that is too much..."
@@ -2012,10 +2012,16 @@
           "times": "E,N"
         },
         {
-          "days": "3,7",
+          "days": "3",
+          "times": "A,E,N"
+        },
+        {
+          "days": "7",
           "times": "A,E"
         }
-      ]
+      ],
+      "sleeve": "Electrode",
+      "sleeve_reward": "Electrode"
     },
     "Engineer Brad": {
       "at": [900, 3155],

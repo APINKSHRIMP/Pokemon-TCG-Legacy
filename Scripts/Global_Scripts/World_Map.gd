@@ -253,12 +253,12 @@ func _build() -> void:
 	var hole_art := PhoneCall._find_screen_rect(phone_tex)   # the transparent screen, found by flood fill
 	var hole := Rect2(hole_art.position * PHONE_SCALE, hole_art.size * PHONE_SCALE)
 	_screen_size = hole.size
-	_rest_y = (SCREEN_H - _phone_size.y) * 0.5
+	_rest_y = (UIKit.screen_h() - _phone_size.y) * 0.5
 
 	_rig = Control.new()
 	_rig.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rig.size = _phone_size
-	_rig.position = Vector2((SCREEN_W - _phone_size.x) * 0.5, _offscreen_y())
+	_rig.position = Vector2((UIKit.screen_w() - _phone_size.x) * 0.5, _offscreen_y())
 	add_child(_rig)
 
 	_screen = Control.new()
@@ -440,7 +440,7 @@ func _stop_spinner() -> void:
 
 
 func _offscreen_y() -> float:
-	return SCREEN_H + PHONE_OFFSCREEN_PAD
+	return UIKit.screen_h() + PHONE_OFFSCREEN_PAD
 
 
 # ============================================================

@@ -278,7 +278,7 @@ static func _layout_wallet(chip: Control, cash: int) -> void:
 
 	var pill_w := WALLET_PAD_L + icon_w + WALLET_GAP + text_w + WALLET_PAD_R
 	# A chip that follows another ends where that one's pill starts, less the gap.
-	var right  := SCREEN_W - WALLET_MARGIN_R
+	var right  := UIKit.screen_w() - WALLET_MARGIN_R
 	var leader = chip.get_meta("follows") if chip.has_meta("follows") else null
 	if leader is Control and is_instance_valid(leader):
 		var lead_rect := wallet_pill_rect(leader)

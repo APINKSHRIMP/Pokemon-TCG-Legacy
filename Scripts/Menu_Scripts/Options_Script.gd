@@ -186,6 +186,8 @@ func _ready() -> void:
 		# "hide_bars":    GameState.set_hide_bars,
 		"board_labels": GameState.set_board_labels,
 		"tutorial_next_match": GameState.set_tutorial_next_match,
+		"window_mode":  GameState.set_window_mode,
+		"window_size":  GameState.set_window_size,
 	}
 
 	saved = _current_values()
@@ -325,6 +327,22 @@ func _build_rows() -> void:
 		["play", "Play"],
 		["skip", "Skip"],
 	])
+	# The window. Any size or shape works - the screens grow into a wider or taller
+	# canvas rather than letterboxing (UIKit.screen_size()). Sizes bigger than this
+	# monitor are not offered.
+	_add_button_row(body, "window_mode", "Display mode", [
+		["fullscreen", "Fullscreen"],
+		["borderless", "Borderless"],
+		["windowed",   "Windowed"],
+	])
+	var fitting: Array = GameState.window_size_options_fitting()
+	if not GameState.window_size_setting in fitting:
+		fitting.append(GameState.window_size_setting)
+	var sizes: Array = []
+	for opt in GameState.WINDOW_SIZE_OPTIONS:
+		if opt in fitting:
+			sizes.append([opt, String(opt).replace("x", " x ")])
+	_add_button_row(body, "window_size", "Window size", sizes, "(windowed mode only)", true)
 	_add_slider_row(body, "music_volume", "Music")
 	_add_slider_row(body, "sfx_volume", "Sound effects")
 	_add_slider_row(body, "cries_volume", "Cries")
@@ -397,9 +415,20 @@ func _add_picker_row(parent: VBoxContainer, section: String, label_text: String,
 
 
 ## One label + a row of mutually exclusive option buttons.
+## `wrap` lays the buttons in a flow container so a long row wraps instead of
+## running off the screen (the window sizes).
 func _add_button_row(parent: VBoxContainer, section: String, label_text: String,
-		options: Array, sub_text: String = "") -> void:
+		options: Array, sub_text: String = "", wrap: bool = false) -> void:
 	var row := _new_row(parent, label_text, sub_text)
+	var holder: Container = row
+	if wrap:
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", int(OPTION_GAP))
+		flow.add_theme_constant_override("v_separation", int(OPTION_GAP * 0.5))
+		flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		flow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(flow)
+		holder = flow
 
 	var buttons: Dictionary = {}
 	for entry in options:
@@ -407,7 +436,7 @@ func _add_button_row(parent: VBoxContainer, section: String, label_text: String,
 		var btn := Button.new()
 		btn.text = entry[1]
 		UIKit.style_button(btn, "secondary")   # _refresh_section repaints the chosen one
-		row.add_child(btn)
+		holder.add_child(btn)
 		buttons[value] = btn
 	section_buttons[section] = buttons
 
@@ -511,6 +540,8 @@ func _current_values() -> Dictionary:
 		"ui_theme":      GameState.ui_theme_setting,
 		# "hide_bars":     GameState.hide_bars_setting,   # SCRAPPED, see _build_rows()
 		"board_labels":  GameState.board_labels_setting,
+		"window_mode":   GameState.window_mode_setting,
+		"window_size":   GameState.window_size_setting,
 		"tutorial_next_match": "on" if GameState.tutorial_option_locked() else GameState.tutorial_next_match_setting,
 	}
 

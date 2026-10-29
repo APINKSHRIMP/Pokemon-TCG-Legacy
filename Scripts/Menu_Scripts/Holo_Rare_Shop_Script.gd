@@ -5,7 +5,8 @@ extends Control
 const CARD_SETS       := ["base1", "base2", "base3"]
 const TARGET_TYPES    := ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting", "Colorless"]
 const CARD_COST       := 400
-const CARD_SIZE       := Vector2(265, 364)
+## Grows with the screen (UIKit.item_scale()).
+var CARD_SIZE         := Vector2(265, 364) * UIKit.item_scale()
 const CARD_SEPARATION := 3
 # ISSUE #115: the bought card was too small on screen. Up 50% (318x437 -> 477x655.5), which
 # lands it in the same ballpark as the 430x600 a single card gets when handed over as a gift
@@ -59,7 +60,18 @@ func _ready() -> void:
 	wallet_chip = ShopChrome.add_wallet_chip(self, player_cash)
 	pill_layer  = ShopChrome.add_pill_layer(self)
 
-	card_hbox.add_theme_constant_override("separation", CARD_SEPARATION)
+	# The row spans the live screen, spread evenly (same gap between cards as to the
+	# edges), and stays centred on the band it was authored on.
+	var extra := UIKit.screen_extra()
+	var grow_h: float = CARD_SIZE.y - 364.0
+	card_hbox.offset_right = UIKit.screen_w()
+	card_hbox.offset_top += extra.y * 0.5 - grow_h * 0.5
+	card_hbox.offset_bottom += extra.y * 0.5 + grow_h * 0.5
+	var shown: int = TARGET_TYPES.size()
+	var sep: int = CARD_SEPARATION
+	if extra.x > 0.0:
+		sep = maxi(CARD_SEPARATION, int(ShopChrome.spread_gap(UIKit.screen_w(), shown, CARD_SIZE.x, CARD_SEPARATION)))
+	card_hbox.add_theme_constant_override("separation", sep)
 
 	buy_btn.disabled = true
 	buy_btn.pressed.connect(_on_buy_pressed)
@@ -313,7 +325,7 @@ func _show_card_reveal(card: Dictionary) -> void:
 	var got_label := Label.new()
 	got_label.text                 = "You got " + card["name"] + "!"
 	got_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	got_label.position             = Vector2(160.0, reveal_rect.position.y + REVEAL_SIZE.y + 20.0)
+	got_label.position             = Vector2((vp_size.x - 1600.0) / 2.0, reveal_rect.position.y + REVEAL_SIZE.y + 20.0)
 	got_label.size                 = Vector2(1600.0, 80.0)
 	got_label.add_theme_font_size_override("font_size", 50)
 	got_label.add_theme_color_override("font_color", Color.WHITE)

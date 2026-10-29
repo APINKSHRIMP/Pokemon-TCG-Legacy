@@ -22,9 +22,13 @@ extends Control
 ## EIGHT columns, not the costume grid's nine: a cell has to hold "019 RATTATA
 ## (ALOLAN)" across its foot, and at 200px that caption clips on half the dex.
 ##   8 * 228 + 7 * 12 = 1908, inside the 1920 band with room for the scrollbar.
-const COLUMNS            := 8
-const CELL_SIZE          := Vector2(228.0, 228.0)
-const SPRITE_SEPARATION  := 12
+const COLUMNS_BASE       := 8
+var COLUMNS              := COLUMNS_BASE   # live, see _apply_grid_layout()
+const CELL_SIZE_BASE     := Vector2(228.0, 228.0)
+var CELL_SIZE            := CELL_SIZE_BASE
+const SPRITE_SEPARATION_BASE := 12
+var SPRITE_SEPARATION    := SPRITE_SEPARATION_BASE
+var SPRITE_SEPARATION_V  := SPRITE_SEPARATION_BASE
 
 ## TWEAKABLE. How much of the cell the portrait is drawn at, and how far up it is
 ## nudged so the caption across the foot is not sitting on its feet.
@@ -98,6 +102,8 @@ func _ready() -> void:
 
 	_build_chrome()
 	_wrap_grid_in_scroll_container()
+	_apply_grid_layout()
+	UIKit.on_screen_resized(_on_screen_resized)
 
 	# Same contract as the costume grid: the filter lives in the strip the loading
 	# blocker leaves clickable, so it has to be disabled by hand while a build runs.
@@ -125,7 +131,7 @@ func _build_chrome() -> void:
 	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
-	grid.size = Vector2(1920.0 - GRID_INSET_X * 2.0, UIKit.CONTENT_H - GRID_INSET_Y * 2.0)
+	grid.size = _grid_area()
 
 
 ## "n / N" met. The MET COUNT PER SPECIES IS DELIBERATELY NOT SHOWN anywhere on
@@ -138,6 +144,39 @@ func _refresh_count_chip() -> void:
 		c.queue_free()
 	_count_chip_holder.add_child(
 		UIKit.make_chip("%d / %d" % [_met.size(), _total_species], "on_chrome"))
+
+
+## The band the entries fill: the whole screen width and content band, less the insets.
+func _grid_area() -> Vector2:
+	return Vector2(UIKit.screen_w() - GRID_INSET_X * 2.0, UIKit.content_h() - GRID_INSET_Y * 2.0)
+
+
+## Cell size, columns and gaps for the live screen: entries grow with
+## UIKit.item_scale() and as many columns fit as the width holds (UIKit.fit_grid).
+## On a resize the grid is rebuilt, since each entry's art is sized when it is made.
+func _apply_grid_layout(rebuild: bool = false) -> void:
+	var area := _grid_area()
+	var fit := UIKit.fit_grid(Vector2(area.x - 12.0, area.y), CELL_SIZE_BASE,
+		Vector2(SPRITE_SEPARATION_BASE, SPRITE_SEPARATION_BASE))
+	CELL_SIZE = (fit["cell"] as Vector2).floor()
+	COLUMNS = int(fit["columns"])
+	SPRITE_SEPARATION = int(floor((fit["gap"] as Vector2).x))
+	SPRITE_SEPARATION_V = int(round((fit["gap"] as Vector2).y))
+	var scroll := grid.get_parent() as ScrollContainer
+	if scroll != null:
+		scroll.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
+		scroll.size = area
+	grid.columns = COLUMNS
+	grid.add_theme_constant_override("h_separation", SPRITE_SEPARATION)
+	grid.add_theme_constant_override("v_separation", SPRITE_SEPARATION_V)
+	print("SCREEN LAYOUT: field guide ", COLUMNS, " columns of ", CELL_SIZE, " (item scale ",
+		snappedf(UIKit.item_scale(), 0.01), ")")
+	if rebuild and not _is_rebuilding and grid.get_child_count() > 0:
+		_rebuild_grid()
+
+
+func _on_screen_resized() -> void:
+	_apply_grid_layout(true)
 
 
 func _wrap_grid_in_scroll_container() -> void:
@@ -158,7 +197,7 @@ func _wrap_grid_in_scroll_container() -> void:
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.columns = COLUMNS
 	grid.add_theme_constant_override("h_separation", SPRITE_SEPARATION)
-	grid.add_theme_constant_override("v_separation", SPRITE_SEPARATION)
+	grid.add_theme_constant_override("v_separation", SPRITE_SEPARATION_V)
 
 
 # ─── Entry loading ───────────────────────────────────────────────────────────
@@ -442,16 +481,16 @@ func _show_zoom(entry: Control) -> void:
 
 func _apply_zoom_texture(tex: Texture2D, species: String) -> void:
 	var tex_size  := tex.get_size()
-	var target    := Vector2(760.0, 760.0)
+	var target    := Vector2(760.0, 760.0) * UIKit.item_scale()
 	var s         := minf(target.x / tex_size.x, target.y / tex_size.y)
 	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)
 
 	zoom_image.texture  = tex
 	zoom_image.size     = disp_size
-	zoom_image.position = Vector2((1920.0 - disp_size.x) / 2.0, (1080.0 - disp_size.y) / 2.0 - 40.0)
+	zoom_image.position = (UIKit.screen_size() - disp_size) / 2.0 - Vector2(0.0, 40.0)
 
 	UIKit.set_label(zoom_caption, "title", OverworldPokemonData.guide_label(species), "chrome_fg", 44)
-	zoom_caption.size     = Vector2(1920.0, 60.0)
+	zoom_caption.size     = Vector2(UIKit.screen_w(), 60.0)
 	zoom_caption.position = Vector2(0.0, zoom_image.position.y + disp_size.y + 20.0)
 
 

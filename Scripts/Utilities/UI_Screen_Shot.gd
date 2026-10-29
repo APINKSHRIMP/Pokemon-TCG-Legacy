@@ -31,7 +31,11 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var args := OS.get_cmdline_user_args()
+	# "--" flags (e.g. --window=WxH, read by GameState) are not positional args.
+	var args: Array = []
+	for a in OS.get_cmdline_user_args():
+		if not String(a).begins_with("--"):
+			args.append(a)
 	if args.is_empty():
 		printerr("UI_Screen_Shot: pass a scene path after --")
 		quit(1)

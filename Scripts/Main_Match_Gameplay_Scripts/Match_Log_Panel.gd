@@ -155,8 +155,8 @@ func configure(theme_key: String, opponent_label: String) -> void:
 
 	offset_left   = 0.0
 	offset_top    = 0.0
-	offset_right  = SCREEN_W
-	offset_bottom = SCREEN_H
+	offset_right  = UIKit.screen_w()
+	offset_bottom = UIKit.screen_h()
 	mouse_filter  = Control.MOUSE_FILTER_IGNORE
 
 	_font = load(FONT_PATH)
@@ -167,23 +167,23 @@ func configure(theme_key: String, opponent_label: String) -> void:
 	# ── Backdrop ─────────────────────────────────────────────
 	var backdrop := ColorRect.new()
 	backdrop.color = Color(0, 0, 0, BACKDROP_ALPHA)
-	backdrop.offset_right  = SCREEN_W
-	backdrop.offset_bottom = SCREEN_H
+	backdrop.offset_right  = UIKit.screen_w()
+	backdrop.offset_bottom = UIKit.screen_h()
 	backdrop.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	add_child(backdrop)
 
 	# ── Panel ────────────────────────────────────────────────
-	var panel_h := PANEL_BOTTOM_Y - PANEL_TOP_Y
+	var panel_h := (UIKit.screen_h() - PANEL_TOP_Y) - PANEL_TOP_Y
 	_panel = _make_shader_rect()
 	_panel.position = Vector2(PANEL_MARGIN_X, PANEL_TOP_Y)
-	_panel.size     = Vector2(SCREEN_W - PANEL_MARGIN_X * 2.0, panel_h)
+	_panel.size     = Vector2(UIKit.screen_w() - PANEL_MARGIN_X * 2.0, panel_h)
 	var edge := MessageBoxTheme.panel_edge_color(_theme_key)
 	_apply_shader(_panel, edge, edge, Color.WHITE,
 				  PANEL_CORNER_R, PANEL_EDGE_SOLID, PANEL_EDGE_FADE)
 	add_child(_panel)
 
 	var content_l := PANEL_MARGIN_X + CONTENT_PAD_X
-	var content_r := SCREEN_W - PANEL_MARGIN_X - CONTENT_PAD_X
+	var content_r := UIKit.screen_w() - PANEL_MARGIN_X - CONTENT_PAD_X
 
 	# ── Header ───────────────────────────────────────────────
 	_header = Control.new()
@@ -202,7 +202,7 @@ func configure(theme_key: String, opponent_label: String) -> void:
 	_scroller.offset_left   = content_l
 	_scroller.offset_top    = list_top
 	_scroller.offset_right  = content_r
-	_scroller.offset_bottom = PANEL_BOTTOM_Y - CONTENT_PAD_B
+	_scroller.offset_bottom = (UIKit.screen_h() - PANEL_TOP_Y) - CONTENT_PAD_B
 	_scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	# The wheel is driven by hand (see the header note), so the container never
 	# needs to be hovered — and it must not eat clicks meant for the match.

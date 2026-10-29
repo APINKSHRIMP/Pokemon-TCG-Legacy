@@ -190,6 +190,38 @@ var _fill_alpha: float = -1.0
 var _panel_min_height: float = 138.0   # the height configure() asked for
 var _panel_height: float = 138.0       # what it actually came out as, after fitting
 var _panel_bottom: float = PANEL_BOTTOM_Y
+## True until a caller places the box with set_panel_bottom(): the box then follows
+## the bottom of the screen when the window changes size.
+var _bottom_from_screen: bool = true
+
+
+# ── ANY SCREEN SHAPE ─────────────────────────────────────────
+# The canvas can be wider or taller than 1920x1080 (UIKit.screen_size()). The box
+# spans the screen less PANEL_MARGIN_X each side, capped at PANEL_MAX_W and centred.
+## TWEAKABLE: the widest the box gets on a wide screen; 0 = no cap, it always spans
+## the screen. Long lines on a 32:9 monitor are the price of no cap.
+const PANEL_MAX_W : float = 1920.0 - PANEL_MARGIN_X * 2.0
+
+func _box_w() -> float:
+	var w: float = UIKit.screen_w() - PANEL_MARGIN_X * 2.0
+	return minf(w, PANEL_MAX_W) if PANEL_MAX_W > 0.0 else w
+
+func _box_l() -> float:
+	return (UIKit.screen_w() - _box_w()) * 0.5
+
+func _box_r() -> float:
+	return _box_l() + _box_w()
+
+
+func _on_screen_resized() -> void:
+	offset_right = UIKit.screen_w()
+	offset_bottom = UIKit.screen_h()
+	if _bottom_from_screen:
+		_panel_bottom = UIKit.screen_h() - PANEL_BOTTOM_INSET
+	if _body_text != "":
+		set_body_text(_body_text, _body_ceiling, false)
+	else:
+		_layout_panel()
 # -1 means "the variant decides" (22 for character, 31 for system). A caller that
 # passes a real size to configure() keeps it in BOTH variants - the outro's gift
 # notice is the system variant at 45pt, which is not the system default.
@@ -337,12 +369,14 @@ func configure(box_height: float = 138.0,
 	_pad_l = pad_l
 	_pad_t = pad_t
 	_pad_r = pad_r
-	_panel_bottom = PANEL_BOTTOM_Y
+	_panel_bottom = UIKit.screen_h() - PANEL_BOTTOM_INSET
+	_bottom_from_screen = true
 
 	offset_left   = 0.0
 	offset_top    = 0.0
-	offset_right  = SCREEN_W
-	offset_bottom = SCREEN_H
+	offset_right  = UIKit.screen_w()
+	offset_bottom = UIKit.screen_h()
+	UIKit.on_screen_resized(_on_screen_resized)
 	mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	visible       = false
 
@@ -471,31 +505,31 @@ func _layout_panel() -> void:
 		return
 
 	var panel_top := _panel_bottom - _panel_height
-	var panel_w := SCREEN_W - PANEL_MARGIN_X * 2.0
+	var panel_w := (_box_r() - _box_l())
 
 	# The rect is inflated so the shader can draw the shadow and glow outside the box.
-	_panel.position = Vector2(PANEL_MARGIN_X - PANEL_SHADOW_PAD, panel_top - PANEL_SHADOW_PAD)
+	_panel.position = Vector2(_box_l() - PANEL_SHADOW_PAD, panel_top - PANEL_SHADOW_PAD)
 	_panel.size     = Vector2(panel_w + PANEL_SHADOW_PAD * 2.0,
 							  _panel_height + PANEL_SHADOW_PAD * 2.0)
 	_apply_panel_shader()
 
 	if _text_box != null:
 		var side := _pad_side()
-		_text_box.offset_left   = PANEL_MARGIN_X + side + _pad_l
+		_text_box.offset_left   = _box_l() + side + _pad_l
 		_text_box.offset_top    = panel_top + _pad_top()
-		_text_box.offset_right  = SCREEN_W - PANEL_MARGIN_X - side - _pad_r
+		_text_box.offset_right  = _box_r() - side - _pad_r
 		_text_box.offset_bottom = _panel_bottom - _pad_bottom() - _button_block_h()
 
 	if _button_row != null:
-		_button_row.offset_left   = PANEL_MARGIN_X
-		_button_row.offset_right  = SCREEN_W - PANEL_MARGIN_X
+		_button_row.offset_left   = _box_l()
+		_button_row.offset_right  = _box_r()
 		# Centred ON the bottom edge, mirroring the name pill on the top edge.
 		_button_row.offset_top    = _panel_bottom - BUTTON_H * 0.5
 		_button_row.offset_bottom = _button_row.offset_top + BUTTON_H
 
 	if _caret != null:
 		_caret.position = Vector2(
-			SCREEN_W - PANEL_MARGIN_X - CARET_INSET - CARET_W,
+			_box_r() - CARET_INSET - CARET_W,
 			_panel_bottom - CARET_INSET - CARET_H)
 		_caret.set("colour", _caret_colour())
 
@@ -556,6 +590,7 @@ func set_fill_alpha(alpha: float) -> void:
 
 # Moves the whole box up or down and re-flows everything that depends on where it sits.
 func set_panel_bottom(new_bottom: float) -> void:
+	_bottom_from_screen = false
 	if is_equal_approx(_panel_bottom, new_bottom):
 		return
 	_panel_bottom = new_bottom
@@ -812,7 +847,7 @@ func _rebuild_chips() -> void:
 		entries.append(c)
 
 	var cash_w := _measure_cash_pill()
-	var right_limit := SCREEN_W - PANEL_MARGIN_X - PILL_INSET_R - cash_w
+	var right_limit := _box_r() - PILL_INSET_R - cash_w
 	if cash_w > 0.0:
 		right_limit -= PILL_GAP
 
@@ -820,7 +855,7 @@ func _rebuild_chips() -> void:
 	# the whole row - a name that has to shrink takes its chips with it.
 	var font_size := PILL_FONT_SIZE
 	var measured: Array = []
-	var x := PANEL_MARGIN_X + PILL_INSET_L
+	var x := _box_l() + PILL_INSET_L
 	while true:
 		measured = _measure_pills(entries, font_size)
 		var total := 0.0
@@ -836,7 +871,7 @@ func _rebuild_chips() -> void:
 
 	# -- The cash pill, flush with the box's right inset --
 	if cash_w > 0.0:
-		_build_cash_pill(SCREEN_W - PANEL_MARGIN_X - PILL_INSET_R - cash_w, pill_top, pill_h)
+		_build_cash_pill(_box_r() - PILL_INSET_R - cash_w, pill_top, pill_h)
 
 
 # One pill: the coloured capsule, the dark well, the icon inside it and the label.
@@ -1202,7 +1237,7 @@ func _measure_for(text: String, max_font_size: int) -> Dictionary:
 
 	# Wrap width does not depend on the panel's height, so it can be worked out
 	# before anything is laid out.
-	var wrap_w := SCREEN_W - PANEL_MARGIN_X * 2.0 - _pad_side() * 2.0 - _pad_l - _pad_r
+	var wrap_w := (_box_r() - _box_l()) - _pad_side() * 2.0 - _pad_l - _pad_r
 	var chrome_h := _pad_top() + _pad_bottom() + _button_block_h()
 
 	# Grow the box to the text; if even PANEL_MAX_H will not hold it, shrink the font.

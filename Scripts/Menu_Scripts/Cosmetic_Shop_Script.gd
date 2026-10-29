@@ -377,8 +377,9 @@ func _grid_area_pos() -> Vector2:
 	return PAGED_GRID_AREA_POS if _pages.size() > 1 else GRID_AREA_POS
 
 
+## The shelf area grows with the screen: the full extra width and height.
 func _grid_area_size() -> Vector2:
-	return PAGED_GRID_AREA_SIZE if _pages.size() > 1 else GRID_AREA_SIZE
+	return (PAGED_GRID_AREA_SIZE if _pages.size() > 1 else GRID_AREA_SIZE) + UIKit.screen_extra()
 
 
 # ─── Texture resolution ──────────────────────────────────────────────────────
@@ -466,11 +467,11 @@ func _build_item_grid() -> void:
 	var area_size := _grid_area_size()
 	# Width: the whole screen, CELL_SEP at least between items and at each edge -- the row
 	# is spread evenly across it below rather than packed into the middle.
-	var fit_w : float = (UIKit.SCREEN_W - float(columns + 1) * CELL_SEP) / float(columns)
+	var fit_w : float = (UIKit.screen_w() - float(columns + 1) * CELL_SEP) / float(columns)
 	var fit_h : float = (area_size.y - float(rows - 1) * CELL_SEP) / float(rows)
 	# Height is the binding dimension: pick whichever of the two limits is tighter once
 	# the item's aspect is applied, and never upscale past the source's native height.
-	var cell_h : float = min(fit_h, fit_w / aspect, max_cell)
+	var cell_h : float = min(fit_h, fit_w / aspect, max_cell * UIKit.item_scale())
 	var cell_size := Vector2(cell_h * aspect, cell_h)
 
 	for entry in inventory:
@@ -580,7 +581,7 @@ func _build_item_grid() -> void:
 	var placed_rows : int = int(ceil(float(placed) / float(placed_cols)))
 	# Columns spread evenly across the screen: the gap between items equals the gap to the
 	# screen edges, so a short shelf is spaced out rather than huddled in the middle.
-	var h_gap : int = int(ShopChrome.spread_gap(UIKit.SCREEN_W, placed_cols, cell_size.x, CELL_SEP))
+	var h_gap : int = int(ShopChrome.spread_gap(UIKit.screen_w(), placed_cols, cell_size.x, CELL_SEP))
 	grid.add_theme_constant_override("h_separation", h_gap)
 	var content := Vector2(
 		float(placed_cols) * cell_size.x + float(placed_cols - 1) * h_gap,
@@ -588,7 +589,7 @@ func _build_item_grid() -> void:
 	)
 	grid.size     = content
 	grid.position = Vector2(
-		ShopChrome.spread_left(UIKit.SCREEN_W, placed_cols, cell_size.x, h_gap),
+		ShopChrome.spread_left(UIKit.screen_w(), placed_cols, cell_size.x, h_gap),
 		_grid_area_pos().y + (_grid_area_size().y - content.y) / 2.0)
 
 	# After the re-centre, never before: pills anchor to each cell's global rect and the whole
@@ -849,7 +850,7 @@ func _show_purchase_display(item_name: String, kind: String, display_name: Strin
 	var label := Label.new()
 	label.text                 = _purchase_caption(display_name, kind)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.position             = Vector2(160.0, caption_y)
+	label.position             = Vector2((vp_size.x - 1600.0) / 2.0, caption_y)
 	label.size                 = Vector2(1600.0, 80.0)
 	label.add_theme_font_size_override("font_size", 50)
 	label.add_theme_color_override("font_color", Color.WHITE)
