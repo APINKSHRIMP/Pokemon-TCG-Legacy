@@ -428,7 +428,6 @@ func configure(box_height: float = 138.0,
 
 		yes_button = _make_button("Yes", "primary")
 		no_button  = _make_button("No",  "negative")   # ISSUE #379: was translucent, read as disabled
-		print("ISSUE #379 FIX ACTIVE: Yes = positive green, No = negative red")
 		# The OK button is gone as a control but kept as a node, so the handful of
 		# callers that still connect to it do not have to guard. Never made visible.
 		ok_button  = _make_button("OK",  "primary")   # ISSUE #379: OK is a positive answer

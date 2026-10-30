@@ -450,6 +450,7 @@
  },
  "Bass Control": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "HyperVoice",
@@ -694,6 +695,7 @@
   "type": "Fighting"
  },
  "Blindside": {
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "FeintAttack",
@@ -735,6 +737,7 @@
  },
  "Body Bolt": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "ElectricTackle",
@@ -820,6 +823,7 @@
  },
  "Bound Crush": {
   "bench": true,
+  "choose": true,
   "cost": 4,
   "dmg": false,
   "fx": "GrabCrush",
@@ -852,6 +856,7 @@
  },
  "Breaking Impact": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "GigaImpact",
@@ -1160,6 +1165,7 @@
  },
  "Called Shot": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "LockOn",
@@ -1404,6 +1410,7 @@
   "type": "Colorless"
  },
  "Coin Hurl": {
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "PayDay",
@@ -1467,6 +1474,7 @@
   "fx": "CometPunch",
   "how": "exact",
   "sfx": "Comet Punch 1hit",
+  "sfx_len": 0.28,
   "type": "Grass"
  },
  "Comet Slap": {
@@ -1834,6 +1842,7 @@
  },
  "Crushing Wave": {
   "bench": true,
+  "choose": true,
   "cost": 3,
   "dmg": false,
   "fx": "TidalWave",
@@ -2463,6 +2472,7 @@
   "type": "Fighting"
  },
  "Dig Under": {
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "Dig",
@@ -3357,6 +3367,7 @@
  },
  "Energy Flip": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "EnergyUpSmall",
@@ -3508,6 +3519,7 @@
  },
  "Enraged Linear Attack": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Sonicboom",
@@ -3581,6 +3593,7 @@
   "type": "Water"
  },
  "Evil Eye": {
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "Leer",
@@ -3642,6 +3655,7 @@
  },
  "Extra Circuit": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Charge",
@@ -3660,6 +3674,7 @@
   "dmg": true,
   "fx": "CometPunch",
   "how": "exact",
+  "sfx_len": 0.28,
   "type": "Metal"
  },
  "Extra Crush": {
@@ -3787,6 +3802,7 @@
  },
  "Feint Attack": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "FeintAttack",
@@ -4092,6 +4108,7 @@
   "type": "Fire"
  },
  "Flame Jet": {
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "FlamePillar",
@@ -4256,6 +4273,7 @@
   "type": "Water"
  },
  "Flitter": {
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "SilverWind",
@@ -5178,6 +5196,7 @@
   "type": "Fighting"
  },
  "Helping Hand": {
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "Clap",
@@ -5461,6 +5480,7 @@
  },
  "Hydro Shot": {
   "bench": true,
+  "choose": true,
   "cost": 3,
   "dmg": false,
   "fx": "WaterGun",
@@ -6499,6 +6519,7 @@
  },
  "Linear Attack": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Sonicboom",
@@ -6564,6 +6585,7 @@
   "type": "Water"
  },
  "Long Tongue": {
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Lick",
@@ -6609,6 +6631,7 @@
  },
  "Lucky Shot": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "LockOn",
@@ -6737,6 +6760,7 @@
   "type": "Colorless"
  },
  "Magic Darts": {
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Swift",
@@ -7021,6 +7045,7 @@
  },
  "Mega Shot": {
   "bench": true,
+  "choose": true,
   "cost": 3,
   "dmg": false,
   "fx": "HyperBeam",
@@ -7211,6 +7236,7 @@
  },
  "Mid-air Crush": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "BraveBird",
@@ -7541,6 +7567,7 @@
  },
  "Mudslide": {
   "bench": true,
+  "choose": true,
   "cost": 4,
   "dmg": false,
   "fx": "MudSlap",
@@ -7846,6 +7873,7 @@
   "dmg": true,
   "fx": "CometPunch",
   "how": "exact",
+  "sfx_len": 0.28,
   "type": "Colorless"
  },
  "One-Two Strike": {
@@ -7853,6 +7881,7 @@
   "dmg": true,
   "fx": "CometPunch",
   "how": "exact",
+  "sfx_len": 0.28,
   "type": "Metal"
  },
  "Outrage": {
@@ -7977,6 +8006,7 @@
  },
  "Pebble Throw": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "Pebbles",
@@ -8597,6 +8627,7 @@
  },
  "Power Bolt": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Thunderbolt",
@@ -8667,6 +8698,7 @@
  },
  "Power Short": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Thunderbolt",
@@ -8861,6 +8893,7 @@
  },
  "Psychic Rage": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Outrage",
@@ -9099,6 +9132,7 @@
   "type": "Fire"
  },
  "Quick Bind": {
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "Bind",
@@ -9131,6 +9165,7 @@
   "type": "Colorless"
  },
  "Quick Dive": {
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Waterfall",
@@ -9302,6 +9337,7 @@
  },
  "Random Spark": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "Spark",
@@ -9440,6 +9476,7 @@
  },
  "Reflected Beam": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "MirrorShot",
@@ -9856,6 +9893,7 @@
   "type": "Fire"
  },
  "Sacred Fire": {
+  "choose": true,
   "cost": 3,
   "dmg": false,
   "fx": "SacredFire",
@@ -10341,6 +10379,7 @@
   "type": "Colorless"
  },
  "Sharpshooter": {
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "LockOn",
@@ -10348,6 +10387,7 @@
   "type": "Grass"
  },
  "Sharpshooting": {
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "LockOn",
@@ -10561,6 +10601,7 @@
  },
  "Skill Dive": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "BraveBird",
@@ -10941,6 +10982,7 @@
  },
  "Snap Tail": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "TailSlap",
@@ -11139,6 +11181,7 @@
  },
  "Special Circuit": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Charge",
@@ -11178,6 +11221,7 @@
   "type": "Grass"
  },
  "Speed Shot": {
+  "choose": true,
   "cost": 3,
   "dmg": false,
   "fx": "Swift",
@@ -11446,6 +11490,7 @@
   "type": "Water"
  },
  "Splatter": {
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "Sludge",
@@ -11592,6 +11637,7 @@
   "type": "Metal"
  },
  "Squirt": {
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "WaterGun",
@@ -11660,9 +11706,10 @@
   "type": "Water"
  },
  "Stare": {
+  "choose": true,
   "cost": 2,
   "dmg": false,
-  "fx": "Leer",
+  "fx": "Stare",
   "how": "exact",
   "type": "Grass"
  },
@@ -11906,6 +11953,7 @@
  },
  "Stretch Kick": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "Kick",
@@ -11914,6 +11962,7 @@
  },
  "Stretch Tail": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "TailSlap",
@@ -11922,6 +11971,7 @@
  },
  "Stretch Vine": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "VineWhip",
@@ -12174,6 +12224,7 @@
   "type": "Psychic"
  },
  "Super Psywave": {
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Psywave",
@@ -12614,6 +12665,7 @@
  },
  "Target Attack": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "LockOn",
@@ -12674,6 +12726,7 @@
   "type": "Fighting"
  },
  "Telekinesis": {
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Telekinesis",
@@ -12914,6 +12967,7 @@
  },
  "Thunder Spear": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "ElectricTackle",
@@ -13055,6 +13109,7 @@
   "type": "Colorless"
  },
  "Tongue Stretch": {
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Lick",
@@ -13063,6 +13118,7 @@
  },
  "Tongue Whip": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "Lick",
@@ -13249,6 +13305,7 @@
  },
  "Triple Bone": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "BoneRush",
@@ -13458,6 +13515,7 @@
  },
  "Upward Lick": {
   "bench": true,
+  "choose": true,
   "cost": 2,
   "dmg": false,
   "fx": "Lick",
@@ -13550,6 +13608,7 @@
  },
  "Volcanic Ash": {
   "bench": true,
+  "choose": true,
   "cost": 3,
   "dmg": false,
   "fx": "HotRocks",
@@ -13614,6 +13673,7 @@
  },
  "Water Arrow": {
   "bench": true,
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "WaterGun",
@@ -13628,6 +13688,7 @@
   "type": "Water"
  },
  "Water Cannon": {
+  "choose": true,
   "cost": 1,
   "dmg": false,
   "fx": "HydroPump",

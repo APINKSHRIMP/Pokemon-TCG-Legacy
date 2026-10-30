@@ -713,6 +713,15 @@ func attack_unusable_reason(attack: Dictionary, attacker: card_object) -> String
 	# disabled instead of letting the attack be picked and then fail.
 	if attacker.has_effect("cant_attack_next_turn") or attacker.has_effect("cant_attack_until_benched"):
 		return attacker.metadata.get("name", "") + " can't attack this turn!"
+	# ISSUE #513: Tail Wag / Leer / Intimidate ("can't attack <the Pokemon that used it>") was only
+	# caught in run_attack_prechecks, AFTER the press - the row looked usable, and pressing it wasted
+	# the turn. Same test as the precheck: blocked only while that Pokemon is still the Defender.
+	if attacker.attack_blocked_next_turn:
+		var is_opp_b: bool = attacker.is_owner_opp(main)
+		var blocker_mon = main.player_active_pokemon if is_opp_b else main.opponent_active_pokemon
+		if blocker_mon != null and blocker_mon.get_instance_id() == attacker.attack_blocked_by_id:
+			print("ISSUE #513 FIX ACTIVE: attack row disabled - ", attacker.metadata.get("name", ""), " is blocked by ", blocker_mon.metadata.get("name", ""))
+			return attacker.metadata.get("name", "") + " can't attack " + blocker_mon.metadata.get("name", "") + "!"
 	var t: String = attack.get("text", "").to_lower()
 	if t == "":
 		return ""
@@ -931,7 +940,7 @@ func _estimate_board_scaled(attack: Dictionary, attacker: card_object, defender:
 	if times and "flip a number of coins equal to the number of energy attached" in text:
 		var n := 0
 		if attacker != null:
-			for e in attacker.attached_energies: n += max(1, main.get_energy_provided_by_card(e).size())
+			for e in attacker.attached_energies: n += max(1, main.get_energy_unit_count(e))
 		return mk.call(0, base * n, base * n / 2.0)
 	# coins = Fire Energy CARDS (Continuous Fireball)
 	if times and "equal to the number of fire energy cards attached" in text:
@@ -1003,7 +1012,7 @@ func _estimate_board_scaled(attack: Dictionary, attacker: card_object, defender:
 		var per_e := extract_number_before(text, "more damage for each energy")
 		if per_e <= 0: per_e = 10
 		var units := 0
-		for e in attacker.attached_energies: units += max(1, main.get_energy_provided_by_card(e).size())
+		for e in attacker.attached_energies: units += max(1, main.get_energy_unit_count(e))
 		var tot := base + per_e * units
 		return mk.call(tot, tot, tot)
 	# ISSUE #375: Ultra Energy Source — × basic Energy cards on BOTH Active Pokémon.
@@ -1667,6 +1676,7 @@ func resolve_attack_variable_damage(attack: Dictionary, attacker: card_object, d
 			print("ISSUE #312 FIX ACTIVE: ", flip_count, " coin(s) -> ", heads_count, " heads")
 		
 		resolved_damage = base_damage * heads_count
+		if main.attack_vfx != null: main.attack_vfx.set_pending_hits(attacker, heads_count)   # ISSUE #511
 		# Always show the final summary as a message
 		messages.append("GOT " + str(heads_count) + " HEADS! " + str(resolved_damage) + " DAMAGE!")
 		return {"damage": resolved_damage, "messages": messages, "flip_result": flip_result, "attack_failed": attack_failed}
@@ -2076,7 +2086,8 @@ func execute_amnesia(attacker: card_object, defender: card_object, is_opponent: 
 # CONVERSION (Porygon): Change weakness (1) or resistance (2) type
 func execute_conversion(attacker: card_object, defender: card_object, is_opponent: bool, is_conversion_1: bool) -> void:
 	# ISSUE #365: "a type of your choice other than Colorless" — Darkness and Metal were missing.
-	var energy_types = ["Fighting", "Fire", "Grass", "Lightning", "Psychic", "Water", "Darkness", "Metal"]
+	# ISSUE #520: Darkness / Metal only once the player owns a neo card (the CPU always has all eight).
+	var energy_types: Array = main.available_energy_types(false, is_opponent)
 	var chosen_type: String = ""
 	
 	# Conversion 1: Only works if the defending pokemon has a weakness
@@ -2101,7 +2112,12 @@ func execute_conversion(attacker: card_object, defender: card_object, is_opponen
 		else:
 			chosen_type = main.cpu_ai.cpu_dominant_attack_type(false, energy_types)
 	else:
-		var energy_uids = ["base1-97", "base1-98", "base1-99", "base1-100", "base1-101", "base1-102", "neo1-104", "neo1-19"]
+		var cv_uid_of := {"Fighting": "base1-97", "Fire": "base1-98", "Grass": "base1-99", "Lightning": "base1-100",
+			"Psychic": "base1-101", "Water": "base1-102", "Darkness": "neo1-104", "Metal": "neo1-19"}
+		var energy_uids: Array = []
+		for cv_t in energy_types:
+			energy_uids.append(cv_uid_of[cv_t])
+		print("ISSUE #520 FIX ACTIVE: Conversion offers ", energy_types)
 		var energy_cards: Array = []
 		for uid in energy_uids:
 			var meta = main.get_card_metadata(uid)
@@ -2619,15 +2635,23 @@ func apply_card_text_effects(effects: Array, attacker: card_object, defender: ca
 # Function to get all basic pokemon from a given array of cards
 func apply_self_damage(effect: Dictionary, attacker: card_object, is_opponent_attacking: bool) -> void:
 	var damage = effect.get("damage", 0)
+	var raw_damage: int = damage
 	# ISSUE #82 / ISSUE #60: PlusPower (+10 each) then Defender (-20 each) on attack self-damage.
 	damage = main.apply_self_damage_modifiers(attacker, damage)
-	attacker.current_hp = max(0, attacker.current_hp - damage)
 	var name = attacker.metadata.get("name", "Unknown")
-	var label_x = 1030 if is_opponent_attacking else 530
-	await main.show_message(name.to_upper() + " DEALT " + str(damage) + " DAMAGE TO ITSELF!")
+	# ISSUE #521: show the Defender / PlusPower maths as floating labels over the attacker (as an
+	# opponent's attack would), and the result as a normal damage label - not "-0HP" at a fixed spot.
+	await main.show_self_damage_modifiers(attacker, raw_damage, is_opponent_attacking)
 	if main._should_bail(): return
-	main.show_floating_label("-" + str(damage) + "HP", Vector2(label_x, 300), Color.RED, true)
+	attacker.current_hp = max(0, attacker.current_hp - damage)
+	if damage > 0:
+		main.float_label_over(attacker, "-" + str(damage) + "HP", Color.RED, is_opponent_attacking)
 	main.display_hp_circles_above_align(attacker, is_opponent_attacking)
+	if damage <= 0 and raw_damage > 0:
+		await main.show_message(name.to_upper() + " TOOK NO DAMAGE!")
+	else:
+		await main.show_message(name.to_upper() + " DEALT " + str(damage) + " DAMAGE TO ITSELF!")
+	if main._should_bail(): return
 	print("EFFECT APPLIED: ", name, " took ", damage, " self-damage. HP: ", attacker.current_hp)
 
 # Discards energy from the attacker as an attack cost
@@ -2715,7 +2739,6 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 		# e.g. Whirlpool: "choose 1 of them and discard it"). ISSUE #24 FIX: the CPU picks the player's
 		# most valuable Energy instead of the player being prompted to discard their own.
 		energy_to_discard = main.cpu_ai.cpu_pick_energy_to_discard_from(defender)
-		print("ISSUE #24 FIX ACTIVE: CPU chose to discard ", (energy_to_discard.metadata.get("name", "?") if energy_to_discard else "nothing"), " from player's ", name)
 	
 	if energy_to_discard != null:
 		var energy_texture = main.get_card_texture(energy_to_discard)
@@ -2730,7 +2753,6 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 		# from the Pokemon BEFORE the fly-to-discard animation starts (previously the energy stayed
 		# stacked on the Pokemon while a copy flew to the discard, showing it in two places). After the
 		# card lands in the discard pile, refresh the discard pile and the Pokemon's energies again.
-		print("ISSUE #24 FIX ACTIVE: refresh board before + after energy discard animation")
 		await main.show_message("AN ENERGY WAS DISCARDED FROM " + name.to_upper() + "!")
 		if main._should_bail(): return
 
@@ -2900,7 +2922,6 @@ func apply_self_heal(effect: Dictionary, attacker: card_object, is_opponent_atta
 	if heal_request <= 0:
 		print("EFFECT SKIPPED: ", name, " already at full HP")
 		return
-	print("ISSUE #23a FIX ACTIVE (apply_self_heal): ", name, " requesting heal of ", heal_request, " HP")
 	var before_hp = attacker.current_hp
 	await main.card_ops.heal_pokemon(attacker, heal_request, is_opponent_attacking)
 	if main._should_bail(): return
@@ -3261,7 +3282,7 @@ func execute_big_eggsplosion(attacker: card_object, defender: card_object, is_op
 	# ISSUE #301: Energy (not Energy CARDS) — a Double Colorless Energy is 2 coins.
 	var energy_count := 0
 	for e in attacker.attached_energies:
-		energy_count += max(1, main.get_energy_provided_by_card(e).size())
+		energy_count += max(1, main.get_energy_unit_count(e))
 	if energy_count == 0:
 		await main.show_message("NO ENERGY ATTACHED - 0 DAMAGE!")
 		if main._should_bail(): return
@@ -4167,6 +4188,7 @@ func execute_continuous_fireball(attacker: card_object, defender: card_object, i
 			heads_count += 1
 
 	var total_damage = 50 * heads_count
+	if main.attack_vfx != null: main.attack_vfx.set_pending_hits(attacker, heads_count)   # ISSUE #511
 	await main.show_message("GOT " + str(heads_count) + " HEADS! " + str(total_damage) + " DAMAGE!")
 	if main._should_bail(): return
 	
@@ -4190,7 +4212,8 @@ func execute_continuous_fireball(attacker: card_object, defender: card_object, i
 	var cf_picks: Array = await pick_own_energies(attacker, fire_energies, to_discard, is_opponent, "CONTINUOUS FIREBALL: DISCARD " + str(to_discard) + " FIRE ENERGY")
 	if main._should_bail(): return
 	for energy in cf_picks:
-		main.card_ops.discard_energy_from_pokemon(energy, is_opponent)
+		await main.card_ops.discard_energy_animated(energy, is_opponent)   # ISSUE #527
+		if main._should_bail(): return
 	
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -6359,13 +6382,15 @@ func gym2_self_damage(attacker: card_object, is_opponent: bool, amount: int) -> 
 	# ISSUE #82 / ISSUE #60: this is the shared helper behind every recoil/self-damage attack in the
 	# engine, so applying the modifiers here covers the whole family in one place (PlusPower +10 each,
 	# Defender -20 each). Previously it applied neither.
+	var raw_amount := amount
 	amount = main.apply_self_damage_modifiers(attacker, amount)
+	await main.show_self_damage_modifiers(attacker, raw_amount, is_opponent)   # ISSUE #521
+	if main._should_bail(): return
 	if amount <= 0:
 		await main.show_message(attacker.metadata.get("name", "").to_upper() + " TOOK NO DAMAGE!")
 		return
 	attacker.current_hp = max(0, attacker.current_hp - amount)
-	var pos = Vector2(1030, 300) if is_opponent else Vector2(530, 300)
-	main.show_floating_label("-" + str(amount) + "HP", pos, Color.YELLOW, true)
+	main.float_label_over(attacker, "-" + str(amount) + "HP", Color.YELLOW, is_opponent)   # ISSUE #521
 	main.display_hp_circles_above_align(attacker, is_opponent)
 	await main.show_message(attacker.metadata.get("name", "").to_upper() + " TOOK " + str(amount) + " DAMAGE!")
 
@@ -6379,9 +6404,8 @@ func gym2_discard_energy(pokemon: card_object, is_pokemon_opponent: bool, type_f
 	var discard_pile = main.opponent_discard_pile if is_pokemon_opponent else main.player_discard_pile
 	for i in range(n):
 		var e = matching[i]
-		pokemon.attached_energies.erase(e)
-		e.current_location = "discard"
-		discard_pile.append(e)
+		# ISSUE #527: animated (fire and forget - this helper is synchronous; the data moves at once).
+		main.card_ops.discard_energy_animated(e, is_pokemon_opponent)
 	main.display_active_pokemon_energies(is_pokemon_opponent)
 	main.update_discard_pile_display(is_pokemon_opponent)
 	return n
@@ -6641,7 +6665,8 @@ func execute_plasma(attacker: card_object, defender: card_object, is_opponent: b
 	if main._should_bail(): return
 	var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var lightning: card_object = null
-	var pl_pool: Array = discard_pile.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Lightning" in main.get_energy_provided_by_card(c))
+	var pl_pool: Array = discard_pile.filter(func(c): return main.is_typed_energy_card(c, "Lightning"))
+	print("ISSUE #525 FIX ACTIVE: Plasma pool = ", pl_pool.size(), " real Lightning Energy card(s) (Rainbow etc. excluded)")
 	if not pl_pool.is_empty():
 		lightning = pl_pool[0]
 	if lightning != null and require_flip:
@@ -7166,6 +7191,8 @@ func execute_flip_bonus_per_heads(attacker: card_object, defender: card_object, 
 		if coin:
 			heads += 1
 	var dmg = base_damage + per_heads * heads
+	# ISSUE #511: a pure "X times the number of heads" attack (no base) shows one hit per head.
+	if base_damage <= 0 and main.attack_vfx != null: main.attack_vfx.set_pending_hits(attacker, heads)
 	await main.show_message("GOT " + str(heads) + " HEADS! " + str(dmg) + " DAMAGE!")
 	if main._should_bail(): return
 	await gym1_hit_active(attacker, defender, is_opponent, dmg)
@@ -7189,6 +7216,7 @@ func execute_flip_dynamic(attacker: card_object, defender: card_object, is_oppon
 			if await main.flip_coin(true, is_opponent):
 				heads += 1
 	var total = (base * heads) if multiplicative else (base + per_heads * heads)
+	if multiplicative and main.attack_vfx != null: main.attack_vfx.set_pending_hits(attacker, heads)   # ISSUE #511
 	await main.show_message(str(heads) + " HEADS — " + str(total) + " DAMAGE!")
 	if main._should_bail(): return
 	if total > 0:
@@ -8734,7 +8762,7 @@ func execute_energy_control(attacker: card_object, defender: card_object, is_opp
 func execute_texture_magic(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
 	if await handle_attack_blind(attacker, is_opponent): return
-	var types = ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting", "Darkness", "Metal"]
+	var types: Array = main.available_energy_types(false, is_opponent)   # ISSUE #520
 	if is_opponent:
 		var player_type = main.player_active_pokemon.metadata.get("types", ["Colorless"])[0] if main.player_active_pokemon else "Colorless"
 		attacker.temporary_resistance = player_type if player_type != "Colorless" else "Fighting"
@@ -8863,7 +8891,7 @@ func execute_paint(attacker: card_object, defender: card_object, is_opponent: bo
 		await main.show_message("TAILS! PAINT FAILED!")
 		if main._should_bail(): return
 		return
-	var types = ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting", "Darkness", "Metal"]
+	var types: Array = main.available_energy_types(false, is_opponent)   # ISSUE #520
 	var chosen_type: String
 	if is_opponent:
 		# CPU picks the type that the player's active is weak to
@@ -10462,8 +10490,7 @@ func _register_neo2_attacks() -> void:
 				if not opp: await main.show_message(a.metadata.get("name","").to_upper() + "'S FLAMETHROWER FIZZLED — NO FIRE ENERGY TO DISCARD!")
 				await _attack_finish(false, 0, atk, types, opp)
 				return
-			a.attached_energies.erase(fire_e[0])
-			main.card_ops.discard_energy_from_pokemon(fire_e[0], opp)
+			await main.card_ops.discard_energy_animated(fire_e[0], opp)   # ISSUE #527
 			main.display_active_pokemon_energies(opp)
 			main.update_discard_pile_display(opp)
 		var result = main.calculate_final_damage(b, types, d, a)
@@ -11115,7 +11142,6 @@ func execute_neo2_recover(attacker: card_object, is_opponent: bool, atk: Diction
 	elif is_opponent:
 		energy_to_discard = _recover_cpu_pick_energy_to_discard(candidates, discard_type)
 	else:
-		print("ISSUE #22 FIX ACTIVE (recover): prompting player to choose which energy to discard")
 		energy_to_discard = await main.card_ops.prompt_select_card(candidates, "RECOVER — DISCARD ENERGY", "Choose which Energy to discard to use Recover", "DISCARD", false)
 		if main._should_bail(): return
 		if energy_to_discard == null:
@@ -11126,7 +11152,6 @@ func execute_neo2_recover(attacker: card_object, is_opponent: bool, atk: Diction
 	# ISSUE #23a FIX ACTIVE: a full heal must play the healing animation (floating "+N HP" label +
 	# HP circles restored one at a time) rather than snapping current_hp to max silently.
 	var heal_amount = attacker.get_max_hp() - attacker.current_hp
-	print("ISSUE #23a FIX ACTIVE (recover): animating full heal of ", heal_amount, " HP")
 	await main.card_ops.heal_pokemon(attacker, heal_amount, is_opponent)
 	if main._should_bail(): return
 	await main.show_message("RECOVER! ALL DAMAGE REMOVED FROM " + attacker.metadata.get("name","").to_upper() + "!")
@@ -11278,6 +11303,7 @@ func execute_neo2_politoed_doubleslap(attacker: card_object, defender: card_obje
 			heads += 1
 	if main._should_bail(): return
 	var base_damage = heads * 40
+	if main.attack_vfx != null: main.attack_vfx.set_pending_hits(attacker, heads)   # ISSUE #511
 	var frog_bonus = main.powers_and_bodies.get_frog_song_bonus(attacker)
 	if frog_bonus > 0:
 		base_damage += frog_bonus
@@ -12185,7 +12211,15 @@ func execute_neo3_swipe(attacker: card_object, defender: card_object, is_opponen
 func execute_neo3_core_stream(attacker: card_object, is_opponent: bool) -> void:
 	if await handle_attack_confusion(attacker, is_opponent): return
 	if await handle_attack_blind(attacker, is_opponent): return
-	var energy_types = ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting", "Darkness", "Metal"]
+	# ISSUE #520: Darkness / Metal hidden until the player owns a neo card - unless the opponent actually has
+	# that Energy in play (then it's a real target and must stay choosable).
+	var energy_types: Array = main.available_energy_types(false, is_opponent)
+	for cs_t in ["Darkness", "Metal"]:
+		if cs_t in energy_types: continue
+		for cs_p in ([main.opponent_active_pokemon] if main.opponent_active_pokemon != null else []) + main.opponent_bench:
+			if cs_p.attached_energies.any(func(e): return cs_t in main.get_energy_provided_by_card(e)):
+				energy_types.append(cs_t)
+				break
 	var chosen_type = "Fire"
 	if is_opponent:
 		# CPU: choose type that hits the most opponent pokemon
@@ -16273,6 +16307,7 @@ func execute_ecard1_doubleslap(attacker: card_object, defender: card_object, is_
 			heads += 1
 	if main._should_bail(): return
 	var total = heads * per_head
+	if main.attack_vfx != null: main.attack_vfx.set_pending_hits(attacker, heads)   # ISSUE #511
 	await main.show_message("DOUBLESLAP! " + str(heads) + " HEADS — " + str(total) + " DAMAGE!")
 	if main._should_bail(): return
 	if total > 0:
@@ -20889,11 +20924,11 @@ func execute_ex3_collect_fire(attacker: card_object, defender: card_object, is_o
 	var attached = 0
 	var player_picks: Array = []
 	if not is_opponent:
-		player_picks = await main.card_ops.prompt_select_cards(discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Fire" in main.get_energy_provided_by_card(c)),
+		player_picks = await main.card_ops.prompt_select_cards(discard.filter(func(c): return main.is_typed_energy_card(c, "Fire")),
 			1, 2, "COLLECT FIRE", "Choose up to 2 Fire Energy to attach", "ATTACH")
 		if main._should_bail(): return
 	for i in range(2):
-		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Fire" in main.get_energy_provided_by_card(c))
+		var pool = discard.filter(func(c): return main.is_typed_energy_card(c, "Fire"))
 		if pool.is_empty(): break
 		var chosen: card_object = null
 		if is_opponent:
@@ -24870,11 +24905,11 @@ func execute_ex7_search_discard_energy_to_hand(attacker: card_object, is_opponen
 	var taken = 0
 	var player_picks: Array = []
 	if not is_opponent:
-		player_picks = await main.card_ops.prompt_select_cards(discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and type_name in main.get_energy_provided_by_card(c)),
+		player_picks = await main.card_ops.prompt_select_cards(discard.filter(func(c): return main.is_typed_energy_card(c, type_name)),
 			0, count, "WATER PLANT", "Choose up to " + str(count) + " " + type_name + " Energy for your hand", "TAKE")   # ISSUE #366
 		if main._should_bail(): return
 	while taken < count:
-		var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and type_name in main.get_energy_provided_by_card(c))
+		var pool = discard.filter(func(c): return main.is_typed_energy_card(c, type_name))
 		if pool.is_empty(): break
 		var pick: card_object = null
 		if is_opponent:
@@ -25028,7 +25063,7 @@ func execute_ex7_fire_dance(attacker: card_object, defender: card_object, is_opp
 	var mine = main.card_ops.get_all_pokemon_in_play(is_opponent)
 	var target: card_object = attacker
 	if is_opponent and mine.size() > 1:
-		var fd_any = (main.opponent_discard_pile).filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Fire" in main.get_energy_provided_by_card(c))
+		var fd_any = (main.opponent_discard_pile).filter(func(c): return main.is_typed_energy_card(c, "Fire"))
 		if not fd_any.is_empty():
 			target = main.cpu_ai.cpu_pick_benefit_recipient(mine, "energy", fd_any[0])   # ISSUE #331: was always the attacker
 			if target == null: target = attacker
@@ -26817,7 +26852,6 @@ func _pick_blind_from_hand(hand: Array, chooser_is_opponent: bool, label: String
 		return null
 	if chosen == null:
 		return blind_pool[randi() % blind_pool.size()]
-	print("ISSUE #158 FIX ACTIVE: ", label, " — player chose blind from ", hand.size(), " cards")
 	return chosen
 
 # ISSUE #367: "Look at your opponent's hand" — the player sees the WHOLE hand (several effects skipped it, or only showed
@@ -26936,9 +26970,6 @@ func execute_ex10_surprise_shuffle(attacker: card_object, defender: card_object,
 	main.update_deck_icon(owner_is_opponent)
 	await main.animate_deck_shuffle(owner_is_opponent)
 	if main._should_bail(): return
-	print("ISSUE #158 FIX ACTIVE: SURPRISE shuffled ", picked_name,
-		" into the ", "player" if owner_is_opponent else "opponent",
-		"'s deck - shown full screen on both sides")
 
 # Copy (Sudowoodo): copy one of the Defender's attacks, but only if the attacker can pay its Energy
 # cost. Self-finishing (execute_copied_attack calls _attack_finish once); callers must not finish again.
@@ -33237,7 +33268,7 @@ func r3_collect_fire_one(atk, a, d, opp) -> int:
 		await gym1_hit_active(a, d, opp, b)
 		if main._should_bail(): return b
 	var discard = main.opponent_discard_pile if opp else main.player_discard_pile
-	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Fire" in main.get_energy_provided_by_card(c))
+	var pool = discard.filter(func(c): return main.is_typed_energy_card(c, "Fire"))
 	if pool.is_empty():
 		return b
 	if not await main.flip_coin(false, opp):
@@ -33312,7 +33343,7 @@ func r3_freeze_solid(atk, a, d, opp) -> int:
 	await gym1_hit_active(a, d, opp, b)
 	if main._should_bail(): return b
 	var discard = main.opponent_discard_pile if opp else main.player_discard_pile
-	if not discard.any(func(c): return c.metadata.get("supertype","") == "Energy" and "Water" in main.get_energy_provided_by_card(c)):
+	if not discard.any(func(c): return main.is_typed_energy_card(c, "Water")):
 		return b
 	if await main.flip_coin(false, opp):
 		await _ex7_attach_energy_from_discard(a, opp, "Water", a)

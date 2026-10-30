@@ -484,17 +484,12 @@
    "body": "lunge",
    "steps": [
     {
-     "fx": "MultipleClawAttack/000",
+     "fx": "LightSlash",
      "at": "target",
-     "size": 0.9,
+     "size": 1.0,
      "count": 3,
-     "stagger": 0.16,
+     "stagger": 0.18,
      "jitter": 0.2
-    },
-    {
-     "fx": "MultipleClawAttack/008",
-     "at": "target",
-     "size": 1.0
     }
    ],
    "element": "normal",
@@ -8827,6 +8822,18 @@
    ],
    "element": "dark",
    "sfx": "Leer"
+  },
+  "Stare": {
+   "body": "sway",
+   "steps": [
+    {
+     "fx": "MeanLook",
+     "at": "target",
+     "size": 0.8
+    }
+   ],
+   "element": "normal",
+   "sfx": "Mean Look"
   },
   "Steal": {
    "body": "dash",

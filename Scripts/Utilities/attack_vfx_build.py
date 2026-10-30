@@ -112,8 +112,9 @@ RECIPES = {
     'Slap':             rec(L, T('DoubleSlap', size=0.8)),
     'DoubleSlap':       rec(L, T('DoubleSlap', size=0.8, count=2, stagger=0.22, jitter=0.18)),
     'Scratch':          rec(L, T('QuickSwipe', orient=True, size=0.9)),
-    'FurySwipes':       rec(L, T('MultipleClawAttack/000', size=0.9, count=3, stagger=0.16, jitter=0.2),
-                            T('MultipleClawAttack/008', size=1.0)),
+    # ISSUE #512: one diagonal slash per swipe (the multi-claw read as a bite / clamp). The runtime sets
+    # count to the number of heads flipped (ISSUE #511), so 3 heads = 3 slashes.
+    'FurySwipes':       rec(L, T('LightSlash', size=1.0, count=3, stagger=0.18, jitter=0.2)),
     'Slash':            rec(L, T('SwipeAttack', size=1.0)),
     'DoubleClaw':       rec(L, T('DoubleClaw', size=1.0)),
     'DoubleSlash':      rec(L, T('DoubleSlash', size=1.0), T('SmallSlash', par=True, delay=0.15)),
@@ -568,6 +569,8 @@ RECIPES.update({
     'GenericBeam':   rec(H, BM('WhiteLineBeam', size=0.35, dur=0.5), T('GenericPulseOut', size=1.0, par=True, delay=0.15)),
     'Growl':         rec(K, S('Growl', size=1.2, off=[0.45, 0]), T('StatDown', delay=0.25, **STAT_DOWN)),
     'Leer':          rec(W, T('MeanLook', size=0.8), T('StatDown', delay=0.2, **STAT_DOWN)),
+    # ISSUE #522: Stare is 10 damage to a CHOSEN Pokemon, not a stat drop - just the eye, on that Pokemon.
+    'Stare':         rec(W, T('MeanLook', size=0.8)),
     'TailWhip':      rec(W, T('Swagger', size=0.6, count=2, stagger=0.2, jitter=0.2), T('StatDown', delay=0.15, **STAT_DOWN)),
     'ScaryFace':     rec(W, T('ScaryFace', size=0.9), T('StatDown', delay=0.3, **STAT_DOWN)),
     'Charm':         rec(W, T('LotsOfLove', size=1.0), T('PinkSparkles', size=0.9, par=True), T('StatDown', delay=0.2, **STAT_DOWN)),
@@ -871,6 +874,7 @@ BENCH_FX = {
 # named after a move use that move automatically; these are the rest. A TCG attack that IS a game move
 # (Thunderbolt, Ember, Hyper Beam...) plays its own move's clip whatever recipe it uses.
 SFX_OF = {
+    'Stare': 'Mean Look',   # ISSUE #522
     'Anger': 'Rage', 'Barrage': 'Barrage 1hit', 'BeatUp': 'Beat Up 1hit', 'BigFireball': 'Overheat', 'BlueFlame': 'Will O Wisp',
     'BoneRush': 'Bone Rush 1hit', 'Bonemerang': 'Bonemerang 2hits', 'BugSwarm': 'Attack Order', 'CallForFamily': 'Helping Hand',
     'CatKick': 'Low Kick', 'ChainLightning': 'Discharge', 'ChantingBell': 'Heal Bell', 'Cheer': 'Helping Hand', 'Clap': 'Encore',
@@ -905,6 +909,9 @@ SFX_OF = {
     'TripleNeedle': 'Twineedle', 'VineWrap': 'Wrap', 'WaterSlash': 'Aqua Jet', 'Web': 'Spider Web', 'Whisper': 'Grass Whistle',
     'Hidden Power': 'Hidden Power', 'Shockwave': 'Shock Wave', 'SleepPowder': 'Sleep Powder', 'Rest': 'Rest',
 }
+# ISSUE #509: clips whose "1hit" take still holds several hits (Comet Punch 1hit = 4 punches). The map entry
+# gets 'sfx_len' = the first hit only (onset 0 -> onset 1), so a multi-hit attack plays ONE punch per heads.
+SFX_ONE_ONSET = {'Comet Punch 1hit'}
 # Pitch for recipes that borrow a bigger move's sound for a smaller effect (and the reverse).
 SFX_PITCH = {'MiniExplosions': 1.25, 'SmallBomb': 1.15, 'Fireball': 0.9, 'Flare': 1.1, 'Pebbles': 1.15, 'EnergyUpSmall': 1.15,
              'OneSlap': 0.95, 'Kick': 1.05, 'TailSlap': 1.1, 'IceWing': 1.1, 'BigFireball': 1.05}
@@ -963,6 +970,11 @@ def apply_sfx(mapping, clips):
         clip = sfx_resolve(name, clips)
         if clip:
             m['sfx'] = clip
+        rclip = m.get('sfx') or RECIPES.get(m['fx'], {}).get('sfx')
+        if rclip in SFX_ONE_ONSET:
+            on = clips[rclip].get('onsets', [])
+            if len(on) > 1:
+                m['sfx_len'] = round(float(on[1]) - float(on[0]), 3)
     for v in list(STATUS_SFX.values()) + list(SOUNDS.values()):
         if v not in clips:
             missing.append('(sound) ' + v)
@@ -1456,7 +1468,7 @@ EXACT = {
     'Sharp Claws': 'ShadowClaw', 'Needle Ball': 'BulletSeed', 'Fruition': 'Seeds', 'Draining Cut': 'DrainPunch',
     # --- pass 2: the new recipes ---
     'Mug': 'Steal', 'Rob': 'Steal', 'Pilfer': 'Steal', 'Plunder': 'Steal', 'Snatch': 'Steal', 'Take Away': 'Steal',
-    'Snatch and Run': 'Steal', 'Thief': 'Steal', 'Hatch': 'Hatch', 'Leer': 'Leer', 'Stare': 'Leer', 'Night Eyes': 'Leer',
+    'Snatch and Run': 'Steal', 'Thief': 'Steal', 'Hatch': 'Hatch', 'Leer': 'Leer', 'Stare': 'Stare', 'Night Eyes': 'Leer',
     'Evil Eye': 'Leer', 'Mist Ball': 'MistBall', 'Luster Purge': 'MistBall', 'Coin Hurl': 'PayDay', 'Birthday Surprise': 'Present',
     'Seed Bomb': 'GreenHit', 'Burst': 'GreenHit',
 }
@@ -1658,6 +1670,11 @@ def build():
                 mapping[name]['by_type'] = bt
         if re.search(r"bench", tl) and re.search(r"damage", tl) and not re.search(r"prevent all damage", tl):
             mapping[name]['bench'] = True
+        # ISSUE #522: all of its damage goes to ONE Pokemon the attacker chooses (Stare, Flitter, Dig Under...).
+        # The runtime holds the effect back from the declare beat and plays it on the chosen Pokemon instead
+        # of on the Defending Pokemon first.
+        if not damaging and re.search(r"choose (1|one) of (your )?opponent'?s", tl) and 'damage' in tl:
+            mapping[name]['choose'] = True
 
     clips = sfx_clips()
     apply_sfx(mapping, clips)

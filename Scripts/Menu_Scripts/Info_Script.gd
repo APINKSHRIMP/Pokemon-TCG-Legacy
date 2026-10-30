@@ -455,7 +455,6 @@ func _load_player_data() -> void:
 	var dob: String = data.get("date_of_birth", "")
 	dob_cash_lbl.text = "DOB: " + (dob if dob != "" else "--/--") \
 		+ "\n$" + str(GameState.get_cash())
-	print("ISSUE #407 FIX ACTIVE: trainer card shows DOB only -> ", dob_cash_lbl.text.replace("\n", " | "))
 
 	# Battle sprite — fit inside SPRITE_SIZE so different-shaped sprites all appear the same size
 	var sprite_name: String = data.get("sprite", "")
@@ -466,7 +465,6 @@ func _load_player_data() -> void:
 		# ISSUE #399: fit the CHARACTER, not its padded canvas (same as the intro, #380).
 		tex = UIKit.visible_sprite(tex)
 		if tex:
-			print("ISSUE #399 FIX ACTIVE: trainer info sprite ", sprite_name, " fitted by its visible area ", tex.get_size())
 			_apply_fit_size(player_sprite, tex, SPRITE_SIZE)
 			# ISSUE #200: recentre in BOTH axes. A wide sprite fitted into the
 			# taller box leaves letterboxing at the bottom, which used to read as
@@ -556,7 +554,6 @@ func _on_save_pressed() -> void:
 	# ISSUE #408: a blank (or all-spaces) name used to fall through here - Save went grey as if
 	# it had worked, but nothing was written. Refuse it out loud and leave Save live.
 	if new_name == "":
-		print("ISSUE #408 FIX ACTIVE: blank name refused on Save")
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 		_flash_cheat_message(INVALID_NAME_TEXT, false)
 		return

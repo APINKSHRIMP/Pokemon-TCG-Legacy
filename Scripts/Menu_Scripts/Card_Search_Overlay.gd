@@ -1291,7 +1291,6 @@ func _on_reset_pressed() -> void:
 	# ISSUE #392: RESET only blanks THIS screen now. The search behind it is cleared
 	# when the player confirms the empty screen (the SEARCH button reads CLEAR then),
 	# and CANCEL brings the old filters straight back - see _on_cancel_pressed.
-	print("ISSUE #392 FIX ACTIVE: reset blanks the screen only (search kept until confirmed)")
 
 
 func _on_confirm_pressed() -> void:
@@ -1315,7 +1314,6 @@ func _on_cancel_pressed() -> void:
 	# grid is actually showing.
 	if not _applied.is_empty():
 		_restore(_applied)
-		print("ISSUE #392 FIX ACTIVE: cancel restored the applied filters")
 	search_cancelled.emit()
 
 

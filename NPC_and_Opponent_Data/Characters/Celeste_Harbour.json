@@ -776,7 +776,7 @@
       "move": "idle_down",
       "requires": "not met: Misty",
       "says": {
-        "meet": "Hey! I'm misty one of the ex Kanto Gym Leaders. A few of us have travelled here on the SS Anne to run the Gym Hero Challenge. If you're into the Pokemon TCG then you should try challenge us. Take this card as a good luck gift, it's my favourite Pokemon!",
+        "meet": "Hey! I'm misty one of the ex Kanto Gym Leaders. A few of us have travelled here on the SS Anne to run the Gym Hero Challenge. If you're into the Pokemon TCG then you should try and challenge us in the Gym Hero Challenge. Take this card as a good luck gift, it's my favourite Pokemon!",
         "repeat": "If you're good enough and beat us you can even buy our cards. But you need the medals of your local elders first before you can even challenge us!"
       }
     },

@@ -30,6 +30,41 @@ func draw_n(is_opponent: bool, count: int) -> void:
 
 # ── Discard ───────────────────────────────────────────────────────────────────────────────
 
+# ISSUE #527: discard_energy_from_pokemon WITH the card flying from its Pokemon to the discard pile.
+# The data moves synchronously before the first await, so a caller that can't await (a sync helper)
+# may fire it and carry on - the flights queue behind each other. Recycle Energy / Ecogym (back to
+# hand) and [Keep] (stays attached) are routed by discard_energy_from_pokemon as before; only a card
+# that really reached the discard pile flies there.
+func discard_energy_animated(energy: card_object, is_owner_opp: bool) -> void:
+	var holder: card_object = null
+	for p in get_all_pokemon_in_play(is_owner_opp):
+		if energy in p.attached_energies:
+			holder = p
+			break
+	var from_node: Control = main.find_card_ui_for_object(holder) if holder != null else null
+	if from_node == null:
+		from_node = main.opponent_active_container if is_owner_opp else main.player_active_container
+	var from_pos: Vector2 = from_node.global_position if from_node != null else Vector2.ZERO
+	var tex: Texture2D = main.get_card_texture(energy)
+	discard_energy_from_pokemon(energy, is_owner_opp)
+	if holder != null:
+		main.display_active_pokemon_energies(is_owner_opp)
+		if holder.current_location == "bench":
+			main.display_pokemon(is_owner_opp)
+	if energy.current_location != "discard":
+		return
+	var discard_node: Control = main.opponent_discard_icon if is_owner_opp else main.player_discard_icon
+	print("ISSUE #527 FIX ACTIVE: ", energy.metadata.get("name", ""), " flies to the discard pile")
+	if from_node != null and is_instance_valid(from_node):
+		await main.animate_card_a_to_b(from_node, discard_node, ENERGY_DISCARD_FLIGHT, tex, main.card_scales[10])
+	else:
+		await main.animate_card_a_to_b(discard_node, discard_node, ENERGY_DISCARD_FLIGHT, tex, main.card_scales[10], Vector2.ZERO, main._ANIM_POS_SENTINEL, false, from_pos)
+	main.update_discard_pile_display(is_owner_opp)
+
+## ISSUE #527: seconds for an attack-cost Energy card to fly to the discard pile.
+const ENERGY_DISCARD_FLIGHT := 0.2
+
+
 # Routes an energy card removed from a Pokemon to the correct pile:
 # Recycle Energy and Ecogym (non-Colorless) return to owner's hand; others go to discard.
 # Pass is_ko_discard=true for KO sequences so Ecogym protection is skipped.
@@ -86,7 +121,6 @@ func reset_returned_pokemon(card: card_object, is_opponent: bool) -> void:
 	card.temporary_resistance = ""
 	card.max_hp_override = 0
 	card.current_hp = card.get_max_hp()
-	print("ISSUE #388 FIX ACTIVE: ", card.metadata.get("name", "?"), " reset to ", card.current_hp, " HP on return to hand")
 
 # Move a single card to the given side's discard pile. Optionally animate it.
 func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false, anim_from: Control = null) -> void:
@@ -177,7 +211,6 @@ func discard_all_attachments_animated(pokemon: card_object, is_opponent: bool) -
 			main.update_discard_pile_display(is_opponent)
 			main.display_pokemon(is_opponent)
 			main.display_active_pokemon_energies(is_opponent)
-			print("ISSUE #91 FIX ACTIVE: animated ", card.metadata.get("name", ""), " from ", pokemon.metadata.get("name", ""), " to the discard pile")
 			await main.get_tree().create_timer(GameState.match_time(0.2)).timeout
 
 	main.update_discard_pile_display(is_opponent)
@@ -326,7 +359,6 @@ func cpu_reveal_added_to_hand(cards: Array) -> void:
 	for card in cards:
 		if card == null:
 			continue
-		print("ISSUE #401 FIX ACTIVE: revealing CPU's searched card ", card.metadata.get("name", "?"))
 		await main.trainer_effects.show_card_with_message(card,
 				"Opponent added " + card.metadata.get("name", "") + " to their hand!")
 		if main._should_bail(): return
@@ -379,6 +411,8 @@ func heal_pokemon(pokemon: card_object, amount: int, is_opponent: bool) -> void:
 		return
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+	if main.attack_vfx != null:
+		main.attack_vfx.play_heal(pokemon)   # ISSUE #510 (fire and forget)
 
 	# Show floating "+N HP" label over this pokemon's real screen position
 	# ISSUE #501: through float_label_over, which centres it (the old one sat off to the right).
@@ -390,7 +424,6 @@ func heal_pokemon(pokemon: card_object, amount: int, is_opponent: bool) -> void:
 	# so a Benched Pokémon's blocks all came back at once on the final refresh. TWEAKABLE: HEAL_BLOCK_STEP.
 	var circles_to_restore = actual_heal / 10
 	var hp_before = pokemon.current_hp
-	print("ISSUE #490 FIX ACTIVE: healing ", pokemon.metadata.get("name", ""), " one block at a time (", circles_to_restore, ")")
 	for i in range(circles_to_restore):
 		var partial_hp = hp_before + ((i + 1) * 10)
 		pokemon.current_hp = min(partial_hp, hp_before + actual_heal)
@@ -584,7 +617,6 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 		main.defender_energy_discard_active = false
 		main.hide_selection_mode_display_main()
 		if main._should_bail(): return null
-		print("ISSUE #396 FIX ACTIVE: energy picked for discard = ", (chosen.metadata.get("name", "?") if chosen != null else "none (cancelled)"))
 
 	if chosen == null:
 		return null
@@ -753,7 +785,7 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 	# ISSUE #389: the shared bottom-bar layout (was a hand-copied block here - base1-2 Rain Dance bug).
 	main.queue_bottom_buttons_layout()
 	main.header_label.text = header
-	main.hint_label.text = hint
+	main.hint_label.text = main.fix_plurals(hint)   # ISSUE #515
 	main.action_button.text = btn_text
 	main.action_button.disabled = true
 	main.action_button.theme = main.theme_disabled
@@ -817,7 +849,7 @@ func prompt_select_cards(pool: Array, min_n: int, max_n: int, header: String, hi
 	main.trainer_discard_cards_needed = max_n
 	main.trainer_discard_cards_min = min_n
 	main.trainer_discard_validator = validator
-	main.multi_select_hint_base = hint
+	main.multi_select_hint_base = main.fix_plurals(hint)   # ISSUE #515
 	main.multi_select_btn_text = btn_text
 	main.trainer_discard_selection_active = true
 	main.show_enlarged_array_selection_mode(pool)
@@ -1028,7 +1060,6 @@ func apply_bench_damage_wave(targets: Array, damage: int) -> void:
 	for bp in targets:
 		if bp != null and is_instance_valid(bp) and bp.current_hp > 0:
 			live.append(bp)
-	print("ISSUE #38 FIX ACTIVE: staggered bench-damage wave over ", live.size(), " target(s), ", damage, " each")
 	for idx in range(live.size()):
 		var bp = live[idx]
 		var owner_is_opp = bp in main.opponent_bench

@@ -256,7 +256,6 @@ func _wrap_grid_in_scroll_container() -> void:
 func _load_sleeves() -> void:
 	# The small/ folder is the LISTING - the canonical set of sleeve names and what
 	# the count chip measures against - and, again (ISSUE #395), what each cell draws.
-	print("ISSUE #395 FIX ACTIVE: sleeve grid loading SMALL copies (Shift zoom loads the original)")
 	var dir := DirAccess.open(SLEEVE_SMALL_FOLDER)
 	if dir == null:
 		push_error("Sleeves: cannot open folder " + SLEEVE_SMALL_FOLDER)

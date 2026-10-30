@@ -76,7 +76,6 @@ func setup(main_node: Node) -> void:
 	elif GameState.progress.get(GameState.TUTORIAL_TIPS_KEY, false):
 		mode = "generic"
 		_newby_followup = true
-		print("ISSUE #485 FIX ACTIVE: the newby's second match plays the generic tutorial")
 	if mode != "":
 		print("TUTORIAL: mode ", mode)
 	# ISSUE #470: Options shows the tutorial row locked On while a must-finish tutorial runs.
@@ -702,7 +701,6 @@ func on_player_turn_start() -> void:
 ## ISSUE #475 / #485: the newby's second match -- the generic messages, the Shift tip first thing.
 func _followup_turn_start() -> void:
 	if _player_turns == 1 and _tip_index == 0:
-		print("ISSUE #475 FIX ACTIVE: second match opens on the Shift tip")
 		await _say(G_TURN_TIPS[FOLLOWUP_TIP_ORDER[0]])
 		_tip_index = 1
 		_turn_start_spoke = true
@@ -1089,7 +1087,6 @@ func _newby_turn_start() -> void:
 			await _once("n_t1_aim", NEWBY_T1_AIM, {"[POKEMON]": _name(main.player_active_pokemon)})
 			await _once("n_t1", NEWBY_T1_CLICK_HAND)
 			# ISSUE #475: the Caps Lock hint moved here from the very first screen.
-			print("ISSUE #475 FIX ACTIVE: newby Caps Lock hint after 'click your hand'")
 			await _once("n_caps", [CAPS_HINT])
 		2:
 			_step = "t2_bill"

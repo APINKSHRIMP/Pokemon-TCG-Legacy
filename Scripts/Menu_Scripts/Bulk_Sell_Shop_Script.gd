@@ -1030,10 +1030,7 @@ func _scroll_into_view(rect: Control) -> Vector2:
 func _wallet_drop_anchor() -> Vector2:
 	var pill := ShopChrome.wallet_pill_rect(wallet_chip)
 	if pill.size.x <= 1.0:
-		print("ISSUE #208: wallet pill not laid out yet - fallback anchor ", TOTAL_LABEL_ANCHOR)
 		return TOTAL_LABEL_ANCHOR
-	print("ISSUE #208 FIX ACTIVE: pill rect ", pill, " -> payout falls from x ",
-		pill.position.x + pill.size.x * 0.5 + TOTAL_LABEL_X_NUDGE)
 	return Vector2(pill.position.x + pill.size.x * 0.5 + TOTAL_LABEL_X_NUDGE,
 		pill.position.y + pill.size.y + TOTAL_LABEL_PILL_GAP + TOTAL_LABEL_SIZE.y * 0.5)
 

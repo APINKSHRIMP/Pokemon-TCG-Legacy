@@ -115,8 +115,6 @@ func _start_waiting() -> void:
 			continue
 		_pending.append(path)
 	if _started and _pending.is_empty() and _waiting.is_empty() and _preload_start_usec != 0:
-		print("ISSUE #403 FIX ACTIVE: ", SCENES_TO_PRELOAD.size(), " scenes preloaded ",
-				PRELOAD_IN_FLIGHT, " at a time in ", (Time.get_ticks_usec() - _preload_start_usec) / 1000, " ms")
 		_preload_start_usec = 0
 
 
@@ -410,8 +408,6 @@ func predict_menu_screens() -> void:
 	prewarm_textures(coin_paths, "coin")
 	prewarm_textures(_owned_files_in(COSTUME_FOLDER, GameState.progress.get("costumes", []), false), "costume")
 	prewarm_textures(_owned_files_in(SLEEVE_SMALL_FOLDER, GameState.progress.get("sleeves", []), true), "sleeve")
-	print("ISSUE #406 FIX ACTIVE: menu art pools held - coin ", _pools["coin"].size(), ", costume ",
-			_pools["costume"].size(), ", sleeve ", _pools["sleeve"].size(), ", queued ", _prewarm_queue.size())
 	# Only when something new was queued: printing is slow enough on Windows to be
 	# the costliest part of a repeat call.
 	if not _prewarm_queue.is_empty():

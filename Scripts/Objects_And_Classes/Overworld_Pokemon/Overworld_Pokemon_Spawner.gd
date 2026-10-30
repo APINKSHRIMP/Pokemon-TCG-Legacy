@@ -682,7 +682,6 @@ func _map_edge(direction: float) -> float:
 					else float(camera.limit_left) - FLYER_END_MARGIN
 	var bounds := _map_bounds()
 	if bounds.size != Vector2.ZERO:
-		print("ISSUE #477 FIX ACTIVE: flyer edge from map tiles ", bounds)
 		return bounds.end.x + FLYER_END_MARGIN if direction > 0.0 else bounds.position.x - FLYER_END_MARGIN
 	var view := _view_rect()
 	return view.end.x + 2000.0 if direction > 0.0 else view.position.x - 2000.0

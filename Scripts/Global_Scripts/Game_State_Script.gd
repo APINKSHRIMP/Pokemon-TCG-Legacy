@@ -284,9 +284,9 @@ var window_mode_setting: String = DEFAULT_WINDOW_MODE
 
 ## Windowed sizes, "WxH". Any aspect is fine. Options only lists the ones that fit
 ## the monitor (window_size_options_fitting()). TWEAKABLE: add or remove entries freely.
-const WINDOW_SIZE_OPTIONS := ["1280x720", "1280x800", "1600x900", "1680x1050",
-	"1920x1080", "1920x1200", "2560x1080", "2560x1440", "3440x1440", "3840x2160"]
-const DEFAULT_WINDOW_SIZE := "1600x900"
+const WINDOW_SIZE_OPTIONS := ["1280x720", "1920x1080", "1920x1200", "2560x1080", "2560x1440",
+	"3840x1080"]
+const DEFAULT_WINDOW_SIZE := "1920x1080"
 var window_size_setting: String = DEFAULT_WINDOW_SIZE
 
 func set_window_mode(choice: String, save: bool = true) -> void:
@@ -633,6 +633,17 @@ func owns_any_card_in_set(set_id: String) -> bool:
 	for entry in data.get("owned_cards", []):
 		if int(entry.get("owned", 0)) > 0:
 			return true
+	return false
+
+## ISSUE #520: Darkness and Metal Energy arrive with the neo sets. "Unlocked" = the player owns at least
+## one card from any neo set. Gates the type pickers (Buzzap, Conversion, Energy Converter...) so they
+## don't offer types the player hasn't met yet. Read live (a pack opened mid-session counts at once).
+const NEO_SET_IDS := ["neo1", "neo2", "neo3", "neo4", "np"]
+func neo_unlocked() -> bool:
+	for set_id in NEO_SET_IDS:
+		if owns_any_card_in_set(set_id):
+			return true
+	print("ISSUE #520 FIX ACTIVE: no neo card owned - Darkness/Metal hidden from type pickers")
 	return false
 
 # Reads both saved rule choices out of Player_Current_Data.json. Called once on boot.

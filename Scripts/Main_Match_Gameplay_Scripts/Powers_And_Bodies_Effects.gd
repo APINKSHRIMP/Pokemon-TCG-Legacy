@@ -909,7 +909,6 @@ func power_damage_swap(alakazam: card_object) -> void:
 # the WHOLE board (display_pokemon, not just the active's energies, so bench attachments show) →
 # particle effect → yield a frame so each attach renders before the next message pops up.
 func _cpu_rain_dance_attach(target: card_object, energy: card_object) -> void:
-	print("ISSUE #12 FIX ACTIVE (rain dance attach): ", target.metadata.get("name",""))
 	await main.show_message("RAIN DANCE: OPPONENT ATTACHED WATER ENERGY TO " + target.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
 	var rd_from: Dictionary = main.hand_card_rect(energy, true)   # FLIGHTS: from its slot in the fan
@@ -1037,6 +1036,7 @@ func power_energy_trans(venusaur: card_object) -> void:
 		
 		source.attached_energies.erase(grass_energy)
 		dest.attached_energies.append(grass_energy)
+		main.display_pokemon(false)   # ISSUE #526: same missing bench redraw as Gather Fire
 		main.display_active_pokemon_energies(false)
 		await main.show_message("Moved Grass Energy from " + source.metadata.get("name", "") + " to " + dest.metadata.get("name", "") + "!")
 		if main._should_bail(): return
@@ -1055,7 +1055,8 @@ func power_buzzap(electrode: card_object) -> void:
 	if main._should_bail(): return
 	
 	# Select energy type
-	var energy_types = ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting", "Darkness", "Metal", "Colorless"]   # ISSUE #365: + Darkness, Metal
+	# ISSUE #520: Darkness and Metal only once the player owns a neo card (main.available_energy_types).
+	var energy_types: Array = main.available_energy_types(true)
 	# Use simple message-based selection for type
 	# For simplicity, create a selection of fake energy cards
 	var type_options = []
@@ -1103,15 +1104,58 @@ func power_buzzap(electrode: card_object) -> void:
 	if target == null:
 		return
 	
-	# KO Electrode (prize will be awarded via normal knockout flow)
+	await buzzap_knock_out_and_attach(electrode, target, chosen_type, false)
+
+
+## ISSUE #520: the Buzzap sequence, shared by the player and the CPU.
+##   1. "ELECTRODE WAS KNOCKED OUT!" - only its attached cards go to the discard pile; Electrode itself
+##      stays where it is (check_and_handle_knockout sees the "buzzap_type" meta);
+##   2. the opponent takes the Prize (normal knockout flow);
+##   3. "ELECTRODE BECAME X ENERGY!" and the card flies from its slot to the target's Energy stack;
+##   4. if it was the Active, the owner then promotes a new Active.
+func buzzap_knock_out_and_attach(electrode: card_object, target: card_object, energy_type: String, is_opp: bool) -> void:
+	electrode.set_meta("buzzap_type", energy_type)
 	electrode.current_hp = 0
-	await main.show_message("Electrode became " + chosen_type + " Energy!")
-	if main._should_bail(): return
-	
-	# Process the knockout, then the Electrode card itself becomes the Energy.
+	main.display_hp_circles_above_align(electrode, is_opp)
+	print("ISSUE #520 FIX ACTIVE: Buzzap - ", electrode.metadata.get("name", ""), " knocked out, becomes ", energy_type, " Energy for ", target.metadata.get("name", ""))
 	await main.check_all_knockouts()
+	if electrode.has_meta("buzzap_type"):
+		electrode.remove_meta("buzzap_type")
 	if main._should_bail(): return
-	_buzzap_attach_electrode(electrode, target, chosen_type, false)
+	var active_now = main.opponent_active_pokemon if is_opp else main.player_active_pokemon
+	var bench: Array = main.opponent_bench if is_opp else main.player_bench
+	if electrode != active_now and not electrode in bench:
+		return   # left play some other way while the knockout resolved
+	await main.show_message(electrode.metadata.get("name", "").to_upper() + " BECAME " + energy_type.to_upper() + " ENERGY!")
+	if main._should_bail(): return
+	var from_rect: Dictionary = main._card_rect_now(electrode)
+	var tex: Texture2D = main.get_card_texture(electrode)
+	var was_active: bool = electrode == active_now
+	if was_active:
+		main.set_active_slot_visible(is_opp, false)
+		if is_opp:
+			main.opponent_active_pokemon = null
+		else:
+			main.player_active_pokemon = null
+	else:
+		bench.erase(electrode)
+	main.display_pokemon(is_opp)
+	var to_node: Control = main.find_card_ui_for_object(target)
+	if to_node == null:
+		to_node = main.opponent_active_container if is_opp else main.player_active_container
+	var target_is_active: bool = target == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon)
+	var to_size: Vector2 = main.ACTIVE_CARD if target_is_active else main.BENCH_CARD
+	await main.animate_card_a_to_b(to_node, to_node, BUZZAP_FLIGHT, tex,
+		from_rect.get("size", main.BENCH_CARD), to_size, main._ANIM_POS_SENTINEL, true,
+		from_rect.get("position", main._ANIM_POS_SENTINEL))
+	if main._should_bail(): return
+	_buzzap_attach_electrode(electrode, target, energy_type, is_opp)
+	if was_active:
+		await main.handle_post_knockout(is_opp)
+	main.cpu_ai.invalidate_cpu_evaluation()
+
+## ISSUE #520: seconds for the Electrode card to fly onto its target's Energy stack.
+const BUZZAP_FLIGHT := 0.4
 
 
 ## ISSUE #375: Buzzap attaches the ELECTRODE CARD ITSELF as the Energy. It used to attach a brand-new copy while the
@@ -1122,6 +1166,7 @@ func _buzzap_attach_electrode(electrode: card_object, target: card_object, energ
 	var discard: Array = main.opponent_discard_pile if is_opp else main.player_discard_pile
 	discard.erase(electrode)
 	electrode.current_location = "attached"
+	electrode.current_hp = int(electrode.metadata.get("hp", "0"))
 	electrode.is_electrode_energy = true
 	electrode.electrode_energy_type = energy_type
 	target.attached_energies.append(electrode)
@@ -1467,7 +1512,6 @@ func power_step_in(dragonite: card_object) -> void:
 ## TWEAKABLE: CURSE_LABEL_GAP -- seconds between the two labels.
 const CURSE_LABEL_GAP := 0.35
 func move_damage_counter_animated(source: card_object, dest: card_object) -> void:
-	print("ISSUE #500 FIX ACTIVE: damage counter ", source.metadata.get("name", ""), " -> ", dest.metadata.get("name", ""))
 	var src_opp: bool = source.is_owner_opp(main)
 	var dst_opp: bool = dest.is_owner_opp(main)
 	source.current_hp = min(source.get_max_hp(), source.current_hp + 10)
@@ -2202,7 +2246,6 @@ func cpu_phase_activate_powers() -> void:
 					break
 			if target_type != "":
 				venomoth.power_used_this_turn = true
-				print("ISSUE #45 FIX ACTIVE: Venomoth Shift -> ", target_type, " (in play, active=", venomoth_is_active, ")")
 				# ISSUE #102: announce -> explain -> apply.
 				await announce_cpu_power(venomoth, "Shift")
 				if main._should_bail(): return
@@ -2270,11 +2313,9 @@ func cpu_phase_activate_powers() -> void:
 					if main._should_bail(): return
 					await main.show_message("ELECTRODE BECOMES " + best_type.to_upper() + " ENERGY FOR " + best_target.metadata.get("name", "").to_upper() + "!")
 					if main._should_bail(): return
-					# Execute Buzzap
-					electrode_buzzap.current_hp = 0
-					await main.check_all_knockouts()
+					# Execute Buzzap (ISSUE #520: the shared sequence)
+					await buzzap_knock_out_and_attach(electrode_buzzap, best_target, best_type, true)
 					if main._should_bail(): return
-					_buzzap_attach_electrode(electrode_buzzap, best_target, best_type, true)
 	
 	# --- BASE3 POWERS ---
 	
@@ -2335,7 +2376,6 @@ func cpu_phase_activate_powers() -> void:
 		if main._should_bail(): return
 		await move_damage_counter_animated(best_source, best_dest)
 		if main._should_bail(): return
-		print("ISSUE #503 FIX ACTIVE: CPU Curse ", best_source.metadata.get("name", ""), " -> ", best_dest.metadata.get("name", ""), " (", move.get("why", ""), ")")
 		if best_dest.current_hp <= 0:
 			await main.check_all_knockouts()
 			if main._should_bail(): return
@@ -2527,7 +2567,12 @@ func cpu_phase_activate_powers() -> void:
 				if main._should_bail(): return
 				best_source.attached_energies.erase(best_energy)
 				charmander.attached_energies.append(best_energy)
+				# ISSUE #526: redraw the BENCH too - a Benched Charmander didn't show its new Energy until
+				# the next full refresh - and drop the cached evaluation (the board just changed).
+				main.display_pokemon(true)
 				main.display_active_pokemon_energies(true)
+				main.cpu_ai.invalidate_cpu_evaluation()
+				print("ISSUE #526 FIX ACTIVE: CPU Gather Fire ", best_source.metadata.get("name", ""), " -> ", charmander.metadata.get("name", ""), ", board redrawn")
 	
 	# Long-Distance Hypnosis (Drowzee): Flip for sleep
 	var drowzee = _find_cpu_pokemon_with_power("Long-Distance Hypnosis")
@@ -2782,7 +2827,6 @@ func announce_cpu_power(pokemon: card_object, power_name: String) -> void:
 		return
 	if GameState.autotest != null: GameState.autotest.note("power", pokemon.uid, power_name, true)
 	var pokemon_name: String = pokemon.metadata.get("name", "POKEMON")
-	print("ISSUE #102 FIX ACTIVE: announcing CPU power ", power_name, " on ", pokemon_name)
 	if main.card_fx != null: main.card_fx.power_used(pokemon)   # ISSUE #474
 	await main.show_message("OPPONENT USED " + pokemon_name.to_upper() + "'S " + power_name.to_upper() + " POWER!")
 
@@ -3349,6 +3393,7 @@ func power_gather_fire(pokemon: card_object) -> void:
 			pokemon.attached_energies.append(e)
 			break
 	
+	main.display_pokemon(false)   # ISSUE #526: the Benched Charmander's stack too
 	main.display_active_pokemon_energies(false)
 	await main.show_message("GATHERED FIRE ENERGY FROM " + source.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
@@ -4735,7 +4780,47 @@ func _cpu_type_surplus(p: card_object, energy_type: String) -> int:
 	var need := 0
 	for atk in p.metadata.get("attacks", []):
 		need = max(need, atk.get("cost", []).count(energy_type))
-	return max(0, have - need)
+	var by_type: int = max(0, have - need)
+	if by_type <= 0:
+		return 0
+	# ISSUE #526: counting only this TYPE in the costs missed the Colorless part - Charmeleon with
+	# [R][R][C] and three Fire paid by them all lost its attack when one "spare" Fire went to a Benched
+	# Charmander. Now each Energy is taken off for real (temporarily) and must leave every attack the
+	# Pokemon can use right now still usable - and, for the Active, must not push it further from attacking.
+	var saved: Array = p.attached_energies.duplicate()
+	var attacks: Array = main.get_attacks_for_card(p)
+	var before: Array = []
+	for atk in attacks:
+		before.append(main.cpu_ai.get_unmet_energy_count(atk, p))
+	var spare := 0
+	for e in saved:
+		if spare >= by_type:
+			break
+		if not _is_basic_energy_of(e, energy_type):
+			continue
+		p.attached_energies.erase(e)
+		if _cpu_energy_loss_hurts(p, attacks, before):
+			p.attached_energies.append(e)
+			break
+		spare += 1
+	p.attached_energies = saved
+	if spare < by_type:
+		print("ISSUE #526 FIX ACTIVE: ", p.metadata.get("name", ""), " can spare ", spare, " ", energy_type, " (type count said ", by_type, ")")
+	return spare
+
+
+## ISSUE #526: true if `p`, with its Energy as it is NOW, has lost an attack it could use (`before` = unmet
+## counts per attack before the change), or - when it is the Active - has moved further from attacking.
+func _cpu_energy_loss_hurts(p: card_object, attacks: Array, before: Array) -> bool:
+	var best_before := 9999
+	var best_after := 9999
+	for i in range(attacks.size()):
+		var u: int = main.cpu_ai.get_unmet_energy_count(attacks[i], p)
+		if int(before[i]) == 0 and u > 0:
+			return true
+		best_before = mini(best_before, int(before[i]))
+		best_after = mini(best_after, u)
+	return p == main.opponent_active_pokemon and best_after > best_before
 
 # Helper: cumulative unmet energy across all of a pokemon's attacks (cheap CPU heuristic)
 func _cpu_unmet_energy(p: card_object) -> int:
@@ -4985,7 +5070,6 @@ func power_chain_reaction(eevee: card_object) -> void:
 		if chosen_evo == null:
 			return
 	eevee.power_used_this_turn = true
-	print("ISSUE #71 FIX ACTIVE: Chain Reaction evolving one Eevee from deck into ", chosen_evo.metadata.get("name", ""))
 	# Perform evolution (mirrors perform_evolution in Main, incl. ISSUE #58 attached-card carry-over)
 	var max_hp_old = int(eevee.metadata.get("hp", "0"))
 	var damage_taken = max_hp_old - eevee.current_hp
@@ -6638,9 +6722,10 @@ func power_neo3_energy_converter(pokemon: card_object) -> void:
 		return
 	var e: card_object = await main.card_ops.choose_card(pool, false, "ENERGY CONVERTER", "Choose a basic Energy card attached to your Pokémon", "SELECT", true)
 	if main._should_bail() or e == null: return
-	var idx: int = await main.trainer_effects.prompt_option_buttons("ENERGY CONVERTER: TREAT " + e.metadata.get("name","").to_upper() + " AS WHICH TYPE?", NEO3_ENERGY_TYPES)
+	var ec_types: Array = NEO3_ENERGY_TYPES.filter(func(x): return x in main.available_energy_types())   # ISSUE #520
+	var idx: int = await main.trainer_effects.prompt_option_buttons("ENERGY CONVERTER: TREAT " + e.metadata.get("name","").to_upper() + " AS WHICH TYPE?", ec_types)
 	if main._should_bail(): return
-	var t: String = NEO3_ENERGY_TYPES[clampi(idx, 0, NEO3_ENERGY_TYPES.size() - 1)]
+	var t: String = ec_types[clampi(idx, 0, ec_types.size() - 1)]
 	e.set_meta("neo3_converted_type", t)
 	e.set_meta("neo3_converter_src", pokemon)
 	if e not in neo3_converted_energies:
@@ -9260,7 +9345,7 @@ func power_ecard2_super_dynamo(electrode: card_object) -> void:
 		if main._should_bail(): return
 		return
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	var lightning_e = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Lightning" in main.get_energy_provided_by_card(c))
+	var lightning_e = discard.filter(func(c): return main.is_typed_energy_card(c, "Lightning"))
 	if lightning_e.is_empty():
 		await main.show_message("NO LIGHTNING ENERGY IN DISCARD PILE!")
 		if main._should_bail(): return
@@ -10810,7 +10895,7 @@ func power_ex1_firestarter(blaziken: card_object) -> void:
 		await main.show_message("FIRESTARTER ALREADY USED THIS TURN!")
 		if main._should_bail(): return
 		return
-	var fire_energies = main.player_discard_pile.filter(func(c): return "Fire" in main.get_energy_provided_by_card(c))
+	var fire_energies = main.player_discard_pile.filter(func(c): return main.is_typed_energy_card(c, "Fire"))
 	if fire_energies.is_empty():
 		await main.show_message("NO FIRE ENERGY IN THE DISCARD PILE!")
 		if main._should_bail(): return
@@ -10836,7 +10921,7 @@ func power_ex1_firestarter(blaziken: card_object) -> void:
 	print("POWER USED: Firestarter")
 
 func cpu_ex1_firestarter(blaziken: card_object) -> void:
-	var fire_energies = main.opponent_discard_pile.filter(func(c): return "Fire" in main.get_energy_provided_by_card(c))
+	var fire_energies = main.opponent_discard_pile.filter(func(c): return main.is_typed_energy_card(c, "Fire"))
 	if fire_energies.is_empty() or main.opponent_bench.is_empty(): return
 	blaziken.power_used_this_turn = true
 	# ISSUE #343: was the lowest-HP Benched Pokemon + the first Fire card. Now the Benched Pokemon the Energy helps
@@ -13508,7 +13593,7 @@ func power_ex7_darkness_navigation(pokemon: card_object) -> void:
 		if main._should_bail(): return
 		return
 	var deck = main.opponent_deck if is_opponent else main.player_deck
-	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Darkness" in main.get_energy_provided_by_card(c))
+	var pool = deck.filter(func(c): return main.is_typed_energy_card(c, "Darkness"))
 	if pool.is_empty():
 		await main.show_message("NO DARKNESS ENERGY IN DECK!")
 		if main._should_bail(): return
@@ -15516,7 +15601,7 @@ func trigger_ex10_bursting_up(typhlosion: card_object, is_opponent: bool) -> voi
 	var target: card_object
 	if is_opponent:
 		# ISSUE #353: the Fire Pokemon the Energy helps most (was Typhlosion ex every time).
-		var bu_e = (main.opponent_deck.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Fire" in main.get_energy_provided_by_card(c)))
+		var bu_e = (main.opponent_deck.filter(func(c): return main.is_typed_energy_card(c, "Fire")))
 		target = main.cpu_ai.cpu_pick_benefit_recipient(fire_pokemon, "energy", bu_e[0] if not bu_e.is_empty() else null)
 		if target == null: target = typhlosion if typhlosion in fire_pokemon else fire_pokemon[0]
 	else:
@@ -15949,7 +16034,7 @@ func power_ex11_delta_charge(dragonite: card_object) -> void:
 		if main._should_bail(): return
 		return
 	var discard = main.opponent_discard_pile if is_opp else main.player_discard_pile
-	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Lightning" in main.get_energy_provided_by_card(c))
+	var pool = discard.filter(func(c): return main.is_typed_energy_card(c, "Lightning"))
 	if pool.is_empty():
 		await main.show_message("NO LIGHTNING ENERGY IN YOUR DISCARD PILE!")
 		if main._should_bail(): return
@@ -16092,7 +16177,7 @@ func power_ex11_metal_navigation(starmie: card_object) -> void:
 		if main._should_bail(): return
 		return
 	var deck = main.opponent_deck if is_opp else main.player_deck
-	var pool = deck.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Metal" in main.get_energy_provided_by_card(c))
+	var pool = deck.filter(func(c): return main.is_typed_energy_card(c, "Metal"))
 	if pool.is_empty():
 		await main.show_message("NO METAL ENERGY IN YOUR DECK!")
 		deck.shuffle(); main.update_deck_icon(is_opp)
@@ -17824,7 +17909,6 @@ func trigger_ex14_peal_of_thunder(charizard: card_object, is_opponent: bool) -> 
 		# are type-locked) -- the rest stays with the looked-at cards and is discarded below.
 		energies = energies.filter(func(e): return not ("Special" in e.metadata.get("subtypes", [])) \
 			or bool(main.special_energy_effects.can_attach_to(e, attach_target).get("allowed", true)))
-		print("ISSUE #458 FIX ACTIVE: Peal of Thunder legal Energy for ", attach_target.metadata.get("name", ""), ": ", energies.size())
 		var chosen_energies: Array = []
 		if is_opponent:
 			chosen_energies = energies

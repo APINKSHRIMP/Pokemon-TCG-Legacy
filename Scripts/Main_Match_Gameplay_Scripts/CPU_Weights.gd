@@ -157,7 +157,6 @@ static func retreat_allowed() -> bool:
 	if retreat_rate >= 1.0:
 		return true
 	var ok: bool = retreat_rate > 0.0 and _cheat_rng.randf() < retreat_rate
-	print("ISSUE #484 FIX ACTIVE: retreat rate ", retreat_rate, " -> ", "allowed" if ok else "held")
 	return ok
 
 

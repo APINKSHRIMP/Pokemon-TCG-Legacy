@@ -1216,7 +1216,6 @@ func _load_card_texture_small_first(path: String) -> Texture2D:
 		return tex
 	var large: String = path.replace("/Small/", "/Large/")
 	if ResourceLoader.exists(large):
-		print("ISSUE #395: no small image, using large for ", path.get_file())
 		return load(large)
 	return null
 
@@ -1980,7 +1979,6 @@ func _sort_deck_for_viewer() -> Array:
 ## deck laid out in a scrollable grid — no count labels, just raw card images.
 ## The overlay is always rebuilt fresh so it reflects the current deck state.
 func _on_view_deck_pressed() -> void:
-	print("ISSUE #395 FIX ACTIVE: deck viewer and card grid draw SMALL card images")
 	if deck_viewer_active or energy_picker_active or is_zoomed:
 		return
 	if deck_cards.is_empty():
@@ -2673,7 +2671,6 @@ func _clear_search() -> void:
 ## what emits search_reset and lands here. RESET then CANCEL puts the old filters
 ## back and leaves the results alone (the overlay restores its own selections).
 func _on_search_reset() -> void:
-	print("ISSUE #392 FIX ACTIVE: reset confirmed - search cleared, back to the last set")
 	_set_ui_visibility(true)
 	_clear_search()
 
@@ -2683,7 +2680,6 @@ func _on_search_reset() -> void:
 func _on_clear_filter_pressed() -> void:
 	if not search_active:
 		return
-	print("ISSUE #392 FIX ACTIVE: Clear filter pressed")
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 	_clear_search()
 
@@ -2710,6 +2706,15 @@ func _restore_set_browsing_chrome() -> void:
 	set_label.visible = true
 	next_btn.visible  = true
 	prev_btn.visible  = true
+	_set_collection_chip_visible(true)   # ISSUE #516
+
+
+# ISSUE #516: the "X / X" chip counts ONE set, so it means nothing over search results or the
+# deck viewer. Hidden with the < > stepper, back when set browsing resumes.
+func _set_collection_chip_visible(on: bool) -> void:
+	if _collection_chip != null and is_instance_valid(_collection_chip):
+		_collection_chip.visible = on
+		print("ISSUE #516 FIX ACTIVE: collection chip visible = ", on)
 
 
 func _close_search_overlay() -> void:
@@ -3058,6 +3063,7 @@ func _search_card_name(card_id: String) -> String:
 ## Fills the grid with the search results. Mirrors _display_current_set, but batches whole rows per
 ## frame because a broad search can return the player's entire collection.
 func _display_search_results() -> void:
+	_set_collection_chip_visible(false)   # ISSUE #516
 	_loading_overlay.show_for_deck(self)
 
 	_search_load_token += 1
@@ -3263,7 +3269,6 @@ func _on_save_pressed() -> void:
 	_write_deck_save()
 
 	# ISSUE #394: the screen stays put after a save, so say that it worked.
-	print("ISSUE #394 FIX ACTIVE: deck saved message shown for '", deck_name_edit.text.strip_edges(), "'")
 	_show_deck_message(MSG_SAVED_TEXT, MSG_SAVED_COLOUR)
 
 
@@ -3529,7 +3534,6 @@ func _input(event: InputEvent) -> void:
 		if deck_name_edit.has_focus():
 			return
 		zoom_held = true
-		print("ISSUE #13 FIX ACTIVE (deck view zoom key): preview now follows the mouse while Shift is held")
 		_refresh_hover_preview()
 		return
 	if UIInput.is_zoom_end(event):
@@ -3667,6 +3671,7 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		# middle of the screen.
 		view_deck_btn,
 		search_btn,
+		_collection_chip,   # ISSUE #516: the "X / X" set-progress chip hides with the set chrome
 	]
 	if _save_opp_btn != null:
 		nodes_to_toggle.append(_save_opp_btn)
@@ -3705,6 +3710,7 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		set_label.text    = SEARCH_MODE_LABEL
 		next_btn.visible  = false
 		prev_btn.visible  = false
+		_set_collection_chip_visible(false)   # ISSUE #516
 
 	# ISSUE #392: "Clear filter" hides with the rest, and comes back only while a search shows.
 	if _clear_filter_btn != null and is_instance_valid(_clear_filter_btn):
@@ -4400,7 +4406,6 @@ func walkthrough_begin() -> void:
 	_walk_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
 	_walk_blocker.z_index = 400
 	add_child(_walk_blocker)
-	print("ISSUE #476 FIX ACTIVE: deck builder walkthrough started")
 
 
 func walkthrough_end() -> void:
@@ -4474,7 +4479,6 @@ func walkthrough_convert_to(target: Dictionary, seconds: float) -> void:
 			else:
 				(e_down if is_e else cuts).append([cid, -1])
 	steps = adds + cuts + e_down + e_up
-	print("ISSUE #476 FIX ACTIVE: rebuilding the deck in ", steps.size(), " steps")
 	if steps.is_empty():
 		return
 	var gap: float = seconds / float(steps.size())

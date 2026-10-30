@@ -399,7 +399,6 @@ func _bedtime_dismiss_battled_opponent() -> void:
 			break
 	if opp == null:
 		return
-	print("ISSUE #507 FIX ACTIVE: Bedtime -- fading out ", opp.opponent_name, " after the battle")
 	cutscene_active = true
 	if _player != null and is_instance_valid(_player):
 		_player.lock_movement()
@@ -453,7 +452,6 @@ func _face_battled_opponent() -> void:
 		if child.animated_sprite.sprite_frames != null and child.animated_sprite.sprite_frames.has_animation("idle_" + d):
 			child.current_facing = d
 			child.animated_sprite.play("idle_" + d)
-		print("ISSUE #504 FIX ACTIVE: ", child.opponent_name, " faces ", d, " after the battle")
 		return
 
 # ============================================================
@@ -2331,7 +2329,6 @@ func _single_gift_pack_rect() -> TextureRect:
 const GIFT_PACK_HANDOFF_TIME := 0.35
 func _glide_rect_to_pack_rect(rect: TextureRect) -> void:
 	var target: Rect2 = PackOpeningManager.get_pack_target_rect()
-	print("ISSUE #487 FIX ACTIVE: overworld gift pack glides into the opening rect ", target)
 	rect.stretch_mode = TextureRect.STRETCH_SCALE
 	var t: float = GameState.pack_time(GIFT_PACK_HANDOFF_TIME)
 	var tw := rect.create_tween().set_parallel(true)

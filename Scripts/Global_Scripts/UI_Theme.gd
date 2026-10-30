@@ -96,20 +96,16 @@ const FONT_SYMBOL_FALLBACK := "C:/Windows/Fonts/seguisym.ttf"
 ## chrome_grad. Kept outside THEMES so the 39-key contract does not move.
 ## Read through bar_stops(); nothing else should index this.
 const BAR_STOPS := {
-	"gengar_dark":    [Color("241B3A"), Color("2F2045"), Color("3A2450")],
-	"gengar_light":   [Color("241B3A"), Color("2F2045"), Color("3A2450")],
-	"shuppet_dark":   [Color("0C0F15"), Color("0C0F15"), Color("0C0F15")],
-	"shuppet_light":  [Color("4C4F54"), Color("4C4F54"), Color("4C4F54")],
-	"code_dark":      [Color("05070C"), Color("05070C"), Color("05070C")],
-	"code_light":     [Color("05070C"), Color("05070C"), Color("05070C")],
-	"umbreon_dark":   [Color("1B1F2A"), Color("1B1F2A"), Color("1B1F2A")],
-	"umbreon_light":  [Color("1B1F2A"), Color("1B1F2A"), Color("1B1F2A")],
-	"sharpedo_dark":  [Color("16233F"), Color("2E4A7A"), Color("16233F")],
-	"sharpedo_light": [Color("16233F"), Color("2E4A7A"), Color("16233F")],
+	"code":      [Color("05070C"), Color("05070C"), Color("05070C")],
+	"umbreon":   [Color("18191D"), Color("18191D"), Color("18191D")],
+	"sharpedo":  [Color("121D35"), Color("223A63"), Color("121D35")],
 }
 
 const THEMES := {
-	# Eight looks, each in a Dark and a Light variant. Every block is 39 keys in
+	# ISSUE #518/#519 (2026-10-30): six looks, DARK ONLY - the Light variants, the old Gengar and Shuppet are
+	# gone; Sunset is now "gengar", Tide "lotad", Canopy "ludicolo". Ids are the bare look name. Every
+	# background was darkened (x0.85) and every white-ink bar pulled 18% toward its field so the bars
+	# no longer glare - see Scripts/Utilities history / Issue_Log #519. Formerly: eight looks, each in a Dark and a Light variant. Every block is 39 keys in
 	# the order Docs/THEME_TEMPLATE_SPEC.md lays out, and every one is checked by
 	# Scripts/Utilities/Theme_Audit.gd. Add a theme here, re-run the builder, then
 	# re-run the audit; nothing else enumerates theme names.
@@ -120,21 +116,21 @@ const THEMES := {
 	# Gengar, Shuppet, Code, Umbreon and Sharpedo do NOT use it: they keep their
 	# original near-flat paint via BAR_STOPS below, with chrome_line as their keyline.
 
-	"sunset_dark": {
+	"gengar": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("7B3FD4"),
-		"chrome_grad_b":      Color("DE1C82"),
-		"chrome_grad_c":      Color("CD4B0A"),
+		"chrome_grad_a":      Color("6836B4"),
+		"chrome_grad_b":      Color("BA1970"),
+		"chrome_grad_c":      Color("AC400E"),
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
 		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),
 		# Field — the play area / content background
-		"field":              Color("171126"),
-		"field_glow_top":     Color(0.910, 0.271, 0.608, 0.180),
-		"field_glow_bottom":  Color(0.961, 0.475, 0.231, 0.160),
-		"field_glow_left":    Color("241740"),
-		"field_glow_right":   Color("3A1533"),
+		"field":              Color("140E20"),
+		"field_glow_top":     Color(0.910, 0.271, 0.608, 0.153),
+		"field_glow_bottom":  Color(0.961, 0.475, 0.231, 0.136),
+		"field_glow_left":    Color("1F1436"),
+		"field_glow_right":   Color("31122B"),
 		"field_texture":      Color(1.000, 1.000, 1.000, 0.026),
 		"field_fg":           Color("F4EDFA"),
 		"field_mute":         Color("A493C4"),
@@ -175,76 +171,21 @@ const THEMES := {
 		"silhouette_alpha":   0.34,
 	},
 
-	"sunset_light": {
+	"lotad": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("7B3FD4"),
-		"chrome_grad_b":      Color("DE1C82"),
-		"chrome_grad_c":      Color("CD4B0A"),
+		"chrome_grad_a":      Color("4143BB"),
+		"chrome_grad_b":      Color("157179"),
+		"chrome_grad_c":      Color("217524"),
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
 		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),
 		# Field — the play area / content background
-		"field":              Color("F4F1F8"),
-		"field_glow_top":     Color(0.910, 0.271, 0.608, 0.100),
-		"field_glow_bottom":  Color(0.961, 0.475, 0.231, 0.090),
-		"field_glow_left":    Color("F3E4FB"),
-		"field_glow_right":   Color("FFE7DC"),
-		"field_texture":      Color(0.471, 0.353, 0.627, 0.040),
-		"field_fg":           Color("1E1729"),
-		"field_mute":         Color("6B6180"),
-
-		# Surfaces and lines
-		"panel":              Color(0.000, 0.000, 0.000, 0.055),
-		"line":               Color(0.000, 0.000, 0.000, 0.150),
-		"slot":               Color(0.000, 0.000, 0.000, 0.180),
-		"slot_fill":          Color(0.000, 0.000, 0.000, 0.040),
-		"chip_bg":            Color(1.000, 1.000, 1.000, 0.850),
-		"chip_line":          Color(0.000, 0.000, 0.000, 0.200),
-		"chip_fg":            Color("4A3866"),
-
-		# Accents and semantics
-		"accent":             Color("B4327A"),
-		"accent_2":           Color("C4531B"),
-		"good":               Color("16744A"),
-		"danger":             Color("BC2126"),
-		"warn":               Color("856208"),
-
-		# Status conditions
-		"status_psn":         Color("C93A9B"),
-		"status_cnf":         Color("E07A2E"),
-		"status_par":         Color("D8A82A"),
-		"status_asl":         Color("6E7BC4"),
-		"status_brn":         Color("E2603A"),
-
-		# Buttons
-		"btn_primary_top":    Color("E8459B"),
-		"btn_primary_bot":    Color("7B3FD4"),
-		"btn_primary_fg":     Color("FFFFFF"),
-		"btn_secondary":      Color(0.000, 0.000, 0.000, 0.100),
-		"btn_secondary_fg":   Color("4A3866"),
-		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
-
-		# Locked collection tiles
-		"silhouette_invert":  true,
-		"silhouette_alpha":   0.32,
-	},
-
-	"tide_dark": {
-
-		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("4B4BDD"),
-		"chrome_grad_b":      Color("16828C"),
-		"chrome_grad_c":      Color("248724"),
-		"chrome_fg":          Color("FFFFFF"),
-		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),
-		# Field — the play area / content background
-		"field":              Color("152728"),
-		"field_glow_top":     Color(0.294, 0.294, 0.867, 0.180),
-		"field_glow_bottom":  Color(0.208, 0.761, 0.208, 0.160),
-		"field_glow_left":    Color("182042"),
-		"field_glow_right":   Color("162A16"),
+		"field":              Color("1A2943"),   # ISSUE #518
+		"field_glow_top":     Color(0.294, 0.294, 0.867, 0.153),
+		"field_glow_bottom":  Color(0.208, 0.761, 0.208, 0.136),
+		"field_glow_left":    Color("1C2850"),   # ISSUE #518
+		"field_glow_right":   Color("132413"),
 		"field_texture":      Color(1.000, 1.000, 1.000, 0.026),
 		"field_fg":           Color("F1F8F8"),
 		"field_mute":         Color("A2C1C3"),
@@ -285,62 +226,7 @@ const THEMES := {
 		"silhouette_alpha":   0.34,
 	},
 
-	"tide_light": {
-
-		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("4B4BDD"),
-		"chrome_grad_b":      Color("16828C"),
-		"chrome_grad_c":      Color("248724"),
-		"chrome_fg":          Color("FFFFFF"),
-		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),
-		# Field — the play area / content background
-		"field":              Color("F0F9F9"),
-		"field_glow_top":     Color(0.294, 0.294, 0.867, 0.090),
-		"field_glow_bottom":  Color(0.208, 0.761, 0.208, 0.080),
-		"field_glow_left":    Color("E2E4FB"),
-		"field_glow_right":   Color("E6F7E6"),
-		"field_texture":      Color(0.212, 0.467, 0.490, 0.050),
-		"field_fg":           Color("112527"),
-		"field_mute":         Color("4E7174"),
-
-		# Surfaces and lines
-		"panel":              Color(0.000, 0.000, 0.000, 0.055),
-		"line":               Color(0.000, 0.000, 0.000, 0.150),
-		"slot":               Color(0.000, 0.000, 0.000, 0.180),
-		"slot_fill":          Color(0.000, 0.000, 0.000, 0.040),
-		"chip_bg":            Color(1.000, 1.000, 1.000, 0.850),
-		"chip_line":          Color(0.000, 0.000, 0.000, 0.200),
-		"chip_fg":            Color("366063"),
-
-		# Accents and semantics
-		"accent":             Color("1DA3AF"),
-		"accent_2":           Color("29A329"),
-		"good":               Color("16744A"),
-		"danger":             Color("BC2126"),
-		"warn":               Color("856208"),
-
-		# Status conditions
-		"status_psn":         Color("C93A9B"),
-		"status_cnf":         Color("E07A2E"),
-		"status_par":         Color("D8A82A"),
-		"status_asl":         Color("6E7BC4"),
-		"status_brn":         Color("E2603A"),
-
-		# Buttons
-		"btn_primary_top":    Color("16838C"),
-		"btn_primary_bot":    Color("4B4BDD"),
-		"btn_primary_fg":     Color("FFFFFF"),
-		"btn_secondary":      Color(0.000, 0.000, 0.000, 0.100),
-		"btn_secondary_fg":   Color("366063"),
-		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
-
-		# Locked collection tiles
-		"silhouette_invert":  true,
-		"silhouette_alpha":   0.32,
-	},
-
-	"canopy_dark": {
+	"ludicolo": {
 
 		# Chrome — the header and footer bars
 		"chrome_grad_a":      Color("2DA99F"),
@@ -350,11 +236,11 @@ const THEMES := {
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
 		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),
 		# Field — the play area / content background
-		"field":              Color("182815"),
-		"field_glow_top":     Color(0.176, 0.663, 0.624, 0.180),
-		"field_glow_bottom":  Color(0.929, 0.729, 0.129, 0.160),
-		"field_glow_left":    Color("0F2A28"),
-		"field_glow_right":   Color("2A2210"),
+		"field":              Color("1E3219"),   # ISSUE #518
+		"field_glow_top":     Color(0.176, 0.663, 0.624, 0.153),
+		"field_glow_bottom":  Color(0.960, 0.800, 0.250, 0.200),   # ISSUE #518
+		"field_glow_left":    Color("0D2422"),
+		"field_glow_right":   Color("33291A"),   # ISSUE #518
 		"field_texture":      Color(1.000, 1.000, 1.000, 0.026),
 		"field_fg":           Color("F2F8F1"),
 		"field_mute":         Color("A7C3A2"),
@@ -395,296 +281,21 @@ const THEMES := {
 		"silhouette_alpha":   0.34,
 	},
 
-	"canopy_light": {
+	"code": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("2DA99F"),
-		"chrome_grad_b":      Color("4BAE37"),
-		"chrome_grad_c":      Color("EDBA21"),
-		"chrome_fg":          Color("10131A"),
-		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
-		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),
-		# Field — the play area / content background
-		"field":              Color("F2F9F0"),
-		"field_glow_top":     Color(0.176, 0.663, 0.624, 0.090),
-		"field_glow_bottom":  Color(0.929, 0.729, 0.129, 0.090),
-		"field_glow_left":    Color("DEF4F2"),
-		"field_glow_right":   Color("FBF2D8"),
-		"field_texture":      Color(0.255, 0.490, 0.212, 0.050),
-		"field_fg":           Color("152711"),
-		"field_mute":         Color("54744E"),
-
-		# Surfaces and lines
-		"panel":              Color(0.000, 0.000, 0.000, 0.055),
-		"line":               Color(0.000, 0.000, 0.000, 0.150),
-		"slot":               Color(0.000, 0.000, 0.000, 0.180),
-		"slot_fill":          Color(0.000, 0.000, 0.000, 0.040),
-		"chip_bg":            Color(1.000, 1.000, 1.000, 0.850),
-		"chip_line":          Color(0.000, 0.000, 0.000, 0.200),
-		"chip_fg":            Color("3D6336"),
-
-		# Accents and semantics
-		"accent":             Color("3DA329"),
-		"accent_2":           Color("BD910F"),
-		"good":               Color("16744A"),
-		"danger":             Color("BC2126"),
-		"warn":               Color("856208"),
-
-		# Status conditions
-		"status_psn":         Color("C93A9B"),
-		"status_cnf":         Color("E07A2E"),
-		"status_par":         Color("D8A82A"),
-		"status_asl":         Color("6E7BC4"),
-		"status_brn":         Color("E2603A"),
-
-		# Buttons
-		"btn_primary_top":    Color("3A862B"),
-		"btn_primary_bot":    Color("23837C"),
-		"btn_primary_fg":     Color("FFFFFF"),
-		"btn_secondary":      Color(0.000, 0.000, 0.000, 0.100),
-		"btn_secondary_fg":   Color("3D6336"),
-		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
-
-		# Locked collection tiles
-		"silhouette_invert":  true,
-		"silhouette_alpha":   0.32,
-	},
-
-	"gengar_dark": {
-
-		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("7340C8"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("C8357A"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("B05A0A"),   # ISSUE #410: bold stop, was near-black
-		"chrome_fg":          Color("FFFFFF"),
-		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.045),
-		"chrome_line":        Color(1.0, 1.0, 1.0, 0.10),   # the BAR keyline, see BAR_STOPS
-		# Field — the play area / content background
-		"field":              Color("1A1630"),
-		"field_glow_top":     Color(0.878, 0.439, 0.604, 0.140),
-		"field_glow_bottom":  Color(0.941, 0.627, 0.235, 0.160),
-		"field_glow_left":    Color("2E2148"),
-		"field_glow_right":   Color("3A1F3C"),
-		"field_texture":      Color(1.000, 1.000, 1.000, 0.022),
-		"field_fg":           Color("EFEAF7"),
-		"field_mute":         Color("9C90B8"),
-
-		# Surfaces and lines
-		"panel":              Color(1.000, 1.000, 1.000, 0.065),
-		"line":               Color(1.000, 1.000, 1.000, 0.140),
-		"slot":               Color(1.000, 1.000, 1.000, 0.160),
-		"slot_fill":          Color(1.000, 1.000, 1.000, 0.030),
-		"chip_bg":            Color(0.071, 0.063, 0.133, 0.620),
-		"chip_line":          Color(1.000, 1.000, 1.000, 0.180),
-		"chip_fg":            Color("DDD4EC"),
-
-		# Accents and semantics
-		"accent":             Color("F0A03C"),
-		"accent_2":           Color("E0709A"),
-		"good":               Color("67D79B"),
-		"danger":             Color("EF6065"),
-		"warn":               Color("EFC44F"),
-
-		# Status conditions
-		"status_psn":         Color("C93A9B"),
-		"status_cnf":         Color("E07A2E"),
-		"status_par":         Color("D8A82A"),
-		"status_asl":         Color("6E7BC4"),
-		"status_brn":         Color("E2603A"),
-
-		# Buttons
-		"btn_primary_top":    Color("F0A03C"),
-		"btn_primary_bot":    Color("B86C0E"),
-		"btn_primary_fg":     Color("0D0D12"),
-		"btn_secondary":      Color(1.000, 1.000, 1.000, 0.100),
-		"btn_secondary_fg":   Color("CDC2E0"),
-		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
-
-		# Locked collection tiles
-		"silhouette_invert":  false,
-		"silhouette_alpha":   0.34,
-	},
-
-	"gengar_light": {
-
-		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("7340C8"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("C8357A"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("B05A0A"),   # ISSUE #410: bold stop, was near-black
-		"chrome_fg":          Color("FFFFFF"),
-		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.045),
-		"chrome_line":        Color(1.0, 1.0, 1.0, 0.10),   # the BAR keyline, see BAR_STOPS
-		# Field — the play area / content background
-		"field":              Color("F6F2FB"),
-		"field_glow_top":     Color(0.878, 0.439, 0.604, 0.090),
-		"field_glow_bottom":  Color(0.941, 0.627, 0.235, 0.090),
-		"field_glow_left":    Color("F2E6FA"),
-		"field_glow_right":   Color("FFEEDC"),
-		"field_texture":      Color(0.471, 0.353, 0.627, 0.040),
-		"field_fg":           Color("1F1830"),
-		"field_mute":         Color("665A80"),
-
-		# Surfaces and lines
-		"panel":              Color(0.000, 0.000, 0.000, 0.055),
-		"line":               Color(0.000, 0.000, 0.000, 0.150),
-		"slot":               Color(0.000, 0.000, 0.000, 0.180),
-		"slot_fill":          Color(0.000, 0.000, 0.000, 0.040),
-		"chip_bg":            Color(1.000, 1.000, 1.000, 0.850),
-		"chip_line":          Color(0.000, 0.000, 0.000, 0.200),
-		"chip_fg":            Color("4B3D66"),
-
-		# Accents and semantics
-		"accent":             Color("8A5600"),
-		"accent_2":           Color("B03462"),
-		"good":               Color("16744A"),
-		"danger":             Color("BC2126"),
-		"warn":               Color("856208"),
-
-		# Status conditions
-		"status_psn":         Color("C93A9B"),
-		"status_cnf":         Color("E07A2E"),
-		"status_par":         Color("D8A82A"),
-		"status_asl":         Color("6E7BC4"),
-		"status_brn":         Color("E2603A"),
-
-		# Buttons
-		"btn_primary_top":    Color("8A5600"),
-		"btn_primary_bot":    Color("241600"),
-		"btn_primary_fg":     Color("FFFFFF"),
-		"btn_secondary":      Color(0.000, 0.000, 0.000, 0.100),
-		"btn_secondary_fg":   Color("4B3D66"),
-		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
-
-		# Locked collection tiles
-		"silhouette_invert":  true,
-		"silhouette_alpha":   0.32,
-	},
-
-	"shuppet_dark": {
-
-		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("4A4FC8"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("1F72C8"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("C9463A"),   # ISSUE #410: bold stop, was near-black
-		"chrome_fg":          Color("FFFFFF"),
-		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.050),
-		"chrome_line":        Color(1.0, 1.0, 1.0, 0.08),   # the BAR keyline, see BAR_STOPS
-		# Field — the play area / content background
-		"field":              Color("0F1219"),
-		"field_glow_top":     Color(0.941, 0.451, 0.420, 0.180),
-		"field_glow_bottom":  Color(0.302, 0.639, 0.961, 0.180),
-		"field_glow_left":    Color("1A202B"),
-		"field_glow_right":   Color("141B26"),
-		"field_texture":      Color(1.000, 1.000, 1.000, 0.025),
-		"field_fg":           Color("E9ECF1"),
-		"field_mute":         Color("8A93A6"),
-
-		# Surfaces and lines
-		"panel":              Color(1.000, 1.000, 1.000, 0.065),
-		"line":               Color(1.000, 1.000, 1.000, 0.140),
-		"slot":               Color(1.000, 1.000, 1.000, 0.160),
-		"slot_fill":          Color(1.000, 1.000, 1.000, 0.030),
-		"chip_bg":            Color(0.031, 0.035, 0.051, 0.620),
-		"chip_line":          Color(1.000, 1.000, 1.000, 0.180),
-		"chip_fg":            Color("D9DFE9"),
-
-		# Accents and semantics
-		"accent":             Color("4DA3F5"),
-		"accent_2":           Color("F0736B"),
-		"good":               Color("67D79B"),
-		"danger":             Color("EF6065"),
-		"warn":               Color("EFC44F"),
-
-		# Status conditions
-		"status_psn":         Color("C93A9B"),
-		"status_cnf":         Color("E07A2E"),
-		"status_par":         Color("D8A82A"),
-		"status_asl":         Color("6E7BC4"),
-		"status_brn":         Color("E2603A"),
-
-		# Buttons
-		"btn_primary_top":    Color("4DA3F5"),
-		"btn_primary_bot":    Color("0C70D0"),
-		"btn_primary_fg":     Color("0D0D12"),
-		"btn_secondary":      Color(1.000, 1.000, 1.000, 0.100),
-		"btn_secondary_fg":   Color("AEB7C6"),
-		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
-
-		# Locked collection tiles
-		"silhouette_invert":  false,
-		"silhouette_alpha":   0.34,
-	},
-
-	"shuppet_light": {
-
-		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("4A4FC8"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("1F72C8"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("C9463A"),   # ISSUE #410: bold stop, was near-black
-		"chrome_fg":          Color("FFFFFF"),
-		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.050),
-		"chrome_line":        Color(1.0, 1.0, 1.0, 0.08),   # the BAR keyline, see BAR_STOPS
-		# Field — the play area / content background
-		"field":              Color("F2F5FA"),
-		"field_glow_top":     Color(0.941, 0.451, 0.420, 0.090),
-		"field_glow_bottom":  Color(0.302, 0.639, 0.961, 0.090),
-		"field_glow_left":    Color("E2EEFC"),
-		"field_glow_right":   Color("FDE7E3"),
-		"field_texture":      Color(0.157, 0.275, 0.471, 0.045),
-		"field_fg":           Color("121924"),
-		"field_mute":         Color("59667A"),
-
-		# Surfaces and lines
-		"panel":              Color(0.000, 0.000, 0.000, 0.055),
-		"line":               Color(0.000, 0.000, 0.000, 0.150),
-		"slot":               Color(0.000, 0.000, 0.000, 0.180),
-		"slot_fill":          Color(0.000, 0.000, 0.000, 0.040),
-		"chip_bg":            Color(1.000, 1.000, 1.000, 0.850),
-		"chip_line":          Color(0.000, 0.000, 0.000, 0.200),
-		"chip_fg":            Color("33404F"),
-
-		# Accents and semantics
-		"accent":             Color("1668C4"),
-		"accent_2":           Color("B8402F"),
-		"good":               Color("16744A"),
-		"danger":             Color("BC2126"),
-		"warn":               Color("856208"),
-
-		# Status conditions
-		"status_psn":         Color("C93A9B"),
-		"status_cnf":         Color("E07A2E"),
-		"status_par":         Color("D8A82A"),
-		"status_asl":         Color("6E7BC4"),
-		"status_brn":         Color("E2603A"),
-
-		# Buttons
-		"btn_primary_top":    Color("1668C4"),
-		"btn_primary_bot":    Color("0C3768"),
-		"btn_primary_fg":     Color("FFFFFF"),
-		"btn_secondary":      Color(0.000, 0.000, 0.000, 0.100),
-		"btn_secondary_fg":   Color("33404F"),
-		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
-
-		# Locked collection tiles
-		"silhouette_invert":  true,
-		"silhouette_alpha":   0.32,
-	},
-
-	"code_dark": {
-
-		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("4A50C8"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("007F78"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("D01A63"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_a":      Color("3E43A6"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_b":      Color("016A65"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_c":      Color("10854E"),   # ISSUE #518
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.000, 0.898, 0.831, 0.070),
-		"chrome_line":        Color(0.0, 0.898, 0.831, 0.35),   # the BAR keyline, see BAR_STOPS
+		"chrome_line":        Color(0.000, 0.898, 0.831, 0.245),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
-		"field":              Color("06090F"),
-		"field_glow_top":     Color(1.000, 0.239, 0.541, 0.150),
-		"field_glow_bottom":  Color(0.000, 0.898, 0.831, 0.160),
-		"field_glow_left":    Color("0A1A1C"),
-		"field_glow_right":   Color("14101A"),
+		"field":              Color("05080D"),
+		"field_glow_top":     Color(0.180, 0.850, 0.450, 0.128),   # ISSUE #518
+		"field_glow_bottom":  Color(0.000, 0.898, 0.831, 0.136),
+		"field_glow_left":    Color("081618"),
+		"field_glow_right":   Color("0C1611"),   # ISSUE #518
 		"field_texture":      Color(0.000, 0.898, 0.831, 0.050),
 		"field_fg":           Color("DFF7F5"),
 		"field_mute":         Color("7FA6B2"),
@@ -700,7 +311,7 @@ const THEMES := {
 
 		# Accents and semantics
 		"accent":             Color("00E5D4"),
-		"accent_2":           Color("FF3D8A"),
+		"accent_2":           Color("4FE38C"),   # ISSUE #518
 		"good":               Color("67D79B"),
 		"danger":             Color("EF6065"),
 		"warn":               Color("EFC44F"),
@@ -725,76 +336,21 @@ const THEMES := {
 		"silhouette_alpha":   0.34,
 	},
 
-	"code_light": {
+	"umbreon": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("4A50C8"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("007F78"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("D01A63"),   # ISSUE #410: bold stop, was near-black
-		"chrome_fg":          Color("FFFFFF"),
-		"chrome_pattern":     Color(0.000, 0.898, 0.831, 0.070),
-		"chrome_line":        Color(0.0, 0.898, 0.831, 0.35),   # the BAR keyline, see BAR_STOPS
-		# Field — the play area / content background
-		"field":              Color("EFF7F6"),
-		"field_glow_top":     Color(1.000, 0.239, 0.541, 0.080),
-		"field_glow_bottom":  Color(0.000, 0.898, 0.831, 0.080),
-		"field_glow_left":    Color("DCF6F2"),
-		"field_glow_right":   Color("FFE2EC"),
-		"field_texture":      Color(0.000, 0.471, 0.431, 0.050),
-		"field_fg":           Color("0B1A1C"),
-		"field_mute":         Color("4C6467"),
-
-		# Surfaces and lines
-		"panel":              Color(0.000, 0.000, 0.000, 0.055),
-		"line":               Color(0.000, 0.000, 0.000, 0.150),
-		"slot":               Color(0.000, 0.000, 0.000, 0.180),
-		"slot_fill":          Color(0.000, 0.000, 0.000, 0.040),
-		"chip_bg":            Color(1.000, 1.000, 1.000, 0.850),
-		"chip_line":          Color(0.000, 0.000, 0.000, 0.200),
-		"chip_fg":            Color("17494A"),
-
-		# Accents and semantics
-		"accent":             Color("00706A"),
-		"accent_2":           Color("C4005A"),
-		"good":               Color("16744A"),
-		"danger":             Color("BC2126"),
-		"warn":               Color("856208"),
-
-		# Status conditions
-		"status_psn":         Color("C93A9B"),
-		"status_cnf":         Color("E07A2E"),
-		"status_par":         Color("D8A82A"),
-		"status_asl":         Color("6E7BC4"),
-		"status_brn":         Color("E2603A"),
-
-		# Buttons
-		"btn_primary_top":    Color("00706A"),
-		"btn_primary_bot":    Color("001413"),
-		"btn_primary_fg":     Color("FFFFFF"),
-		"btn_secondary":      Color(0.000, 0.000, 0.000, 0.100),
-		"btn_secondary_fg":   Color("17494A"),
-		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
-
-		# Locked collection tiles
-		"silhouette_invert":  true,
-		"silhouette_alpha":   0.32,
-	},
-
-	"umbreon_dark": {
-
-		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("286A82"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("2F7A90"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("957012"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_a":      Color("262A30"),   # ISSUE #518
+		"chrome_grad_b":      Color("31353C"),   # ISSUE #518
+		"chrome_grad_c":      Color("7D5F12"),   # ISSUE #410: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.941, 0.906, 0.831, 0.050),
-		"chrome_line":        Color("C8A24A"),   # the BAR keyline, see BAR_STOPS
+		"chrome_line":        Color(0.784, 0.635, 0.290, 0.700),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
-		"field":              Color("141821"),
-		"field_glow_top":     Color(0.498, 0.659, 0.722, 0.150),
-		"field_glow_bottom":  Color(0.784, 0.635, 0.290, 0.150),
-		"field_glow_left":    Color("1D2432"),
-		"field_glow_right":   Color("221E1A"),
+		"field":              Color("111214"),   # ISSUE #518
+		"field_glow_top":     Color(0.560, 0.580, 0.610, 0.085),   # ISSUE #518
+		"field_glow_bottom":  Color(0.784, 0.635, 0.290, 0.128),
+		"field_glow_left":    Color("191B1F"),   # ISSUE #518
+		"field_glow_right":   Color("1D1916"),
 		"field_texture":      Color(0.941, 0.906, 0.831, 0.030),
 		"field_fg":           Color("F1EADB"),
 		"field_mute":         Color("9A9382"),
@@ -810,7 +366,7 @@ const THEMES := {
 
 		# Accents and semantics
 		"accent":             Color("C8A24A"),
-		"accent_2":           Color("7FA8B8"),
+		"accent_2":           Color("A9AFB8"),   # ISSUE #518
 		"good":               Color("67D79B"),
 		"danger":             Color("EF6065"),
 		"warn":               Color("EFC44F"),
@@ -835,76 +391,21 @@ const THEMES := {
 		"silhouette_alpha":   0.34,
 	},
 
-	"umbreon_light": {
+	"sharpedo": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("286A82"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("2F7A90"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("957012"),   # ISSUE #410: bold stop, was near-black
-		"chrome_fg":          Color("FFFFFF"),
-		"chrome_pattern":     Color(0.941, 0.906, 0.831, 0.050),
-		"chrome_line":        Color("C8A24A"),   # the BAR keyline, see BAR_STOPS
-		# Field — the play area / content background
-		"field":              Color("F7F3E9"),
-		"field_glow_top":     Color(0.498, 0.659, 0.722, 0.080),
-		"field_glow_bottom":  Color(0.784, 0.635, 0.290, 0.090),
-		"field_glow_left":    Color("FBF0DC"),
-		"field_glow_right":   Color("ECF2F2"),
-		"field_texture":      Color(0.471, 0.392, 0.196, 0.050),
-		"field_fg":           Color("171A21"),
-		"field_mute":         Color("6A6355"),
-
-		# Surfaces and lines
-		"panel":              Color(0.000, 0.000, 0.000, 0.055),
-		"line":               Color(0.000, 0.000, 0.000, 0.150),
-		"slot":               Color(0.000, 0.000, 0.000, 0.180),
-		"slot_fill":          Color(0.000, 0.000, 0.000, 0.040),
-		"chip_bg":            Color(1.000, 1.000, 1.000, 0.850),
-		"chip_line":          Color(0.000, 0.000, 0.000, 0.200),
-		"chip_fg":            Color("4A4230"),
-
-		# Accents and semantics
-		"accent":             Color("8A6A12"),
-		"accent_2":           Color("2F6E82"),
-		"good":               Color("16744A"),
-		"danger":             Color("BC2126"),
-		"warn":               Color("856208"),
-
-		# Status conditions
-		"status_psn":         Color("C93A9B"),
-		"status_cnf":         Color("E07A2E"),
-		"status_par":         Color("D8A82A"),
-		"status_asl":         Color("6E7BC4"),
-		"status_brn":         Color("E2603A"),
-
-		# Buttons
-		"btn_primary_top":    Color("8A6A12"),
-		"btn_primary_bot":    Color("302506"),
-		"btn_primary_fg":     Color("FFFFFF"),
-		"btn_secondary":      Color(0.000, 0.000, 0.000, 0.100),
-		"btn_secondary_fg":   Color("4A4230"),
-		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
-
-		# Locked collection tiles
-		"silhouette_invert":  true,
-		"silhouette_alpha":   0.32,
-	},
-
-	"sharpedo_dark": {
-
-		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("2A4F94"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("2C68C0"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("B85D1C"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_a":      Color("1F3C77"),   # ISSUE #518
+		"chrome_grad_b":      Color("214D96"),   # ISSUE #518
+		"chrome_grad_c":      Color("B5891E"),   # ISSUE #518
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
-		"chrome_line":        Color("C77F45"),   # the BAR keyline, see BAR_STOPS
+		"chrome_line":        Color(0.910, 0.753, 0.290, 0.700),   # ISSUE #518
 		# Field — the play area / content background
-		"field":              Color("151A23"),
-		"field_glow_top":     Color(0.498, 0.659, 0.878, 0.150),
-		"field_glow_bottom":  Color(0.780, 0.498, 0.271, 0.170),
-		"field_glow_left":    Color("121B2E"),
-		"field_glow_right":   Color("241A16"),
+		"field":              Color("12161E"),
+		"field_glow_top":     Color(0.498, 0.659, 0.878, 0.128),
+		"field_glow_bottom":  Color(0.900, 0.750, 0.250, 0.145),   # ISSUE #518
+		"field_glow_left":    Color("0F1727"),
+		"field_glow_right":   Color("1F1A0F"),   # ISSUE #518
 		"field_texture":      Color(0.824, 0.902, 1.000, 0.030),
 		"field_fg":           Color("F2F4F7"),
 		"field_mute":         Color("A3AEC2"),
@@ -919,7 +420,7 @@ const THEMES := {
 		"chip_fg":            Color("D8DEE8"),
 
 		# Accents and semantics
-		"accent":             Color("C77F45"),
+		"accent":             Color("E8C04A"),   # ISSUE #518
 		"accent_2":           Color("7FA8E0"),
 		"good":               Color("67D79B"),
 		"danger":             Color("EF6065"),
@@ -933,9 +434,9 @@ const THEMES := {
 		"status_brn":         Color("E2603A"),
 
 		# Buttons
-		"btn_primary_top":    Color("C77F45"),
-		"btn_primary_bot":    Color("804E26"),
-		"btn_primary_fg":     Color("FFFFFF"),
+		"btn_primary_top":    Color("E0B23C"),   # ISSUE #518
+		"btn_primary_bot":    Color("8A6418"),   # ISSUE #518
+		"btn_primary_fg":     Color("0D0D12"),   # ISSUE #518: dark ink on the new yellow button
 		"btn_secondary":      Color(1.000, 1.000, 1.000, 0.100),
 		"btn_secondary_fg":   Color("CED4DE"),
 		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
@@ -944,65 +445,10 @@ const THEMES := {
 		"silhouette_invert":  false,
 		"silhouette_alpha":   0.34,
 	},
-
-	"sharpedo_light": {
-
-		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("2A4F94"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("2C68C0"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("B85D1C"),   # ISSUE #410: bold stop, was near-black
-		"chrome_fg":          Color("FFFFFF"),
-		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
-		"chrome_line":        Color("C77F45"),   # the BAR keyline, see BAR_STOPS
-		# Field — the play area / content background
-		"field":              Color("F3F4F7"),
-		"field_glow_top":     Color(0.498, 0.659, 0.878, 0.080),
-		"field_glow_bottom":  Color(0.780, 0.498, 0.271, 0.090),
-		"field_glow_left":    Color("E2EAF7"),
-		"field_glow_right":   Color("F8E9DC"),
-		"field_texture":      Color(0.118, 0.235, 0.431, 0.050),
-		"field_fg":           Color("131820"),
-		"field_mute":         Color("4F5C72"),
-
-		# Surfaces and lines
-		"panel":              Color(0.000, 0.000, 0.000, 0.055),
-		"line":               Color(0.000, 0.000, 0.000, 0.150),
-		"slot":               Color(0.000, 0.000, 0.000, 0.180),
-		"slot_fill":          Color(0.000, 0.000, 0.000, 0.040),
-		"chip_bg":            Color(1.000, 1.000, 1.000, 0.850),
-		"chip_line":          Color(0.000, 0.000, 0.000, 0.200),
-		"chip_fg":            Color("37455D"),
-
-		# Accents and semantics
-		"accent":             Color("8A4E14"),
-		"accent_2":           Color("26507F"),
-		"good":               Color("16744A"),
-		"danger":             Color("BC2126"),
-		"warn":               Color("856208"),
-
-		# Status conditions
-		"status_psn":         Color("C93A9B"),
-		"status_cnf":         Color("E07A2E"),
-		"status_par":         Color("D8A82A"),
-		"status_asl":         Color("6E7BC4"),
-		"status_brn":         Color("E2603A"),
-
-		# Buttons
-		"btn_primary_top":    Color("8A4E14"),
-		"btn_primary_bot":    Color("311C07"),
-		"btn_primary_fg":     Color("FFFFFF"),
-		"btn_secondary":      Color(0.000, 0.000, 0.000, 0.100),
-		"btn_secondary_fg":   Color("37455D"),
-		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
-
-		# Locked collection tiles
-		"silhouette_invert":  true,
-		"silhouette_alpha":   0.32,
-	},
 }
 
 # sunset_dark is the look the game shipped in, under its old name spectrum_night.
-const DEFAULT_THEME := "sunset_dark"
+const DEFAULT_THEME := "gengar"   # ISSUE #518: was sunset_dark (renamed)
 
 # ─── Display names ───────────────────────────────────────────────────────────
 # DELIBERATELY EMPTY. theme_display_name() title-cases an id, so every current
@@ -1654,7 +1100,6 @@ func _splash_stop(stop_key: String) -> Color:
 		"chrome_grad_a": fallback = col("accent")
 		"chrome_grad_c": fallback = col("accent_2")
 		_:               fallback = col("accent").lerp(col("accent_2"), 0.5)
-	print("ISSUE #379 FIX ACTIVE: splash ", stop_key, " too dark on the field - using ", fallback.to_html(false))
 	return fallback
 
 

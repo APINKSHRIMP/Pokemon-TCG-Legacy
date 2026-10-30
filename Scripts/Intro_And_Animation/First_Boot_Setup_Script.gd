@@ -102,7 +102,6 @@ func _build_ui() -> void:
 	# ISSUE #192: the chrome. Must run FIRST — it frees BACKGROUND and forces the
 	# 40x40 scene root to full-rect, which everything below is positioned against.
 	var bars := UIKit.convert_legacy_screen(self, "New trainer")
-	print("ISSUE #192 FIX ACTIVE: first-boot setup converted to the Spectrum Night chrome")
 
 	# A CHIP, not a bare label. The header's right slot sits over the warm end of
 	# the chrome gradient, which on the brighter themes does not carry plain white
@@ -223,7 +222,6 @@ func _add_sprite_to_grid(file_name: String) -> void:
 	# ISSUE #399: the crop moved to UIKit.visible_sprite so the trainer info and
 	# costume screens share it.
 	texture = UIKit.visible_sprite(texture)
-	print("ISSUE #380 FIX ACTIVE: ", file_name, " fitted by its visible area ", texture.get_size())
 	var tex_size  := texture.get_size()
 	var s         := minf(CELL_SIZE.x / tex_size.x, CELL_SIZE.y / tex_size.y)
 	var disp_size := Vector2(tex_size.x * s, tex_size.y * s)

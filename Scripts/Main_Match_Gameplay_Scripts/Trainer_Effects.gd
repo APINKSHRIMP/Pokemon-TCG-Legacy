@@ -904,7 +904,6 @@ func tick_defender_counters(is_opponent: bool) -> void:
 			# going to -1 masked it — until the NEXT Defender was attached, which set turns back to 0 and did
 			# defender_count += 1 on top of the phantom count. One physical Defender then blocked 40+ damage.
 			pokemon.defender_count = 0
-			print("ISSUE #90 FIX ACTIVE: cleared defender_count on ", pokemon.metadata.get("name", ""), " when its Defender(s) expired (", to_remove.size(), " discarded)")
 			main.update_discard_pile_display(is_opponent)
 			display_attached_trainer_cards(is_opponent)
 			# ISSUE #59 (retest sub-issue 2): display_attached_trainer_cards only refreshes the ACTIVE
@@ -912,7 +911,6 @@ func tick_defender_counters(is_opponent: bool) -> void:
 			# build_pokemon_slot via display_pokemon) otherwise stayed on screen until the next full board
 			# refresh — i.e. it "only vanished when the next defender was attached". Refresh the board too.
 			main.display_pokemon(is_opponent)
-			print("ISSUE #59 FIX ACTIVE: Defender discarded + board refreshed on ", pokemon.metadata.get("name", ""))
 
 # Displays attached trainer cards (PlusPower, Defender) next to active pokemon
 func display_attached_trainer_cards(is_opponent: bool) -> void:
@@ -1403,7 +1401,6 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 		# ISSUE #490: the CPU's Potions heal WHILE the card is on its way to the discard pile -- the
 		# flight is started, not waited for, and play_trainer_card waits for it after the effect.
 		if is_opponent and card.metadata.get("name", "") in HEAL_DURING_FLIGHT:
-			print("ISSUE #490 FIX ACTIVE: ", card.metadata.get("name", ""), " heals during its discard flight")
 			_flight_done = false
 			_run_flight_then_flag(hand_container_node, discard_node, card_texture, from_size, land, from_pos)
 			return
@@ -1546,7 +1543,6 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 				# Defender wasn't visible on the bench until some later refresh. Refresh the board first.
 				display_attached_trainer_cards(false)
 				main.display_pokemon(false)
-				print("ISSUE #59 FIX ACTIVE: board refreshed before the Defender attach message")
 				await main.show_message("Defender attached to " + target.metadata.get("name", "") + "!")
 
 	# GYM1 Charity (gym1-99) — attach to your own Active Pokemon
@@ -1843,7 +1839,6 @@ func effect_professor_oak(played_card: card_object, is_opponent: bool) -> void:
 		# the cards flew. Waiting for each flight makes every card leave its slot as it moves.
 		await main.animate_card_out_of_hand(card, is_opponent, oak_from, discard_node, 0.15, card_texture)
 		if main._should_bail(): return
-	print("ISSUE #455 FIX ACTIVE: Professor Oak discarded ", hand_copy.size(), " cards one flight at a time")
 	hand.clear()
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -2145,7 +2140,7 @@ func effect_lass(is_opponent: bool) -> void:
 		var display_size = main.card_scales[5] if main.opponent_hand.size() > 7 else main.card_scales[main.opponent_hand.size()]
 		main.display_hand_cards_array(main.opponent_hand, display_container, display_size, false)
 		main.header_label.text = "OPPONENT'S HAND REVEALED"
-		main.hint_label.text = str(o_trainers.size()) + " Trainer card(s) will be shuffled into deck"
+		main.hint_label.text = main.fix_plurals(str(o_trainers.size()) + " Trainer card(s) will be shuffled into deck")   # ISSUE #515
 		main.action_button.visible = false
 		main.cancel_button.visible = true
 		main.cancel_button.text = "DONE"
@@ -2188,7 +2183,6 @@ func effect_lass(is_opponent: bool) -> void:
 		main.player_hand.erase(card)
 	for card in o_trainers:
 		main.opponent_hand.erase(card)
-	print("ISSUE #455 FIX ACTIVE: Lass flew ", p_trainers.size() + o_trainers.size(), " Trainers one by one")
 
 	main.player_deck.shuffle()
 	main.opponent_deck.shuffle()
@@ -2329,7 +2323,6 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 		# the Pokémon shuffled in and the one taken out, with a message + animation for each step:
 		#   1) message "shuffled X into their deck" 2) fly X (face-up) hand->deck 3) shuffle animation
 		#   4) message "added Y to their hand"      5) fly Y (face-up) deck->hand.
-		print("ISSUE #44 FIX ACTIVE: Pokemon Trader shows both cards with animated hand<->deck flow")
 		var trade_away = cpu_get_discard_priority(pokemon_in_hand, 1, played_card)
 		if trade_away.size() == 0:
 			return
@@ -2435,7 +2428,6 @@ func effect_scoop_up(is_opponent: bool) -> void:
 	# it happens: announce the play, strip the attachments one at a time (board refreshed after each),
 	# then fly the Basic card up into the hand.
 	var scooper = "OPPONENT" if is_opponent else "PLAYER"
-	print("ISSUE #91 FIX ACTIVE: animating Scoop Up on ", target.metadata.get("name", ""))
 	await main.show_message(scooper + " USED SCOOP UP ON " + target.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
 
@@ -2678,7 +2670,6 @@ func effect_energy_retrieval(played_card: card_object, is_opponent: bool) -> voi
 		if to_discard.size() == 0:
 			return
 		# ISSUE #483: the discarded card flies from the hand to the discard pile, face up.
-		print("ISSUE #483 FIX ACTIVE: CPU Energy Retrieval animates its discard and the Energy coming back")
 		var er_from: Dictionary = main.lift_card_from_hand(to_discard[0], true)
 		hand.erase(to_discard[0])
 		to_discard[0].current_location = "discard"
@@ -2800,7 +2791,6 @@ func effect_maintenance(played_card: card_object, is_opponent: bool) -> void:
 		if main._should_bail(): return
 		# ISSUE #481: the same show the CPU's Maintenance gets -- each card flies into the deck, the deck
 		# shuffles, and only then is the new card drawn.
-		print("ISSUE #481 FIX ACTIVE: Maintenance animates ", main.trainer_discard_selected.size(), " cards into the deck")
 		main.refresh_hand_display(false)
 		for card in main.trainer_discard_selected.duplicate():
 			var mt_from: Dictionary = main.lift_card_from_hand(card, false)
@@ -3046,7 +3036,6 @@ func effect_super_potion(card: card_object, is_opponent: bool) -> void:
 	else:
 		# ISSUE #25 FIX: let the player pick the target AND which energy to discard, and allow them
 		# to cancel out at either step (the card is refunded to hand, mirroring the tax-refund path).
-		print("ISSUE #25 FIX ACTIVE: Super Potion now prompts for energy choice + allows cancel")
 		var target = await main.card_ops.prompt_select_card(valid_targets, "SUPER POTION", "Select a Pokemon to heal (will discard 1 energy)", "HEAL", true)
 		if main._should_bail(): return
 		if target == null:
@@ -3208,8 +3197,6 @@ func effect_potion(is_opponent: bool) -> void:
 		var target = main.cpu_ai.cpu_pick_heal_target(damaged, 20)
 		if target == null:
 			target = damaged[0]
-		print("ISSUE #164 FIX ACTIVE: CPU Potion targets ", target.metadata.get("name", ""),
-			" (active=", target == main.opponent_active_pokemon, ")")
 		await main.card_ops.heal_pokemon(target, 20, true)
 		if main._should_bail(): return
 	else:
@@ -3495,7 +3482,6 @@ func effect_energy_search(is_opponent: bool) -> void:
 		var search_texture = main.opponent_card_back_texture if is_opponent else main.get_card_texture(chosen)
 		var deck_icon = main.opponent_deck_icon if is_opponent else main.player_deck_icon
 		var hand_container = main.opponent_hand_container if is_opponent else main.player_hand_container
-		print("ISSUE #86 FIX ACTIVE: Energy Search animates deck->hand with no reveal message")
 		main.update_deck_icon(is_opponent)
 		await main.animate_card_into_hand(chosen, is_opponent, deck_icon, {}, 0.3, search_texture)
 		if main._should_bail(): return
@@ -3561,7 +3547,6 @@ func effect_recycle(is_opponent: bool) -> void:
 		# ISSUE #499: the same keep value every other "take a card" effect uses, never another Recycle.
 		var pool: Array = main.cpu_ai.cpu_recycle_candidates()
 		chosen = main.cpu_ai.cpu_pick_best_keep(pool) if not pool.is_empty() else discard[0]
-		print("ISSUE #499 FIX ACTIVE: CPU Recycle picks ", chosen.metadata.get("name", ""))
 	else:
 		# Player selects
 		chosen = await main.card_ops.prompt_select_card(discard, "RECYCLE: CHOOSE A CARD", "This card will be placed on top of your deck", "RECYCLE", false)
@@ -4447,6 +4432,8 @@ func gym1_heal_pokemon(pokemon: card_object, amount: int, is_opp: bool) -> void:
 	if new_hp > pokemon.current_hp:
 		pokemon.current_hp = new_hp
 		main.display_hp_circles_above_align(pokemon, is_opp)
+		if main.attack_vfx != null:
+			main.attack_vfx.play_heal(pokemon)   # ISSUE #510
 
 # ============================ gym1-15 / gym1-98 — Brock ============================
 # Heal 1 damage counter (10) from each of your Pokemon that has any damage.

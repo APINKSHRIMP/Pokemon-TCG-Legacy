@@ -39,7 +39,6 @@ func _process(_delta: float) -> void:
 	_cafe_call_walked += _player.global_position.distance_to(_cafe_call_from)
 	_cafe_call_from = _player.global_position
 	if _cafe_call_walked >= CAFE_CALL_TRIGGER_DISTANCE:
-		print("ISSUE #478 FIX ACTIVE: cafe call after walking ", _cafe_call_walked, "px")
 		_cafe_call_from = Vector2.INF
 		_play_cafe_call()
 

@@ -175,7 +175,6 @@ func _input(event: InputEvent) -> void:
 			# last on-screen position, so a stale card here would otherwise silently eat clicks
 			# meant for whatever new array is now drawn over that same screen area.
 			if not is_visible_in_tree():
-				print("ISSUE #12 FIX ACTIVE (Card_Image_Loader): ignored click on a card hidden via an ancestor, card_ref=", card_ref.metadata.get("name", "") if card_ref else "null")
 				return
 			
 			card_clicked.emit(card_ref)

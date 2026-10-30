@@ -289,7 +289,6 @@ func _wrap_grid_in_scroll_container() -> void:
 	# back in by the same amount, so the grid sits where it always did but every
 	# coin has room to grow inside the clip.
 	var room := PULSE_ROOM
-	print("ISSUE #397 FIX ACTIVE: coin grid padded ", room, "px inside its scroll box for the select pulse")
 	var scroll := ScrollContainer.new()
 	scroll.name = "coin_scroll_container"
 	scroll.position = grid.position - Vector2(room, room)
@@ -551,7 +550,6 @@ func _apply_selected_animation(rect: TextureRect) -> void:
 	# so rect.size / 2 put the pivot off-centre and that coin swelled lopsidedly
 	# (looking much bigger) until it was clicked and the pivot was recomputed.
 	rect.pivot_offset = COIN_SIZE / 2.0
-	print("ISSUE #397 FIX ACTIVE: coin pulse pivot ", rect.pivot_offset, " (rect.size now ", rect.size, ")")
 	rect.modulate     = Color.WHITE
 
 	var tween := create_tween()
@@ -805,7 +803,6 @@ var walkthrough_active: bool = false
 
 func walkthrough_place_coins(coin_files: Array) -> void:
 	walkthrough_active = true
-	print("ISSUE #476 FIX ACTIVE: coin case walkthrough for ", coin_files)
 	var rects: Array = []
 	for child in grid.get_children():
 		if child is TextureRect and String(child.get_meta("coin_name", "")) in coin_files:

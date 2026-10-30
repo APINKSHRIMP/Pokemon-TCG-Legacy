@@ -80,7 +80,6 @@ func _on_bed_body_entered(body: Node2D) -> void:
 	if GameState.is_night_time():
 		MapManager.show_interactable_confirm(GameState.sleep_prompt_text(), _do_sleep)
 	else:
-		print("ISSUE #457 FIX ACTIVE: too-early bed line for ", GameState.get_time())
 		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT.get(GameState.get_time(), BED_TOO_EARLY_TEXT["Evening"]))
 
 func _do_sleep() -> void:

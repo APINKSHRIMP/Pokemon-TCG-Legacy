@@ -589,7 +589,6 @@ func _deck_walkthrough(pack_art: String, from_deck: String, to_deck: String) -> 
 	if GameState.progress.get(WALK_DONE_KEY, false):
 		await say_all(_speaker, LINES_AFTER_BONUS.slice(0, 2))
 		return
-	print("ISSUE #476 FIX ACTIVE: deck walkthrough ", from_deck, " -> ", to_deck)
 	var started := Time.get_ticks_msec()
 	_hold_line(_speaker, LINES_AFTER_BONUS[0])
 	var menu: Node = await _open_menu_on(DECK_MENU_TILE)
@@ -627,7 +626,6 @@ func _deck_walkthrough(pack_art: String, from_deck: String, to_deck: String) -> 
 	GameState.progress[WALK_DONE_KEY] = true
 	GameState.save_progress()
 	await _close_walk_menu()
-	print("ISSUE #476 FIX ACTIVE: deck walkthrough done in ", (Time.get_ticks_msec() - started) / 1000, "s; menu ", menu != null)
 
 
 func _say_coin_lines() -> void:
@@ -767,6 +765,5 @@ func _grant_missing(target: Dictionary) -> void:
 		for n in maxi(0, int(target[cid]) - owned):
 			missing.append(cid)
 	if not missing.is_empty():
-		print("ISSUE #476 FIX ACTIVE: granting cards the better deck needs: ", missing)
 		GameState.give_cards(",".join(missing))
 

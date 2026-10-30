@@ -98,11 +98,9 @@ static func _apply(code: String) -> void:
 			var sleeves := GameState.get_sleeve_universe(true).keys()
 			var new_sleeves := GameState.add_sleeves_to_collection(sleeves)
 		"CHT_Retreat.Confused":
-			print("ISSUE #385 FIX ACTIVE: confusion rule -> fairer_confusion_rules")
 			GameState.set_confusion_rule("fairer_confusion_rules")
 		"CHT_Vanilla.Confusion":
 			# "Vanilla" = the Base Set rule, the game's default (GameState.DEFAULT_CONFUSION_RULE).
-			print("ISSUE #385 FIX ACTIVE: confusion rule -> ", GameState.DEFAULT_CONFUSION_RULE)
 			GameState.set_confusion_rule(GameState.DEFAULT_CONFUSION_RULE)
 
 

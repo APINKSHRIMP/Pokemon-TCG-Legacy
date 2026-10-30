@@ -388,7 +388,6 @@ func set_trainer(f: Fighter, tex: Texture2D, trainer_name: String, deck_name: St
 		if w > NAME_BLOCK_W:
 			h *= NAME_BLOCK_W / w
 			w = NAME_BLOCK_W
-		print("ISSUE #399 FIX ACTIVE: battle frame sprite fitted by its visible area ", tex.get_size(), " -> ", Vector2(w, h))
 		var centre_x := f.sprite.position.x
 		f.sprite.texture = tex
 		f.sprite.size = Vector2(w, h)

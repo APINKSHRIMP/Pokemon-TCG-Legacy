@@ -553,7 +553,6 @@ func _ask_ellie(question: String, again: bool) -> void:
 
 func _ask_alex() -> void:
 	# ISSUE #494: he sits straight above the player -- they look at each other for the challenge.
-	print("ISSUE #494 FIX ACTIVE: Alexander looks down, the player looks up")
 	if _alex != null and is_instance_valid(_alex):
 		_alex.face("down")
 	player_face("up")
@@ -606,7 +605,6 @@ func _play_after_olly() -> void:
 			break
 		walked += _olly.global_position.distance_to(last)
 		last = _olly.global_position
-	print("ISSUE #488 FIX ACTIVE: Ellie sighs after Olly walked ", int(walked), "px")
 	if _ellie != null:
 		_ellie.face("down")
 		await wait(ELLIE_LOOK_BACK)
@@ -644,7 +642,6 @@ func _play_after_alex() -> void:
 	# ISSUE #498: no fade, no cut. Ellie gets up and goes in to pay (out to the aisle, up to the
 	# café door and through it) while Alexander and the player step down from the table to stand
 	# facing each other. A beat later she comes back out of the door.
-	print("ISSUE #498 FIX ACTIVE: café closing scene walks, no fade")
 	var alex_down := [
 		Vector2(ALEX_STAND_X, _alex.global_position.y),
 		Vector2(ALEX_STAND_X, ALEX_END_SPOT.y),

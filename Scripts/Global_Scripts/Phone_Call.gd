@@ -1142,7 +1142,6 @@ func _build_battle_caller(screen_size: Vector2) -> void:
 	rect.size = show.size * scale
 	rect.position = Vector2(pos_x, 0.0)
 	_picture.add_child(rect)
-	print("ISSUE #405 FIX ACTIVE: call shows battle sprite ", _battle_sprite, " top ", show, " x", snappedf(scale, 0.01))
 
 	# The mouth, over the sprite's own.
 	var frames := _battle_mouth_frames("")

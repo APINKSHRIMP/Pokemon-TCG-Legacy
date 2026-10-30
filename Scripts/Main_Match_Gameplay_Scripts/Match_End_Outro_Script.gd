@@ -977,7 +977,6 @@ func _glide_gift_to_pack_rect(rect: TextureRect) -> void:
 	if rect == null or not is_instance_valid(rect):
 		return
 	var target: Rect2 = PackOpeningManager.get_pack_target_rect()
-	print("ISSUE #487 FIX ACTIVE: gift pack glides into the opening rect ", target)
 	var t: float = GameState.pack_time(PACK_HANDOFF_TIME)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(rect, "offset_left", target.position.x, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)

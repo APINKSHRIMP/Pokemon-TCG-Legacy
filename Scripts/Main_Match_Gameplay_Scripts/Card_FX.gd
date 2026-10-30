@@ -27,7 +27,11 @@ const GHOST_Z := 140
 const POISON_TINT := Color(0.78, 0.45, 1.0)
 const POISON_SWAY_PX := 12.0
 const POISON_SWAY_PERIOD := 0.9     # seconds for one full left-right-left
-const POISON_SWAY_CYCLES := 3
+const POISON_SWAY_CYCLES := 3      # still used by Confusion, the sway gesture and the inflict beat
+# ISSUE #523: the Poisoned/Toxic STATUS sway only - 2 fewer left-right-lefts (3 -> 1) and 20% slower
+# (0.9s -> 1.08s per cycle). Confusion and the other gestures keep the values above.
+const POISON_STATUS_SWAY_PERIOD := 1.08
+const POISON_STATUS_SWAY_CYCLES := 1
 # Paralysis: a quick yellow flash and a fast, jagged, even shake (no easing).
 const PARALYSIS_TINT := Color(1.0, 0.95, 0.35)
 const PARALYSIS_SHAKE_PX := 6.0
@@ -97,13 +101,13 @@ func _process(_delta: float) -> void:
 ## ISSUE #471: a Special Condition has just landed (or ticked) on `card`.
 ## kind: "Poisoned" / "Toxic" / "Burned" / "Paralyzed" / "Confused" / "Asleep".
 func status(card: card_object, kind: String) -> void:
-	print("ISSUE #471 FIX ACTIVE: status fx '", kind, "' on ", _name(card))
 	# Attack VFX: the condition's own effect (poison bubbles, flames, sparks...) plays over the card too.
 	if main != null and main.attack_vfx != null:
 		main.attack_vfx.play_status(card, kind)
 	match kind:
 		"Poisoned", "Toxic":
-			await _sway(card, POISON_SWAY_PX, POISON_SWAY_PERIOD, POISON_SWAY_CYCLES, POISON_TINT, 0.0)
+			print("ISSUE #523 FIX ACTIVE: poison sway x", POISON_STATUS_SWAY_CYCLES, " @ ", POISON_STATUS_SWAY_PERIOD, "s")
+			await _sway(card, POISON_SWAY_PX, POISON_STATUS_SWAY_PERIOD, POISON_STATUS_SWAY_CYCLES, POISON_TINT, 0.0)
 		"Paralyzed":
 			await _jolt(card, PARALYSIS_SHAKE_PX, PARALYSIS_SHAKE_STEP, PARALYSIS_SHAKES, PARALYSIS_TINT)
 		"Burned":
@@ -116,14 +120,12 @@ func status(card: card_object, kind: String) -> void:
 
 ## ISSUE #474: "X used Y!" -- three quick shakes, damaging or not.
 func attack_declared(card: card_object) -> void:
-	print("ISSUE #474 FIX ACTIVE: declare shake on ", _name(card))
 	await _jolt(card, DECLARE_SHAKE_PX, DECLARE_SHAKE_STEP, DECLARE_SHAKES * 2, Color.WHITE)
 
 
 ## ISSUE #474: the gesture a NON-damaging attack makes instead of the lunge.
 func attack_intent(attacker: card_object, defender: card_object, attack: Dictionary) -> void:
 	var kind := classify_attack(attacker, attack)
-	print("ISSUE #474 FIX ACTIVE: no-damage attack '", attack.get("name", ""), "' -> ", kind)
 	match kind:
 		"inflict":
 			# 1) the attacker sways; half a second in, the defender sways too.
@@ -146,7 +148,6 @@ func attack_intent(attacker: card_object, defender: card_object, attack: Diction
 
 ## ISSUE #474 (4): a Pokémon Power is used -- a small fast shake.
 func power_used(card: card_object) -> void:
-	print("ISSUE #474 FIX ACTIVE: power shake on ", _name(card))
 	await _jolt(card, POWER_SHAKE_PX, POWER_SHAKE_STEP, POWER_SHAKES * 2, Color.WHITE)
 
 
@@ -211,7 +212,6 @@ func start_ko(card: card_object) -> void:
 	var e := _entry(card)
 	if e.is_empty():
 		return
-	print("ISSUE #486 FIX ACTIVE: KO fade on ", _name(card))
 	e["ko"] = true
 	e["users"] += 1
 	var start_t := Time.get_ticks_msec()

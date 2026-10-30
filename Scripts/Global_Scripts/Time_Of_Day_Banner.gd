@@ -83,7 +83,6 @@ static func play(ui_layer: Node, time_name: String) -> void:
 	panel.position = REST_POS - Vector2(0.0, DROP_FROM)
 	panel.modulate.a = 0.0
 
-	print("ISSUE #505 FIX ACTIVE: time banner in ", IN_TIME, "s hold ", HOLD_TIME, "s")
 	var tween := panel.create_tween()
 	tween.tween_interval(DELAY)
 	tween.tween_property(panel, "position:y", REST_POS.y, IN_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

@@ -284,7 +284,6 @@ func _build_rows() -> void:
 	# "EX era" rule to mean. "Fairer retreat" is not on this row at all any more:
 	# it is the CHT_Retreat.Confused cheat (and CHT_Vanilla.Confusion undoes it).
 	var rules_unlocked: bool = GameState.match_rule_options_unlocked()
-	print("ISSUE #385 FIX ACTIVE: match-rule rows ", ("shown" if rules_unlocked else "hidden (no ex1 card owned)"))
 	if not in_match_mode and rules_unlocked:
 		_add_button_row(body, "confusion", "Confusion rules", [
 			["base_set_confusion_rules",   "Base set"],
@@ -385,7 +384,10 @@ func _build_rows() -> void:
 func _add_theme_row(parent: VBoxContainer) -> void:
 	_add_picker_row(parent, THEME_LOOK, "Colour theme", UITheme.theme_looks(),
 		"(changes every screen)")
-	_add_picker_row(parent, THEME_MODE, "Mode", UITheme.theme_modes())
+	# ISSUE #519: the Dark/Light "Mode" row is gone - every theme is dark now, so it had nothing to offer.
+	# The THEME_MODE plumbing below stays harmless (no row builds it) in case a second mode ever returns.
+	if UITheme.theme_modes().size() > 1:
+		_add_picker_row(parent, THEME_MODE, "Mode", UITheme.theme_modes())
 
 
 ## One half of the theme picker. `section` is a pseudo-section: it has no entry
@@ -635,7 +637,6 @@ func _refresh_section(section: String) -> void:
 		if section == "tutorial_next_match" and GameState.tutorial_option_locked():
 			btn.disabled = true
 			btn.modulate = Color(1, 1, 1, 0.45)
-			print("ISSUE #470 FIX ACTIVE: tutorial option locked On")
 
 
 ## Adds or removes the selection ring on one colour-theme button.

@@ -120,9 +120,6 @@ static var _lights_suffix := OPEN_LIGHTS_SUFFIX   # set by apply_time, read when
 
 ## Writes the four globals. Unknown / empty time (interiors) = identity, lights off.
 static func apply_time(time: String) -> void:
-	print("ISSUE #386 FIX ACTIVE: grade '", time, "' brightness ", BRIGHTNESS.get(time, 1.0))
-	print("ISSUE #387 FIX ACTIVE: night red row ", GRADES["Night"]["red"])
-	print("ISSUE #506 FIX ACTIVE: grade '", time, "' brightness ", BRIGHTNESS.get(time, 1.0))
 	var g: Dictionary = GRADES.get(time, GRADES["Afternoon"])
 	var id: Dictionary = GRADES["Afternoon"]
 	var k: float = STRENGTH.get(time, 1.0)
@@ -201,7 +198,6 @@ static func _material_for_tilemap(layer: TileMapLayer) -> ShaderMaterial:
 		mat.shader = WORLD_SHADER
 		mat.set_shader_parameter("has_lights", true)
 		mat.set_shader_parameter("lights_texture", load(lights_path))
-		print("ISSUE #391 FIX ACTIVE: lights overlay for ", sheet, " now fades with modulate")
 		mat.set_shader_parameter("tile_px", TILE_PX)
 		var atlas := _first_atlas(layer.tile_set)
 		mat.set_shader_parameter("atlas_padded", atlas != null and atlas.use_texture_padding)

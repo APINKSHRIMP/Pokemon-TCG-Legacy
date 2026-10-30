@@ -235,7 +235,7 @@ func discard_now_illegal(pokemon: card_object, is_owner_opp: bool) -> Array:
 			main.card_ops.discard_energy_from_pokemon(e, is_owner_opp, true)
 			dropped.append(e.metadata.get("name", ""))
 	if not dropped.is_empty():
-		print("ISSUE #467 FIX ACTIVE: ", pokemon.metadata.get("name", ""), " can no longer hold ", dropped, " -- discarded")
+		pass
 	return dropped
 
 ######################################################################################################################################################

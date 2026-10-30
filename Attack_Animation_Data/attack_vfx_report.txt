@@ -372,8 +372,8 @@
     Leech Life
 [LeechSeed] 4
     Dark Seed, Leech Seed, Poison Seed, Sleep Seed
-[Leer] 4
-    Evil Eye, Leer, Night Eyes, Stare
+[Leer] 3
+    Evil Eye, Leer, Night Eyes
 [Lick] 7
     Lap Up, Lick, Long Tongue, Tongue Slap, Tongue Stretch, Tongue Whip, Upward Lick
 [LightBall] 1
@@ -658,6 +658,8 @@
     Bear Hug, Cling, Clutch, Crush, Headlock, Hug, Scrunch, Squeeze, Strangle
 [StarBeam] 1
     Psychic Star
+[Stare] 1
+    Stare
 [StarStrike] 3
     Holy Star, Metal Star, Shining Star
 [Steal] 7

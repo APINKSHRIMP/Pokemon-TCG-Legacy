@@ -60,7 +60,6 @@ func set_suspended(on: bool) -> void:
 	_suspended = on
 	if is_showing():
 		_overlay.visible = not on
-		print("ISSUE #393 FIX ACTIVE: loading blocker ", ("suspended under the filter screen" if on else "resumed"))
 
 # Convenience wrappers so every menu uses the tuned geometry above rather than its own magic numbers.
 func show_for_deck(host: Node) -> void:
@@ -79,7 +78,6 @@ func show(host: Node, icon_offset_x: float = 0.0, blocker_top_inset: float = 0.0
 		return
 	hide()  # never stack two overlays
 	_suspended = false   # ISSUE #393
-	print("ISSUE #32 FIX ACTIVE: loading overlay shown (", host.name, ") icon_x/y=", icon_offset_x, "/", icon_offset_y, " insets top/bottom/right/left=", blocker_top_inset, "/", blocker_bottom_inset, "/", blocker_right_inset, "/", blocker_left_inset)
 	_overlay = CanvasLayer.new()
 	_overlay.layer = 200
 	host.add_child(_overlay)
