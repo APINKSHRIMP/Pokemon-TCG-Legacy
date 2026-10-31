@@ -452,9 +452,11 @@ func _input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 	if not _ready_for_input:
 		return
-	if event is InputEventKey and event.pressed and not event.is_echo():
-		if event.keycode == OPEN_KEY or UIInput.is_cancel(event):
-			close()
+	# M / pad Back toggles it shut; Escape, Backspace and pad B back out of it.
+	if UIInput.is_world_map(event) or UIInput.is_cancel(event):
+		close()
+		return
+	if event is InputEventKey:
 		return
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
@@ -477,10 +479,10 @@ func _process(delta: float) -> void:
 	_time += delta
 	if _ready_for_input:
 		var dir := Vector2.ZERO
-		if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):  dir.x -= 1.0
-		if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): dir.x += 1.0
-		if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):    dir.y -= 1.0
-		if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):  dir.y += 1.0
+		if Input.is_key_pressed(KEY_A) or Input.is_action_pressed("ui_left"):  dir.x -= 1.0   # arrows, D-pad, stick
+		if Input.is_key_pressed(KEY_D) or Input.is_action_pressed("ui_right"): dir.x += 1.0
+		if Input.is_key_pressed(KEY_W) or Input.is_action_pressed("ui_up"):    dir.y -= 1.0
+		if Input.is_key_pressed(KEY_S) or Input.is_action_pressed("ui_down"):  dir.y += 1.0
 		if dir != Vector2.ZERO:
 			_centre += dir.normalized() * PAN_SPEED * delta / _zoom
 			_apply_view()

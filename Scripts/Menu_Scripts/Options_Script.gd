@@ -109,6 +109,11 @@ var section_setters : Dictionary = {}
 var save_btn   : Button
 var cancel_btn : Button
 
+# The Controls sub-screen, while it is open over this one.
+var _controls_btn : Button
+var _controls_screen : Control = null
+const ControlsScreenScript := preload("res://Scripts/Menu_Scripts/Controls_Screen.gd")
+
 # ─── HOSTED IN A MATCH (the ESC pause menu) ──────────────────
 # Main_Match_Core_Gameplay_Script opens this screen as an overlay on top of the
 # live board. Both are set on the instance BEFORE it is added to the tree, so
@@ -217,6 +222,17 @@ func _build_chrome() -> void:
 	var title := Label.new()
 	UIKit.set_label(title, "title", "Options", "chrome_fg")
 	header.centre.add_child(title)
+
+	# Top right: the Controls sub-screen (Controls_Screen.gd), a list of every key
+	# and pad button. Right-aligned in the slot so it sits in the corner.
+	var right_row := HBoxContainer.new()
+	right_row.alignment = BoxContainer.ALIGNMENT_END
+	right_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.right.add_child(right_row)
+	_controls_btn = Button.new()
+	_controls_btn.text = "Controls"
+	UIKit.adopt_button(_controls_btn, right_row, "neutral")
+	_controls_btn.pressed.connect(_open_controls)
 
 	var footer := UIKit.add_footer(self)
 	cancel_btn = UIKit.make_footer_button("Cancel", "negative")   # ISSUE #379
@@ -553,9 +569,39 @@ func _to_percent(linear: float) -> int:
 
 
 func _input(event: InputEvent) -> void:
+	# The Controls sub-screen is a child, so its own _input has already seen the event
+	# and closed itself on a cancel; this only guards against reacting a second time.
+	if _controls_screen != null and is_instance_valid(_controls_screen):
+		return
 	if UIInput.is_cancel(event):
 		get_viewport().set_input_as_handled()
 		_leave()
+
+
+# ─── Controls sub-screen ─────────────────────────────────────────────────────
+
+## Opens Controls over this screen. Everything of this screen's is hidden while it
+## is up (not just covered), so keyboard / pad focus cannot wander onto an Options
+## button behind it.
+func _open_controls() -> void:
+	if _controls_screen != null and is_instance_valid(_controls_screen):
+		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
+	for child in get_children():
+		if child is CanvasItem and child != audio_player:
+			(child as CanvasItem).visible = false
+	_controls_screen = ControlsScreenScript.new()
+	_controls_screen.closed.connect(_on_controls_closed)
+	add_child(_controls_screen)
+
+
+func _on_controls_closed() -> void:
+	_controls_screen = null
+	for child in get_children():
+		if child is CanvasItem:
+			(child as CanvasItem).visible = true
+	if InputDevice.using_nav() and _controls_btn != null and is_instance_valid(_controls_btn):
+		_controls_btn.grab_focus.call_deferred()
 
 
 # ─── Option selection ────────────────────────────────────────────────────────

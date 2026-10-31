@@ -464,6 +464,20 @@ var _player_action_panel : Control = null
 var _opp_action_panel : Control = null
 var _stadium_overlay : Control = null
 var _end_turn_btn : Button = null
+
+# ── Mouse drag play + keyboard / pad cursor ──────────────────────────────────
+# Hand_Drag.gd: click / double-click / drag a card straight off the bottom-bar hand.
+# Board_Nav.gd: the arrow-key / D-pad cursor over the whole board. Both made in _ready().
+var hand_drag: Node = null
+var board_nav: Node = null
+## Hand_Drag: a dropped card's flight starts where it was dropped, not from its hand
+## slot. {"card": card_object, "rect": {"position", "size"}} while a drop resolves.
+var play_from_rect_override: Dictionary = {}
+## Hand_Drag: a retreat dragged onto a Bench Pokemon already knows its new Active,
+## so the "choose the new Active" screen is skipped for it.
+var _retreat_preset_target: card_object = null
+## Hand_Drag: a Basic dropped on bench slot N is benched at position N (-1 = the end).
+var bench_drop_index: int = -1
 ## ISSUE #239: the two attachment-row captions per side, so #212 can hide them
 ## with the rest of the board furniture.
 var _attach_captions: Array = []
@@ -5742,6 +5756,9 @@ func measure_and_hide_new_hand_slot(is_opponent: bool) -> Dictionary:
 ## out), so it starts from the showcase spot the trainer cards use instead: large,
 ## centre stage. Measure BEFORE the card is erased from the hand.
 func played_card_start_rect(card: card_object) -> Dictionary:
+	# Dropped off a drag (Hand_Drag): it takes off from where the mouse let it go.
+	if not play_from_rect_override.is_empty() and play_from_rect_override.get("card") == card:
+		return play_from_rect_override["rect"]
 	var node := find_card_ui_for_object(card)
 	if node != null and is_instance_valid(node) and node.is_visible_in_tree():
 		return {"position": node.global_position, "size": node.size}
@@ -7397,6 +7414,8 @@ func choose_heads_or_tails() -> bool:
 			if UIInput.is_click(event):
 				coin.accept_event()
 				coin_call_made.emit(is_heads))
+		# The keyboard / pad cursor (Board_Nav) calls with A on whichever coin it is on.
+		coin.set_meta("nav_activate", func(): coin_call_made.emit(is_heads))
 
 	var called_heads: bool = await coin_call_made
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
@@ -8480,8 +8499,9 @@ func start_retreat() -> void:
 	if _rec() != null and not opponents_turn_active:
 		_rec().decision("retreat", {})
 	var retreat_check = can_retreat(false)
-	
+
 	if not retreat_check["can_retreat"]:
+		_retreat_preset_target = null
 		await show_message(retreat_check["reason"])
 		return
 	
@@ -8514,7 +8534,15 @@ func start_retreat_bench_selection() -> void:
 	selected_card_for_action = null
 	retreat_mode_active = false
 	retreat_bench_selection_active = true
-	
+
+	# A retreat dragged onto a Bench Pokemon (Hand_Drag) already named the new Active.
+	var preset := _retreat_preset_target
+	_retreat_preset_target = null
+	if preset != null and preset in player_bench:
+		selected_card_for_action = preset
+		await handle_action_retreat_bench()
+		return
+
 	show_enlarged_array_selection_mode(player_bench)
 	
 	header_label.text = "SELECT NEW ACTIVE POKEMON"
@@ -8523,6 +8551,95 @@ func start_retreat_bench_selection() -> void:
 	action_button.disabled = true
 	action_button.theme = theme_disabled
 	tutorial.on_retreat_bench_shown()
+
+
+# ── PLAYING STRAIGHT OFF THE BOARD (Hand_Drag.gd / Board_Nav.gd) ──────────────
+# The bottom-bar hand can be played without opening the large hand view. Every one
+# of these hands the card to the SAME function the action button calls, set up the
+# way that screen would have left it, so every rule check, prompt, tutorial gate,
+# message and animation is unchanged. The drop point is the flight's start
+# (play_from_rect_override, set by Hand_Drag).
+
+## Would the large hand view's action button be live for this card right now?
+## Asks update_action_button() itself, so the answer is that button's rule exactly
+## (Energy already played, bench full, nothing to evolve...). Leaves the button in
+## its "nothing selected" state, which is where it is whenever the hand is closed.
+func hand_card_play_ready(card: card_object) -> bool:
+	if card == null or card not in player_hand:
+		return false
+	var prev: card_object = selected_card_for_action
+	selected_card_for_action = card
+	update_action_button()
+	var ok: bool = not action_button.disabled
+	selected_card_for_action = prev
+	update_action_button()
+	return ok
+
+
+## A double-click / Enter on a bar card: exactly the action button's play, so an
+## Energy or an Evolution still opens its target screen.
+func play_hand_card_from_board(card: card_object) -> void:
+	if not _player_can_act_now() or card not in player_hand:
+		return
+	selected_card_for_action = card
+	await handle_action_normal_card()
+
+
+## An Energy dropped on one of the player's Pokemon: attach it there, skipping the
+## target screen. The checks the drop itself cannot see (Pure Body, Freeze Lock...)
+## still run inside perform_energy_attachment and still explain themselves.
+func drag_attach_energy(energy: card_object, target: card_object) -> void:
+	if not _player_can_act_now() or energy not in player_hand or player_energy_played_this_turn:
+		return
+	if target != player_active_pokemon and target not in player_bench:
+		return
+	var tut_block: String = tutorial.gate("play", {"card": energy, "action": "ATTACH_ENERGY"})
+	if tut_block != "":
+		await tutorial.show_block(tut_block)
+		return
+	if _rec() != null:
+		_rec().decision("play_card", {"card": energy.uid, "card_name": energy.metadata.get("name", "")})
+	energy_card_awaiting_target = energy
+	selected_card_for_action = target
+	card_attach_mode_active = true
+	await perform_energy_attachment()
+
+
+## An Evolution dropped on a Pokemon it evolves from: evolve it, skipping the target screen.
+func drag_evolve(evo: card_object, target: card_object) -> void:
+	if not _player_can_act_now() or evo not in player_hand:
+		return
+	if target not in get_valid_evolution_targets(evo, false):
+		return
+	var tut_block: String = tutorial.gate("play", {"card": evo, "action": "EVOLVE"})
+	if tut_block != "":
+		await tutorial.show_block(tut_block)
+		return
+	# start_evolution()'s one check that is not about the target.
+	if powers_and_bodies.is_prehistoric_power_active():
+		await show_message("PREHISTORIC POWER: EVOLUTION IS BLOCKED!")
+		return
+	if _rec() != null:
+		_rec().decision("play_card", {"card": evo.uid, "card_name": evo.metadata.get("name", "")})
+	evolution_card_awaiting_target = evo
+	selected_card_for_action = target
+	evolution_mode_active = true
+	await handle_action_evolution()
+
+
+## The Active dragged onto a Bench Pokemon (or the reverse): the Retreat row's own
+## path, with the new Active already chosen. The Energy-to-discard screen still
+## appears when there is a cost to pay.
+func drag_retreat(new_active: card_object) -> void:
+	if not _player_can_act_now() or new_active not in player_bench:
+		return
+	var tut_block: String = tutorial.gate("retreat", {"attack": {}})
+	if tut_block != "":
+		await tutorial.show_block(tut_block)
+		return
+	set_action_rows_disabled(true)
+	_retreat_preset_target = new_active
+	await start_retreat()
 
 ########################################################## END CORE FUNCTIONALITY FUNCTIONS ##########################################################
 ######################################################################################################################################################
@@ -11444,6 +11561,13 @@ func handle_action_normal_card() -> void:
 				# rather than from the left end of the hand.
 				var bench_from := played_card_start_rect(bench_card)
 				add_pokemon_to_bench(bench_card)
+				# Dragged onto a particular bench slot (Hand_Drag): it goes in at that
+				# position - or at the end, if that slot is past the last Pokemon (the
+				# bench has no gaps). Before the flight, so it lands on that slot.
+				if bench_drop_index >= 0 and bench_card in player_bench:
+					player_bench.erase(bench_card)
+					player_bench.insert(mini(bench_drop_index, player_bench.size()), bench_card)
+				bench_drop_index = -1
 				refresh_hand_display(false)
 				
 				if bench_setup_phase_active:
@@ -11540,6 +11664,7 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 	
 	elif retreat_mode_active:
 		print("Retreat energy selection cancelled")
+		_retreat_preset_target = null
 		retreat_mode_active = false
 		retreat_energies_selected.clear()
 		retreat_cost_remaining = 0
@@ -12096,6 +12221,11 @@ func _refresh_card_zoom() -> void:
 
 # Returns the card display under the mouse, or null if there isn't one the player may see.
 func _get_hovered_card_node() -> CardDisplay:
+	# On the keyboard or a pad (L1) the card is the one under the board cursor, not the mouse.
+	if board_nav != null and InputDevice.using_nav():
+		var focused: CardDisplay = board_nav.focused_card_node()
+		if focused != null:
+			return focused if _card_is_previewable(focused) else null
 	# The precise answer, for when the mouse is genuinely over a card Control. It may be over a
 	# wrapper or a label sitting on the card rather than the card itself, so walk up a few levels.
 	var node: Node = get_viewport().gui_get_hovered_control()
@@ -12285,7 +12415,7 @@ func _input(event: InputEvent) -> void:
 	# (Options_Script._input) and closes back to this menu.
 	if pause_menu != null and is_instance_valid(pause_menu):
 		var options_up: bool = options_overlay != null and is_instance_valid(options_overlay)
-		if not options_up and UIInput.is_cancel(event):
+		if not options_up and (UIInput.is_cancel(event) or UIInput.is_pause(event)):
 			get_viewport().set_input_as_handled()
 			_close_pause_menu()
 		return
@@ -12321,6 +12451,22 @@ func _input(event: InputEvent) -> void:
 		if _skip_msgbox_typing():
 			return
 		message_acknowledged.emit()
+		return
+
+	# ── Pad Start: the pause menu, the same one Escape opens ───────────────────
+	if UIInput.is_pause(event):
+		get_viewport().set_input_as_handled()
+		if not game_is_over and not msgbox_container.visible and not coin_container.visible:
+			_show_pause_menu()
+		return
+
+	# ── The keyboard / pad cursor (Board_Nav.gd) ────────────────────────────────
+	# Arrows / D-pad / stick move it, accept presses what it is on, B / Backspace /
+	# Escape back out of the open screen. It hands an event back (false) when the
+	# branches below should have it: YES on a yes/no prompt, and Escape with nothing
+	# to back out of, which opens the pause menu.
+	if board_nav != null and board_nav.handle_input(event):
+		get_viewport().set_input_as_handled()
 		return
 
 	# ── In-match Yes/No questions ───────────────────────────────────────────────
@@ -12703,7 +12849,22 @@ func _ready() -> void:
 	# Player hand and opponent hand have to be connected after the intiial setup to prevent bugs on clicking
 	player_hand_container.gui_input.connect(array_container_clicked.bind(player_hand))
 	opponent_hand_container.gui_input.connect(array_container_clicked.bind(opponent_hand))
-	
+
+	# Mouse drag-play off the bar, and the keyboard / pad cursor. Added LAST on purpose:
+	# _input runs in reverse tree order, so Hand_Drag sees a press on a hand card before
+	# the card nodes and the hand container do, and can claim it as a pick-up / drag.
+	hand_drag = Node.new()
+	hand_drag.name = "HandDrag"
+	hand_drag.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Hand_Drag.gd"))
+	hand_drag.main = self
+	add_child(hand_drag)
+	board_nav = Node.new()
+	board_nav.name = "BoardNav"
+	board_nav.set_script(preload("res://Scripts/Main_Match_Gameplay_Scripts/Board_Nav.gd"))
+	board_nav.main = self
+	board_nav.hand_drag = hand_drag
+	add_child(board_nav)
+
 	cpu_ai.opponent_setup_pokemon_from_hand()
 	draw_prize_cards(false)
 	update_action_button()

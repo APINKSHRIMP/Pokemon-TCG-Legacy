@@ -450,10 +450,12 @@ func _input(event: InputEvent) -> void:
 	if MapManager.cutscene_active:
 		return
 
-	if not (event is InputEventKey and event.pressed and not event.is_echo()):
+	# Pad Start opens the menu like Escape does (B does not - it is the back button).
+	var is_start: bool = UIInput.is_pause(event)
+	if not is_start and not (event is InputEventKey and event.pressed and not event.is_echo()):
 		return
-	var is_enter: bool = event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
-	var is_escape: bool = event.keycode == KEY_ESCAPE
+	var is_enter: bool = not is_start and (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER)
+	var is_escape: bool = is_start or event.keycode == KEY_ESCAPE
 	if not (is_enter or is_escape):
 		return
 	if is_enter and MapManager.wants_message_input():

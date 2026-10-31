@@ -884,6 +884,17 @@ static func add_drop_shadow(item: TextureRect, grow: float = SHADOW_GROW,
 ## time so rings cannot end up interleaved with content.
 static func add_selection_ring(layer: Control, target: Control,
 		corner_radius: float = -1.0) -> ShaderRect:
+	# Sized from the target's LIVE global rect, so this must be called with the
+	# target at rest — mid-pulse it would bake the pulsed size in.
+	return add_selection_ring_rect(layer, target.get_global_rect(), corner_radius)
+
+
+## The same ring around a bare screen rect rather than a Control - for a cursor
+## that hops between things that are not one node (a whole hand, a pile, a button).
+## Move it afterwards with place_selection_ring(); the shader reads its own size,
+## so resizing it every frame is free.
+static func add_selection_ring_rect(layer: Node, r: Rect2,
+		corner_radius: float = -1.0) -> ShaderRect:
 	var ui := _ui()
 	var inset: float = ui.SEL_RING_PX + 2.0
 
@@ -892,9 +903,6 @@ static func add_selection_ring(layer: Control, target: Control,
 	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ring.z_index = Z_RING
 
-	# Sized from the target's LIVE global rect, so this must be called with the
-	# target at rest — mid-pulse it would bake the pulsed size in.
-	var r := target.get_global_rect()
 	ring.global_position = r.position - Vector2(inset, inset)
 	ring.size = r.size + Vector2(inset, inset) * 2.0
 
@@ -916,6 +924,113 @@ static func add_selection_ring(layer: Control, target: Control,
 
 	layer.add_child(ring)
 	return ring
+
+
+## Moves a ring made by add_selection_ring_rect() onto another screen rect.
+static func place_selection_ring(ring: Control, r: Rect2) -> void:
+	var inset: float = _ui().SEL_RING_PX + 2.0
+	ring.global_position = r.position - Vector2(inset, inset)
+	ring.size = r.size + Vector2(inset, inset) * 2.0
+
+
+## Where a TextureRect's picture ACTUALLY is on screen, including its own scale.
+##
+## A card node is often taller (or wider) than its art: a container stretches the
+## rect, and STRETCH_KEEP_ASPECT draws the art at its top-left keeping the card's
+## ratio, leaving empty space below. A ring sized from the node's rect then hangs
+## off the bottom of the card. This measures the art itself, and runs it through
+## the node's global transform so a pulsing card's ring grows and shrinks with it.
+static func drawn_texture_rect(tr: TextureRect) -> Rect2:
+	var local := Rect2(Vector2.ZERO, tr.size)
+	if tr.texture != null and tr.stretch_mode in [TextureRect.STRETCH_KEEP_ASPECT,
+			TextureRect.STRETCH_KEEP_ASPECT_CENTERED, TextureRect.STRETCH_KEEP_ASPECT_COVERED]:
+		var ts: Vector2 = tr.texture.get_size()
+		if ts.x > 0.0 and ts.y > 0.0 and tr.size.x > 0.0 and tr.size.y > 0.0:
+			var s: float = minf(tr.size.x / ts.x, tr.size.y / ts.y)
+			var drawn: Vector2 = ts * s
+			var pos := Vector2.ZERO
+			if tr.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT:
+				pos = (tr.size - drawn) * 0.5
+			local = Rect2(pos, drawn)
+	return transformed_rect(tr, local)
+
+
+## A rect in `c`'s own coordinates, mapped to the canvas through its global
+## transform (position, pivot and scale), so it follows a pulse.
+static func transformed_rect(c: CanvasItem, local: Rect2) -> Rect2:
+	var xf := c.get_global_transform()
+	return Rect2(xf * local.position, local.size * xf.get_scale())
+
+
+# ── Focus frame ──────────────────────────────────────────────────────────────
+# The keyboard / pad cursor (and the mouse's pick-up): the selection ring, a light
+# wash over whatever it frames so the framed cards read a little brighter, and an
+# optional caption naming it ("Your Hand"). TWEAKABLE below.
+const FOCUS_WASH := Color(1.0, 1.0, 1.0, 0.16)
+const FOCUS_CAPTION_SIZE := 24
+const FOCUS_CAPTION_OUTLINE := 10
+## The caption may run wider than a small target (a discard pile) - at least this wide.
+const FOCUS_CAPTION_MIN_W := 300.0
+
+
+## One focus frame, hidden until placed. Put it in a screen-space layer.
+static func add_focus_frame(layer: Node) -> Control:
+	var frame := Control.new()
+	frame.name = "FocusFrame"
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.visible = false
+	layer.add_child(frame)
+
+	var wash := ColorRect.new()
+	wash.name = "Wash"
+	wash.color = FOCUS_WASH
+	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(wash)
+
+	var ring := add_selection_ring_rect(frame, Rect2(Vector2.ZERO, Vector2(10, 10)), 0.0)
+	ring.name = "Ring"
+	# The frame lives in its own screen layer, so it needs no z lift - and with one it
+	# drew over a card being dragged onto it. Draw order is the layer's child order.
+	ring.z_index = 0
+
+	var caption := Label.new()
+	caption.name = "Caption"
+	style_label(caption, "name", "field_fg", FOCUS_CAPTION_SIZE)
+	caption.add_theme_color_override("font_color", Color.WHITE)
+	caption.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	caption.add_theme_constant_override("outline_size", FOCUS_CAPTION_OUTLINE)
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(caption)
+	return frame
+
+
+## Puts a focus frame on a screen rect. Square corners for cards and piles (card
+## edges are straight); `rounded` for buttons, which have rounded corners.
+static func place_focus_frame(frame: Control, r: Rect2, caption: String = "",
+		rounded: bool = false) -> void:
+	frame.visible = true
+	frame.position = r.position
+	frame.size = r.size
+	var wash: ColorRect = frame.get_node("Wash")
+	wash.position = Vector2.ZERO
+	wash.size = r.size
+	# A rounded button keeps its own face; the wash is for cards.
+	wash.visible = not rounded
+	var ring: Control = frame.get_node("Ring")
+	var inset: float = _ui().SEL_RING_PX + 2.0
+	ring.position = -Vector2(inset, inset)
+	ring.size = r.size + Vector2(inset, inset) * 2.0
+	var radius: float = _ui().m("corner_radius") if rounded else 0.0
+	(ring.material as ShaderMaterial).set_shader_parameter("corner_radius", radius)
+	var label: Label = frame.get_node("Caption")
+	label.visible = caption != ""
+	if caption != "":
+		label.text = _ui().cased("name", caption)
+		var w: float = maxf(r.size.x, FOCUS_CAPTION_MIN_W)
+		label.position = Vector2((r.size.x - w) * 0.5, 0.0)
+		label.size = Vector2(w, r.size.y)
 
 
 ## The grow half of the grow/shrink that has always meant "selected" here.

@@ -17,11 +17,17 @@ class_name UIInput
 # support later is then a change to these three functions and nothing else —
 # the pad buttons are already wired below, so a connected pad works today.
 #
-# Bindings:
+# Bindings (the keyboard emulates every pad button, so the game plays the same
+# on either - Options > Controls lists them for the player):
 #   accept — Space, Enter, numpad Enter, pad A (cross)
-#   cancel — Escape, pad B (circle)
-#   zoom   — Shift (held), pad L1
-#   log    — Caps Lock (toggle), pad Back/Select
+#   cancel — Escape, Backspace, pad B (circle)
+#   pause  — pad Start/Menu (Escape doubles as pause where nothing is left to cancel)
+#   zoom   — Shift (held), pad L1  (the same button is RUN in the overworld)
+#   log    — Caps Lock (toggle), pad Back/View (the phone map in the overworld)
+#   move   — arrow keys, pad D-pad, pad left stick (nav_direction)
+#   hand   — Tab, pad X   (in a match: jump the cursor to your hand)
+#   end    — Q, pad Y     (in a match: jump the cursor to End Turn)
+#   expand — Alt held + click on the hand opens the large hand view
 #
 # Two deliberate rules:
 #   - Key repeat (is_echo) is ignored. Holding Space must not tear through a
@@ -36,7 +42,7 @@ class_name UIInput
 # ============================================================
 
 const ACCEPT_KEYS: Array[int] = [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
-const CANCEL_KEYS: Array[int] = [KEY_ESCAPE]
+const CANCEL_KEYS: Array[int] = [KEY_ESCAPE, KEY_BACKSPACE]
 const ZOOM_KEYS: Array[int]   = [KEY_SHIFT]
 const LOG_KEYS: Array[int]    = [KEY_CAPSLOCK]
 
@@ -49,7 +55,13 @@ static func is_accept(event: InputEvent) -> bool:
 
 static func is_cancel(event: InputEvent) -> bool:
 	if event is InputEventKey:
-		return _key_pressed(event) and event.keycode in CANCEL_KEYS
+		if not (_key_pressed(event) and event.keycode in CANCEL_KEYS):
+			return false
+		# Backspace deletes a letter while a text box (deck name, card search) is being
+		# typed in - it only means "back" when nothing is being typed.
+		if event.keycode == KEY_BACKSPACE and _text_field_focused():
+			return false
+		return true
 	if event is InputEventJoypadButton:
 		return event.pressed and event.button_index == JOY_BUTTON_B
 	return false
@@ -151,3 +163,151 @@ static func is_zoom_held() -> bool:
 
 static func _key_pressed(event: InputEventKey) -> bool:
 	return event.pressed and not event.is_echo()
+
+
+static func _text_field_focused() -> bool:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return false
+	var focus: Control = tree.root.gui_get_focus_owner()
+	return focus is LineEdit or focus is TextEdit
+
+
+# ── Pause / Start ────────────────────────────────────────────────────────────
+# The pad's Start (Menu / Options) button. The keyboard has no key of its own for
+# it: Escape is B, and each screen falls back to "pause" when B has nothing left to
+# back out of.
+static func is_pause(event: InputEvent) -> bool:
+	if event is InputEventJoypadButton:
+		return event.pressed and event.button_index == JOY_BUTTON_START
+	return false
+
+
+# ── Run ──────────────────────────────────────────────────────────────────────
+# Hold-to-run in the overworld is the SAME button as hold-to-zoom everywhere else
+# (Shift / pad L1): one binding, two contexts. Named for what the overworld does.
+static func is_run_held() -> bool:
+	return is_zoom_held()
+
+
+# ── Phone map ────────────────────────────────────────────────────────────────
+# M, or the pad's Back / View button (that button is the message log in a match).
+const MAP_KEYS: Array[int] = [KEY_M]
+
+static func is_world_map(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return _key_pressed(event) and event.keycode in MAP_KEYS
+	if event is InputEventJoypadButton:
+		return event.pressed and event.button_index == JOY_BUTTON_BACK
+	return false
+
+
+# ── Match cursor shortcuts ───────────────────────────────────────────────────
+# Pad X / Tab jumps the board cursor to your hand; pad Y / Q jumps it to End Turn
+# (A then presses it - one button never ends a turn on its own). Neither key has
+# another job in a match.
+const HAND_JUMP_KEYS: Array[int] = [KEY_TAB]
+const END_TURN_JUMP_KEYS: Array[int] = [KEY_Q]
+
+static func is_hand_jump(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return _key_pressed(event) and event.keycode in HAND_JUMP_KEYS
+	if event is InputEventJoypadButton:
+		return event.pressed and event.button_index == JOY_BUTTON_X
+	return false
+
+static func is_end_turn_jump(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return _key_pressed(event) and event.keycode in END_TURN_JUMP_KEYS
+	if event is InputEventJoypadButton:
+		return event.pressed and event.button_index == JOY_BUTTON_Y
+	return false
+
+
+# ── Alt + click: the old "open the hand large" click ─────────────────────────
+# A plain click on a hand card picks it straight off the bar now (and a drag plays
+# it). Holding Alt gives back the large hand view that click used to open.
+static func is_hand_expand_held() -> bool:
+	return Input.is_key_pressed(KEY_ALT)
+
+
+# ── Cursor movement ──────────────────────────────────────────────────────────
+# One step of cursor movement from any device: an arrow key (key repeat allowed,
+# so holding one keeps moving), the D-pad, or a flick of the left stick. Returns
+# Vector2i.ZERO for anything else.
+#
+# The stick is edge-detected: one step when it crosses STICK_PRESS, re-armed once
+# it falls back under STICK_RELEASE - so a flick is one step, not one per motion
+# event. Several listeners may ask about the same motion event, so the answer is
+# cached per event and the edge is only spent once.
+const STICK_PRESS := 0.55
+const STICK_RELEASE := 0.3
+
+static var _stick_dir := Vector2i.ZERO
+static var _last_motion: InputEvent = null
+static var _last_motion_result := Vector2i.ZERO
+
+static func nav_direction(event: InputEvent) -> Vector2i:
+	if event is InputEventKey:
+		if not event.pressed:
+			return Vector2i.ZERO
+		match event.keycode:
+			KEY_LEFT:  return Vector2i.LEFT
+			KEY_RIGHT: return Vector2i.RIGHT
+			KEY_UP:    return Vector2i.UP
+			KEY_DOWN:  return Vector2i.DOWN
+		return Vector2i.ZERO
+	if event is InputEventJoypadButton:
+		if not event.pressed:
+			return Vector2i.ZERO
+		match event.button_index:
+			JOY_BUTTON_DPAD_LEFT:  return Vector2i.LEFT
+			JOY_BUTTON_DPAD_RIGHT: return Vector2i.RIGHT
+			JOY_BUTTON_DPAD_UP:    return Vector2i.UP
+			JOY_BUTTON_DPAD_DOWN:  return Vector2i.DOWN
+		return Vector2i.ZERO
+	if event is InputEventJoypadMotion:
+		if event == _last_motion:
+			return _last_motion_result
+		_last_motion = event
+		_last_motion_result = _stick_step(event as InputEventJoypadMotion)
+		return _last_motion_result
+	return Vector2i.ZERO
+
+
+static func _stick_step(event: InputEventJoypadMotion) -> Vector2i:
+	if event.axis != JOY_AXIS_LEFT_X and event.axis != JOY_AXIS_LEFT_Y:
+		return Vector2i.ZERO
+	var horizontal: bool = event.axis == JOY_AXIS_LEFT_X
+	var v: float = event.axis_value
+	if absf(v) < STICK_RELEASE:
+		if horizontal:
+			_stick_dir.x = 0
+		else:
+			_stick_dir.y = 0
+		return Vector2i.ZERO
+	if absf(v) < STICK_PRESS:
+		return Vector2i.ZERO
+	var dir: int = 1 if v > 0.0 else -1
+	if horizontal:
+		if _stick_dir.x == dir:
+			return Vector2i.ZERO
+		_stick_dir.x = dir
+		return Vector2i(dir, 0)
+	if _stick_dir.y == dir:
+		return Vector2i.ZERO
+	_stick_dir.y = dir
+	return Vector2i(0, dir)
+
+
+# True for any event that is cursor movement, whether or not it stepped this time
+# (a stick drifting under the threshold still belongs to the cursor, not the GUI).
+static func is_nav_event(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return event.keycode in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN]
+	if event is InputEventJoypadButton:
+		return event.button_index in [JOY_BUTTON_DPAD_LEFT, JOY_BUTTON_DPAD_RIGHT,
+			JOY_BUTTON_DPAD_UP, JOY_BUTTON_DPAD_DOWN]
+	if event is InputEventJoypadMotion:
+		return event.axis == JOY_AXIS_LEFT_X or event.axis == JOY_AXIS_LEFT_Y
+	return false

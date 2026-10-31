@@ -188,7 +188,7 @@ func _physics_process(_delta):
 	input_direction = input_direction.normalized()
 
 	# Hold Shift to run: doubles movement speed and the walk animation cycle (10x in debug mode)
-	var is_running: bool = Input.is_key_pressed(KEY_SHIFT)
+	var is_running: bool = UIInput.is_run_held()   # Shift or pad L1 - the zoom button everywhere else
 	var active_run_multiplier: float = debug_run_multiplier if DebugMode.is_enabled() else run_multiplier
 	var speed_scale: float = active_run_multiplier if is_running else 1.0
 	# ISSUE #34: the global overworld walking-speed multiplier scales both walk and run (Options: slow

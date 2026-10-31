@@ -27,6 +27,7 @@ UITheme="*res://Scripts/Global_Scripts/UI_Theme.gd"
 SceneCache="*res://Scripts/Global_Scripts/Scene_Cache_Script.gd"
 MapManager="*uid://b1mp3uyvbbkl"
 PackOpeningManager="*res://Scripts/Global_Scripts/Pack_Opening_Manager.gd"
+InputDevice="*res://Scripts/Global_Scripts/Input_Device.gd"
 
 [display]
 

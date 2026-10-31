@@ -613,7 +613,7 @@ func _on_cancel_pressed() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if UIInput.is_cancel(event):   # Escape, Backspace or pad B
 		if not _in_opening_sequence and not PackOpeningManager.is_active():
 			_on_cancel_pressed()
 

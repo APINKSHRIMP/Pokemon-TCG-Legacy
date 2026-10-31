@@ -395,7 +395,7 @@ func _input(event: InputEvent) -> void:
 		_hide_zoom()
 		return
 
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if UIInput.is_cancel(event):   # Escape, Backspace or pad B
 		if is_zoomed:
 			zoom_held = false   # drop the hold too, or _process re-opens the preview
 			_hide_zoom()

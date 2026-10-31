@@ -248,7 +248,6 @@ tile_map_data = PackedByteArray("AACL//H/AAAuAAUAAAA=")
 tile_set = ExtResource("1_vnhbh")
 
 [node name="LIGHTS" type="Control" parent="TILE_MAPS/POKEBALL_PLAZA" unique_id=665697933]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -1819,7 +1818,6 @@ rotation = -3.1415925
 scale = Vector2(1, -1)
 
 [node name="LIGHTS" type="Control" parent="TILE_MAPS/PONDS/GOLDEN BRIDGE" unique_id=1607593516]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -2784,7 +2782,6 @@ position = Vector2(2084, 581)
 position = Vector2(2156, 599)
 
 [node name="MAGIKARP_POND_L_LIGHTS" type="Control" parent="TILE_MAPS/PONDS/MAGIKARP_POND_L" unique_id=2062735305]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -3760,7 +3757,6 @@ position = Vector2(2205, 485)
 position = Vector2(2155, 517)
 
 [node name="MAGIKARP_POND_R_LIGHTS" type="Control" parent="TILE_MAPS/PONDS/MAGIKARP_POND_R" unique_id=1274285934]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_left = 2859.0
@@ -3820,7 +3816,6 @@ tile_map_data = PackedByteArray("AADq/xoAAAAWAA0AAADr/xoAAAAXAA0AAADs/xoAAAAYAA0
 tile_set = ExtResource("1_vnhbh")
 
 [node name="PIKACHU_POND_LIGHTS" type="Control" parent="TILE_MAPS/PONDS/PIKACHU_POND" unique_id=1285701515]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_left = 346.0
@@ -5636,7 +5631,6 @@ tile_map_data = PackedByteArray("AACi/0AAAAAjABQAAACj/z8AAAAkABMAAACj/0AAAAAkABQ
 tile_set = ExtResource("1_vnhbh")
 
 [node name="LIGHTS" type="Control" parent="TILE_MAPS" unique_id=753293066]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0

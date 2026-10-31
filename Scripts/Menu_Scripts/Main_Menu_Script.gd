@@ -58,13 +58,16 @@ func _input(event: InputEvent) -> void:
 			get_tree().quit()
 		return
 
-	if event is InputEventKey and event.pressed and not event.is_echo():
-		if event.keycode == KEY_ESCAPE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
-			get_viewport().set_input_as_handled()
-			if is_overlay:
-				_close_overlay()
-			else:
-				_return_to_world_map()
+	# Escape / Backspace / pad B / pad Start close the menu, as does Enter (it opened it).
+	var closes: bool = UIInput.is_cancel(event) or UIInput.is_pause(event)
+	if not closes and event is InputEventKey and event.pressed and not event.is_echo():
+		closes = event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
+	if closes:
+		get_viewport().set_input_as_handled()
+		if is_overlay:
+			_close_overlay()
+		else:
+			_return_to_world_map()
 
 
 func _return_to_world_map() -> void:

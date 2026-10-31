@@ -610,7 +610,7 @@ func _on_cancel_pressed() -> void:
 # ─── Escape key ──────────────────────────────────────────────────────────────
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	if UIInput.is_cancel(event):   # Escape, Backspace or pad B
 		if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
 		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 

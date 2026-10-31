@@ -820,7 +820,9 @@
           "days": "5,10",
           "times": "A,E"
         }
-      ]
+      ],
+      "sleeve": "Pokeball_Pink",
+      "sleeve_reward": "Pokeball_Pink"
     },
     "Old Traveller Cliff": {
       "at": [-113, 1557],

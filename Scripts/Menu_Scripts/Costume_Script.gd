@@ -589,15 +589,15 @@ func _input(event: InputEvent) -> void:
 		_hide_zoom()
 		return
 
-	if event is InputEventKey:
-		if event.pressed and event.keycode == KEY_ESCAPE:
-			if is_zoomed:
-				zoom_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
-				_hide_zoom()
-				return
-			if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
-			SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+	# UIInput: Escape, Backspace or pad B.
+	if UIInput.is_cancel(event):
+		if is_zoomed:
+			zoom_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
+			_hide_zoom()
 			return
+		if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
+		return
 
 	if event is InputEventMouseButton \
 			and event.button_index == MOUSE_BUTTON_LEFT \

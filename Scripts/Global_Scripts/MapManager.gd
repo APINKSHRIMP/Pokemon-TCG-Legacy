@@ -3278,8 +3278,8 @@ func _open_placement_tool(mode: int) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	# The phone map (World_Map.gd) -- a player feature, so it sits above the debug gate.
-	if event is InputEventKey and event.pressed and not event.is_echo() \
-			and event.keycode == WorldMap.OPEN_KEY and _can_open_world_map():
+	# M, or the pad's Back / View button.
+	if UIInput.is_world_map(event) and _can_open_world_map():
 		get_viewport().set_input_as_handled()
 		WorldMap.open(get_tree().current_scene, _player)
 		return
