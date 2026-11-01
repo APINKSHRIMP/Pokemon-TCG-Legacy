@@ -27,9 +27,11 @@ const NO_GRADE_GROUP := "no_time_grade"
 ## ~2-3 / 255). Afternoon is the identity.
 const GRADES := {
 	"Morning": {
-		"red":   Vector4(0.859, 0.001, 0.001, 0.022),
+		# Cooler: fitted red row x0.96 (was 0.859, 0.001, 0.001, 0.022) and blue row x1.03
+		# (was 0.075, 0.165, 0.980, 0.018). The darkening is BRIGHTNESS below.
+		"red":   Vector4(0.825, 0.001, 0.001, 0.021),
 		"green": Vector4(0.002, 0.931, 0.003, 0.023),
-		"blue":  Vector4(0.075, 0.165, 0.980, 0.018),
+		"blue":  Vector4(0.077, 0.170, 1.009, 0.019),
 		"curve": Vector3(0.008, 0.002, -0.185),
 	},
 	"Afternoon": {
@@ -72,7 +74,9 @@ const STRENGTH := {"Morning": 1.4, "Afternoon": 1.0, "Evening": 1.0, "Night": 1.
 ## ISSUE #386: Evening back to 1.0 (it had been darkened to 0.85).
 ## Bedtime is 25% darker than Night (0.85 x 0.75 = 0.64), then another 20% (x 0.8).
 ## ISSUE #506: Night 10% lighter (0.85 x 1.1 = 0.935), Bedtime 10% darker (0.51 x 0.9 = 0.459).
-const BRIGHTNESS := {"Morning": 1.0, "Afternoon": 1.0, "Evening": 1.0, "Night": 0.935, "Bedtime": 0.459}
+## 2026-11-01: Morning 5% darker (0.95); Evening 15% darker (0.85); Night down to the old
+## Bedtime level (0.459); Bedtime way darker (0.459 -> 0.25, ~45% down).
+const BRIGHTNESS := {"Morning": 0.95, "Afternoon": 1.0, "Evening": 0.85, "Night": 0.459, "Bedtime": 0.25}
 
 ## TWEAKABLE -- how strongly the lights overlays show (0 = off, 1 = full). Above 1 the lit
 ## pixels are fully shown AND brightened by that much (Bedtime 1.1 = 10% brighter).
