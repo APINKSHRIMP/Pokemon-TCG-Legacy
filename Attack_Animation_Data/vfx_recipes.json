@@ -7491,21 +7491,6 @@
      "fx": "PsychicPowerUp",
      "at": "self",
      "size": 1.0
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "psychic",
@@ -9010,15 +8995,19 @@
    "body": "none",
    "steps": [
     {
-     "fx": "Nightmare",
+     "fx": "SleepZ",
      "at": "target",
-     "size": 0.45,
+     "size": 0.3,
      "off": [
       0.25,
-      -0.3
+      -0.35
      ],
      "mirror": false,
-     "tint": "#c0d8ff"
+     "dur": 0.9,
+     "fade": 0.4,
+     "count": 2,
+     "stagger": 0.35,
+     "jitter": 0.08
     }
    ],
    "element": "normal",

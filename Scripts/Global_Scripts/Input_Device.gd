@@ -116,8 +116,12 @@ func _on_window_input(event: InputEvent) -> void:
 		if (event as InputEventMouseButton).pressed:
 			now = MOUSE
 	elif event is InputEventKey:
-		if (event as InputEventKey).pressed:
+		# ISSUE #544: Shift / Ctrl / Alt / Caps / Escape / Delete are pressed alongside the mouse -
+		# they leave the device as it is (a keyboard player stays on the keyboard too).
+		if (event as InputEventKey).pressed and not UIInput.is_mouse_companion_key(event as InputEventKey):
 			now = KEYBOARD
+		elif (event as InputEventKey).pressed and not (event as InputEventKey).echo and last == MOUSE:
+			print("ISSUE #544 FIX ACTIVE: ", OS.get_keycode_string((event as InputEventKey).keycode), " kept mouse mode")
 	elif event is InputEventJoypadButton:
 		if (event as InputEventJoypadButton).pressed:
 			now = PAD

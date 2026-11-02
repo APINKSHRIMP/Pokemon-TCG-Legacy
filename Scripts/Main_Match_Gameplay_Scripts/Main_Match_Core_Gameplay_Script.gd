@@ -478,6 +478,10 @@ var play_from_rect_override: Dictionary = {}
 var _retreat_preset_target: card_object = null
 ## Hand_Drag: a Basic dropped on bench slot N is benched at position N (-1 = the end).
 var bench_drop_index: int = -1
+## ISSUE #547: a Trainer dragged onto one of the player's Pokemon - the first "choose one of your
+## Pokemon" prompt the card asks (Card_Ops.prompt_select_card) takes it without showing the screen.
+## Used once, then cleared; a prompt that can't take it shows the normal screen.
+var trainer_drop_target: card_object = null
 ## ISSUE #239: the two attachment-row captions per side, so #212 can hide them
 ## with the rest of the board furniture.
 var _attach_captions: Array = []
@@ -7542,16 +7546,24 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 	
 	for pre_evo in card.attached_pre_evolutions:
 		pre_evo.current_location = "discard"
+		pre_evo.current_hp = pre_evo.get_max_hp()   # ISSUE #530: a card in the discard pile is a fresh card
 		discard.append(pre_evo)
 	card.attached_pre_evolutions.clear()
-	
+
 	for attached in card.attached_cards:
 		attached.current_location = "discard"
 		discard.append(attached)
 	card.attached_cards.clear()
-	
+
 	card.current_location = "discard"
 	discard.append(card)
+	# ISSUE #530: a Knocked Out Pokemon kept current_hp 0 in the discard pile, so one brought back (Dark Slowbro's
+	# Reel In, Nightly Garbage Run, Revive...) and benched again was "Knocked Out" at the next KO check - Margot's
+	# Slowpoke fainting on the bench after her Zubat's Ram. Leaving play wipes damage. (The Buzzap path re-sets 0.)
+	if card.metadata.get("supertype", "") == "Pokémon" and card.current_hp != card.get_max_hp():
+		print("ISSUE #530 FIX ACTIVE: ", card.metadata.get("name", ""), " HP reset ", card.current_hp, " -> ", card.get_max_hp(), " as it goes to the discard pile")
+		card.max_hp_override = 0
+		card.current_hp = card.get_max_hp()
 	
 	# Clear temporary type overrides and disabled attacks when leaving play
 	card.temporary_weakness = ""
@@ -8155,6 +8167,16 @@ func clear_jungle_defensive_statuses(pokemon: card_object, is_opponent: bool) ->
 
 # Scans active and bench for Pokemon that the given evolution card can legally evolve from
 func get_valid_evolution_targets(evolution_card: card_object, is_opponent: bool) -> Array:
+	var valid_targets = []
+	for p in get_pokemon_that_may_evolve_now(is_opponent):
+		if can_evolve_from(evolution_card, p):
+			valid_targets.append(p)
+	return valid_targets
+
+## ISSUE #529: every one of `is_opponent`'s Pokemon in play that the rules let evolve from the hand RIGHT NOW (not the
+## first turns, not put into play this turn, no evolve lock) - whatever it would evolve into. Shared by normal evolution
+## and Pokemon Breeder / Rare Candy-style cards, which used to check only "placed this turn".
+func get_pokemon_that_may_evolve_now(is_opponent: bool) -> Array:
 	var active = opponent_active_pokemon if is_opponent else player_active_pokemon
 	var bench = opponent_bench if is_opponent else player_bench
 	var valid_targets = []
@@ -8168,13 +8190,12 @@ func get_valid_evolution_targets(evolution_card: card_object, is_opponent: bool)
 			continue
 		if bench_pokemon.placed_on_field_this_turn and not giovanni_override:
 			continue
-		if can_evolve_from(evolution_card, bench_pokemon):
-			valid_targets.append(bench_pokemon)
+		valid_targets.append(bench_pokemon)
 
 	if active != null:
 		var giovanni_override_a = active.gym2_giovanni_evolve_anywhere
 		var block = (first_turn_block and not giovanni_override_a) or (active.placed_on_field_this_turn and not giovanni_override_a)
-		if not block and can_evolve_from(evolution_card, active):
+		if not block:
 			valid_targets.append(active)
 
 	# ECARD3 Primal Aura (Kabutops): while EITHER side's Active is Kabutops, neither player can
@@ -8226,8 +8247,11 @@ func start_evolution() -> void:
 		return
 	
 	evolution_mode_active = true
+	# ISSUE #540: the evolution card is now held in evolution_card_awaiting_target - drop it as the "selected"
+	# card, or anything that refreshes the action button can re-enable EVOLVE with the hand card as its own target.
+	selected_card_for_action = null
 	show_enlarged_array_selection_mode(valid_targets)
-	
+
 	var evo_name = evolution_card_awaiting_target.metadata.get("name", "Unknown")
 	header_label.text = "EVOLVING INTO " + evo_name.to_upper()
 	hint_label.text = "Select a Pokémon to evolve into " + evo_name
@@ -8244,7 +8268,14 @@ func perform_evolution(is_opponent: bool, defer_after: bool = false) -> void:
 	
 	var evo_card = evolution_card_awaiting_target
 	var target_card = selected_card_for_action
-	
+	# ISSUE #540: a target that isn't in play (the hand card itself) would take the evolution out of the hand and
+	# put it nowhere. Refuse before anything moves.
+	var _side_active = opponent_active_pokemon if is_opponent else player_active_pokemon
+	var _side_bench = opponent_bench if is_opponent else player_bench
+	if target_card == evo_card or (target_card != _side_active and target_card not in _side_bench):
+		push_error("ISSUE #540 FIX ACTIVE: perform_evolution refused - " + str(target_card.metadata.get("name", "")) + " is not in play")
+		return
+
 	# Calculate damage taken on the pre-evolution to carry over.
 	# ISSUE #375: measured against the REAL max HP (get_max_hp: HP overrides, Energy Root...). The printed HP made a
 	# boosted Pokémon's damage negative, so its evolution came in ABOVE its max (autotester: Arbok 90/80 HP).
@@ -11447,7 +11478,20 @@ func handle_action_knockout_bench() -> void:
 func handle_action_evolution() -> void:
 	var evo_card = evolution_card_awaiting_target
 	var target_card = selected_card_for_action
-	
+	# ISSUE #540: only ever evolve a legal target IN PLAY. Space on the evolve screen once evolved with the hand
+	# card itself as the "target": perform_evolution took Alakazam out of the hand, found no slot holding it, and
+	# it vanished from the game.
+	if evo_card == null or target_card == null or target_card == evo_card \
+			or target_card not in get_valid_evolution_targets(evo_card, false):
+		print("ISSUE #540 FIX ACTIVE: evolve refused - target ", target_card.metadata.get("name", "") if target_card != null else "none", " is not a legal Pokemon in play")
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
+		if evolution_mode_active and evo_card != null:
+			selected_card_for_action = null
+			action_button.text = "EVOLVE"
+			action_button.disabled = true
+			action_button.theme = theme_disabled
+		return
+
 	# ISSUE #283: measured BEFORE perform_evolution, which takes the card out of
 	# the hand - after that there is no node left to measure.
 	var evo_from := played_card_start_rect(evo_card)

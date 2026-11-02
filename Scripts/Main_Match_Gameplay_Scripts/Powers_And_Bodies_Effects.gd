@@ -2615,11 +2615,15 @@ func cpu_phase_activate_powers() -> void:
 					await main.show_message("A PRIZE CARD IS SWAPPED WITH THE TOP CARD OF THE DECK!")
 					if main._should_bail(): return
 					var top_card = main.opponent_deck[0]
-					var prize_idx = 0
+					var prize_idx = randi() % main.opponent_prize_cards.size()   # face down - any one is as good
+					await animate_prize_deck_swap(true, prize_idx)   # ISSUE #538
+					if main._should_bail(): return
 					main.opponent_deck.erase(top_card)
 					var prize_card = main.opponent_prize_cards[prize_idx]
 					main.opponent_prize_cards[prize_idx] = top_card
 					main.opponent_deck.insert(0, prize_card)
+					main.display_prize_cards(true)
+					main.update_deck_icon(true)
 
 	# --- GYM1 + GYM2 POWERS ---
 	await cpu_phase_gym_powers()
@@ -3429,6 +3433,28 @@ func power_long_distance_hypnosis(pokemon: card_object) -> void:
 	print("POWER: Long-Distance Hypnosis")
 
 # --- TRICKERY (Rattata): Switch 1 prize with top of deck ---
+## ISSUE #538: the Prize at `prize_idx` and the top card of the deck trade places on screen - the Prize flies face
+## down onto the deck, then the top card flies into that Prize slot. Call BEFORE swapping the arrays (it measures the
+## Prize's real slot), then refresh the prizes and deck icon. For Trickery and any other Prize <-> deck swap.
+func animate_prize_deck_swap(is_opponent: bool, prize_idx: int) -> void:
+	var cont: Container = main.opponent_prize_container if is_opponent else main.player_prize_container
+	var deck_icon: Control = main.opponent_deck_icon if is_opponent else main.player_deck_icon
+	var back: Texture2D = main.opponent_card_back_texture if is_opponent else main.card_back_texture
+	if prize_idx < 0 or prize_idx >= cont.get_child_count() or back == null:
+		return
+	var slot: Control = cont.get_child(prize_idx)
+	var p_pos: Vector2 = slot.global_position
+	var p_size: Vector2 = slot.size
+	var d_pos: Vector2 = deck_icon.global_position
+	var d_size: Vector2 = deck_icon.size
+	slot.modulate.a = 0.0   # the slot is "empty" while its card is in the air
+	print("ISSUE #538 FIX ACTIVE: Prize ", prize_idx + 1, " <-> top of deck flight")
+	await main.animate_card_a_to_b(deck_icon, deck_icon, 0.3, back, p_size, d_size, d_pos, false, p_pos)
+	if main._should_bail(): return
+	await main.animate_card_a_to_b(deck_icon, cont, 0.3, back, d_size, p_size, p_pos, false, d_pos)
+	if is_instance_valid(slot):
+		slot.modulate.a = 1.0
+
 func power_trickery(pokemon: card_object) -> void:
 	if is_power_blocked_by_status(pokemon):
 		await main.show_message("POWER BLOCKED BY STATUS!")
@@ -3459,10 +3485,12 @@ func power_trickery(pokemon: card_object) -> void:
 
 	# Swap with top of deck
 	var top_deck = main.player_deck[0]
-	
+	await animate_prize_deck_swap(false, prize_idx)   # ISSUE #538
+	if main._should_bail(): return
+
 	main.player_prize_cards[prize_idx] = top_deck
 	main.player_deck[0] = selected_prize
-	
+
 	main.display_prize_cards(false)
 	main.update_deck_icon(false)
 	await main.show_message("TRICKERY: SWAPPED PRIZE WITH TOP OF DECK!")

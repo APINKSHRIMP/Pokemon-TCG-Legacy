@@ -435,14 +435,13 @@ func _ensure_validator_dispatch_ready() -> void:
 func _register_base_validations() -> void:
 	_validator_dispatch["base1-76"] = func(c, opp):  # Pokemon Breeder
 		var hand = main.opponent_hand if opp else main.player_hand
-		var active = main.opponent_active_pokemon if opp else main.player_active_pokemon
-		var bench = main.opponent_bench if opp else main.player_bench
 		var stage2_cards = hand.filter(func(x): return x != c and "Stage 2" in x.metadata.get("subtypes",[]))
 		if stage2_cards.is_empty(): return "No Stage 2 Pokemon in hand to play!"
-		var all_in_play = ([] + ([active] if active else []) + bench)
+		# ISSUE #529: the same "may evolve now" rules as evolving from hand (first turns, played this turn, locks).
+		var all_in_play: Array = main.get_pokemon_that_may_evolve_now(opp)
 		for s2 in stage2_cards:
 			for p in all_in_play:
-				if not p.placed_on_field_this_turn and main.is_basic_pokemon(p) and _basic_matches_stage2(p, s2):
+				if main.is_basic_pokemon(p) and _basic_matches_stage2(p, s2):
 					return ""
 		return "No valid Basic Pokemon to evolve with Breeder!"
 
@@ -2002,6 +2001,10 @@ func effect_devolution_spray(is_opponent: bool) -> void:
 		var idx = b.find(evo_card)
 		if idx != -1:
 			b[idx] = devolve_to
+	# ISSUE #530: the sprayed-off Evolution cards are in the discard pile now - no damage on them.
+	evo_card.current_hp = evo_card.get_max_hp()
+	for card in cards_to_discard_from_chain:
+		card.current_hp = card.get_max_hp()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -2218,28 +2221,27 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 			# Find the Stage 1 this evolves from, then find that Stage 1's basic
 			# For Breeder, we need the Basic that the Stage 2 ultimately comes from
 			# Check all pokemon in play to see if any Basic matches
-			var all_in_play = []
-			if active != null:
-				all_in_play.append(active)
-			all_in_play.append_array(bench)
-			
+			var all_in_play: Array = main.get_pokemon_that_may_evolve_now(true)   # ISSUE #529
+			print("ISSUE #529 FIX ACTIVE: Breeder targets limited to Pokemon that may evolve now (", all_in_play.size(), ")")
+
 			for pokemon in all_in_play:
-				if pokemon.placed_on_field_this_turn:
-					continue
 				if not main.is_basic_pokemon(pokemon):
 					continue
 				# Check if this Basic eventually leads to the Stage 2
 				if _basic_matches_stage2(pokemon, s2):
 					main.evolution_card_awaiting_target = s2
 					main.selected_card_for_action = pokemon
-					await main.perform_evolution(true)   # ISSUE #309: coroutine (Viridian heal, on-evolve Powers)
+					await main.perform_evolution(true, true)   # ISSUE #532: on-evolve Powers run once it has landed (below)
 					await main.show_message("Opponent used Pokemon Breeder to evolve " + pokemon.metadata.get("name", "") + " into " + s2.metadata.get("name", "") + "!")
 					if main._should_bail(): return
 					main.display_pokemon(true)
 					main.display_active_pokemon_energies(true)
 					main.refresh_hand_display(true)
+					await main.play_evolution_effect(s2)
+					if main._should_bail(): return
 					main.evolution_card_awaiting_target = null
 					main.selected_card_for_action = null
+					await main._after_evolution(s2, pokemon, true)
 					return
 	else:
 		# Player: select Stage 2 card, then select matching Basic
@@ -2251,10 +2253,11 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 
 		# Find valid basic targets - bench first, active last (for spacer display)
 		var targets = []
+		var may_evolve: Array = main.get_pokemon_that_may_evolve_now(false)   # ISSUE #529
 		for bp in bench:
-			if not bp.placed_on_field_this_turn and main.is_basic_pokemon(bp) and _basic_matches_stage2(bp, s2_card):
+			if bp in may_evolve and main.is_basic_pokemon(bp) and _basic_matches_stage2(bp, s2_card):
 				targets.append(bp)
-		if active != null and not active.placed_on_field_this_turn and main.is_basic_pokemon(active) and _basic_matches_stage2(active, s2_card):
+		if active != null and active in may_evolve and main.is_basic_pokemon(active) and _basic_matches_stage2(active, s2_card):
 			targets.append(active)
 
 		if targets.size() == 0:
@@ -2268,7 +2271,7 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 		if target != null:
 			main.evolution_card_awaiting_target = s2_card
 			main.selected_card_for_action = target
-			await main.perform_evolution(false)   # ISSUE #309: coroutine
+			await main.perform_evolution(false, true)   # ISSUE #532: on-evolve Powers after the evolve effect
 			main.display_pokemon(false)
 			main.display_active_pokemon_energies(false)
 			main.refresh_hand_display(false)
@@ -2276,6 +2279,8 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 			if main._should_bail(): return
 			main.evolution_card_awaiting_target = null
 			main.selected_card_for_action = null
+			await main._after_evolution(s2_card, target, false)
+			if main._should_bail(): return
 
 # Helper: checks if a Basic pokemon is the correct base for a Stage 2 (via intermediate Stage 1)
 # ISSUE #44: pop a single card up FULL-SCREEN (reusing the trainer-card-view overlay) WHILE its
@@ -2547,21 +2552,26 @@ func effect_super_energy_removal(is_opponent: bool) -> void:
 				source = p
 		var energy = main.cpu_ai.cpu_pick_own_energy_to_discard(source)
 		if energy == null: energy = source.attached_energies.back()
-		source.attached_energies.erase(energy)
-		energy.current_location = "discard"
-		own_discard.append(energy)
-		
+		# ISSUE #536: every discarded Energy flies from its own slot to the discard pile (shared retreat/KO path).
+		print("ISSUE #536 FIX ACTIVE: Super Energy Removal animates its discards")
+		await main.animate_energies_to_discard([energy], source, true)
+		if main._should_bail(): return
+
 		var target = main.cpu_ai.cpu_pick_energy_removal_target(target_with_energy) if target_with_energy.size() > 0 else null
 		if target != null:
-			var removed = 0
-			while removed < 2 and target.attached_energies.size() > 0:
+			var picks: Array = []
+			var pool: Array = target.attached_energies.duplicate()
+			while picks.size() < 2 and not pool.is_empty():
 				var e = main.cpu_ai.cpu_pick_energy_to_discard_from(target)
-				if e == null: e = target.attached_energies.back()
+				if e == null or e in picks: e = pool.back()
+				picks.append(e)
+				pool.erase(e)
+				# cpu_pick_energy_to_discard_from reads target.attached_energies - take this one out of the running
 				target.attached_energies.erase(e)
-				e.current_location = "discard"
-				target_discard.append(e)
-				removed += 1
-			await main.show_message("Opponent removed " + str(removed) + " energy from " + target.metadata.get("name", "") + "!")
+			target.attached_energies.append_array(picks)   # back on so the flight starts from their slots
+			await main.show_message("Opponent removed " + str(picks.size()) + " energy from " + target.metadata.get("name", "") + "!")
+			if main._should_bail(): return
+			await main.animate_energies_to_discard(picks, target, false)
 			if main._should_bail(): return
 		main.display_active_pokemon_energies(true)
 		main.display_active_pokemon_energies(false)
@@ -2591,9 +2601,8 @@ func effect_super_energy_removal(is_opponent: bool) -> void:
 		
 		if own_energy == null:
 			return
-		source.attached_energies.erase(own_energy)
-		own_energy.current_location = "discard"
-		own_discard.append(own_energy)
+		await main.animate_energies_to_discard([own_energy], source, false)   # ISSUE #536
+		if main._should_bail(): return
 		main.display_active_pokemon_energies(false)
 		main.update_discard_pile_display(false)
 		
@@ -2609,33 +2618,19 @@ func effect_super_energy_removal(is_opponent: bool) -> void:
 		# ISSUE #366: with exactly 2 Energy attached both were discarded without asking — "up to 2" lets the player
 		# take just 1. Only a single attached Energy is taken automatically now.
 		if target.attached_energies.size() <= 1:
-			while target.attached_energies.size() > 0 and removed < 2:
-				var e = target.attached_energies.pop_back()
-				e.current_location = "discard"
-				target_discard.append(e)
-				var from_node = main.find_card_ui_for_object(target)
-				if from_node == null:
-					from_node = main.opponent_active_container if target == main.opponent_active_pokemon else main.opponent_bench_container
-				var e_tex = main.get_card_texture(e)
-				await main.animate_card_a_to_b(from_node, main.opponent_discard_icon, 0.2, e_tex, main.card_scales[10])
-				if main._should_bail(): return
-				removed += 1
+			# ISSUE #536: from the Energy's own slot to the opponent's discard pile (shared retreat/KO path).
+			var lone: Array = target.attached_energies.duplicate()
+			await main.animate_energies_to_discard(lone, target, true)
+			if main._should_bail(): return
+			removed = lone.size()
 		else:
 			# Player selects which energies ("up to 2") on one screen
 			main.trainer_discard_selected = await main.card_ops.prompt_select_cards(target.attached_energies.duplicate(),
 				1, 2, "REMOVE ENERGY", "Select up to 2 energies to remove", "REMOVE")
 			if main._should_bail(): return
 
-			for e in main.trainer_discard_selected:
-				target.attached_energies.erase(e)
-				e.current_location = "discard"
-				target_discard.append(e)
-				var from_node = main.find_card_ui_for_object(target)
-				if from_node == null:
-					from_node = main.opponent_active_container if target == main.opponent_active_pokemon else main.opponent_bench_container
-				var e_tex = main.get_card_texture(e)
-				await main.animate_card_a_to_b(from_node, main.opponent_discard_icon, 0.2, e_tex, main.card_scales[10])
-				if main._should_bail(): return
+			await main.animate_energies_to_discard(main.trainer_discard_selected.duplicate(), target, true)   # ISSUE #536
+			if main._should_bail(): return
 			removed = main.trainer_discard_selected.size()
 			main.trainer_discard_selected.clear()
 		
@@ -3089,14 +3084,10 @@ func effect_energy_removal(is_opponent: bool) -> void:
 			target = scripted_target
 		var energy = main.cpu_ai.cpu_pick_energy_to_discard_from(target)
 		if energy == null: energy = target.attached_energies.back()
-		target.attached_energies.erase(energy)
-		energy.current_location = "discard"
-		target_discard.append(energy)
-		var from_node = main.find_card_ui_for_object(target)
-		if from_node == null:
-			from_node = main.player_active_container
-		var energy_texture = main.get_card_texture(energy)
-		await main.animate_card_a_to_b(from_node, main.player_discard_icon, 0.2, energy_texture, main.card_scales[10])
+		# ISSUE #536: the Energy flies from its own slot to the discard pile - the shared retreat/KO flight (the old one
+		# started from the Pokemon's node after the Energy had already been taken off it).
+		print("ISSUE #536 FIX ACTIVE: Energy Removal animates ", energy.metadata.get("name", ""), " to the discard pile")
+		await main.animate_energies_to_discard([energy], target, false)
 		if main._should_bail(): return
 		main.display_active_pokemon_energies(false)
 		main.update_discard_pile_display(false)
@@ -3122,14 +3113,7 @@ func effect_energy_removal(is_opponent: bool) -> void:
 			main.hide_selection_mode_display_main()
 			
 			if energy != null:
-				target.attached_energies.erase(energy)
-				energy.current_location = "discard"
-				target_discard.append(energy)
-				var from_node = main.find_card_ui_for_object(target)
-				if from_node == null:
-					from_node = main.opponent_active_container if target == main.opponent_active_pokemon else main.opponent_bench_container
-				var energy_texture = main.get_card_texture(energy)
-				await main.animate_card_a_to_b(from_node, main.opponent_discard_icon, 0.2, energy_texture, main.card_scales[10])
+				await main.animate_energies_to_discard([energy], target, true)   # ISSUE #536
 				if main._should_bail(): return
 				main.display_active_pokemon_energies(true)
 				main.update_discard_pile_display(true)
@@ -3792,8 +3776,15 @@ func effect_digger(is_opponent: bool) -> void:
 			if target != null:
 				target.current_hp = max(0, target.current_hp - 10)
 				main.display_hp_circles_above_align(target, target_is_opp)
-				var owner = "YOUR" if my_turn else "OPPONENT'S"
-				await main.show_message("TAILS! 10 DAMAGE TO " + owner + " ACTIVE!")
+				# ISSUE #531: the hit is shown on the card, and the message names whose Active took it from the
+				# PLAYER's point of view - "YOUR" used to mean "the card player's", so the CPU's Digger read as
+				# damage to the player's Active that never appeared.
+				SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+				if main.card_fx != null:
+					main.card_fx.shake(target)
+				var owner = "THE OPPONENT'S " if target_is_opp else "YOUR "
+				print("ISSUE #531 FIX ACTIVE: Digger 10 damage to ", target.metadata.get("name", ""), " (", target.current_hp, " HP left)")
+				await main.show_message("TAILS! 10 DAMAGE TO " + owner + target.metadata.get("name", "").to_upper() + "!")
 				if main._should_bail(): return
 			break
 		else:
@@ -9108,11 +9099,8 @@ func effect_ecard2_super_energy_removal_2(is_opponent: bool) -> void:
 	if c1 and c2:
 		var defender = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
 		if defender != null and defender.attached_energies.size() > 0:
-			var target_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
-			for e in defender.attached_energies.duplicate():
-				defender.attached_energies.erase(e)
-				e.current_location = "discard"
-				target_discard.append(e)
+			await main.animate_energies_to_discard(defender.attached_energies.duplicate(), defender, not is_opponent)   # ISSUE #536
+			if main._should_bail(): return
 			main.display_pokemon(not is_opponent)
 			main.display_active_pokemon_energies(not is_opponent)
 			main.update_discard_pile_display(not is_opponent)
@@ -9124,11 +9112,8 @@ func effect_ecard2_super_energy_removal_2(is_opponent: bool) -> void:
 	elif not c1 and not c2:
 		var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 		if own_active != null and own_active.attached_energies.size() > 0:
-			var own_discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-			for e in own_active.attached_energies.duplicate():
-				own_active.attached_energies.erase(e)
-				e.current_location = "discard"
-				own_discard.append(e)
+			await main.animate_energies_to_discard(own_active.attached_energies.duplicate(), own_active, is_opponent)   # ISSUE #536
+			if main._should_bail(): return
 			main.display_pokemon(is_opponent)
 			main.display_active_pokemon_energies(is_opponent)
 			main.update_discard_pile_display(is_opponent)
@@ -10015,8 +10000,9 @@ func _ex2_do_evolution(evo_card: card_object, target: card_object, is_opponent: 
 func effect_ex2_rare_candy(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var valid_basics: Array = []
+	var may_evolve: Array = main.get_pokemon_that_may_evolve_now(is_opponent)   # ISSUE #529: same rules as Breeder
 	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
-		if not main.is_basic_pokemon(p) or p.placed_on_field_this_turn:
+		if not main.is_basic_pokemon(p) or not (p in may_evolve):
 			continue
 		for h in hand:
 			if h.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(h, p):

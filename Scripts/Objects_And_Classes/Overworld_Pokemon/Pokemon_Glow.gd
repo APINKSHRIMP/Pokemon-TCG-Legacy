@@ -104,6 +104,7 @@ static func attach(host: Node, target: Node2D, species: String,
 	glow.top_level = true
 	host.add_child(glow)
 	glow.global_position = glow._follow_point() + glow._offset_now()
+	print("ISSUE #541 FIX ACTIVE: ", species, " glow centred on its drawn art (sprite centered=", (target as Sprite2D).centered if target is Sprite2D else true, ")")
 	# Somewhere in the middle of the breath, so two of them side by side are not in step.
 	glow._pulse = randf() * PULSE_PERIOD
 	return glow
@@ -134,9 +135,18 @@ func _follow_point() -> Vector2:
 	if follow == null or not is_instance_valid(follow):
 		return global_position
 	var sprite := follow as Sprite2D
-	if sprite == null or sprite.offset == Vector2.ZERO:
+	if sprite == null:
 		return follow.global_position
-	return follow.global_position + follow.get_global_transform().basis_xform(sprite.offset)
+	var local := sprite.offset
+	# ISSUE #541: a clipped overworld Pokemon (the surfacing template - Tynamo, Chinchou...) draws with
+	# centered = false and its node at the art's TOP-LEFT, so the light sat half a sprite to the left. Aim at
+	# the middle of what is actually drawn.
+	if not sprite.centered:
+		var drawn: Vector2 = sprite.region_rect.size if sprite.region_enabled else (sprite.texture.get_size() if sprite.texture != null else Vector2.ZERO)
+		local += drawn * 0.5
+	if local == Vector2.ZERO:
+		return follow.global_position
+	return follow.global_position + follow.get_global_transform().basis_xform(local)
 
 
 ## Where the light sits this frame. A tail light hangs behind the Pokémon, so its

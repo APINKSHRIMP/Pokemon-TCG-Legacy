@@ -703,7 +703,7 @@ RECIPES.update({
     'MistBall':      rec(H, P('MistBall', size=0.45, spin=180), T('PsychicAttack', size=1.0), T('CloudPuff', size=1.0, par=True)),
     'Hypnosis':      rec(W, T('HypnoSpiral', size=0.6, spin=360, loops=2), T('PsychicLights', size=0.9, par=True, delay=0.15)),
     'Amnesia':       rec(H, S('Amnesia', size=1.0), S('StatUp', **STAT_UP)),
-    'Meditate':      rec(RISE, S('PsychicPowerUp', size=1.0), S('StatUp', **STAT_UP)),
+    'Meditate':      rec(RISE, S('PsychicPowerUp', size=1.0)),   # ISSUE #535: no StatUp arrows
     'Barrier':       rec(GROW, S('Protect', size=1.1, hue=150), S('StatUp', **STAT_UP)),
     'Telekinesis':   rec(W, T('PsychicPalm', size=1.0), T('PsychicLights', size=0.9, par=True)),
     # ---- dark / ghost ----
@@ -1044,7 +1044,8 @@ STATUS = {
     'Toxic':     rec(N, T('PoisonColumn', size=0.7), T('ToxicSpike', size=0.8, count=2, stagger=0.12, jitter=0.2, par=True), T('QuickPoisonHit', size=0.9, par=True)),
     'Burned':    rec(N, T('Embers', size=1.0), T('MiniCombustion', size=0.35, count=3, stagger=0.12, jitter=0.25, par=True)),
     'Paralyzed': rec(N, T('Electrocute', size=1.0), T('SparkScatter', size=0.9, par=True)),
-    'Asleep':    rec(N, T('Nightmare', size=0.45, off=[0.25, -0.3], mirror=False, tint='#c0d8ff')),
+    # ISSUE #534: plain sleep gets the soft "Zz" - the spiky Nightmare frames are only for Nightmare-style attacks.
+    'Asleep':    rec(N, T('SleepZ', size=0.3, off=[0.25, -0.35], mirror=False, dur=0.9, fade=0.4, count=2, stagger=0.35, jitter=0.08)),
     'Confused':  rec(N, T('ConfusingHit', size=0.9, off=[0, -0.25], range=[0, 8])),
 }
 for _k, _el in [('Poisoned', 'poison'), ('Toxic', 'poison'), ('Burned', 'fire'), ('Paralyzed', 'electric'), ('Asleep', 'normal'), ('Confused', 'psychic')]:

@@ -525,6 +525,23 @@ func handle_input(event: InputEvent) -> bool:
 	if UIInput.is_nav_event(event):
 		return true
 
+	# ISSUE #545: while the ring is hidden (the player was on the mouse) the cursor still sits on
+	# "Your Hand" from the start of the turn - Space / Enter pressed to get through a message then
+	# OPENED the hand as if it had been Alt-clicked. The first accept or jump only brings the ring
+	# back, the same as the first arrow press. Yes / No keeps its own Space = YES answer.
+	if mode != "yes_no" and not _ring_showing() \
+			and (UIInput.is_accept(event) or UIInput.is_hand_jump(event) or UIInput.is_end_turn_jump(event)):
+		print("ISSUE #545 FIX ACTIVE: first key press only shows the cursor (nothing activated)")
+		if UIInput.is_hand_jump(event) and mode == "board":
+			_focus_key = "hand"
+			_mode = mode
+		elif UIInput.is_end_turn_jump(event) and mode == "board":
+			_focus_key = "end_turn"
+			_mode = mode
+		_current(mode, _targets(mode))
+		_place_ring()
+		return true
+
 	if UIInput.is_hand_jump(event):
 		if mode == "board":
 			_focus_key = "hand"
@@ -705,7 +722,23 @@ func _process(_delta: float) -> void:
 	if not InputDevice.using_nav() or not _active():
 		_hide_ring()
 		return
+	_drop_mouse_selection()
 	_place_ring()
+
+
+## ISSUE #546: the cursor and a mouse-picked card never show together. A card clicked in the bar
+## is put down, and any hand card still pulsing "selected" on the open board (a pick the hand
+## redraw carried over) is cleared - only the cursor's own pulse is left.
+func _drop_mouse_selection() -> void:
+	if hand_drag != null and hand_drag.bar_selected != null:
+		print("ISSUE #546 FIX ACTIVE: cursor up - mouse-picked ", hand_drag.bar_selected.metadata.get("name", ""), " put down")
+		hand_drag.clear_bar_selection()
+	if _mode_now() != "board" or main.player_hand_container == null:
+		return
+	for child in main.player_hand_container.get_children():
+		if child is CardDisplay and (child as CardDisplay).is_selected:
+			print("ISSUE #546 FIX ACTIVE: stale selected hand card cleared")
+			(child as CardDisplay).set_selected(false)
 
 
 ## The card under the cursor, for hold-to-zoom on a pad (L1 / Shift) - null when the

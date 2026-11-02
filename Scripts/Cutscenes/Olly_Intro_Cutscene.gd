@@ -333,7 +333,12 @@ func _play_handover() -> void:
 			SoundManagerScript.crossfade_bgm(SoundManagerScript.BGM_DRAFT_TIME, 0.4, 0.4)
 			PackOpeningManager.open_packs(GameState.HARD_MODE_DRAFT_PACKS)
 			await PackOpeningManager.all_packs_opened
-			SoundManagerScript.crossfade_bgm(map.get_bgm_path())
+			# ISSUE #543: back to what the map plays NOW - nothing outdoors at Bedtime.
+			var after_draft: String = map._bgm_now() if map.has_method("_bgm_now") else map.get_bgm_path()
+			if after_draft != "":
+				SoundManagerScript.crossfade_bgm(after_draft)
+			else:
+				SoundManagerScript.stop_bgm()
 			await say(_speaker, LINE_HARD_AFTER_PACKS)
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
 			await say_all(_speaker, LINES_HARD_BUILD)

@@ -572,6 +572,12 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 				if main.cpu_ai.get_unmet_energy_count(attack, target_pokemon) == 1:
 					score += 40.0
 					break
+			# ISSUE #528: Rainbow costs 10 HP - a basic Energy in hand that fills the same need goes down instead
+			# (2 Fire in hand, so no Rainbow on the Charmander). Fine when no basic in hand fits (needs Lightning,
+			# holds only Fire).
+			if main.cpu_ai.cpu_hand_has_useful_basic(target_pokemon, energy_card):
+				print("ISSUE #528 FIX ACTIVE: Rainbow Energy held - a basic Energy in hand fits ", target_pokemon.metadata.get("name", ""))
+				score -= 200.0
 		
 		"Full Heal Energy":
 			# Only provides Colorless, but cures status

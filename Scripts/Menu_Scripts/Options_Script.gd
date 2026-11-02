@@ -103,6 +103,7 @@ var pending : Dictionary = {}
 var saved   : Dictionary = {}
 
 var section_buttons : Dictionary = {}
+var section_rows : Dictionary = {}   # ISSUE #542: section -> its row (HBoxContainer)
 var section_sliders : Dictionary = {}
 var section_setters : Dictionary = {}
 
@@ -457,6 +458,7 @@ func _add_button_row(parent: VBoxContainer, section: String, label_text: String,
 		holder.add_child(btn)
 		buttons[value] = btn
 	section_buttons[section] = buttons
+	section_rows[section] = row   # ISSUE #542: rows that show / hide with another setting
 
 
 ## One label + a slider and its percentage readout.
@@ -683,6 +685,15 @@ func _refresh_section(section: String) -> void:
 		if section == "tutorial_next_match" and GameState.tutorial_option_locked():
 			btn.disabled = true
 			btn.modulate = Color(1, 1, 1, 0.45)
+
+	# ISSUE #542: the window size only means anything in a window - the row is hidden while Fullscreen or
+	# Borderless is chosen, and comes back the moment Windowed is picked.
+	if section == "window_mode" and section_rows.has("window_size"):
+		var row: Control = section_rows["window_size"]
+		var windowed: bool = String(pending["window_mode"]) == "windowed"
+		if row.visible != windowed:
+			print("ISSUE #542 FIX ACTIVE: window size row ", "shown" if windowed else "hidden", " (", pending["window_mode"], ")")
+		row.visible = windowed
 
 
 ## Adds or removes the selection ring on one colour-theme button.

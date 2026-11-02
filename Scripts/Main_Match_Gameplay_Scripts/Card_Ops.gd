@@ -153,6 +153,8 @@ func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false
 	if not discard.has(card):
 		discard.append(card)
 	card.current_location = "discard"
+	if card.metadata.get("supertype", "") == "Pokémon" and card.current_hp != card.get_max_hp():
+		card.current_hp = card.get_max_hp()   # ISSUE #530: a discarded Pokemon card carries no damage
 	main.update_discard_pile_display(is_opponent)
 
 # Move every card in an array to the given side's discard pile.
@@ -169,6 +171,7 @@ func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:
 	pokemon.attached_energies.clear()
 	for card in pokemon.attached_pre_evolutions.duplicate():
 		card.current_location = "discard"
+		card.current_hp = card.get_max_hp()   # ISSUE #530: leaves play as a fresh card
 		discard.append(card)
 	pokemon.attached_pre_evolutions.clear()
 	for card in pokemon.attached_cards.duplicate():
@@ -389,6 +392,32 @@ func recover_to_hand(card: card_object, is_opponent: bool, animate: bool = false
 		if main._should_bail(): return
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
+
+## ISSUE #533: move an Energy card from `is_opponent`'s discard pile onto `target`, flying it from the discard pile
+## to the exact slot it ends up in (the Active's energy stack, or behind the Benched card). For Energy Absorption and
+## any other "attach Energy from your discard pile" effect.
+func attach_energy_from_discard_animated(energy: card_object, target: card_object, is_opponent: bool) -> void:
+	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var discard_icon: Control = main.opponent_discard_icon if is_opponent else main.player_discard_icon
+	var tex = main.get_card_texture(energy)
+	discard.erase(energy)
+	energy.current_location = "attached"
+	target.attached_energies.append(energy)
+	main.update_discard_pile_display(is_opponent)
+	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+	if target == active:
+		var energy_node = main.opponent_energy_container if is_opponent else main.player_energy_container
+		var slot_rect: Dictionary = main.measure_and_hide_new_active_energy_slot(is_opponent)
+		await main.animate_card_a_to_b(discard_icon, energy_node, 0.3, tex, main.PILE_SIZE,
+			slot_rect.get("size", main.ATTACH_CARD_SIZE), slot_rect.get("position", main._ANIM_POS_SENTINEL), true)
+	else:
+		var bench_node = main.opponent_bench_container if is_opponent else main.player_bench_container
+		var loc: Dictionary = main.get_pokemon_screen_location(target)
+		await main.animate_card_a_to_b(discard_icon, bench_node, 0.3, tex, main.PILE_SIZE,
+			loc.get("size", main.BENCH_CARD), loc.get("position", main._ANIM_POS_SENTINEL), true)
+	if main._should_bail(): return
+	main.display_pokemon(is_opponent)
+	main.display_active_pokemon_energies(is_opponent)
 
 # ── Healing ───────────────────────────────────────────────────────────────────────────────
 
@@ -770,6 +799,17 @@ func place_on_bench(pokemon: card_object, is_opponent: bool) -> bool:
 # Returns the chosen card_object (or null if cancelled). Pass search_mode=true when searching
 # a deck (sets trainer_deck_search_active instead of trainer_pokemon_selection_active).
 func prompt_select_card(pool: Array, header: String, hint: String, btn_text: String, cancelable: bool, search_mode: bool = false) -> card_object:
+	# ISSUE #547: the Pokemon a Trainer was dragged onto answers the card's FIRST target question - only
+	# when that question is "which of your Pokemon in play" and the Pokemon is a legal answer. Spent
+	# either way, so a later prompt (Super Potion's Energy pick, a second step) always asks normally.
+	var dropped: card_object = main.trainer_drop_target
+	if dropped != null and not search_mode:
+		main.trainer_drop_target = null
+		var own_in_play := func(c): return c == main.player_active_pokemon or c in main.player_bench
+		if dropped in pool and pool.all(own_in_play):
+			print("ISSUE #547 FIX ACTIVE: ", header, " answered by the drop on ", dropped.metadata.get("name", ""))
+			main.selected_card_for_action = dropped
+			return dropped
 	# opponent_blocker is only meant to be visible during the opponent's turn (see
 	# player_start_turn_checks/player_end_turn_checks). Remember its state instead of forcing it
 	# back on when the selection closes, otherwise using a power like Rain Dance or Metronome on

@@ -8496,20 +8496,20 @@ func execute_energy_absorption(attacker: card_object, is_opponent: bool, max_cou
 	if is_opponent:
 		var n = min(max_count, energy_cards.size())
 		energy_cards.sort_custom(func(x, y): return main.cpu_ai.cpu_rank_benefit_recipient(attacker, "energy", x) > main.cpu_ai.cpu_rank_benefit_recipient(attacker, "energy", y))   # ISSUE #325
+		# ISSUE #533: each Energy visibly flies out of the discard pile onto the attacker.
 		for i in range(n):
-			var e = energy_cards[i]
-			discard_pile.erase(e)
-			e.current_location = "attached"
-			attacker.attached_energies.append(e)
+			await main.card_ops.attach_energy_from_discard_animated(energy_cards[i], attacker, is_opponent)
+			if main._should_bail(): return
 			taken += 1
 	else:
 		var ea_picks: Array = await main.card_ops.prompt_select_cards(energy_cards, (0 if max_count > 1 else 1), max_count, "ENERGY ABSORPTION", "Choose up to " + str(max_count) + " Energy to attach", "ATTACH")   # ISSUE #366: "up to" min 0 / exact count
 		if main._should_bail(): return
 		for sel in ea_picks:
-			discard_pile.erase(sel)
-			sel.current_location = "attached"
-			attacker.attached_energies.append(sel)
+			await main.card_ops.attach_energy_from_discard_animated(sel, attacker, is_opponent)   # ISSUE #533
+			if main._should_bail(): return
 			taken += 1
+	if taken > 0:
+		print("ISSUE #533 FIX ACTIVE: Energy Absorption flew ", taken, " Energy from the discard pile")
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	if taken > 0:

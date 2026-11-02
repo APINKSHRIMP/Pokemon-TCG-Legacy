@@ -231,6 +231,17 @@ static func is_hand_expand_held() -> bool:
 	return Input.is_key_pressed(KEY_ALT)
 
 
+# ── Keys that belong to the mouse ────────────────────────────────────────────
+# ISSUE #544: keys a mouse player presses WITH the mouse - Shift (hold to zoom), Ctrl (debug
+# reveal), Alt (Alt + click), the other modifiers, Caps Lock (log), Escape (pause) and Delete
+# (debug menu). Pressing one never switches InputDevice to the keyboard, so no cursor ring
+# appears and nothing gets "selected" by the keyboard cursor.
+const MOUSE_COMPANION_KEYS: Array[int] = [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META, KEY_CAPSLOCK, KEY_ESCAPE, KEY_DELETE]
+
+static func is_mouse_companion_key(event: InputEventKey) -> bool:
+	return event.keycode in MOUSE_COMPANION_KEYS or event.physical_keycode in MOUSE_COMPANION_KEYS
+
+
 # ── Cursor movement ──────────────────────────────────────────────────────────
 # One step of cursor movement from any device: an arrow key (key repeat allowed,
 # so holding one keeps moving), the D-pad, or a flick of the left stick. Returns

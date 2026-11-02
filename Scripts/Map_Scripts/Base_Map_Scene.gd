@@ -115,10 +115,25 @@ func _locked_door_text(target_map: String) -> String:
 # LIFECYCLE
 # ============================================================
 
-func _ready():
-	var bgm := get_bgm_path()
+## ISSUE #543: the BGM this map should play RIGHT NOW. Outdoor maps (Celeste Harbour, Verdant Forest, Gym Plaza...)
+## go quiet at Bedtime - nobody is out that late - so the world is left to its ambient sounds. Interiors keep theirs.
+func _bgm_now() -> String:
+	# The open sea's "BGM" is its ambience (waves), not music - it carries on.
+	if uses_time_of_day() and GameState.get_time() == "Bedtime" and get_bgm_path() != SoundManagerScript.BGM_SEA_SOUNDS:
+		print("ISSUE #543 FIX ACTIVE: no outdoor BGM at Bedtime on ", name)
+		return ""
+	return get_bgm_path()
+
+## Starts this map's music, or stops whatever is still playing (a battle's, the last map's) when it has none now.
+func _start_map_bgm(restart: bool) -> void:
+	var bgm := _bgm_now()
 	if bgm != "":
-		SoundManagerScript.play_bgm(bgm, true)
+		SoundManagerScript.play_bgm(bgm, restart)
+	elif get_bgm_path() != "":
+		SoundManagerScript.stop_bgm()   # ISSUE #543: an outdoor map at Bedtime
+
+func _ready():
+	_start_map_bgm(true)
 
 	var is_sleep_wakeup := GameState.sleep_wakeup_fade
 	GameState.sleep_wakeup_fade = false
@@ -516,9 +531,7 @@ func _close_menu_overlay() -> void:
 		GameState.clear_menu_return_state()
 	MapManager.set_overworld_paused(false)
 	_player.unlock_movement()
-	var bgm := get_bgm_path()
-	if bgm != "":
-		SoundManagerScript.play_bgm(bgm, false)
+	_start_map_bgm(false)   # ISSUE #543
 
 # ============================================================
 # SUB-MENU OVERLAYS (ISSUE #52)

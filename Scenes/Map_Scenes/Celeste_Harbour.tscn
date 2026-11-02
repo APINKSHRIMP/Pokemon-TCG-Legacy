@@ -487,7 +487,7 @@ size = Vector2(45.5, 28.625)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_o32cx"]
 size = Vector2(194, 26)
 
-[node name="CELESTE HARBOUR" type="Node2D" unique_id=332229534]
+[node name="LATENIGHTOFF" type="Node2D" unique_id=332229534]
 script = ExtResource("1_7oril")
 
 [node name="TILE_MAPS" type="TileMap" parent="." unique_id=122169613]
@@ -5035,7 +5035,6 @@ shape = SubResource("RectangleShape2D_r50et")
 z_index = 1
 
 [node name="LIGHTS" type="Control" parent="." unique_id=563581829]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -7276,6 +7275,11 @@ color = Color(5.912981, 5.7798786, 1.6093352, 0.05882353)
 energy = 1.33
 texture = ExtResource("4_401pq")
 offset = Vector2(-0.38427734, 775.4363)
+
+[node name="LATENIGHTOFF" type="Control" parent="LIGHTS" unique_id=330749077]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
 
 [node name="Collision Objects" type="Control" parent="." unique_id=557795143]
 visible = false
