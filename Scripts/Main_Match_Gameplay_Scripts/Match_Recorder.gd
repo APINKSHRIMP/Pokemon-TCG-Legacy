@@ -1,6 +1,6 @@
 extends RefCounted
 const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")
-## ISSUE #375 — DEV MATCH RECORDER (real matches only, DebugMode only).
+## OLD ISSUE 375 — DEV MATCH RECORDER (real matches only, DebugMode only).
 ##
 ## Writes user://match_logs/<date-time>_<opponent>.jsonl — one JSON object per line:
 ##   {"t":"start",  ...match info}

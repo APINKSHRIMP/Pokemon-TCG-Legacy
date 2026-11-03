@@ -1,5 +1,5 @@
 """
-CPU LAB (ISSUE #375) — tests our CPU rules instead of trusting them, and looks for better choices.
+CPU LAB (OLD ISSUE 375) — tests our CPU rules instead of trusting them, and looks for better choices.
 
 A. RULE AUDIT — every tunable number (CpuWeights.g) is played at x0 and x2, and every yes/no rule (CpuWeights.on) is
    switched OFF, each on the SAME fixed seeds as the current CPU ("BASE"). Paired differences say whether a rule wins

@@ -215,7 +215,7 @@ static func sort_ids(card_ids: Array, meta_fn: Callable) -> Array:
 	return result
 
 
-# ─── Right-hand card list (ISSUE #152) ───────────────────────────────────────
+# ─── Right-hand card list (ISSUE #154) ───────────────────────────────────────
 # TWEAKABLE. A text list of the viewer's unique cards down the right-hand bar — the strip beside the
 # card grid that is otherwise empty. One line per card: "<name> (xN)".
 #

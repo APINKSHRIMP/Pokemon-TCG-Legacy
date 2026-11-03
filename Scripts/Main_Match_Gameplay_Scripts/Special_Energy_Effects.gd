@@ -56,7 +56,7 @@ func get_energy_types_provided(card_name: String) -> Array:
 		"Multi Energy":
 			# EX6 Multi Energy: provides every type of Energy but only 1 at a time (like Rainbow).
 			# The "provides Colorless when the Pokemon already has another Special Energy attached"
-			# anti-combo rule needs the holder's context (unavailable here) and is simplified out.
+			# rule needs the holder, so Main.get_energy_provided_by_card applies it before this.
 			return ["Fire", "Water", "Grass", "Lightning", "Psychic", "Fighting", "Darkness", "Metal"]
 		"Aqua Energy":
 			# Provides Water + Darkness (2 Energy at a time); attach only to Team Aqua Pokemon
@@ -103,7 +103,7 @@ func get_energy_types_provided(card_name: String) -> Array:
 			# every type of Energy (1 at a time) — that δ upgrade needs holder context and is resolved in
 			# Main.get_energy_provided_by_card. This fallback (no holder known) is the Colorless base.
 			return ["Colorless"]
-		# ISSUE #372: four Special Energy cards had no implementation at all (they provided nothing).
+		# OLD ISSUE 372: four Special Energy cards had no implementation at all (they provided nothing).
 		"Bounce Energy":
 			# ecard3-142: provides Colorless Colorless (on-attach: return a basic Energy from that Pokémon to hand).
 			return ["Colorless", "Colorless"]
@@ -156,7 +156,7 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 	return type_lock_check(energy_card, target_pokemon)
 
 
-## ISSUE #467: the part of can_attach_to() that is about WHICH Pokémon can hold this Energy at all
+## ISSUE #341: the part of can_attach_to() that is about WHICH Pokémon can hold this Energy at all
 ## (R / Aqua / Magma / Miracle by name, Boost / Scramble / Double Rainbow by stage and ex). These
 ## hold for as long as the card stays attached, so discard_now_illegal() re-runs just this when the
 ## Pokémon changes (evolving into a Pokémon-ex); the attach-time rules above (Cursed Glare, Pure
@@ -196,12 +196,12 @@ func type_lock_check(energy_card: card_object, target_pokemon: card_object) -> D
 				return {"allowed": false, "reason": "DOUBLE RAINBOW ENERGY CAN ONLY BE ATTACHED TO AN EVOLVED POKEMON (NOT ex)!"}
 			return {"allowed": true, "reason": ""}
 		"Bounce Energy":
-			# ISSUE #372: "You can attach this card to your Pokémon that has basic Energy cards attached to it."
+			# OLD ISSUE 372: "You can attach this card to your Pokémon that has basic Energy cards attached to it."
 			if not target_pokemon.attached_energies.any(func(e): return "Basic" in e.metadata.get("subtypes", []) and e.metadata.get("supertype","") == "Energy"):
 				return {"allowed": false, "reason": "BOUNCE ENERGY NEEDS A POKEMON WITH BASIC ENERGY ATTACHED!"}
 			return {"allowed": true, "reason": ""}
 		"Miracle Energy":
-			# ISSUE #372: "Attach Miracle Energy to 1 of your Shining or Light Pokémon."
+			# OLD ISSUE 372: "Attach Miracle Energy to 1 of your Shining or Light Pokémon."
 			var mname = target_pokemon.metadata.get("name", "")
 			if not mname.begins_with("Shining ") and not mname.begins_with("Light "):
 				return {"allowed": false, "reason": "MIRACLE ENERGY CAN ONLY BE ATTACHED TO A SHINING OR LIGHT POKEMON!"}
@@ -218,7 +218,7 @@ func type_lock_check(energy_card: card_object, target_pokemon: card_object) -> D
 	return {"allowed": true, "reason": ""}
 
 
-## ISSUE #467: discards every attached Special Energy that `pokemon` may no longer hold (Scramble /
+## ISSUE #341: discards every attached Special Energy that `pokemon` may no longer hold (Scramble /
 ## Double Rainbow on a Pokémon that just evolved into a Pokémon-ex, R Energy on a non-Dark evolution...).
 ## Returns the names discarded.
 func discard_now_illegal(pokemon: card_object, is_owner_opp: bool) -> Array:
@@ -227,6 +227,10 @@ func discard_now_illegal(pokemon: card_object, is_owner_opp: bool) -> Array:
 		return dropped
 	for e in pokemon.attached_energies.duplicate():
 		if not ("Special" in e.metadata.get("subtypes", [])):
+			continue
+		# Bounce Energy's rule ("needs basic Energy attached") is checked when it is attached
+		# only - losing that basic Energy later doesn't discard it (ISSUE #429 sweep).
+		if e.metadata.get("name", "") == "Bounce Energy":
 			continue
 		if not bool(type_lock_check(e, pokemon).get("allowed", true)):
 			# Detached here: mid-evolution the new card is not on the board yet, so the shared
@@ -253,7 +257,7 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 		"Rainbow Energy":
 			# 10 damage to the pokemon it's attached to (no W/R)
 			target_pokemon.current_hp = max(0, target_pokemon.current_hp - 10)
-			# ISSUE #173: the BENCH is a legal Rainbow Energy target, and both of
+			# ISSUE #174: the BENCH is a legal Rainbow Energy target, and both of
 			# these used to be hardwired to the active slot — so attaching it to a
 			# benched Pokemon dealt the damage correctly but drew the loss on the
 			# active, whose readout then showed the bench Pokemon's HP.
@@ -283,7 +287,7 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			if rule_heal > 0 and target_pokemon.current_hp < max_hp:
 				var actual_heal = min(rule_heal, max_hp - target_pokemon.current_hp)
 				target_pokemon.current_hp = min(max_hp, target_pokemon.current_hp + rule_heal)
-				# ISSUE #173: same fix as Rainbow Energy — Potion Energy can be
+				# ISSUE #174: same fix as Rainbow Energy — Potion Energy can be
 				# attached to a benched Pokemon too.
 				main.refresh_pokemon_hp_display(target_pokemon, is_opponent)
 				SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
@@ -309,7 +313,7 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			var rule_heal = main.match_effects.modify_heal_amount(10, is_opponent)
 			if rule_heal > 0 and target_pokemon.current_hp < heal_max_hp:
 				target_pokemon.current_hp = min(heal_max_hp, target_pokemon.current_hp + rule_heal)
-				main.refresh_pokemon_hp_display(target_pokemon, is_opponent)   # ISSUE #173
+				main.refresh_pokemon_hp_display(target_pokemon, is_opponent)   # ISSUE #174
 				applied = true
 			if applied:
 				await main.show_message("HEAL ENERGY! REMOVED 1 DAMAGE COUNTER AND ALL SPECIAL CONDITIONS FROM " + pokemon_name + "!")
@@ -317,14 +321,13 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			return applied
 
 		"Warp Energy":
-			# ISSUE #365: printed "When you attach this card from your hand to your ACTIVE Pokémon, switch that Pokémon
+			# OLD ISSUE 365: printed "When you attach this card from your hand to your ACTIVE Pokémon, switch that Pokémon
 			# with 1 of your Benched Pokémon." — mandatory, Active only, both sides. It used to be a "may", also fired
 			# when attached to a Benched Pokémon, and the CPU never switched.
 			var w_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 			if target_pokemon != w_active: return false
 			var w_bench = main.opponent_bench if is_opponent else main.player_bench
 			if w_bench.is_empty(): return false
-			print("ISSUE #365 FIX ACTIVE: Warp Energy — mandatory self-switch")
 			await main.show_message("WARP ENERGY! " + pokemon_name + " MUST SWITCH WITH A BENCHED POKEMON!")
 			if main._should_bail(): return true
 			await main.attack_effects.apply_self_switch(target_pokemon, is_opponent)
@@ -332,14 +335,13 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			return true
 
 		"Cyclone Energy":
-			# ISSUE #365: printed "When you attach this card from your hand to your Active Pokémon, switch 1 of the
+			# OLD ISSUE 365: printed "When you attach this card from your hand to your Active Pokémon, switch 1 of the
 			# Defending Pokémon with 1 of your opponent's Benched Pokémon. Your OPPONENT chooses the Benched Pokémon."
 			# Mandatory, both sides. It was a "may", the attacher picked, and the CPU never used it.
 			var c_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 			if target_pokemon != c_active: return false
 			var c_bench = main.player_bench if is_opponent else main.opponent_bench
 			if c_bench.is_empty(): return false
-			print("ISSUE #365 FIX ACTIVE: Cyclone Energy — opponent switches, opponent chooses")
 			await main.show_message("CYCLONE ENERGY! " + ("YOU MUST SWITCH IN ONE OF YOUR BENCHED POKEMON!" if is_opponent else "YOUR OPPONENT MUST SWITCH IN A BENCHED POKEMON!"))
 			if main._should_bail(): return true
 			await main.attack_effects.apply_force_switch({"type": "force_switch", "target": "defender", "chooser": "defender", "flip": "none"}, is_opponent)
@@ -347,7 +349,7 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			return true
 
 		"Bounce Energy":
-			# ISSUE #372: "return a basic Energy card attached to that Pokémon to your hand" (mandatory; owner picks which).
+			# OLD ISSUE 372: "return a basic Energy card attached to that Pokémon to your hand" (mandatory; owner picks which).
 			var be_pool: Array = target_pokemon.attached_energies.filter(func(e): return e != energy_card and "Basic" in e.metadata.get("subtypes", []) and e.metadata.get("supertype","") == "Energy")
 			if be_pool.is_empty(): return false
 			var be_pick = await main.attack_effects.r4_pick_own_energy(target_pokemon, be_pool, is_opponent, "BOUNCE ENERGY: RETURN A BASIC ENERGY TO YOUR HAND")
@@ -358,13 +360,12 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			main.refresh_hand_display(is_opponent)
 			main.display_pokemon(is_opponent)
 			main.display_active_pokemon_energies(is_opponent)
-			print("ISSUE #372 FIX ACTIVE: Bounce Energy returned ", be_pick.metadata.get("name",""), " to hand")
 			await main.show_message("BOUNCE ENERGY! " + be_pick.metadata.get("name","").to_upper() + " RETURNED TO " + ("THEIR" if is_opponent else "YOUR") + " HAND!")
 			if main._should_bail(): return true
 			return true
 
 		"Retro Energy":
-			# ISSUE #372: on an Evolved Pokémon, "you MAY remove up to 2 damage counters from that Pokémon and discard
+			# OLD ISSUE 372: on an Evolved Pokémon, "you MAY remove up to 2 damage counters from that Pokémon and discard
 			# the top card from it (this counts as devolving it)".
 			if target_pokemon.attached_pre_evolutions.is_empty(): return false
 			var re_yes := false
@@ -379,7 +380,6 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			await main.card_ops.heal_pokemon(target_pokemon, 20, is_opponent)
 			if main._should_bail(): return true
 			main.attack_effects._ex2_devolve_pokemon(target_pokemon, is_opponent, "discard")
-			print("ISSUE #372 FIX ACTIVE: Retro Energy devolved ", pokemon_name)
 			await main.show_message("RETRO ENERGY! " + pokemon_name + " WAS DEVOLVED!")
 			if main._should_bail(): return true
 			await main.check_all_knockouts()
@@ -412,7 +412,7 @@ func must_discard_end_of_turn(card_name: String) -> bool:
 			# EX8: "Discard Boost Energy at the end of the turn it was attached."
 			return true
 		"Miracle Energy":
-			# ISSUE #372: neo4-16 — "At the end of your turn, discard Miracle Energy."
+			# OLD ISSUE 372: neo4-16 — "At the end of your turn, discard Miracle Energy."
 			return true
 		_:
 			return false
@@ -452,7 +452,7 @@ func process_end_of_turn_discards(is_opponent: bool) -> void:
 ############################################### PASSIVE DAMAGE MODIFIERS (Darkness/Metal bonus/reduction while attached) #############################
 ######################################################################################################################################################
 
-# ISSUE #362: Darkness Energy (+10), R Energy (+10), Double Rainbow Energy (-10) and Metal Energy (-10 taken; -10 dealt
+# OLD ISSUE 362: Darkness Energy (+10), R Energy (+10), Double Rainbow Energy (-10) and Metal Energy (-10 taken; -10 dealt
 # by a non-Metal holder on the older printings) were never applied — get_outgoing_damage_modifier /
 # get_incoming_damage_reduction below had no callers. main.calculate_final_damage now calls this twice: pre_wr=true
 # before Weakness/Resistance and pre_wr=false after, and each printing is applied in the step its own text names
@@ -572,11 +572,11 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 				if main.cpu_ai.get_unmet_energy_count(attack, target_pokemon) == 1:
 					score += 40.0
 					break
-			# ISSUE #528: Rainbow costs 10 HP - a basic Energy in hand that fills the same need goes down instead
+			# ISSUE #402: Rainbow costs 10 HP - a basic Energy in hand that fills the same need goes down instead
 			# (2 Fire in hand, so no Rainbow on the Charmander). Fine when no basic in hand fits (needs Lightning,
 			# holds only Fire).
 			if main.cpu_ai.cpu_hand_has_useful_basic(target_pokemon, energy_card):
-				print("ISSUE #528 FIX ACTIVE: Rainbow Energy held - a basic Energy in hand fits ", target_pokemon.metadata.get("name", ""))
+				print("ISSUE #402 FIX ACTIVE: Rainbow Energy held - a basic Energy in hand fits ", target_pokemon.metadata.get("name", ""))
 				score -= 200.0
 		
 		"Full Heal Energy":

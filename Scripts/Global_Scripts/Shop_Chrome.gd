@@ -218,7 +218,7 @@ static func add_fish_coin_chip(parent: Node, fish_coins: int, wallet: Control) -
 	return chip
 
 
-## ISSUE #208: THE CHIP'S OWN RECT IS EMPTY - ASK FOR THE PILL'S.
+## ISSUE #209: THE CHIP'S OWN RECT IS EMPTY - ASK FOR THE PILL'S.
 ##
 ## add_wallet_chip returns a bare holder Control that is never sized or
 ## positioned: the pill, the icon and the figure are children placed at absolute

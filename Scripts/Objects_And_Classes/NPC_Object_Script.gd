@@ -47,7 +47,7 @@ func _ready():
 	add_to_group("npcs")
 	super._ready()
 
-## ISSUE #166: EVERY NPC THAT SELLS SOMETHING GETS THE SHOP BUBBLE.
+## ISSUE #167: EVERY NPC THAT SELLS SOMETHING GETS THE SHOP BUBBLE.
 ##
 ## The test used to be npc_type == "shop", which is only the original pack
 ## shopkeepers. Every service NPC added since — the coin flipper, the card buyer,

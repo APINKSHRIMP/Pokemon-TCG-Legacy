@@ -15,8 +15,8 @@ extends Node
 #                    Energy    dropped on one of your Pokemon -> attached to it
 #                    Evolution dropped on a Pokemon it evolves from -> evolved
 #                    Trainer   dropped on a Pokemon it can be played onto -> played on it
-#                              (ISSUE #547); released just above the hand -> played
-#                    Basic     released just above the hand (play_line_y, ISSUE #548) -> benched
+#                              (ISSUE #421); released just above the hand -> played
+#                    Basic     released just above the hand (play_line_y, ISSUE #422) -> benched
 #                  A drop that cannot happen flashes the card red and flies it back
 #                  to its slot; a drop on nothing just flies it back.
 #   drag Active onto a Bench Pokemon (or a Bench Pokemon onto the Active) retreats,
@@ -155,7 +155,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _on_press(mb: InputEventMouseButton) -> void:
-	# ISSUE #545: Alt is read off THIS click, not polled - Input.is_key_pressed(KEY_ALT) can stay
+	# ISSUE #419: Alt is read off THIS click, not polled - Input.is_key_pressed(KEY_ALT) can stay
 	# "down" after an Alt-Tab eats the release, and every click then opened the large hand.
 	if not board_free() or mb.alt_pressed:
 		return
@@ -165,10 +165,10 @@ func _on_press(mb: InputEventMouseButton) -> void:
 		_press = {"kind": "hand", "card": hand_hit["card"], "node": hand_hit["node"], "start": pos}
 		get_viewport().set_input_as_handled()
 		return
-	# ISSUE #545: a click on the hand bar that misses every card (the gaps, the bar's edge) used to
+	# ISSUE #419: a click on the hand bar that misses every card (the gaps, the bar's edge) used to
 	# fall through to the old handler and open the large hand view. Alt + click is the way to it now.
 	if _on_hand_bar(pos):
-		print("ISSUE #545 FIX ACTIVE: click on the hand bar between cards - large hand not opened (Alt + click opens it)")
+		print("ISSUE #419 FIX ACTIVE: click on the hand bar between cards - large hand not opened (Alt + click opens it)")
 		if bar_selected != null:
 			clear_bar_selection()
 		get_viewport().set_input_as_handled()
@@ -243,7 +243,7 @@ func _hand_card_at(pos: Vector2) -> Dictionary:
 	return hit
 
 
-## ISSUE #548: a Trainer or Basic is played once it is released this far above the TOP of the hand's
+## ISSUE #422: a Trainer or Basic is played once it is released this far above the TOP of the hand's
 ## cards - just clear of the hand, not a third of the screen up (PLAY_LINE is only the fallback when
 ## the hand has no cards drawn to measure). TWEAKABLE: PLAY_ABOVE_HAND_PX.
 const PLAY_ABOVE_HAND_PX := 6.0
@@ -260,7 +260,7 @@ func play_line_y() -> float:
 	return top - PLAY_ABOVE_HAND_PX
 
 
-## ISSUE #545: is `pos` on the bottom-bar hand area (its visible clip, or the hand box itself)?
+## ISSUE #419: is `pos` on the bottom-bar hand area (its visible clip, or the hand box itself)?
 func _on_hand_bar(pos: Vector2) -> bool:
 	var box: Control = main.player_hand_container
 	if box == null or not box.is_visible_in_tree() or main.player_hand.is_empty():
@@ -493,11 +493,11 @@ func _drop_target_rect(press: Dictionary, pos: Vector2) -> Rect2:
 		"EVOLVE":
 			return pokemon_rect(mon) if mon in main.get_valid_evolution_targets(card, false) else Rect2()
 		"PLAY_TRAINER":
-			return pokemon_rect(mon) if trainer_drop_ok(card, mon) else Rect2()   # ISSUE #547
+			return pokemon_rect(mon) if trainer_drop_ok(card, mon) else Rect2()   # ISSUE #421
 	return Rect2()
 
 
-# ── Trainers dropped on a Pokemon (ISSUE #547) ───────────────────────────────
+# ── Trainers dropped on a Pokemon (ISSUE #421) ───────────────────────────────
 # A Trainer that is played ONTO one of your Pokemon - Potion, Super Potion, Defender, PlusPower,
 # every Pokemon Tool and Technical Machine, Switch, Scoop Up, Devolution Spray... - can be dropped
 # straight on it: the Pokemon is framed while the card hovers, and the card's own "choose a
@@ -611,8 +611,8 @@ func _resolve_drop(press: Dictionary, pos: Vector2) -> void:
 		return
 
 	var action := String(main.get_card_action(card).get("action", ""))
-	var above_line := pos.y < play_line_y()   # ISSUE #548: just above the hand
-	print("ISSUE #548 FIX ACTIVE: drop at y ", int(pos.y), " vs play line ", int(play_line_y()), " -> ", "above" if above_line else "in the hand")
+	var above_line := pos.y < play_line_y()   # ISSUE #422: just above the hand
+	print("ISSUE #422 FIX ACTIVE: drop at y ", int(pos.y), " vs play line ", int(play_line_y()), " -> ", "above" if above_line else "in the hand")
 	match action:
 		"ATTACH_ENERGY":
 			var target := pokemon_at(pos)
@@ -635,7 +635,7 @@ func _resolve_drop(press: Dictionary, pos: Vector2) -> void:
 		"SET_POKEMON", "PLAY_TRAINER":
 			# A Basic on a bench slot goes to that slot; anywhere else above the line, to the end.
 			var slot := bench_slot_at(pos) if action == "SET_POKEMON" else -1
-			# ISSUE #547: a Trainer dropped on a Pokemon it can be played onto counts wherever that is.
+			# ISSUE #421: a Trainer dropped on a Pokemon it can be played onto counts wherever that is.
 			var drop_mon: card_object = pokemon_at(pos) if action == "PLAY_TRAINER" else null
 			var on_target: bool = drop_mon != null and trainer_drop_ok(card, drop_mon)
 			if not above_line and slot < 0 and not on_target:
@@ -652,7 +652,7 @@ func _resolve_drop(press: Dictionary, pos: Vector2) -> void:
 					return
 			main.bench_drop_index = slot
 			if on_target:
-				print("ISSUE #547 FIX ACTIVE: ", card.metadata.get("name", ""), " dropped on ", drop_mon.metadata.get("name", ""))
+				print("ISSUE #421 FIX ACTIVE: ", card.metadata.get("name", ""), " dropped on ", drop_mon.metadata.get("name", ""))
 				main.trainer_drop_target = drop_mon
 			_land_and(press, func(): return await main.play_hand_card_from_board(card))
 		_:
@@ -671,7 +671,7 @@ func _land_and(press: Dictionary, play: Callable) -> void:
 	_busy = false
 	main.play_from_rect_override = {}
 	main.bench_drop_index = -1
-	main.trainer_drop_target = null   # ISSUE #547: never carried into a later play
+	main.trainer_drop_target = null   # ISSUE #421: never carried into a later play
 
 
 func _drop_floater(node: Control, keep_hidden: bool = false) -> void:

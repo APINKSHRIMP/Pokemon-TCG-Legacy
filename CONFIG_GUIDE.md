@@ -853,11 +853,11 @@ are derived from it, so a single key recolours the whole box.
 | `dark_blue` | `light_blue` | `aqua` | `lime` |
 | `green` | `dark_green` | `light_pink` | `dark_pink` |
 | `light_red` | `dark_red` | `orange` | `yellow` |
-| `purple` | `lilac` | `white`¹ | `grey` |
+| `purple` | `lilac` | `white` | `grey` |
 | `black` | | | |
 
-¹ **`white` is reserved for the rival** (not implemented yet) and is deliberately
-used by no NPC or opponent in the data. Don't hand it out.
+`match` is not on this list on purpose: it is the in-match box's own accent and
+is never a speaker's colour.
 
 An omitted, empty or misspelled value falls back to `MessageBoxTheme.DEFAULT_THEME`
 (`grey`) rather than erroring. Grey is also what every **interactable** uses —

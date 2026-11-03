@@ -122,12 +122,12 @@ func _on_window_input(event: InputEvent) -> void:
 		if (event as InputEventMouseButton).pressed:
 			now = MOUSE
 	elif event is InputEventKey:
-		# ISSUE #544: Shift / Ctrl / Alt / Caps / Escape / Delete are pressed alongside the mouse -
+		# ISSUE #418: Shift / Ctrl / Alt / Caps / Escape / Delete are pressed alongside the mouse -
 		# they leave the device as it is (a keyboard player stays on the keyboard too).
 		if (event as InputEventKey).pressed and not UIInput.is_mouse_companion_key(event as InputEventKey):
 			now = KEYBOARD
 		elif (event as InputEventKey).pressed and not (event as InputEventKey).echo and last == MOUSE:
-			print("ISSUE #544 FIX ACTIVE: ", OS.get_keycode_string((event as InputEventKey).keycode), " kept mouse mode")
+			print("ISSUE #418 FIX ACTIVE: ", OS.get_keycode_string((event as InputEventKey).keycode), " kept mouse mode")
 	elif event is InputEventJoypadButton:
 		if (event as InputEventJoypadButton).pressed:
 			now = PAD
@@ -142,6 +142,14 @@ func _on_window_input(event: InputEvent) -> void:
 # ── Menu focus ───────────────────────────────────────────────────────────────
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Pad Y / Q: jump the cursor to the screen's main action (Buy, Save, Sell...) - the menu twin of
+	# the match's "Y jumps to End Turn". Long grids (400+ coins) would otherwise take dozens of presses.
+	if UIInput.is_end_turn_jump(event):
+		var main_btn := _primary_action_button()
+		if main_btn != null:
+			main_btn.grab_focus()
+			get_viewport().set_input_as_handled()
+		return
 	if UIInput.nav_direction(event) == Vector2i.ZERO:
 		return
 	var vp := get_viewport()
@@ -173,6 +181,29 @@ func _first_menu_button() -> Control:
 	if scope != null:
 		root = scope
 	return first_focusable_in(root)
+
+
+## The enabled, visible button styled as the screen's go-ahead action (variant good / primary /
+## selected - see UIKit.style_button), lowest on the screen (the footer). Inside a popup, its own.
+func _primary_action_button() -> Control:
+	var root: Node = _search_root()
+	if root == null:
+		return null
+	var trap := _trap_root()
+	if trap != null:
+		root = trap
+	var found: Array = []
+	_collect_buttons(root, found)
+	var best: Control = null
+	for b in found:
+		if not (b is Button):
+			continue
+		var v := String((b as Button).get_meta("ui_variant", ""))
+		if not v in ["good", "primary", "selected"]:
+			continue
+		if best == null or (b as Control).global_position.y > best.global_position.y:
+			best = b
+	return best
 
 
 ## The node the menu-focus search starts from: the current scene when it is a menu

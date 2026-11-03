@@ -115,12 +115,12 @@ func _locked_door_text(target_map: String) -> String:
 # LIFECYCLE
 # ============================================================
 
-## ISSUE #543: the BGM this map should play RIGHT NOW. Outdoor maps (Celeste Harbour, Verdant Forest, Gym Plaza...)
+## ISSUE #417: the BGM this map should play RIGHT NOW. Outdoor maps (Celeste Harbour, Verdant Forest, Gym Plaza...)
 ## go quiet at Bedtime - nobody is out that late - so the world is left to its ambient sounds. Interiors keep theirs.
 func _bgm_now() -> String:
 	# The open sea's "BGM" is its ambience (waves), not music - it carries on.
 	if uses_time_of_day() and GameState.get_time() == "Bedtime" and get_bgm_path() != SoundManagerScript.BGM_SEA_SOUNDS:
-		print("ISSUE #543 FIX ACTIVE: no outdoor BGM at Bedtime on ", name)
+		print("ISSUE #417 FIX ACTIVE: no outdoor BGM at Bedtime on ", name)
 		return ""
 	return get_bgm_path()
 
@@ -130,7 +130,7 @@ func _start_map_bgm(restart: bool) -> void:
 	if bgm != "":
 		SoundManagerScript.play_bgm(bgm, restart)
 	elif get_bgm_path() != "":
-		SoundManagerScript.stop_bgm()   # ISSUE #543: an outdoor map at Bedtime
+		SoundManagerScript.stop_bgm()   # ISSUE #417: an outdoor map at Bedtime
 
 func _ready():
 	_start_map_bgm(true)
@@ -163,7 +163,7 @@ func _ready():
 	var scene_path := get_scene_path()
 	var arrival_door := _find_arrival_door(GameState.entering_from)
 
-	# ISSUE #96 FIX: every branch below is fed by a ONE-SHOT flag, but each used to clear only its own
+	# ISSUE #100 FIX: every branch below is fed by a ONE-SHOT flag, but each used to clear only its own
 	# flag — so whenever a higher-priority branch won, the loser's flag survived into the next map load
 	# and hijacked that spawn instead ("spawns are whack all over"). The worst offender was
 	# entering_from: a door key with no matching entry in the destination fell through to the default
@@ -238,7 +238,7 @@ func _ready():
 		tween.tween_property(_sleep_overlay, "modulate:a", 0.0, 1.5)
 		tween.tween_callback(_sleep_overlay.queue_free)
 
-	# ISSUE #52 FIX: reopen the main-menu overlay on top of the freshly-reloaded map when returning
+	# ISSUE #53 FIX: reopen the main-menu overlay on top of the freshly-reloaded map when returning
 	# from a sub-menu, so the transparent menu shows the world map behind it instead of black.
 	if GameState.reopen_menu_overlay:
 		GameState.reopen_menu_overlay = false
@@ -287,10 +287,10 @@ func _apply_camera_room() -> void:
 func _exit_tree():
 	if get_tree().node_added.is_connected(_on_node_added_grade):
 		get_tree().node_added.disconnect(_on_node_added_grade)
-	# ISSUE #56: snapshot NPC/opponent positions before this map unloads (battle, sub-menu, door) so
+	# ISSUE #57: snapshot NPC/opponent positions before this map unloads (battle, sub-menu, door) so
 	# they resume from where they were instead of teleporting back to their data-file spawn on reload.
 	MapManager.capture_actor_positions()
-	# ISSUE #52: never leave a freed map registered as the menu overlay host.
+	# ISSUE #53: never leave a freed map registered as the menu overlay host.
 	if GameState.menu_overlay_host == self:
 		GameState.menu_overlay_host = null
 
@@ -362,7 +362,7 @@ func _setup_doors():
 	door_areas.monitorable     = true
 	door_areas.body_entered.connect(_on_door_entered)
 
-# ISSUE #93: the OPPONENTS/NPCS container is the parent every NPC and opponent is spawned into, so
+# ISSUE #97: the OPPONENTS/NPCS container is the parent every NPC and opponent is spawned into, so
 # their data-file positions are relative to it. This used to look only at the scene root, which meant
 # dragging the container under another node in the editor silently fell through to the runtime
 # fallback below — a fresh container at (0,0) — and every actor in that map spawned offset by the
@@ -508,7 +508,7 @@ func _open_menu_overlay() -> void:
 	_menu_canvas_layer.add_child(menu_instance)
 	_menu_instance = menu_instance
 
-	# ISSUE #52 FIX (retest): register as the overlay host so the main menu can open sub-menus as
+	# ISSUE #53 FIX (retest): register as the overlay host so the main menu can open sub-menus as
 	# further overlays on top of this still-loaded map, instead of swapping the whole scene out.
 	GameState.menu_overlay_host = self
 
@@ -520,8 +520,8 @@ func _close_menu_overlay() -> void:
 	_menu_instance = null
 	if GameState.menu_overlay_host == self:
 		GameState.menu_overlay_host = null
-	# ISSUE #96 FIX: _open_menu_overlay() saves a menu-return position so a full scene change back into
-	# this map lands the player where they opened the menu. Since ISSUE #52 the overlay closes WITHOUT
+	# ISSUE #100 FIX: _open_menu_overlay() saves a menu-return position so a full scene change back into
+	# this map lands the player where they opened the menu. Since ISSUE #53 the overlay closes WITHOUT
 	# a scene change, so nothing ever consumed that state — it sat in GameState forever and won the
 	# spawn-resolution race in _ready() (it is checked first). Every later load of this same scene —
 	# returning from a battle, walking back in through a door — then teleported the player to that stale
@@ -531,10 +531,10 @@ func _close_menu_overlay() -> void:
 		GameState.clear_menu_return_state()
 	MapManager.set_overworld_paused(false)
 	_player.unlock_movement()
-	_start_map_bgm(false)   # ISSUE #543
+	_start_map_bgm(false)   # ISSUE #417
 
 # ============================================================
-# SUB-MENU OVERLAYS (ISSUE #52)
+# SUB-MENU OVERLAYS (ISSUE #53)
 # ============================================================
 # The map scene used to be unloaded whenever a sub-menu (deck/costume/coin/sleeves/options/info) was
 # opened, so coming back to the main menu meant reloading the whole world from scratch — a long black
@@ -555,7 +555,7 @@ func open_submenu_overlay(scene_path: String) -> void:
 	# whole menu at the same time as the sub-menu's own back handler.
 	if _menu_instance != null and is_instance_valid(_menu_instance):
 		_menu_instance.set_process_input(false)
-		# ISSUE #128: and it must stop PLAYING, or its theme runs under the sub-menu's own track.
+		# ISSUE #130: and it must stop PLAYING, or its theme runs under the sub-menu's own track.
 		if _menu_instance.has_method("pause_music"):
 			_menu_instance.pause_music()
 
@@ -587,9 +587,9 @@ func close_submenu_overlay(restore_menu: bool = true) -> void:
 		_menu_canvas_layer.visible = true
 	if _menu_instance != null and is_instance_valid(_menu_instance):
 		_menu_instance.set_process_input(true)
-		if _menu_instance.has_method("resume_music"):   # ISSUE #128
+		if _menu_instance.has_method("resume_music"):   # ISSUE #130
 			_menu_instance.resume_music()
-	# ISSUE #406: the menu only predicts in its _ready, which does not re-run when it is
+	# ISSUE #319: the menu only predicts in its _ready, which does not re-run when it is
 	# merely re-shown. Top the pools back up for the next pick (skips anything cached).
 	SceneCache.predict_menu_screens.call_deferred()
 	# The Costume sub-menu can change the player's sprite; push it onto the live player node since

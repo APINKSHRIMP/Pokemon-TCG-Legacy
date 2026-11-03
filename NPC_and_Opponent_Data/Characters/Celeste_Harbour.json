@@ -2410,30 +2410,6 @@
       ],
       "sleeve": "1_Default_English"
     },
-    "RIVAL 1": {
-      "days": "1",
-      "times": "M,A,E",
-      "loop": false,
-      "placeholder": true
-    },
-    "RIVAL 2": {
-      "days": "2",
-      "times": "M",
-      "loop": false,
-      "placeholder": true
-    },
-    "RIVAL 3": {
-      "days": "3",
-      "times": "M,A,E,N",
-      "loop": false,
-      "placeholder": true
-    },
-    "RIVAL 4": {
-      "days": "4",
-      "times": "M",
-      "loop": false,
-      "placeholder": true
-    },
     "Rocket Grunt Damien": {
       "at": [940, 1050],
       "days": "3-7/2",

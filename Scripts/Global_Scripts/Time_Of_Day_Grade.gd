@@ -41,7 +41,7 @@ const GRADES := {
 		"curve": Vector3(0.0, 0.0, 0.0),
 	},
 	"Evening": {
-		# ISSUE #386: warmer - fitted red row x1.10 (was x1.05) and blue row x0.95, so the
+		# ISSUE #299: warmer - fitted red row x1.10 (was x1.05) and blue row x0.95, so the
 		# dusk leans red/orange. Brightness is back to 1.0 in BRIGHTNESS below.
 		"red":   Vector4(0.844, 0.530, 0.156, 0.026),
 		"green": Vector4(0.005, 0.759, 0.000, 0.051),
@@ -49,7 +49,7 @@ const GRADES := {
 		"curve": Vector3(-0.575, 0.072, 0.122),
 	},
 	"Night": {
-		# ISSUE #387: a deeper, bluer night - fitted red row x0.90 and green row x0.94, blue
+		# ISSUE #300: a deeper, bluer night - fitted red row x0.90 and green row x0.94, blue
 		# row untouched, so everything darkens except the blue channel.
 		"red":   Vector4(0.636, -0.140, -0.016, -0.086),
 		"green": Vector4(-0.128, 0.592, -0.062, -0.082),
@@ -71,9 +71,9 @@ const GRADES := {
 const STRENGTH := {"Morning": 1.4, "Afternoon": 1.0, "Evening": 1.0, "Night": 1.0, "Bedtime": 1.0}
 
 ## TWEAKABLE -- overall brightness multiplier on top of the grade (0.85 = 15% darker).
-## ISSUE #386: Evening back to 1.0 (it had been darkened to 0.85).
+## ISSUE #299: Evening back to 1.0 (it had been darkened to 0.85).
 ## Bedtime is 25% darker than Night (0.85 x 0.75 = 0.64), then another 20% (x 0.8).
-## ISSUE #506: Night 10% lighter (0.85 x 1.1 = 0.935), Bedtime 10% darker (0.51 x 0.9 = 0.459).
+## ISSUE #380: Night 10% lighter (0.85 x 1.1 = 0.935), Bedtime 10% darker (0.51 x 0.9 = 0.459).
 ## 2026-11-01: Morning 5% darker (0.95); Evening 15% darker (0.85); Night down to the old
 ## Bedtime level (0.459); Bedtime way darker (0.459 -> 0.25, ~45% down).
 const BRIGHTNESS := {"Morning": 0.95, "Afternoon": 1.0, "Evening": 0.85, "Night": 0.459, "Bedtime": 0.25}

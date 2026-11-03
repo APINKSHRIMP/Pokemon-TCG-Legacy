@@ -13,7 +13,7 @@ var COIN_SEPARATION      := COIN_SEPARATION_BASE
 var COIN_SEPARATION_V    := COIN_SEPARATION_BASE
 const COLUMNS_BASE       := 17
 var COLUMNS              := COLUMNS_BASE
-# ISSUE #397: room around the grid, inside the scroll clip, for the selected coin's
+# ISSUE #311: room around the grid, inside the scroll clip, for the selected coin's
 # pulse. Must be at least COIN_SIZE * (SELECT_PULSE - 1) / 2 (10px at 1.2). TWEAKABLE.
 const PULSE_ROOM         := 12.0
 
@@ -44,12 +44,12 @@ var selected_coin_rect   : TextureRect = null
 var saved_coin_name      : String = ""
 
 var _active_tween        : Tween = null
-var _scroll              : ScrollContainer = null   # ISSUE #397: the grid sits in a MarginContainer now
+var _scroll              : ScrollContainer = null   # ISSUE #311: the grid sits in a MarginContainer now
 var _active_particles    : CPUParticles2D = null
 # Tracks which rect received the most recent click — reset each frame in _input
 var _last_clicked_rect   : TextureRect = null
 
-# ISSUE #32: input-blocking loading overlay shown while the coin grid builds.
+# ISSUE #33: input-blocking loading overlay shown while the coin grid builds.
 var _loading_overlay     : MenuLoadingOverlay = MenuLoadingOverlay.new()
 
 # Flat set of owned coin filenames e.g. {"Pikachu Gold 1.png": true}
@@ -73,7 +73,7 @@ var _total_coins         : int = 0
 var zoom_overlay     : CanvasLayer = null
 var is_zoomed        : bool = false
 var last_zoomed_coin : TextureRect = null
-# ISSUE #98: same hold-to-preview model as the deck builder — while Shift is held, _process re-reads
+# ISSUE #102: same hold-to-preview model as the deck builder — while Shift is held, _process re-reads
 # the hovered coin every frame so the player can slide across the grid and flick through previews.
 # The preview is sticky: hovering the gap between coins keeps the current one rather than closing it
 # (closing and reopening flashed the bright UI underneath). Only releasing Space closes it.
@@ -112,7 +112,7 @@ func _ready() -> void:
 	_wrap_grid_in_scroll_container()
 	_apply_grid_layout()
 	UIKit.on_screen_resized(_apply_grid_layout)
-	# ISSUE #32: block input behind a loading overlay while the (potentially large) coin grid builds.
+	# ISSUE #33: block input behind a loading overlay while the (potentially large) coin grid builds.
 	# Retest: shrink the blocker 142px top / 134px bottom so the banner buttons (Cancel) stay clickable.
 	# The hide button sits in that unblocked top strip, so disable it outright while a build runs.
 	hide_btn.disabled = true
@@ -123,7 +123,7 @@ func _ready() -> void:
 	if not is_inside_tree():
 		return
 	hide_btn.disabled = false
-	coins_built.emit()   # ISSUE #476
+	coins_built.emit()   # ISSUE #350
 
 	# After all coins are in the grid, auto-select the player's saved coin
 	if saved_coin_name != "":
@@ -148,13 +148,13 @@ func _build_chrome() -> void:
 	_count_chip_holder = bars["header"].left
 	_refresh_count_chip()
 
-	UIKit.adopt_button(hide_btn, bars["header"].right, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(hide_btn, bars["header"].right, "neutral", false)   # ISSUE #292
 	# Fixed width: the two labels are different lengths and a button that resizes
 	# under the cursor as you toggle it is disorienting.
 	hide_btn.custom_minimum_size.x = FILTER_BTN_W
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #292: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
@@ -217,7 +217,7 @@ func _process(_delta: float) -> void:
 	if _active_particles and selected_coin_rect:
 		_active_particles.global_position = selected_coin_rect.global_position + selected_coin_rect.size / 2.0
 
-	# ISSUE #98: while the zoom key is held, keep the preview locked to whatever coin the mouse is
+	# ISSUE #102: while the zoom key is held, keep the preview locked to whatever coin the mouse is
 	# over. The is_zoom_held() re-check catches an alt-tab that swallowed the key release, which
 	# would otherwise leave the preview stuck open.
 	if zoom_held:
@@ -283,7 +283,7 @@ func _load_player_data() -> void:
 func _wrap_grid_in_scroll_container() -> void:
 	var parent = grid.get_parent()
 
-	# ISSUE #397: the selected coin pulses to SELECT_PULSE, which pushed the coins
+	# ISSUE #311: the selected coin pulses to SELECT_PULSE, which pushed the coins
 	# on the top row and outer columns past the ScrollContainer's clip edge. The
 	# scroll box grows outward by PULSE_ROOM and a MarginContainer pads the grid
 	# back in by the same amount, so the grid sits where it always did but every
@@ -345,7 +345,7 @@ func _load_coins() -> void:
 
 	SceneCache.start_build_budget()
 	for fname in files:
-		# ISSUE #32 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
+		# ISSUE #33 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
 		if not is_inside_tree():
 			return
 		# Owned-only mode skips unowned coins before the per-item frame yield below. That yield is
@@ -367,7 +367,7 @@ func _add_coin_to_grid(file_name: String) -> void:
 	var texture : Texture2D = null
 	if is_owned:
 		# Usually already in memory: the pause menu prewarms every owned coin.
-		texture = SceneCache.cached_texture(COIN_FOLDER + "/" + file_name, "coin")   # ISSUE #406: own pool
+		texture = SceneCache.cached_texture(COIN_FOLDER + "/" + file_name, "coin")   # ISSUE #319: own pool
 		if texture == null:
 			return
 
@@ -376,7 +376,7 @@ func _add_coin_to_grid(file_name: String) -> void:
 	rect.custom_minimum_size = COIN_SIZE
 	rect.size                = COIN_SIZE
 	rect.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	# ISSUE #397: IGNORE_SIZE, so the tile is exactly COIN_SIZE whatever the art's
+	# ISSUE #311: IGNORE_SIZE, so the tile is exactly COIN_SIZE whatever the art's
 	# proportions - FIT_WIDTH_PROPORTIONAL let the width follow the texture.
 	rect.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
 	rect.pivot_offset        = COIN_SIZE / 2.0
@@ -404,7 +404,7 @@ func _add_coin_to_grid(file_name: String) -> void:
 # After the grid is fully populated, find the rect whose coin_name matches and
 # trigger the selection animation on it automatically
 func _select_coin_by_name(coin_name: String) -> void:
-	# ISSUE #397: let the grid lay out first - the sparkle reads the rect's global
+	# ISSUE #311: let the grid lay out first - the sparkle reads the rect's global
 	# position and size, which are not real until the container has sorted.
 	await get_tree().process_frame
 	if not is_inside_tree():
@@ -423,7 +423,7 @@ func _select_coin_by_name(coin_name: String) -> void:
 # in both states: a colour change implies a mode, and this is a plain action.
 func _refresh_hide_button() -> void:
 	hide_btn.text = "Show all coins" if _hide_unowned else "Show owned only"
-	UIKit.style_button(hide_btn, "neutral")   # ISSUE #379
+	UIKit.style_button(hide_btn, "neutral")   # ISSUE #292
 
 
 func _on_hide_pressed() -> void:
@@ -532,10 +532,10 @@ func _deselect_coin(rect: TextureRect) -> void:
 		_active_particles = null
 	rect.modulate     = Color(0.8, 0.8, 0.8)
 	rect.scale        = Vector2(1.0, 1.0)
-	rect.pivot_offset = COIN_SIZE / 2.0   # ISSUE #397
+	rect.pivot_offset = COIN_SIZE / 2.0   # ISSUE #311
 
 
-## ISSUE #263 (retest): TWEAKABLE - peak scale of the selected-coin pulse in the
+## ISSUE #264 (retest): TWEAKABLE - peak scale of the selected-coin pulse in the
 ## COIN CASE, which is the screen the row was actually about. It was 1.02: two
 ## pixels on a 100px coin, which is no feedback at all. 1.2 is the same 20% grow
 ## the costume grid uses (SELECT_PULSE there, raised for this exact reason in
@@ -546,7 +546,7 @@ func _apply_selected_animation(rect: TextureRect) -> void:
 	if _active_tween:
 		_active_tween.kill()
 
-	# ISSUE #397: the pivot comes from the CONSTANT, not rect.size. The saved coin is
+	# ISSUE #311: the pivot comes from the CONSTANT, not rect.size. The saved coin is
 	# auto-selected straight after the grid builds, before layout has sized the rect,
 	# so rect.size / 2 put the pivot off-centre and that coin swelled lopsidedly
 	# (looking much bigger) until it was clicked and the pivot was recomputed.
@@ -605,7 +605,7 @@ func _on_save_pressed() -> void:
 
 
 func _on_cancel_pressed() -> void:
-	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+	if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
@@ -613,9 +613,9 @@ func _on_cancel_pressed() -> void:
 
 func _input(event: InputEvent) -> void:
 	if walkthrough_active:
-		return   # ISSUE #476: Olly's intro is driving this screen
+		return   # ISSUE #350: Olly's intro is driving this screen
 	# ── Hold-to-preview ──
-	# Shift, not Space. Space is the accept key (ISSUE #97: an unhandled press fell through to
+	# Shift, not Space. Space is the accept key (ISSUE #101: an unhandled press fell through to
 	# "ui_accept" and re-pressed whichever button still had focus, so previewing a coin also
 	# re-toggled "Show Unowned Coins"). Shift has no other job here, so nothing needs consuming.
 	# Tested before the InputEventKey branch so the pad shoulder button reaches it too.
@@ -631,10 +631,10 @@ func _input(event: InputEvent) -> void:
 	# UIInput: Escape, Backspace or pad B.
 	if UIInput.is_cancel(event):
 		if is_zoomed:
-			zoom_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
+			zoom_held = false   # ISSUE #102: drop the hold too, or _process re-opens the preview
 			_hide_zoom()
 			return
-		if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+		if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 		return
 
@@ -682,7 +682,7 @@ func _show_zoom(rect: TextureRect) -> void:
 	last_zoomed_coin = rect
 	zoomed_coin      = rect
 
-	# ISSUE #98: overlay already up — swap the image in place. Rebuilding the CanvasLayer showed the
+	# ISSUE #102: overlay already up — swap the image in place. Rebuilding the CanvasLayer showed the
 	# bright coin grid through for a frame every time the hover moved to another coin.
 	if is_zoomed and zoom_image != null and is_instance_valid(zoom_image):
 		_apply_zoom_texture(rect.texture)
@@ -785,7 +785,7 @@ func _get_coin_sparkle_colour(coin_path: String) -> Color:
 
 
 # ============================================================
-# INTRO WALKTHROUGH — ISSUE #476
+# INTRO WALKTHROUGH — ISSUE #350
 # ============================================================
 # Olly's intro opens the coin case and "puts the coins in": each owned coin's tile is hidden, then the
 # coin appears large and faint as if held up to the player's eyes, fades in, and shrinks fast down

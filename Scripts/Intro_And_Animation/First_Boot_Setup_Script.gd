@@ -51,7 +51,7 @@ func _ready() -> void:
 	await _load_sprites()
 
 
-# ISSUE #210: the PTCG main-menu theme that used to play in the Gym Plaza. The two
+# ISSUE #211: the PTCG main-menu theme that used to play in the Gym Plaza. The two
 # swapped: the plaza now shares the Gym Challenge Hall track it adjoins.
 #
 # Routed through SoundManagerScript rather than a local player ON PURPOSE. The
@@ -78,7 +78,7 @@ func _fade_in() -> void:
 
 # ─── UI construction ─────────────────────────────────────────────────────────
 #
-# ISSUE #192: THIS SCREEN IS CONVERTED NOW. It had the new buttons, boxes and font
+# ISSUE #193: THIS SCREEN IS CONVERTED NOW. It had the new buttons, boxes and font
 # but was still drawing the pre-overhaul chrome — the blue/black scrolling borders
 # and the light background — because it was the one screen that never went through
 # UIKit.convert_legacy_screen(). It does now, which frees the scene's BACKGROUND
@@ -99,7 +99,7 @@ const SAVE_BTN_W    := 420.0
 const FIELD_FONT    := 30
 
 func _build_ui() -> void:
-	# ISSUE #192: the chrome. Must run FIRST — it frees BACKGROUND and forces the
+	# ISSUE #193: the chrome. Must run FIRST — it frees BACKGROUND and forces the
 	# 40x40 scene root to full-rect, which everything below is positioned against.
 	var bars := UIKit.convert_legacy_screen(self, "New trainer")
 
@@ -169,7 +169,7 @@ func _build_ui() -> void:
 	_build_hard_mode_page()
 
 
-## One centred text field on the field background. ISSUE #192: white text, not the
+## One centred text field on the field background. ISSUE #193: white text, not the
 ## black these two carried from the light background they used to sit on.
 func _make_field(placeholder: String, max_len: int, w: float, y: float,
 		font_size: int) -> LineEdit:
@@ -220,13 +220,13 @@ func _add_sprite_to_grid(file_name: String) -> void:
 	if texture == null:
 		return
 
-	# ISSUE #380: FIT THE CHARACTER, NOT THE CANVAS.
+	# ISSUE #293: FIT THE CHARACTER, NOT THE CANVAS.
 	# Fitting the whole image made every canvas the same size, but the canvases are
 	# not padded alike: the Black/White sprites (Hilda, Hilbert, Rosa, Nate) are
 	# 128px squares with the character in barely half of it, so they came out at
 	# about half the height of everyone else. The sprite is cropped to its visible
 	# (non-transparent) pixels first, and THAT is what gets fitted to the cell.
-	# ISSUE #399: the crop moved to UIKit.visible_sprite so the trainer info and
+	# ISSUE #310: the crop moved to UIKit.visible_sprite so the trainer info and
 	# costume screens share it.
 	texture = UIKit.visible_sprite(texture)
 	var tex_size  := texture.get_size()
@@ -372,7 +372,7 @@ func _refresh_save_btn() -> void:
 	var all_ok    := name_ok and dob_ok and sprite_ok
 
 	_save_btn.disabled = not all_ok
-	# ISSUE #192: through UIKit so the button keeps press-to-fire and the casing.
+	# ISSUE #193: through UIKit so the button keeps press-to-fire and the casing.
 	UIKit.style_button(_save_btn, "primary" if all_ok else "secondary")
 
 
@@ -489,9 +489,9 @@ const FAMILIARITY_ROWS := [
 
 const MODE_TITLES := ["Normal Mode", "Hard Mode"]
 const MODE_ROWS := [
-	[["on", "Start with the Advanced Deck"], ["on", "3x bonus for each new win"],
+	[["on", "Start with the Advanced Deck"],
 		["on", "Rematches allowed"], ["on", "Rule and bonus modifier matches at the usual pace"]],
-	[["off", "Draft start, no guaranteed cards"], ["off", "No 3x bonus for new wins"],
+	[["off", "Draft start from 12 packs, no guaranteed cards"],
 		["off", "No rematches"], ["warn", "Rule and bonus modifier matches come earlier"]],
 ]
 const MODE_NOTE := "Hard Mode is locked in once the game starts and can't be changed later."

@@ -18,10 +18,10 @@ const COLUMNS          := 5
 var GIFT_COIN_SIZE     := Vector2(250, 250) * UIKit.item_scale()
 const GIFT_FLIP_TOTAL  := 1.5
 
-# ISSUE #92: fallback price for an inventory entry with no "cost" field. TWEAKABLE, but the real
+# ISSUE #95: fallback price for an inventory entry with no "cost" field. TWEAKABLE, but the real
 # prices live in coin_shop_inventory.json — keep this in step with them so a malformed entry can't
 # quietly sell a coin at an out-of-date price.
-const DEFAULT_COIN_COST := 100   # ISSUE #167: coins are $100, not $500
+const DEFAULT_COIN_COST := 100   # ISSUE #168: coins are $100, not $500
 
 ## TWEAKABLE — how far the coin ART is knocked back in each resting state. Both are applied
 ## with self_modulate so the price pill, which is a child, keeps its own colour. OWNED_DIM was
@@ -40,7 +40,7 @@ var selected_coin_rect : TextureRect = null
 var _active_tween      : Tween       = null
 var _active_particles  : CPUParticles2D = null
 var _in_purchase_seq   : bool        = false
-# ISSUE #116 sibling: the reveal's OK button, held so _input() can press it from the keyboard.
+# ISSUE #118 sibling: the reveal's OK button, held so _input() can press it from the keyboard.
 var _reveal_ok_btn     : Button      = null
 
 # ─── Theme references ─────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ func _build_chrome() -> void:
 		old_title.queue_free()
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #292: Cancel is the negative colour
 	UIKit.adopt_button(buy_btn, bars["footer"].centre, "primary")
 
 
@@ -261,7 +261,7 @@ func _deselect_coin(rect: TextureRect) -> void:
 		rect.pivot_offset  = rect.size / 2.0
 
 
-## ISSUE #263 (retest): 1.2 -> 1.08, i.e. 10% less. The user's original row was
+## ISSUE #264 (retest): 1.2 -> 1.08, i.e. 10% less. The user's original row was
 ## about the COIN CASE, not this screen - see Coin_Case_Script.SELECT_PULSE - and
 ## the shop only needed to come back down once the case was doing the shouting.
 ## TWEAKABLE - peak scale of the selected-coin pulse, matched to the
@@ -376,7 +376,7 @@ func _show_purchase_display(coin_filename: String) -> void:
 	# Play flip animation, then reveal OK
 	await _play_flip_animation(coin_rect, back_tex, coin_tex)
 	ok_btn.visible = true
-	_reveal_ok_btn = ok_btn   # ISSUE #116 sibling: _input() presses this from the keyboard
+	_reveal_ok_btn = ok_btn   # ISSUE #118 sibling: _input() presses this from the keyboard
 
 	# Wait for player to dismiss
 	await ok_btn.pressed
@@ -418,7 +418,7 @@ func _on_cancel_pressed() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# ISSUE #116 FIX ACTIVE (sibling of the holo shop): the coin shop's purchase reveal has the
+	# ISSUE #118 FIX ACTIVE (sibling of the holo shop): the coin shop's purchase reveal has the
 	# identical overlay + OK button, so it takes the identical keyboard handling -- Space / Enter
 	# / Escape press OK. Consumed so the press can't also fire ui_accept on a focused button.
 	if _reveal_ok_btn != null and is_instance_valid(_reveal_ok_btn):

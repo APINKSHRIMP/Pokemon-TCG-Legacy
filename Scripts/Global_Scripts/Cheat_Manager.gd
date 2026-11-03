@@ -14,19 +14,19 @@ const _CHEAT_LABELS := {
 	"CHT.Add_Starter_Set":  "Starter set added",
 	"CHT.Add_Shop_Set":     "Shop set added",
 	"CHT.Remove_All_Cards": "Remove all cards cheat activated",
-	# ISSUE #134: cosmetic collections. "All" means every file the matching grid screen lists —
+	# ISSUE #136: cosmetic collections. "All" means every file the matching grid screen lists —
 	# the universes come from GameState so these can never disagree with the trainer card counters.
 	"CHT.All_Coins":        "All coins cheat activated",
 	"CHT.All_Costumes":     "All costumes cheat activated",
 	"CHT.All_Sleeves":      "All sleeves cheat activated",
-	# ISSUE #155: every basic-Energy printing the deck builder's style picker can offer.
+	# ISSUE #156: every basic-Energy printing the deck builder's style picker can offer.
 	"CHT.All_Energy_Styles": "All energy styles cheat activated",
-	# ISSUE #385: the old "Fairer retreat" Options button, now a cheat - and its undo.
+	# ISSUE #298: the old "Fairer retreat" Options button, now a cheat - and its undo.
 	"CHT_Retreat.Confused":  "Fairer confusion retreat rules enabled",
 	"CHT_Vanilla.Confusion": "Confusion rules set to vanilla",
 }
 
-# ISSUE #99: the four groups between them must cover EVERY set in Card_Set_Data/ — the promo sets
+# ISSUE #103: the four groups between them must cover EVERY set in Card_Set_Data/ — the promo sets
 # (basep, si1, np) and the five POP sets were missing entirely, so no cheat could ever unlock them.
 # Each promo set is grouped with the era it belongs to.
 const _SET_GROUPS := {
@@ -40,7 +40,7 @@ const _SET_GROUPS := {
 # Returns the display message if `name` is a recognised cheat code and the
 # cheat was applied, or an empty string if it is not a cheat code.
 #
-# ISSUE #131 FIX: matching is CASE-INSENSITIVE. The codes are typed into the trainer-card name
+# ISSUE #133 FIX: matching is CASE-INSENSITIVE. The codes are typed into the trainer-card name
 # box, an ordinary free-text field with no hint that "CHT.All_Cards_1" has to be capitalised
 # exactly like that -- so "cht.all_cards_1" and "CHT.ALL_CARDS_1" now work too. The canonical
 # spelling from _CHEAT_LABELS is what gets applied and reported back, so the confirmation popup
@@ -89,7 +89,7 @@ static func _apply(code: String) -> void:
 			var costumes := GameState.get_costume_universe().keys()
 			var new_costumes := GameState.add_costumes_to_collection(costumes)
 		"CHT.All_Energy_Styles":
-			# ISSUE #155: the universe comes from GameState.ENERGY_STYLES, the same table the deck
+			# ISSUE #156: the universe comes from GameState.ENERGY_STYLES, the same table the deck
 			# builder's picker is built from, so this can never grant a style the picker won't show.
 			var styles := GameState.get_energy_style_universe()
 			var new_styles := GameState.add_energy_styles_to_collection(styles)
@@ -126,7 +126,7 @@ static func _set_cards_in_set(set_id: String, count: int) -> void:
 		_mark_pack_unlocked(set_id)
 
 
-# ISSUE #133 FIX: "Card Sets Unlocked" on the trainer card counts progress["packs_unlocked"], NOT
+# ISSUE #135 FIX: "Card Sets Unlocked" on the trainer card counts progress["packs_unlocked"], NOT
 # the per-set `set_unlocked` flag the card cheats were writing -- so a cheat could hand the player
 # every card in a set (pushing "Sets Completed" up) while "Card Sets Unlocked" never moved. The two
 # stores mean different things (owned_cards.set_unlocked = "the deck builder may browse this set";

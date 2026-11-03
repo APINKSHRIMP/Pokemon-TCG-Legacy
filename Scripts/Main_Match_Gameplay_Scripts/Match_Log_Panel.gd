@@ -97,7 +97,7 @@ const HEADER_PILL_GAP   : float = 10.0
 const HEADER_FONT_SIZE  : int   = 24
 const HEADER_HINT_SIZE  : int   = 19
 const HEADER_RULE_H     : float = 2.0
-## ISSUE #161: the opponent sprite drawn inside their header pill. TWEAKABLE — the
+## ISSUE #162: the opponent sprite drawn inside their header pill. TWEAKABLE — the
 ## height is fixed and the width follows the trimmed art's aspect.
 const HEADER_ICON_H     : float = 38.0
 const HEADER_ICON_GAP   : float = 10.0
@@ -221,7 +221,7 @@ func configure(theme_key: String, opponent_label: String) -> void:
 # component family without borrowing its private layout code.
 func _build_header(header_w: float) -> void:
 	var x := 0.0
-	# ISSUE #161: the opponent's overworld sprite sits in their name pill, exactly
+	# ISSUE #162: the opponent's overworld sprite sits in their name pill, exactly
 	# as it does on the message boxes outside a match. The sprite name is carried
 	# in GameState.last_battled_opponent_entry, written when the battle starts.
 	x = _add_header_pill(_opponent_label, 0, x, _opponent_sprite_name())
@@ -254,7 +254,7 @@ func _build_header(header_w: float) -> void:
 
 # Draws one pill at `x` and returns the x the next pill should start at.
 # `ramp_index` walks MessageBoxTheme's chip ramp exactly like a real chip row.
-## ISSUE #161: the overworld sprite-sheet name for the opponent being fought, or
+## ISSUE #162: the overworld sprite-sheet name for the opponent being fought, or
 ## "" when there is none (the T-key TEST match leaves it blank on purpose).
 func _opponent_sprite_name() -> String:
 	var entry = GameState.last_battled_opponent_entry
@@ -269,7 +269,7 @@ func _add_header_pill(text: String, ramp_index: int, x: float,
 	var text_w := _font.get_string_size(
 		text, HORIZONTAL_ALIGNMENT_LEFT, -1, HEADER_FONT_SIZE).x
 
-	# ISSUE #161: DynamicMessageBox.sprite_icon() crops the idle-down frame of the
+	# ISSUE #162: DynamicMessageBox.sprite_icon() crops the idle-down frame of the
 	# 4x4 sheet to its opaque pixels and caches it, so this is the same picture the
 	# overworld chip row draws and costs nothing after the first call.
 	var icon_tex: Texture2D = null
@@ -298,7 +298,7 @@ func _add_header_pill(text: String, ramp_index: int, x: float,
 	lbl.add_theme_color_override("font_color", _pill_text_color(col))
 	lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# ISSUE #161: with a sprite in the pill the label is left-aligned after it;
+	# ISSUE #162: with a sprite in the pill the label is left-aligned after it;
 	# without one it keeps the centred look every other pill has.
 	if icon_tex != null:
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -445,7 +445,7 @@ func _make_row(text: String, opp: bool, index: int, kind: String = "") -> Contro
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color(0, 0, 0, ROW_TINT_ALPHA if index % 2 == 1 else 0.0)
 	# A tutorial help message: a tinted row with a thick accent stripe and a bold TUTORIAL tag,
-	# so the hints stand out from the play-by-play at a glance. (ISSUE #480: was "HELP".)
+	# so the hints stand out from the play-by-play at a glance. (ISSUE #354: was "HELP".)
 	if kind == "tutorial":
 		var accent: Color = UIKit.selection_colour()
 		box.bg_color = Color(accent.r, accent.g, accent.b, TUTORIAL_ROW_ALPHA)

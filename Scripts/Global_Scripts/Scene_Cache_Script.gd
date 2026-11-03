@@ -70,11 +70,11 @@ const SCENES_TO_PRELOAD: Array = [
 
 var _cache: Dictionary = {}            # path -> PackedScene
 var _pending: Array = []               # paths still loading
-var _waiting: Array = []               # paths not started yet (ISSUE #403)
+var _waiting: Array = []               # paths not started yet (ISSUE #316)
 var _started: bool = false
 var _preload_start_usec: int = 0
 
-## ISSUE #403 / #409: how many scenes load on background threads AT ONCE during the splash.
+## ISSUE #316 / #409: how many scenes load on background threads AT ONCE during the splash.
 ## It used to be all ~37 together. The maps share TileSets and sheet textures, and Godot's
 ## threaded loader races when several loads pull in the same sub-resource at the same time:
 ## sometimes a texture came back EMPTY - "Image width specified (0 pixels)" in the log, then
@@ -96,14 +96,14 @@ func preload_all_async() -> void:
 	# never slow the splash down.
 	_owned_prewarm_wanted = true
 	_preload_start_usec = Time.get_ticks_usec()
-	# ISSUE #403: queued, then started PRELOAD_IN_FLIGHT at a time by _start_waiting().
+	# ISSUE #316: queued, then started PRELOAD_IN_FLIGHT at a time by _start_waiting().
 	for path in SCENES_TO_PRELOAD:
 		if not _cache.has(path):
 			_waiting.append(path)
 	_start_waiting()
 
 
-## ISSUE #403: tops the in-flight threaded loads back up to PRELOAD_IN_FLIGHT.
+## ISSUE #316: tops the in-flight threaded loads back up to PRELOAD_IN_FLIGHT.
 func _start_waiting() -> void:
 	while _pending.size() < PRELOAD_IN_FLIGHT and not _waiting.is_empty():
 		var path: String = _waiting.pop_front()
@@ -185,7 +185,7 @@ func _drain_completed() -> void:
 			_:
 				still_pending.append(path)
 	_pending = still_pending
-	_start_waiting()   # ISSUE #403: the next scene starts the moment a slot frees up
+	_start_waiting()   # ISSUE #316: the next scene starts the moment a slot frees up
 
 
 # ============================================================
@@ -203,7 +203,7 @@ func _drain_completed() -> void:
 #            know what they are about to draw (the deck builder's current set and
 #            its two neighbours, both decks at match start).
 #   "coin" / "costume" / "sleeve" - each pause-menu screen's own art, one pool per
-#            screen so they never evict each other (ISSUE #406). Filled by
+#            screen so they never evict each other (ISSUE #319). Filled by
 #            predict_menu_screens() the moment the pause menu opens, and again on the
 #            way back from a sub-menu, so whichever screen is picked is in memory.
 #   "menu" - everything else menu-side (the energy-icon large art).
@@ -218,7 +218,7 @@ const CARD_CACHE_MAX := 900
 ## TWEAKABLE: how many other menu images (the energy-icon large art and the deck
 ## builder's odd extras) stay in memory.
 const MENU_CACHE_MAX := 600
-## ISSUE #406: coins, costumes and sleeves each have their OWN pool. They used to share
+## ISSUE #319: coins, costumes and sleeves each have their OWN pool. They used to share
 ## the 600-slot "menu" pool, but a full collection is 420 coins + 429 costumes + 593
 ## sleeves, so predicting all three pushed the coins straight back out, and opening one
 ## screen evicted the next one's art - coins -> sleeves or deck -> costumes reloaded
@@ -404,7 +404,7 @@ func predict_menu_screens() -> void:
 	var coin_paths: Array = []
 	for coin in GameState.progress.get("coins", []):
 		coin_paths.append(COIN_FOLDER + String(coin))
-	# ISSUE #406: one pool each, so predicting (or opening) one never evicts another.
+	# ISSUE #319: one pool each, so predicting (or opening) one never evicts another.
 	prewarm_textures(coin_paths, "coin")
 	prewarm_textures(_owned_files_in(COSTUME_FOLDER, GameState.progress.get("costumes", []), false), "costume")
 	prewarm_textures(_owned_files_in(SLEEVE_SMALL_FOLDER, GameState.progress.get("sleeves", []), true), "sleeve")

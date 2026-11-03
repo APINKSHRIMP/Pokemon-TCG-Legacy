@@ -8,7 +8,7 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 
 var _player_in_bed_area: bool = true  # starts true to suppress any load-time trigger
 const SLEEP_FADE_DURATION := 2.5
-# ISSUE #457: what the bed says before Night, by time slot (Evening is also the fallback).
+# ISSUE #331: what the bed says before Night, by time slot (Evening is also the fallback).
 const BED_TOO_EARLY_TEXT := {
 	"Morning":   "I've only just woken up, I'm not getting back in bed now!",
 	"Afternoon": "I'd love an afternoon nap... but I'd end up sleeping for hours...",

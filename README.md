@@ -123,7 +123,7 @@ The game is technically playable now, you could download the godot project from 
 
 4. Add Pokemon to the overworld to flesh out the world along with the additional NPCs.
 
-5. Rival/Friend planned with specific interactions, helping you start the game and giving you a nudge in the right direction while testing your skill as you progress.
+5. The three leads (Ellie, Olly and Alexander) take the rival/friend role, with specific interactions helping you start the game, giving you a nudge in the right direction and testing your skill as you progress. Days 1-3 are built; day 4 onwards is still to write.
 
 6. Add controller support for windows. Most overworld interacions already support this, but a lot of additional work is required for in game matches to be controller supported instead of mouse clicks
 

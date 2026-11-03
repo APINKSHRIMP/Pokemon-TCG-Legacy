@@ -175,10 +175,10 @@ const BGM_SHOP_3                         := BGM_DIR + "Shop3 (Undertale Sans The
 const BGM_VERDANT_FOREST                 := BGM_DIR + "Verdant Forest (DPPT Eterna Forest)" + BGM_EXT
 const BGM_BEACH                          := BGM_DIR + "beach_bgm (PMD Beach at dusk)" + BGM_EXT
 const BGM_COIN_MODE                      := BGM_DIR + "coin_mode (PTCG Water Club)" + BGM_EXT
-# Hard Mode's draft: Olly's nine packs opening only (the deck build after it uses BGM_COIN_MODE).
+# Hard Mode's draft: Olly's twelve packs opening only (the deck build after it uses BGM_COIN_MODE).
 const BGM_DRAFT_TIME                     := BGM_DIR + "DraftTime (RSE Trick House)" + BGM_EXT
 # The PTCG main-menu theme. The FILE was renamed gym_plaza -> starting_menu when the
-# track moved off the Gym Plaza (ISSUE #210) and onto the boot splash and the
+# track moved off the Gym Plaza (ISSUE #211) and onto the boot splash and the
 # first-launch setup screen, but this constant kept pointing at the old name, so
 # every load() of it returned null and the setup screen booted in silence.
 const BGM_STARTING_MENU                  := BGM_DIR + "starting_menu (PTCG Main Menu)" + BGM_EXT

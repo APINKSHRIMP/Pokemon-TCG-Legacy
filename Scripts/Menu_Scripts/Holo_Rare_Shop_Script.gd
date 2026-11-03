@@ -8,12 +8,12 @@ const CARD_COST       := 400
 ## Grows with the screen (UIKit.item_scale()).
 var CARD_SIZE         := Vector2(265, 364) * UIKit.item_scale()
 const CARD_SEPARATION := 3
-# ISSUE #115: the bought card was too small on screen. Up 50% (318x437 -> 477x655.5), which
+# ISSUE #117: the bought card was too small on screen. Up 50% (318x437 -> 477x655.5), which
 # lands it in the same ballpark as the 430x600 a single card gets when handed over as a gift
 # (MapManager.GIFT_CARD_SIZES). Aspect ratio is unchanged.
 const REVEAL_SIZE     := Vector2(477, 655.5)
 const CELESTE_HARBOUR := "res://Scenes/Map_Scenes/Celeste_Harbour.tscn"
-const CARD_BACK_PATH  := "res://Image_Assets/Sleeves/1_Default_English.png"  # ISSUE #50 sibling: cardback.png doesn't exist -> null texture
+const CARD_BACK_PATH  := "res://Image_Assets/Sleeves/1_Default_English.png"  # ISSUE #51 sibling: cardback.png doesn't exist -> null texture
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
@@ -25,7 +25,7 @@ var _selected_idx    : int        = -1
 var _active_tween    : Tween      = null
 var player_cash      : int        = 0
 var _in_purchase_seq : bool       = false
-# ISSUE #116: the reveal's OK button, held so _input() can press it from the keyboard.
+# ISSUE #118: the reveal's OK button, held so _input() can press it from the keyboard.
 var _reveal_ok_btn   : Button     = null
 
 # ─── Theme references ────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ func _build_chrome() -> void:
 		old_title.queue_free()
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #292: Cancel is the negative colour
 	UIKit.adopt_button(buy_btn, bars["footer"].centre, "primary")
 
 
@@ -313,7 +313,7 @@ func _show_card_reveal(card: Dictionary) -> void:
 	reveal_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay_layer.add_child(reveal_rect)
 
-	# ISSUE #101 FIX ACTIVE: the sparkle used to start here, before the flip — so the card was still
+	# ISSUE #105 FIX ACTIVE: the sparkle used to start here, before the flip — so the card was still
 	# spinning through its card-back frames while already glittering, which gave the reveal away and
 	# looked wrong. Start it only once the flip has fully settled on the card face.
 	var cd : Dictionary = {"id": card["id"], "supertype": card["supertype"], "types": card["types"]}
@@ -339,7 +339,7 @@ func _show_card_reveal(card: Dictionary) -> void:
 	ok_btn.position = Vector2(vp_size.x / 2.0 - 200.0, got_label.position.y + 90.0)
 	UIKit.style_button(ok_btn, "good")
 	overlay_layer.add_child(ok_btn)
-	_reveal_ok_btn = ok_btn   # ISSUE #116: _input() presses this from the keyboard
+	_reveal_ok_btn = ok_btn   # ISSUE #118: _input() presses this from the keyboard
 
 	await ok_btn.pressed
 
@@ -448,7 +448,7 @@ func _on_cancel_pressed() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# ISSUE #116 FIX ACTIVE: Space / Enter / Escape press the reveal's OK button, the same as
+	# ISSUE #118 FIX ACTIVE: Space / Enter / Escape press the reveal's OK button, the same as
 	# every other dialog in the game. Keys are classified by UIInput, never by keycode, and the
 	# event is consumed so it cannot ALSO fire ui_accept on whichever button holds focus.
 	if _reveal_ok_btn != null and is_instance_valid(_reveal_ok_btn):
@@ -458,6 +458,6 @@ func _input(event: InputEvent) -> void:
 		return
 	if _in_purchase_seq:
 		return
-	# ISSUE #116 sibling: was a raw KEY_ESCAPE test; routed through UIInput like the rest.
+	# ISSUE #118 sibling: was a raw KEY_ESCAPE test; routed through UIInput like the rest.
 	if UIInput.is_cancel(event):
 		_on_cancel_pressed()

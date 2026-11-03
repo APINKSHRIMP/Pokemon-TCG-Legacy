@@ -48,7 +48,7 @@ func _ready() -> void:
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 	var bars := UIKit.convert_legacy_screen(self, "Bag")
 	_count_chip_holder = bars["header"].left
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #292: Cancel is the negative colour
 
 	var fit := UIKit.fit_grid(Vector2(UIKit.screen_w() - 120.0, UIKit.content_h()), CELL_SIZE_BASE,
 		Vector2(CELL_SEP, CELL_SEP))

@@ -24,7 +24,7 @@ const STYLE := {
 const REST_POS := Vector2(28.0, 28.0)
 const DROP_FROM := 70.0          # starts this far above its resting spot
 const DELAY := 0.6               # after the map loads, so the scene fade-in is done first
-# ISSUE #505: fly-in and stay are 2.5x their old values (0.35 -> 0.875, 1.0 -> 2.5).
+# ISSUE #379: fly-in and stay are 2.5x their old values (0.35 -> 0.875, 1.0 -> 2.5).
 const IN_TIME := 0.875
 const HOLD_TIME := 2.5
 const OUT_TIME := 0.35

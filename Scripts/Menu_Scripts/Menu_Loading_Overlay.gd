@@ -1,7 +1,7 @@
 class_name MenuLoadingOverlay
 extends RefCounted
 
-# ISSUE #32: shared input-blocking loading overlay for the large library menus (Sleeves, Costume,
+# ISSUE #33: shared input-blocking loading overlay for the large library menus (Sleeves, Costume,
 # Coin Case, Deck/Card builder). Shows a semi-transparent dim that eats all mouse input plus a small
 # box with a spinning square and "Loading…" while a grid builds. Extracted from the original inline
 # Sleeves implementation so every menu that suffers the multi-second grid build can reuse it verbatim.
@@ -20,7 +20,7 @@ var _overlay: CanvasLayer = null
 var _spinner_tween: Tween = null
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TWEAKABLE VALUES (ISSUE #32 retest) — all overlay geometry lives here
+# TWEAKABLE VALUES (ISSUE #33 retest) — all overlay geometry lives here
 # ══════════════════════════════════════════════════════════════════════════════
 # Dim opacity of the input blocker. 0.0 = invisible, 1.0 = solid black.
 # (Was 0.55; halved to 0.275 so it's easier to see through and flashes less when switching sets.)
@@ -29,10 +29,10 @@ const DIM_ALPHA: float = 0.275
 # Deck / Card builder layout — the banner runs down the RIGHT-HAND side, so the blocker
 # stops short of it and the loading box is nudged left of centre.
 const DECK_ICON_OFFSET_X: float = -150.0
-const DECK_ICON_OFFSET_Y: float = 11.0    # ISSUE #32 retest: box nudged 11px DOWN
+const DECK_ICON_OFFSET_Y: float = 11.0    # ISSUE #33 retest: box nudged 11px DOWN
 const DECK_TOP_INSET:     float = 96.0    # unblocked strip at the top    (was 142)
 const DECK_BOTTOM_INSET:  float = -45.0   # negative = runs past the screen bottom (was 134)
-# ISSUE #32 retest (26/07): the 78px widening belongs on the RIGHT, not the left. The right inset
+# ISSUE #33 retest (26/07): the 78px widening belongs on the RIGHT, not the left. The right inset
 # drops 315 -> 237, so the blocker now reaches 78px further right; the left inset goes back to 0.
 const DECK_RIGHT_INSET:   float = 237.0   # unblocked strip on the right  (was 315, before that 0)
 const DECK_LEFT_INSET:    float = 0.0     # back to the screen edge (was -78, which widened LEFT by mistake)
@@ -48,7 +48,7 @@ const LIBRARY_LEFT_INSET:    float = 0.0
 func is_showing() -> bool:
 	return _overlay != null and is_instance_valid(_overlay)
 
-## ISSUE #393: PUT THE BLOCKER ASIDE WITHOUT STOPPING THE LOAD.
+## ISSUE #307: PUT THE BLOCKER ASIDE WITHOUT STOPPING THE LOAD.
 ## The deck builder's filter screen opens OVER a search that is still building -
 ## it is an ordinary Control, and this overlay is a CanvasLayer at 200 that would
 ## otherwise draw over it and eat every click. Suspending just hides the layer;
@@ -68,7 +68,7 @@ func show_for_deck(host: Node) -> void:
 func show_for_library(host: Node) -> void:
 	show(host, LIBRARY_ICON_OFFSET_X, LIBRARY_TOP_INSET, LIBRARY_BOTTOM_INSET, LIBRARY_RIGHT_INSET, LIBRARY_LEFT_INSET, LIBRARY_ICON_OFFSET_Y)
 
-# ISSUE #32 (retest): `icon_offset_x` shifts the loading box horizontally (deck screen passes -150 to
+# ISSUE #33 (retest): `icon_offset_x` shifts the loading box horizontally (deck screen passes -150 to
 # offset the ~300px right-hand banner). `blocker_top_inset` / `blocker_bottom_inset` /
 # `blocker_right_inset` leave that many pixels UNBLOCKED at the top/bottom/right of the screen so
 # banner buttons (Cancel, set switch) stay clickable while the grid loads — the dim only covers the
@@ -77,7 +77,7 @@ func show(host: Node, icon_offset_x: float = 0.0, blocker_top_inset: float = 0.0
 	if host == null or not host.is_inside_tree():
 		return
 	hide()  # never stack two overlays
-	_suspended = false   # ISSUE #393
+	_suspended = false   # ISSUE #307
 	_overlay = CanvasLayer.new()
 	_overlay.layer = 200
 	host.add_child(_overlay)

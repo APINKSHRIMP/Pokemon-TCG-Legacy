@@ -1,5 +1,5 @@
 extends RefCounted
-## ISSUE #375 — CPU MULTI-TURN PLANNER (lookahead phase 3).
+## OLD ISSUE 375 — CPU MULTI-TURN PLANNER (lookahead phase 3).
 ##
 ## A fast abstract model of the match (Pokémon, HP, attached Energy types, status, hands, decks, Prizes) that whole turns
 ## are applied to, searched N turns deep: CPU turn → player's best reply → CPU turn → … The plan's FIRST turn steers the

@@ -3,7 +3,7 @@ extends Node
 # ============================================================
 # CARD FX — small "body language" animations for cards on the board
 # ============================================================
-# ISSUE #471 (Special Conditions), #474 (attack / power gestures), #486 (Knock Out fade).
+# ISSUE #345 (Special Conditions), #474 (attack / power gestures), #486 (Knock Out fade).
 #
 # Every effect plays on a GHOST: a stand-in TextureRect of the card's own image, the same
 # trick play_attack_hit uses, so the board's layout is never touched. Unlike the attack
@@ -21,14 +21,14 @@ var main   # Main_Match_Core_Gameplay_Script
 
 const GHOST_Z := 140
 
-# ── TWEAKABLE: Special Conditions (ISSUE #471) ─────────────────────────────────────────
+# ── TWEAKABLE: Special Conditions (ISSUE #345) ─────────────────────────────────────────
 # Poison: a slow, smooth sway (sine: speeds up through the middle, slows to a stop at
 # each end, turns round) while the card fades to purple and back.
 const POISON_TINT := Color(0.78, 0.45, 1.0)
 const POISON_SWAY_PX := 12.0
 const POISON_SWAY_PERIOD := 0.9     # seconds for one full left-right-left
 const POISON_SWAY_CYCLES := 3      # still used by Confusion, the sway gesture and the inflict beat
-# ISSUE #523: the Poisoned/Toxic STATUS sway only - 2 fewer left-right-lefts (3 -> 1) and 20% slower
+# ISSUE #397: the Poisoned/Toxic STATUS sway only - 2 fewer left-right-lefts (3 -> 1) and 20% slower
 # (0.9s -> 1.08s per cycle). Confusion and the other gestures keep the values above.
 const POISON_STATUS_SWAY_PERIOD := 1.08
 const POISON_STATUS_SWAY_CYCLES := 1
@@ -59,7 +59,7 @@ const SLEEP_Z_RISE := Vector2(34.0, -46.0)   # x is mirrored for the player's si
 const SLEEP_Z_FONT := 20
 const SLEEP_Z_GROW := 2.0
 
-# ── TWEAKABLE: attack / power gestures (ISSUE #474) ────────────────────────────────────
+# ── TWEAKABLE: attack / power gestures (ISSUE #348) ────────────────────────────────────
 const DECLARE_SHAKE_PX := 6.0       # every attack, as "X used Y!" opens
 const DECLARE_SHAKE_STEP := 0.045
 const DECLARE_SHAKES := 3           # left-right pairs
@@ -77,7 +77,7 @@ const TEETER_ANGLE := 0.12
 const TEETER_PERIOD := 0.3
 const TEETER_CYCLES := 3
 
-# ── TWEAKABLE: Knock Out (ISSUE #486) ──────────────────────────────────────────────────
+# ── TWEAKABLE: Knock Out (ISSUE #360) ──────────────────────────────────────────────────
 const KO_DARK := Color(0.5, 0.5, 0.5)     # 50% towards black - twice as dark as the old 0.75 (25%)
 const KO_DARK_TIME := 2.0
 const KO_SWAY_PX := 10.0
@@ -98,7 +98,7 @@ func _process(_delta: float) -> void:
 # ENTRY POINTS
 # ============================================================
 
-## ISSUE #471: a Special Condition has just landed (or ticked) on `card`.
+## ISSUE #345: a Special Condition has just landed (or ticked) on `card`.
 ## kind: "Poisoned" / "Toxic" / "Burned" / "Paralyzed" / "Confused" / "Asleep".
 func status(card: card_object, kind: String) -> void:
 	# Attack VFX: the condition's own effect (poison bubbles, flames, sparks...) plays over the card too.
@@ -106,7 +106,7 @@ func status(card: card_object, kind: String) -> void:
 		main.attack_vfx.play_status(card, kind)
 	match kind:
 		"Poisoned", "Toxic":
-			print("ISSUE #523 FIX ACTIVE: poison sway x", POISON_STATUS_SWAY_CYCLES, " @ ", POISON_STATUS_SWAY_PERIOD, "s")
+			print("ISSUE #397 FIX ACTIVE: poison sway x", POISON_STATUS_SWAY_CYCLES, " @ ", POISON_STATUS_SWAY_PERIOD, "s")
 			await _sway(card, POISON_SWAY_PX, POISON_STATUS_SWAY_PERIOD, POISON_STATUS_SWAY_CYCLES, POISON_TINT, 0.0)
 		"Paralyzed":
 			await _jolt(card, PARALYSIS_SHAKE_PX, PARALYSIS_SHAKE_STEP, PARALYSIS_SHAKES, PARALYSIS_TINT)
@@ -118,12 +118,12 @@ func status(card: card_object, kind: String) -> void:
 			await _asleep(card)
 
 
-## ISSUE #474: "X used Y!" -- three quick shakes, damaging or not.
+## ISSUE #348: "X used Y!" -- three quick shakes, damaging or not.
 func attack_declared(card: card_object) -> void:
 	await _jolt(card, DECLARE_SHAKE_PX, DECLARE_SHAKE_STEP, DECLARE_SHAKES * 2, Color.WHITE)
 
 
-## ISSUE #474: the gesture a NON-damaging attack makes instead of the lunge.
+## ISSUE #348: the gesture a NON-damaging attack makes instead of the lunge.
 func attack_intent(attacker: card_object, defender: card_object, attack: Dictionary) -> void:
 	var kind := classify_attack(attacker, attack)
 	match kind:
@@ -146,7 +146,7 @@ func attack_intent(attacker: card_object, defender: card_object, attack: Diction
 			await _teeter(attacker, TEETER_ANGLE, TEETER_PERIOD, TEETER_CYCLES)
 
 
-## ISSUE #474 (4): a Pokémon Power is used -- a small fast shake.
+## ISSUE #348 (4): a Pokémon Power is used -- a small fast shake.
 func power_used(card: card_object) -> void:
 	await _jolt(card, POWER_SHAKE_PX, POWER_SHAKE_STEP, POWER_SHAKES * 2, Color.WHITE)
 
@@ -182,7 +182,7 @@ func has_ghost(card: card_object) -> bool:
 	return card != null and _entries.has(card.get_instance_id())
 
 
-## ISSUE #474: a very simple reading of a 0-damage attack's text.
+## ISSUE #348: a very simple reading of a 0-damage attack's text.
 ##   "counters"  moves / places damage counters, or hits the Bench  (animation 3)
 ##   "inflict"   does something to the Defending Pokémon            (animation 1)
 ##   "self"      only does something to the attacker                (animation 2)
@@ -204,7 +204,7 @@ func classify_attack(attacker: card_object, attack: Dictionary) -> String:
 	return "other"
 
 
-## ISSUE #486: `card` has just been Knocked Out -- it slowly darkens and sways KO_SWAY_CYCLES
+## ISSUE #360: `card` has just been Knocked Out -- it slowly darkens and sways KO_SWAY_CYCLES
 ## times, then stays dark and still until end_ko().
 func start_ko(card: card_object) -> void:
 	if card == null or (_entries.has(card.get_instance_id()) and _entries[card.get_instance_id()]["ko"]):
@@ -225,7 +225,7 @@ func start_ko(card: card_object) -> void:
 		e["offset"] = Vector2(sin(TAU * cycles) * KO_SWAY_PX, 0.0)
 
 
-## ISSUE #486: the Knock Out message has been read -- the card lightens again as it leaves.
+## ISSUE #360: the Knock Out message has been read -- the card lightens again as it leaves.
 func end_ko(card: card_object) -> void:
 	if card == null or not _entries.has(card.get_instance_id()):
 		return

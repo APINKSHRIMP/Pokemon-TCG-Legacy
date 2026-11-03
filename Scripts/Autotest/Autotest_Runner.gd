@@ -67,11 +67,11 @@ var opt_weights_path := ""         # --weights=<abs path>: CPU weight multiplier
 var opt_result_path := ""          # --result=<abs path>: one JSON line per match, then {"done": true}
 var opt_synergy_path := ""        # --synergy=<abs path>: learned synergy table for this job ("" = none)
 var opt_branch_plan: Dictionary = {}   # --branch-plan=<abs path>: {"seed": decision number to branch at} (lab)
-var opt_cheat_cards := 0.0         # --cheat-cards=0..1: CPU sees Prizes + player hand/next draw (ISSUE #375)
-var opt_cheat_coins := 0.0         # --cheat-coins=0..1: CPU knows its coin results (ISSUE #375)
+var opt_cheat_cards := 0.0         # --cheat-cards=0..1: CPU sees Prizes + player hand/next draw (OLD ISSUE 375)
+var opt_cheat_coins := 0.0         # --cheat-coins=0..1: CPU knows its coin results (OLD ISSUE 375)
 var opt_counters_path := ""        # --counters=<abs path>: learned counter table for this job
 var opt_record := false            # --record: also run the dev match recorder (to test it)
-var opt_plan_turns := 0            # --plan-turns=N: CPU multi-turn planner depth (ISSUE #375 phase 3)
+var opt_plan_turns := 0            # --plan-turns=N: CPU multi-turn planner depth (OLD ISSUE 375 phase 3)
 var opt_era_mix := 0.0             # --era-mix=0..1: share of --real matches played with GENERATED era-pure decks
 const ERA_SETS := {"neo": ["neo1", "neo2", "neo3", "neo4", "np", "basep", "si1"], "ecard": ["ecard1", "ecard2", "ecard3"],
 	"ex": ["ex1", "ex2", "ex3", "ex4", "ex5", "ex6", "ex7", "ex8", "ex9", "ex10", "ex11", "ex12", "ex13", "ex14", "ex15", "ex16",
@@ -356,7 +356,7 @@ func _play_match(i: int) -> void:
 		var era_rng := RandomNumberGenerator.new()
 		era_rng.seed = match_seed * 31337 + 1
 		if opt_real and opt_era_mix > 0.0 and era_rng.randf() < opt_era_mix:
-			# ISSUE #375: a generated era-pure match (Neo / e-Card / EX), the CPU's deck and — 80% — the bot's from that era.
+			# OLD ISSUE 375: a generated era-pure match (Neo / e-Card / EX), the CPU's deck and — 80% — the bot's from that era.
 			var eras: Array = ERA_SETS.keys()
 			var era: String = eras[era_rng.randi() % eras.size()]
 			var keep_sets := opt_sets
@@ -639,7 +639,7 @@ func _cpu_close_turn() -> void:
 	for k in _cpu_used:
 		if k.begins_with("attack|"):
 			used_attack = k.get_slice("|", 2)
-	# ISSUE #375 smartness checks — flagged as "CPU DECISION" for review, with the CPU's own reasoning in problems.txt.
+	# OLD ISSUE 375 smartness checks — flagged as "CPU DECISION" for review, with the CPU's own reasoning in problems.txt.
 	var offered_attacks: Array = _cpu_offered.keys().filter(func(k): return k.begins_with("attack|"))
 	# The CPU won the game on this turn, or began an attack (Confusion, a "can't attack X" block): not a missed KO.
 	var cpu_won: bool = match_done and match_result == "loss"

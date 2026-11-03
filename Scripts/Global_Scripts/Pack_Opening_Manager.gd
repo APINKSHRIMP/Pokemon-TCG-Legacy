@@ -20,7 +20,7 @@ signal all_packs_opened
 
 const CARD_DISPLAY_SIZE  := Vector2(563, 788)
 const PACK_IMAGES_FOLDER := "res://Image_Assets/Packs/"
-const CARDBACK_PATH      := "res://Image_Assets/Sleeves/1_Default_English.png"  # ISSUE #50: was cardback.png which doesn't exist -> null texture crash
+const CARDBACK_PATH      := "res://Image_Assets/Sleeves/1_Default_English.png"  # ISSUE #51: was cardback.png which doesn't exist -> null texture crash
 const CARD_SET_DATA_PATH := "res://Card_Set_Data/"
 
 # The pack sits exactly this many pixels proud of the revealed card on every side, so it fully
@@ -132,7 +132,7 @@ func get_pack_target_rect() -> Rect2:
 
 ## Cardback texture for the reveal: ALWAYS the default back.
 ##
-## ISSUE #206: this used to be the player's equipped sleeve (ISSUE #50), matching
+## ISSUE #207: this used to be the player's equipped sleeve (ISSUE #51), matching
 ## the match board. A sleeve is something you put YOUR deck in — the cards coming
 ## out of a freshly opened booster are not in it yet, so the pack reveal shows the
 ## printed back. _resolve_player_cardback_path() is kept below for the fallback
@@ -144,7 +144,7 @@ func _get_cardback_texture() -> Texture2D:
 	return tex
 
 
-## ISSUE #206: the printed card back every unopened booster card shows.
+## ISSUE #207: the printed card back every unopened booster card shows.
 const DEFAULT_CARDBACK_PATH := "res://Image_Assets/Sleeves/1_Default_English.png"
 
 
@@ -281,7 +281,7 @@ func _start_pack_opening() -> void:
 		_new_card_ids = _save_cards_to_player(pack_id_for_set, _pack_cards)
 	_current_card_index = 0
 
-	# ISSUE #34: Options "Pack Opening Animation Speed" = skip. Go straight from the buy press to the
+	# ISSUE #35: Options "Pack Opening Animation Speed" = skip. Go straight from the buy press to the
 	# finished row of cards — no fade-in, no tear, no cardback flip, no clicking through one card at
 	# a time. The overlay is already up (the buy button hid the shop as normal) and a click on the
 	# row dismisses it exactly as it does after the full animation.
@@ -747,7 +747,7 @@ func _generate_pack_cards(set_id: String) -> Array:
 		return god_result
 
 	# ── Standard pack ───────────────────────────────────────────
-	# ISSUE #196: A PACK IS ALWAYS TEN CARDS.
+	# ISSUE #197: A PACK IS ALWAYS TEN CARDS.
 	#
 	# The bonus rare used to be an ELEVENTH card bolted onto a full pack, at a 25%
 	# roll. It is half as likely now, and it REPLACES a common rather than adding
@@ -785,7 +785,7 @@ func _generate_pack_cards(set_id: String) -> Array:
 	return result
 
 
-## ISSUE #196: the standard pack's shape, and the bonus-rare roll.
+## ISSUE #197: the standard pack's shape, and the bonus-rare roll.
 ## Halved from 0.25. The bonus rare no longer makes an 11th card — it takes a
 ## common's slot, so PACK_COMMONS drops to 5 on a pack that rolls it and the pack
 ## is ten cards either way.
@@ -881,7 +881,7 @@ func _load_texture(path: String) -> Texture2D:
 	return load(path)
 
 
-# ISSUE #50 FIX: resolve the player's equipped sleeve to a loadable texture path,
+# ISSUE #51 FIX: resolve the player's equipped sleeve to a loadable texture path,
 # mirroring Main_Match_Core_Gameplay_Script._resolve_sleeve_path. Sleeves are stored
 # by name (no extension); the originals are a mix of .jpg and .png, so try both.
 func _resolve_player_cardback_path() -> String:

@@ -12,7 +12,7 @@ const CONSTANT_DATA_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.j
 const SHOP_CONFIG_PATH   := "res://NPC_and_Opponent_Data/Shop_Config/shops.json"
 
 # TWEAKABLE — body-text size for the "big announcement" messagebox style (story notices such as
-# Olly's deck hand-over, and since ISSUE #104 every "You received the X" gift/purchase notice). Normal dialogue is 28.
+# Olly's deck hand-over, and since ISSUE #108 every "You received the X" gift/purchase notice). Normal dialogue is 28.
 # This is a CEILING: set_body_text() shrinks past it if the text wouldn't otherwise fit the panel.
 const LARGE_MESSAGE_FONT_SIZE := 40
 
@@ -102,7 +102,7 @@ const MATCH_INTRO_SCENE := "res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_
 # Keys: {text, reward_coin}
 var _pending_juice_result: Dictionary = {}
 
-# ISSUE #120 / ISSUE #127: the loose "Cash: $N" Label that used to float under the message
+# ISSUE #122 / ISSUE #129: the loose "Cash: $N" Label that used to float under the message
 # box (and sit permanently in the marts) is gone. The player's cash is now a chip on the
 # right-hand end of the message box's own chip row, shown only while talking to a vendor.
 # See _apply_actor_chips() and _npc_is_vendor().
@@ -142,7 +142,7 @@ var _gift_display_container: Control = null
 # Full-screen dim overlay shown behind the gift display
 var _gift_dim_overlay: ColorRect = null
 
-# ISSUE #33: click-to-skip state for the gift reveal animation.
+# ISSUE #34: click-to-skip state for the gift reveal animation.
 var _gift_reveal_active: bool = false            # true while the coin/card/costume reveal plays
 var _gift_reveal_skip: bool = false              # set when the player clicks to skip
 var _gift_reveal_tweens: Array = []              # running reveal tweens (killed on skip)
@@ -154,14 +154,14 @@ var _set_name_cache: Dictionary = {}
 var _card_data_cache: Dictionary = {}
 var _loaded_card_sets: Dictionary = {}
 
-# ISSUE #56: overworld actor position tracker. Every NPC/opponent's live position is captured when
+# ISSUE #57: overworld actor position tracker. Every NPC/opponent's live position is captured when
 # the map unloads (battle, sub-menu, door), keyed by "<source_json_path>::<actor_name>". On the next
 # spawn from that same day file we restore the captured position instead of the data-file default, so
 # actors don't visibly teleport back to their spawn when the map reloads. Keying on the source json
 # path means a different time-of-day (a different day file) naturally falls back to fresh positions.
 var _actor_positions: Dictionary = {}
 
-# ISSUE #56 (retest): captured facing direction ("up"/"down"/"left"/"right") per actor, keyed the
+# ISSUE #57 (retest): captured facing direction ("up"/"down"/"left"/"right") per actor, keyed the
 # same way as _actor_positions. Restored on the next spawn so an NPC/opponent that turned to face the
 # player before a battle/menu resumes facing that way instead of snapping back to its pattern default.
 var _actor_facings: Dictionary = {}
@@ -378,13 +378,13 @@ func initialise(
 	_player.pokemon_interact_pressed.connect(_on_player_pokemon_interact)
 
 	if GameState.returning_from_battle:
-		_face_battled_opponent()   # ISSUE #504
+		_face_battled_opponent()   # ISSUE #378
 		if GameState.get_time() == "Bedtime" and not GameState.test_match_mode:
-			_bedtime_dismiss_battled_opponent()   # ISSUE #507 (runs on; not awaited)
+			_bedtime_dismiss_battled_opponent()   # ISSUE #381 (runs on; not awaited)
 		_handle_battle_return()
 
 
-## ISSUE #507: nobody is out at Bedtime, so the opponent the player has just fought must not stay to be
+## ISSUE #381: nobody is out at Bedtime, so the opponent the player has just fought must not stay to be
 ## rematched. The map comes back with them standing there (the battle-return respawn), the player waits,
 ## a quick fade to black and back, and they are gone. TWEAKABLE: the three timings.
 const BEDTIME_DISMISS_DELAY := 0.8   # after the map has faded in
@@ -435,7 +435,7 @@ func _bedtime_dismiss_battled_opponent() -> void:
 		_player.unlock_movement()
 
 
-## ISSUE #504: back from a battle, the opponent just fought is still looking at the player (and the
+## ISSUE #378: back from a battle, the opponent just fought is still looking at the player (and the
 ## player at them), whichever way its node was respawned -- the re-made "last battled" node and any
 ## pattern default both came back facing down.
 func _face_battled_opponent() -> void:
@@ -539,7 +539,7 @@ func _open_cosmetic_shop(npc: Node) -> void:
 # OPPONENT SPAWNING
 # ============================================================
 
-# ISSUE #56: assign a freshly-spawned actor its position — the captured live position from a previous
+# ISSUE #57: assign a freshly-spawned actor its position — the captured live position from a previous
 # visit to this same day file if one exists, otherwise the data-file default — and tag it with the
 # key so capture_actor_positions() can find it again when the map unloads.
 func _actor_key(actor_name: String) -> String:
@@ -553,7 +553,7 @@ func _assign_actor_position(actor: Node2D, actor_name: String, default_pos: Vect
 	var key := _actor_key(actor_name)
 	actor.position = _actor_positions.get(key, default_pos)
 	actor.set_meta("pos_key", key)
-	# ISSUE #56 (retest): stash the captured facing as a meta the actor applies at the END of its own
+	# ISSUE #57 (retest): stash the captured facing as a meta the actor applies at the END of its own
 	# _ready() (after _init_movement sets a pattern default), so the restored direction wins.
 	if _actor_facings.has(key):
 		actor.set_meta("restore_facing", _actor_facings[key])
@@ -567,7 +567,7 @@ func _assign_actor_position(actor: Node2D, actor_name: String, default_pos: Vect
 	if GameState.returning_from_battle:
 		actor.set_meta("face_player_on_spawn", true)
 
-# ISSUE #56: snapshot every tagged actor's current position. Called from BaseMapScene._exit_tree(),
+# ISSUE #57: snapshot every tagged actor's current position. Called from BaseMapScene._exit_tree(),
 # which fires for every overworld unload (battle start, sub-menu, door transition).
 func capture_actor_positions() -> void:
 	if _opponents_container == null or not is_instance_valid(_opponents_container):
@@ -575,7 +575,7 @@ func capture_actor_positions() -> void:
 	for child in _opponents_container.get_children():
 		if child.has_meta("pos_key"):
 			_actor_positions[child.get_meta("pos_key")] = child.position
-			# ISSUE #56 (retest): capture the facing at the same instant as the position so the actor
+			# ISSUE #57 (retest): capture the facing at the same instant as the position so the actor
 			# resumes exactly as it was at the moment the map unloaded (e.g. still facing the player).
 			if "current_facing" in child:
 				_actor_facings[child.get_meta("pos_key")] = child.current_facing
@@ -621,7 +621,7 @@ func set_overworld_paused(paused: bool) -> void:
 	if paused:
 		SoundManagerScript.stop_cry()
 
-# ISSUE #55: hard-stop every overworld actor (opponents + NPCs live in the opponents container) plus
+# ISSUE #56: hard-stop every overworld actor (opponents + NPCs live in the opponents container) plus
 # the player so nothing keeps wandering during the fade-out between accepting a battle and the intro.
 func _freeze_overworld_actors() -> void:
 	if _opponents_container != null and is_instance_valid(_opponents_container):
@@ -640,8 +640,8 @@ func _load_and_spawn_opponents(entries: Array):
 				entry[key] = consts[key]
 		if not _evaluate_condition(entry.get("condition", {})):
 			continue
-		# `placeholder` marks an entry that deliberately has no position -- the
-		# RIVALs, which become cutscene-triggered forced battles. Their dialogue and
+		# `placeholder` marks an entry that deliberately has no position -- one
+		# that is only ever fought from a cutscene (a forced battle). Their dialogue and
 		# schedule are kept in the data, but there is nothing to spawn here.
 		if entry.get("placeholder", false):
 			continue
@@ -655,7 +655,7 @@ func _load_and_spawn_opponents(entries: Array):
 			opp.set_meta("source", entry["_source"])
 		_opponents_container.add_child(opp)
 
-	# ISSUE #83 FIX: the T-key TEST match has no opponent in the world at all — its entry is synthesized
+	# ISSUE #86 FIX: the T-key TEST match has no opponent in the world at all — its entry is synthesized
 	# by GameState.build_test_opponent_data(), which deliberately carries only the handful of fields the
 	# match itself needs. Re-spawning it here crashed on the very first missing key ("meet_text"), and
 	# would have gone on to fail on position/sprite too. Skip the respawn entirely for a TEST match.
@@ -679,7 +679,7 @@ func _load_and_spawn_opponents(entries: Array):
 
 ## Copy one opponent entry's fields onto a freshly instantiated node.
 ##
-## ISSUE #83 FIX: defaults on every optional field — one missing dialogue key in a
+## ISSUE #86 FIX: defaults on every optional field — one missing dialogue key in a
 ## day file used to abort the whole map load with "Invalid access to key".
 ##
 ## Position, the `source` meta and add_child() are the caller's job: the three call
@@ -740,14 +740,14 @@ func _load_and_spawn_npcs(entries: Array):
 			npc.set_meta("source", entry["_source"])
 		_opponents_container.add_child(npc)
 		print("Spawned NPC: ", npc.npc_name, " at ", npc.position)
-		# ISSUE #93: local position is meaningless on its own — the container's own offset is what
+		# ISSUE #97: local position is meaningless on its own — the container's own offset is what
 		# went wrong, so print the global position that actually lands on screen.
 
 
 ## Copy one NPC entry's fields onto a freshly instantiated node. Position, the
 ## `source` meta and add_child() are the caller's job, as with opponents.
 ##
-## ISSUE #137: the Day-1 pair by the sea had each other's sprites in
+## ISSUE #139: the Day-1 pair by the sea had each other's sprites in
 ## All_NPC_Constant_Data.json -- the man (who gifts $250) wore Youngcouple2_2, the dress
 ## sprite, and the woman wore Youngcouple2, the trousers one. Fixed in the data, not here:
 ##   Local Man -> Youngcouple2   /   Local Woman -> Youngcouple2_2
@@ -921,7 +921,7 @@ func _build_message_box():
 #       chips.append({ "text": str(current_opponent.match_effects.size()),
 #                      "icon_path": MSG_ICON_DIR + "conditions.png" })
 const MSG_ICON_DIR := "res://Image_Assets/Icons/Message_Icons/"
-# ISSUE #120: reuses the outro's reward icon rather than adding a near-identical asset.
+# ISSUE #122: reuses the outro's reward icon rather than adding a near-identical asset.
 const CASH_CHIP_ICON := "res://Image_Assets/Icons/Reward_Icons/pokedollar_icon.png"
 const FISH_COIN_CHIP_ICON := "res://Image_Assets/Icons/Reward_Icons/FishCoin.png"
 ## Shop ids whose keepers also show the player's Fish Coins. Keep in step with the
@@ -936,7 +936,7 @@ const FISHING_CAPTAIN_ASK := "Are ye looking to be going out t' fish int' deepes
 const DEEP_OCEAN_PERMIT := "Deep_Ocean_Fishing_Permit"
 const DEEP_OCEAN_SCENE := "res://Scenes/Map_Scenes/DeepOceanFishing.tscn"
 
-# ISSUE #120: the NPCs that trade in cash -- the three marts and the coin/holo shops all run
+# ISSUE #122: the NPCs that trade in cash -- the three marts and the coin/holo shops all run
 # through the "shop" state machine, the juice bar through its own path. Only these show the
 # cash chip; everyone else gets a plain name chip as before.
 func _npc_is_vendor(npc: Node) -> bool:
@@ -947,7 +947,7 @@ func _npc_is_vendor(npc: Node) -> bool:
 			or t == "weighted_pack_seller" or t == "sleeve_seller" or t == "costume_seller"
 
 
-# ISSUE #120: rebuilds the right-hand cash chip from the live balance. Called whenever the
+# ISSUE #122: rebuilds the right-hand cash chip from the live balance. Called whenever the
 # box is (re)shown and after any purchase, so the figure on screen is never stale.
 func _apply_cash_chip() -> void:
 	if message_panel == null:
@@ -1053,7 +1053,7 @@ func _apply_actor_chips() -> void:
 	if current_opponent != null:
 		message_panel.set_system_variant(false)
 		message_panel.apply_theme(current_opponent.message_colour)
-		message_panel.set_right_chips([])   # ISSUE #120: opponents never show cash
+		message_panel.set_right_chips([])   # ISSUE #122: opponents never show cash
 		message_panel.set_name_pill(current_opponent.opponent_name, current_opponent.sprite)
 		# The pre-match line is the opponent talking, so it gets their blip. The match
 		# itself does not: every in-match box is the system variant, which is silent.
@@ -1091,7 +1091,7 @@ func _apply_actor_chips() -> void:
 		# silent are the ones below, where nobody is speaking.
 		message_panel.set_voice(current_npc.sprite)
 		message_panel.set_chips([])
-		_apply_cash_chip()   # ISSUE #120 -- vendors only, no-op for everyone else
+		_apply_cash_chip()   # ISSUE #122 -- vendors only, no-op for everyone else
 		return
 
 	# Nobody is speaking (a sign, the TV, the bed). That is the GAME talking, so it
@@ -1113,7 +1113,7 @@ func _show_message_with_choices(text: String):
 
 # font_size is a CEILING, not a fixed size — the box shrinks past it if the
 # text would not otherwise fit the panel.
-# ISSUE #126: "OK" boxes no longer draw an OK button -- a click anywhere, Space, Enter or
+# ISSUE #128: "OK" boxes no longer draw an OK button -- a click anywhere, Space, Enter or
 # Escape all dismiss them -- and the panel drops into the space the button row used to take.
 func _show_message_with_ok(text: String, font_size: int = 28):
 	text = await _emote_prelude(text)
@@ -1193,7 +1193,7 @@ func _flush_after_emote() -> void:
 	_emote_busy = false
 
 
-# ISSUE #28 FIX: shows an OK dialog styled like the match's LARGE message — large size, centred
+# ISSUE #29 FIX: shows an OK dialog styled like the match's LARGE message — large size, centred
 # horizontally AND vertically. Nothing needs restoring afterwards: set_body_text() re-derives the
 # size on every show, and the box's font is the kenney one this used to swap in by hand.
 func _show_large_message_with_ok(text: String) -> void:
@@ -1206,7 +1206,7 @@ func _show_large_message_with_ok(text: String) -> void:
 	message_panel.visible = true
 	_player.can_move = false
 
-# ISSUE #104: as _show_large_message_with_ok, but fires `on_ok` once the player dismisses it. Used to
+# ISSUE #108: as _show_large_message_with_ok, but fires `on_ok` once the player dismisses it. Used to
 # chain a big "You received the X" notice into the follow-up dialogue.
 func _show_large_message_then(text: String, on_ok: Callable) -> void:
 	_pending_ok_action = on_ok
@@ -1251,7 +1251,7 @@ func show_message_then(text: String, on_ok: Callable) -> void:
 	_pending_ok_action = on_ok
 	_show_message_with_ok(text)
 
-# ISSUE #136: an OK dialog spoken BY a named NPC, for use after the speaker has already been
+# ISSUE #138: an OK dialog spoken BY a named NPC, for use after the speaker has already been
 # cleared. _on_yes_pressed() calls _hide_message() before it runs the pending confirm callback,
 # and _hide_message() nulls current_npc -- so anything a shop/NPC says as the *result* of a Yes
 # (a shopkeeper's thank-you after a purchase) came out as a chipless grey
@@ -1329,7 +1329,7 @@ func start_forced_battle(entry: Dictionary, overrides: Dictionary = {}) -> void:
 	GameState.current_opponent_deck = str(entry.get("deck", ""))
 	GameState.current_opponent_map  = _map_data
 	GameState.player_position       = _player.position
-	GameState.save_player_direction(_player.get_current_direction())   # ISSUE #504
+	GameState.save_player_direction(_player.get_current_direction())   # ISSUE #378
 	GameState.returning_from_battle = false
 	GameState.return_map_scene_path = _map_scene_path
 	# No "position" key: _load_and_spawn_opponents() checks for one before
@@ -1415,7 +1415,7 @@ func handle_message_accept() -> void:
 	# has not finished reading. The second press does what it always did.
 	if message_panel.advance_consumed():
 		return
-	# ISSUE #126: there is no OK button to test any more -- the box itself reports which kind
+	# ISSUE #128: there is no OK button to test any more -- the box itself reports which kind
 	# it is. ok_armed is false while a gift reveal is still animating.
 	if message_panel.is_ok_mode():
 		if message_panel.ok_armed:
@@ -1459,7 +1459,7 @@ func _close_validation_popup() -> void:
 # INTERACTION — OPPONENTS
 # ============================================================
 
-# ISSUE #57: turn the player toward whoever they just interacted with. Normally the direction is
+# ISSUE #58: turn the player toward whoever they just interacted with. Normally the direction is
 # derived from the geometry, but an actor can pin it with an `interact_facing` field in its data
 # entry. The three shopkeepers need that: a counter stops the player short of the shopkeeper and off
 # to one side, so the dominant-axis rule would have them talking sideways along the counter rather
@@ -1490,7 +1490,7 @@ func _on_player_interact(opponent: Node):
 		return
 	current_opponent = opponent
 	opponent.pause_and_face(_player.global_position)
-	# ISSUE #57: the player also turns to face the opponent, not just the opponent facing the player.
+	# ISSUE #58: the player also turns to face the opponent, not just the opponent facing the player.
 	_face_player_toward_actor(opponent)
 	# Keep bubble visible during messagebox; refresh in case state changed
 	opponent.refresh_bubble()
@@ -1586,7 +1586,7 @@ func _on_yes_pressed():
 		GameState.forced_opponent_overrides  = {}
 		GameState.current_opponent_map = _map_data
 		GameState.player_position            = _player.position
-		# ISSUE #504: the battle return spawns the player facing GameState's saved direction, and
+		# ISSUE #378: the battle return spawns the player facing GameState's saved direction, and
 		# nothing saved it here -- so they came back facing whatever the last door left ("down").
 		GameState.save_player_direction(_player.get_current_direction())
 		GameState.returning_from_battle      = false
@@ -1626,7 +1626,7 @@ func _on_yes_pressed():
 		_hide_message()
 		SoundManagerScript.stop_bgm()
 
-		# ISSUE #55: freeze the overworld the instant the battle is accepted, so NPCs/opponents can't
+		# ISSUE #56: freeze the overworld the instant the battle is accepted, so NPCs/opponents can't
 		# keep wandering (and drift away from the player) during the 0.5s fade before the intro loads.
 		_freeze_overworld_actors()
 
@@ -1673,7 +1673,7 @@ func _on_ok_pressed():
 		_pending_pack_opening.clear()
 		message_panel.visible = false
 		PackOpeningManager.all_packs_opened.connect(_on_pack_opening_finished, CONNECT_ONE_SHOT)
-		# ISSUE #487: a single revealed pack glides into the opening's start rect and becomes the
+		# ISSUE #361: a single revealed pack glides into the opening's start rect and becomes the
 		# pack that opens (no fade-in, no flash); the reveal goes once the opening is drawn over it.
 		var shown := _single_gift_pack_rect()
 		if shown != null:
@@ -1727,7 +1727,7 @@ func _on_player_npc_interact(npc: Node):
 	current_npc = npc
 
 	npc.pause_and_face(_player.global_position)
-	# ISSUE #57: the player also turns to face the NPC being talked to.
+	# ISSUE #58: the player also turns to face the NPC being talked to.
 	_face_player_toward_actor(npc)
 
 	# Olly / Alexander at the Fish Shop: their own milestone conversation, which ends in
@@ -1760,7 +1760,7 @@ func _on_player_npc_interact(npc: Node):
 	# Juice vendor: tiered coin lottery, $50/cup ($25 after all 3 coins won)
 	if npc.npc_type == "juice_vendor":
 		npc.refresh_bubble()
-		_show_message_with_choices(_juice_greeting_text())   # ISSUE #120: cash chip comes with it
+		_show_message_with_choices(_juice_greeting_text())   # ISSUE #122: cash chip comes with it
 		return
 
 	# Coin flipper: $50 for five simultaneous flips, five heads wins the prize coin.
@@ -2164,7 +2164,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		entries.append({"texture": tex, "size": actual_size, "card_uid": card_uid})
 
 	if entries.is_empty():
-		# ISSUE #104: gift notices use the big centred style (_show_large_message_with_ok).
+		# ISSUE #108: gift notices use the big centred style (_show_large_message_with_ok).
 		_show_large_message_with_ok(text)
 		return
 
@@ -2215,16 +2215,16 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		_ui_layer.move_child(message_panel, _ui_layer.get_child_count() - 1)
 
 	# Show the message panel, but NOT dismissable yet — the reveal animation must finish first.
-	# ISSUE #104: "You received the X" uses the large centred announcement style
+	# ISSUE #108: "You received the X" uses the large centred announcement style
 	# (_show_large_message_with_ok) instead of ordinary 28pt dialogue.
-	# ISSUE #118 FIX ACTIVE: the gift notice is the GAME talking, not the NPC who handed it
+	# ISSUE #120 FIX ACTIVE: the gift notice is the GAME talking, not the NPC who handed it
 	# over, so it drops the speaker's name chip and colour and shows the plain grey box.
 	_show_large_message_with_ok(text)
 	message_panel.show_as_plain()
 	message_panel.ok_armed = false
 
 	# ── PASS 4: Kick off reveal animations (parallel) ──
-	# ISSUE #33: allow a click to skip the reveal. Reset skip state and let the dim overlay catch clicks.
+	# ISSUE #34: allow a click to skip the reveal. Reset skip state and let the dim overlay catch clicks.
 	_gift_reveal_active = true
 	_gift_reveal_skip = false
 	_gift_reveal_tweens.clear()
@@ -2273,7 +2273,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	elif kind == "card_fly":
 		total_duration = CARD_FLY_TIME + CARD_FLY_STAGGER * maxi(0, spawned_rects.size() - 1) \
 				+ CARD_FLY_TRAIL_GAP * CARD_FLY_TRAIL
-	total_duration = GameState.item_time(total_duration)  # ISSUE #34
+	total_duration = GameState.item_time(total_duration)  # ISSUE #35
 	if total_duration > 0.0:
 		var elapsed: float = 0.0
 		while elapsed < total_duration and not _gift_reveal_skip:
@@ -2292,7 +2292,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	if message_panel.visible:
 		message_panel.ok_armed = true
 
-# ISSUE #33: a click anywhere on the dim overlay during the reveal skips the animation.
+# ISSUE #34: a click anywhere on the dim overlay during the reveal skips the animation.
 func _on_gift_reveal_input(event: InputEvent) -> void:
 	if not _gift_reveal_active:
 		return
@@ -2317,14 +2317,14 @@ func _finalize_gift_reveal() -> void:
 	_gift_reveal_finals.clear()
 
 # Removes the gift display container and dim overlay if they exist.
-## ISSUE #487: the one pack TextureRect on the gift reveal, or null (several items, or none).
+## ISSUE #361: the one pack TextureRect on the gift reveal, or null (several items, or none).
 func _single_gift_pack_rect() -> TextureRect:
 	if _gift_display_container == null or not is_instance_valid(_gift_display_container):
 		return null
 	var rects: Array = _gift_display_container.find_children("*", "TextureRect", true, false)
 	return rects[0] if rects.size() == 1 else null
 
-## ISSUE #487: the Card Mart's handoff (Pack_Purchase_Script): position AND size into the rect
+## ISSUE #361: the Card Mart's handoff (Pack_Purchase_Script): position AND size into the rect
 ## PackOpeningManager opens from. TWEAKABLE: GIFT_PACK_HANDOFF_TIME.
 const GIFT_PACK_HANDOFF_TIME := 0.35
 func _glide_rect_to_pack_rect(rect: TextureRect) -> void:
@@ -2337,7 +2337,7 @@ func _glide_rect_to_pack_rect(rect: TextureRect) -> void:
 	await tw.finished
 
 func _clear_gift_display() -> void:
-	# ISSUE #33: tear down any in-flight reveal-skip state.
+	# ISSUE #34: tear down any in-flight reveal-skip state.
 	_gift_reveal_active = false
 	_gift_reveal_skip = false
 	_gift_reveal_tweens.clear()
@@ -2370,16 +2370,16 @@ func _play_flip_animation(rect: TextureRect, back_tex: Texture2D, target_tex: Te
 	rect.pivot_offset = rect.size / 2.0
 	rect.scale = Vector2(1.0, 1.0)
 
-	# ISSUE #33: register the final state so a skip can snap straight to the revealed face.
+	# ISSUE #34: register the final state so a skip can snap straight to the revealed face.
 	_gift_reveal_finals.append({"rect": rect, "texture": target_tex, "modulate": Color(1, 1, 1, 1)})
 
 	var shrink_durations := [0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.11, 0.12, 0.2]
 	# After each shrink, swap to the alternating texture
 	var swaps := [target_tex, back_tex, target_tex, back_tex, target_tex, back_tex, target_tex, back_tex, target_tex]
 
-	# ISSUE #34: scale each flip step by the overworld animation-speed multiplier.
+	# ISSUE #35: scale each flip step by the overworld animation-speed multiplier.
 	var tween := create_tween()
-	_gift_reveal_tweens.append(tween)   # ISSUE #33: killable on skip
+	_gift_reveal_tweens.append(tween)   # ISSUE #34: killable on skip
 	for i in shrink_durations.size():
 		var d: float = GameState.item_time(shrink_durations[i])
 		tween.tween_property(rect, "scale:x", 0.0, d)
@@ -2434,14 +2434,14 @@ func _fly_in_with_loop(node: Control, from: Vector2, to: Vector2, duration: floa
 func _play_costume_fadein(rect: TextureRect) -> void:
 	if rect == null or not is_instance_valid(rect):
 		return
-	# ISSUE #33: register final state for skip.
+	# ISSUE #34: register final state for skip.
 	_gift_reveal_finals.append({"rect": rect, "texture": rect.texture, "modulate": Color(1, 1, 1, 1)})
 	rect.modulate = Color(0, 0, 0, 1)  # fully black, opaque
 	await get_tree().create_timer(GameState.item_time(0.5)).timeout
 	if rect == null or not is_instance_valid(rect):
 		return
 	var tween := create_tween()
-	_gift_reveal_tweens.append(tween)   # ISSUE #33: killable on skip
+	_gift_reveal_tweens.append(tween)   # ISSUE #34: killable on skip
 	tween.tween_property(rect, "modulate", Color(1, 1, 1, 1), GameState.item_time(1.0))
 
 # Spawns a continuous sparkle particle system over a card rect. Adapted from
@@ -2778,7 +2778,7 @@ func _handle_juice_purchase() -> void:
 	else:
 		_pending_juice_result = {"text": JUICE_NORMAL_MSG, "reward_coin": ""}
 
-	_apply_cash_chip()   # ISSUE #120: refresh the cash chip after the cup is paid for
+	_apply_cash_chip()   # ISSUE #122: refresh the cash chip after the cup is paid for
 	GameState.save_progress()
 
 	# Chain to the result message via the existing OK pipeline
@@ -2892,7 +2892,7 @@ func _run_coinflip_sequence() -> void:
 			heads += 1
 	var all_heads: bool = heads == COINFLIP_COIN_COUNT
 
-	# ISSUE #34: both durations go through item_time() so the Options speed preset
+	# ISSUE #35: both durations go through item_time() so the Options speed preset
 	# scales them by the SAME factor and the overlap between coins is preserved.
 	var flight: float  = GameState.item_time(COINFLIP_FLIP_DURATION)
 	var stagger: float = GameState.item_time(COINFLIP_STAGGER)

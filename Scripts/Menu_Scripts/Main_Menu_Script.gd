@@ -90,9 +90,9 @@ func _close_overlay() -> void:
 
 
 # ============================================================
-# MUSIC (ISSUE #128)
+# MUSIC (ISSUE #130)
 # ============================================================
-# Since sub-menus became overlays (ISSUE #52) the main menu is merely HIDDEN behind one, not
+# Since sub-menus became overlays (ISSUE #53) the main menu is merely HIDDEN behind one, not
 # unloaded -- so its AudioStreamPlayer carried on playing underneath the sub-menu's own track
 # and the two overlapped. BaseMapScene pauses us on the way into a sub-menu and resumes on the
 # way back. Paused rather than stopped so the theme picks up where it left off.
@@ -156,7 +156,7 @@ func _fit_tiles_to_screen() -> void:
 
 
 func _ready() -> void:
-	# ISSUE #52 FIX: a standalone Main Menu (entered by closing a sub-menu) has no world map behind its
+	# ISSUE #53 FIX: a standalone Main Menu (entered by closing a sub-menu) has no world map behind its
 	# transparent background, so it renders black. Redirect to the saved map scene and reopen the menu
 	# as an overlay on top of it — this also reloads the map so any world-changing options take effect.
 	if not is_overlay and GameState.has_menu_return_state:
@@ -276,7 +276,7 @@ func _on_mode_clicked(event: InputEvent, node_path: String) -> void:
 			else:
 				_return_to_world_map()
 			return
-		# ISSUE #52 FIX (retest): when the menu is an overlay over a live map, open the sub-menu as a
+		# ISSUE #53 FIX (retest): when the menu is an overlay over a live map, open the sub-menu as a
 		# further overlay so the map is never unloaded — coming back is then instant.
 		if is_overlay and GameState.open_sub_menu(SCENE_MAP[node_path]):
 			return
@@ -289,10 +289,10 @@ func _on_exit_clicked(event: InputEvent) -> void:
 		_show_quit_dialog()
 
 
-# ISSUE #30 FIX: build the quit confirmation with the same styled popup as the deck builder's
+# ISSUE #31 FIX: build the quit confirmation with the same styled popup as the deck builder's
 # "Empty deck?" confirm rather than the default engine ConfirmationDialog.
 #
-# ISSUE #205: IT IS THE SPECTRUM NIGHT DIALOG NOW. The main menu itself is still out
+# ISSUE #206: IT IS THE SPECTRUM NIGHT DIALOG NOW. The main menu itself is still out
 # of scope for the UI overhaul (A2), and the dialog was deliberately left on the
 # Kenney theme so it would not be half-converted — but it is the one piece of that
 # screen the player interacts with after the rest of the game changed, so it stood

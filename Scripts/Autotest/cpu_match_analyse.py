@@ -1,5 +1,5 @@
 """
-Human vs CPU decision analysis (ISSUE #375) — reads the dev match recorder's logs (user://match_logs/*.jsonl, written in
+Human vs CPU decision analysis (OLD ISSUE 375) — reads the dev match recorder's logs (user://match_logs/*.jsonl, written in
 DebugMode for every real match) and compares each of the PLAYER's decisions with what the CPU's own logic would have done
 in the same seat (the recorded "shadow"). Writes match_logs/human_vs_cpu.txt.
 

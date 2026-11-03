@@ -110,7 +110,7 @@ const FAN_CARDS := [
 ## 1676-wide scroller. Change one and the other has to follow.
 const LIST_CARD_SIZE_BASE := Vector2(91, 126)
 var LIST_CARD_SIZE     := LIST_CARD_SIZE_BASE   # live, see _compute_list_layout()
-## ISSUE #209: 18 -> 17. At 18 the grid was 1672px wide from x=5, so its last
+## ISSUE #210: 18 -> 17. At 18 the grid was 1672px wide from x=5, so its last
 ## column ended at 1681 and ran under the sale panel at PANEL_X 1652 — which only
 ## became visible once that panel grew to 248px to fix its text padding. 17
 ## columns are 1547 + 32 separation = 1579, ending at 1584, a clear 68px short of
@@ -119,7 +119,7 @@ const LIST_COLUMNS_BASE := 17
 var LIST_COLUMNS       := LIST_COLUMNS_BASE
 const LIST_H_SEP       := 2
 const LIST_V_SEP       := 2
-## ISSUE #194: the confirm grid runs the full band BETWEEN the two chrome bars,
+## ISSUE #195: the confirm grid runs the full band BETWEEN the two chrome bars,
 ## exactly like the deck builder's. It used to start 18px late (a black strip above
 ## the first row) and run to y=1079, which hid the bottom rows behind the footer.
 const LIST_SCROLL_POS  := Vector2(5, UIKit.CONTENT_TOP)
@@ -140,11 +140,11 @@ const LIST_BUILD_BATCH := 54
 
 # ── Confirm screen's sale panel ──────────────────────────────────────────────
 # TWEAKABLE. Sits to the right of the card grid, above the two footer buttons.
-## ISSUE #209: WIDER, AND WITH REAL PADDING. At 200px every row's text ran into
+## ISSUE #210: WIDER, AND WITH REAL PADDING. At 200px every row's text ran into
 ## the panel border on both sides, because a PanelContainer has no padding of its
 ## own and the rows were parented straight into it. The inset is a MarginContainer
 ## now (see _build_sale_panel) and the box grew to pay for it.
-## ISSUE #209 (retest 2): 10px wider again, and PANEL_X is DERIVED so the gap to
+## ISSUE #210 (retest 2): 10px wider again, and PANEL_X is DERIVED so the gap to
 ## the right of the box (box -> screen edge) is exactly the gap to its left (last
 ## card column -> box). Hardcoding x meant every change to LIST_COLUMNS or PANEL_W
 ## silently unbalanced it; now the two gaps cannot drift apart.
@@ -178,19 +178,19 @@ const CARD_LABEL_RISE_PX   := 70.0
 const CARD_LABEL_RISE_TIME := 1.7
 const CARD_LABEL_FADE_TIME := 1.4
 
-## ISSUE #208: HALF SIZE, AND IT FALLS FROM THE WALLET CHIP.
+## ISSUE #209: HALF SIZE, AND IT FALLS FROM THE WALLET CHIP.
 ## The cash readout used to live in the bottom right of the screen, so the payout
 ## rose out of it. The new UI puts the balance in a pill in the top-right corner of
 ## the header, so the figure now drops DOWNWARD out of that pill instead — a
 ## negative rise in _spawn_float_label — and 96px was a shout next to a 54px pill.
-## ISSUE #208 (retest): -20% again (48 -> 38).
+## ISSUE #209 (retest): -20% again (48 -> 38).
 const TOTAL_LABEL_FONT      := 38
 const TOTAL_LABEL_OUTLINE   := 6
 const TOTAL_LABEL_SIZE      := Vector2(700, 90)
 const TOTAL_LABEL_RISE_PX   := -120.0
 const TOTAL_LABEL_RISE_TIME := 4.0
 const TOTAL_LABEL_FADE_TIME := 3.6
-## ISSUE #208 (retest): the anchor is MEASURED off the wallet chip at spawn time
+## ISSUE #209 (retest): the anchor is MEASURED off the wallet chip at spawn time
 ## rather than guessed. 1560 was ~200px left of the pill, because the pill's width
 ## depends on how many digits the balance has — there is no fixed x to hardcode.
 ## _wallet_drop_anchor() reads the chip's live rect; this is only the fallback for
@@ -199,9 +199,9 @@ const TOTAL_LABEL_ANCHOR := Vector2(1780, 132)
 ## Clearance between the bottom of the wallet pill and the top of the falling
 ## label, so the two never overlap on the first frame. TWEAKABLE.
 const TOTAL_LABEL_PILL_GAP := 10.0
-## ISSUE #208 (retest 3): 10 -> 30. The figure sits 30px right of the pill's own
+## ISSUE #209 (retest 3): 10 -> 30. The figure sits 30px right of the pill's own
 ## centre. TWEAKABLE.
-## ISSUE #208 (retest 3): back to 0. It was walked out to 30 chasing a label that
+## ISSUE #209 (retest 3): back to 0. It was walked out to 30 chasing a label that
 ## was never moving for an unrelated reason (see _wallet_drop_anchor); now the
 ## anchor is genuinely the pill's centre, a nudge would only push it back off it.
 const TOTAL_LABEL_X_NUDGE := 0.0
@@ -349,7 +349,7 @@ func _build_chrome() -> void:
 	# footer, and take their theme from the scene rather than from this script —
 	# so they need restyling by hand or they stay Kenney blue.
 	#
-	# ISSUE #255: ALL FOUR ARE PRIMARY. Three of them were "secondary" (the
+	# ISSUE #256: ALL FOUR ARE PRIMARY. Three of them were "secondary" (the
 	# transparent skin) and only "sell all spare bulk" was filled, which read as
 	# one real button and three labels — but they are four equal choices doing the
 	# same job at four different scopes, so they get the same weight.
@@ -742,7 +742,7 @@ func _open_sell_list(band: int, selection: Dictionary) -> void:
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left",   0)
 	margin.add_theme_constant_override("margin_right",  0)
-	# ISSUE #194: zero — the 10px inset was the black band above the first row.
+	# ISSUE #195: zero — the 10px inset was the black band above the first row.
 	margin.add_theme_constant_override("margin_top",    0)
 	margin.add_theme_constant_override("margin_bottom", 0)
 	_list_scroll.add_child(margin)
@@ -799,7 +799,7 @@ func _build_sale_panel(band: int, copies: int) -> void:
 	panel.size = Vector2(PANEL_W, 0.0)
 	_list_overlay.add_child(panel)
 
-	# ISSUE #209: the inset every row sits inside.
+	# ISSUE #210: the inset every row sits inside.
 	var pad := MarginContainer.new()
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		pad.add_theme_constant_override(side, int(PANEL_PAD))
@@ -1013,13 +1013,13 @@ func _scroll_into_view(rect: Control) -> Vector2:
 ## than Label purely for BBCode's [rainbow], which offsets the hue per character and
 ## advances it every frame — that is the colour wave running through the text.
 ## Adapted from Pack_Opening_Manager._show_bonus_label.
-## ISSUE #208: where the payout figure starts — directly under the wallet pill,
+## ISSUE #209: where the payout figure starts — directly under the wallet pill,
 ## touching neither it nor the header border.
 ##
 ## Returns the CENTRE of the label's box, which is what _spawn_float_label wants:
 ## the pill's centre x so the figure falls straight out of the number it changes,
 ## and far enough down that the box's top edge clears the pill's bottom.
-## ISSUE #208 (retest 3) - WHY THREE NUDGES CHANGED NOTHING.
+## ISSUE #209 (retest 3) - WHY THREE NUDGES CHANGED NOTHING.
 ##
 ## `wallet_chip` is the HOLDER add_wallet_chip returns, and that holder is never
 ## given a size: the pill is a child placed at absolute coordinates inside it, so

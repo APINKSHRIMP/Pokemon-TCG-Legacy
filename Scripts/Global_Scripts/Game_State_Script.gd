@@ -24,7 +24,7 @@ static func battle_display_name(opponent_name: String) -> String:
 		shown = shown.substr(0, cut).strip_edges()
 	return shown
 
-# ISSUE #129: granted on game initialisation; 1_Default_English is also the equipped sleeve a
+# ISSUE #131: granted on game initialisation; 1_Default_English is also the equipped sleeve a
 # new save starts with (see the "sleeve" key in Player_Data/Player_Current_Data.json). Names are
 # bare basenames, matching everything else in progress["sleeves"].
 const STARTER_SLEEVES: Array = [
@@ -34,7 +34,7 @@ const STARTER_SLEEVES: Array = [
 ]
 
 # The "1_Default*" card backs are the freebies the player owns from first launch (STARTER_SLEEVES
-# above). ISSUE #139: they DO count towards the trainer card's "collected" total now — the Info
+# above). ISSUE #141: they DO count towards the trainer card's "collected" total now — the Info
 # screen asks for the universe with include_defaults = true, so they appear on both sides of the
 # fraction. The flag is kept because get_sleeve_universe() still needs to be able to answer
 # "which sleeves had to be earned". See get_sleeve_universe().
@@ -100,7 +100,7 @@ var last_battled_opponent_entry: Dictionary = {}
 var last_interior_scene: String = ""
 var current_shop_id: String = "card_mart"
 
-# ISSUE #34: global game-speed multipliers. 1.0 plays an animation at exactly its authored duration;
+# ISSUE #35: global game-speed multipliers. 1.0 plays an animation at exactly its authored duration;
 # higher = faster. Read these wherever an animation/movement duration is computed so the whole game
 # honours the player's preference.
 #   card_match_animation_speed  — in-match animations: card placement, energy, retreat, damage
@@ -138,7 +138,7 @@ const ANIMATION_SPEED_OPTIONS := ["slow", "medium", "fast"]
 # and MUST all carry the same three keys as ANIMATION_SPEED_OPTIONS. "medium" does not have to mean
 # the same multiplier in each, and does not: a pack tear is a set-piece and runs slower than the
 # match it paid for.
-# ISSUE #496: slow 10% slower (1.0 -> 0.9), medium and fast 10% faster (1.25 -> 1.375, 2.2 -> 2.42).
+# ISSUE #370: slow 10% slower (1.0 -> 0.9), medium and fast 10% faster (1.25 -> 1.375, 2.2 -> 2.42).
 const MATCH_SPEED_PRESETS := {
 	"slow": 0.9,
 	"medium": 1.375,
@@ -149,7 +149,7 @@ const ITEM_SPEED_PRESETS := {
 	"medium": 1.375,
 	"fast": 2.42,
 }
-# ISSUE #94's relabel is preserved: "fast" is the straight 1.0 passthrough where the base durations
+# ISSUE #98's relabel is preserved: "fast" is the straight 1.0 passthrough where the base durations
 # written into Pack_Opening_Manager.gd play exactly as authored, and the default sits one notch
 # under it.
 const PACK_SPEED_PRESETS := {
@@ -370,11 +370,11 @@ func _load_display() -> void:
 # itself back off once that match ends. See Tutorial_Director.gd.
 const TUTORIAL_NEXT_MATCH_OPTIONS := ["off", "on"]
 var tutorial_next_match_setting: String = "off"
-## ISSUE #470: true while a tutorial the player must finish is running (Olly's newby / rules match,
+## ISSUE #344: true while a tutorial the player must finish is running (Olly's newby / rules match,
 ## the newby's follow-up match). Not saved -- Tutorial_Director sets and clears it.
 var mandatory_tutorial_running: bool = false
 
-## ISSUE #470: the tutorial row is shown On and can't be changed while a must-finish tutorial is
+## ISSUE #344: the tutorial row is shown On and can't be changed while a must-finish tutorial is
 ## running or the newby's follow-up match is still to come.
 func tutorial_option_locked() -> bool:
 	return mandatory_tutorial_running or bool(progress.get(TUTORIAL_TIPS_KEY, false))
@@ -539,7 +539,7 @@ func _load_animation_speed() -> void:
 	var tut: String = str(data.get("tutorial_next_match", "off"))
 	set_tutorial_next_match(tut if tut in TUTORIAL_NEXT_MATCH_OPTIONS else "off", false)
 
-# ISSUE #34: the overworld walking-speed presets offered by the Options screen, keyed by the value
+# ISSUE #35: the overworld walking-speed presets offered by the Options screen, keyed by the value
 # stored in Player_Current_Data.json under "walking_speed". TWEAKABLE — raising a number speeds that
 # preset up. Shift-to-run stacks on top of this (run_multiplier in Player_Object_Script.gd), so the
 # gap between slow and fast reads more clearly while walking than while sprinting.
@@ -575,7 +575,7 @@ func _load_walking_speed() -> void:
 func _save_walking_speed() -> void:
 	_save_setting_field("walking_speed", walking_speed_setting)
 
-# ISSUE #34: the two match-rule variants offered by the Options screen. Each entry is the string
+# ISSUE #35: the two match-rule variants offered by the Options screen. Each entry is the string
 # stored in Player_Current_Data.json, and is copied into the match core's own burn_rules /
 # confusion_rules at the start of every match.
 #   Confusion — base_set:   retreat flip AFTER paying the energy; tails = energy still discarded
@@ -610,7 +610,7 @@ func set_burn_rule(rule: String, save: bool = true) -> void:
 	if save:
 		_save_setting_field("burn_rules", rule)
 
-## ISSUE #385: THE MATCH-RULE ROWS UNLOCK WITH THE FIRST EX CARD.
+## ISSUE #298: THE MATCH-RULE ROWS UNLOCK WITH THE FIRST EX CARD.
 ##
 ## Confusion and Burn rules only differ in the EX era, so the Options screen
 ## hides both rows until the player owns at least one card from this set (ex1
@@ -635,7 +635,7 @@ func owns_any_card_in_set(set_id: String) -> bool:
 			return true
 	return false
 
-## ISSUE #520: Darkness and Metal Energy arrive with the neo sets. "Unlocked" = the player owns at least
+## ISSUE #394: Darkness and Metal Energy arrive with the neo sets. "Unlocked" = the player owns at least
 ## one card from any neo set. Gates the type pickers (Buzzap, Conversion, Energy Converter...) so they
 ## don't offer types the player hasn't met yet. Read live (a pack opened mid-session counts at once).
 const NEO_SET_IDS := ["neo1", "neo2", "neo3", "neo4", "np"]
@@ -643,7 +643,7 @@ func neo_unlocked() -> bool:
 	for set_id in NEO_SET_IDS:
 		if owns_any_card_in_set(set_id):
 			return true
-	print("ISSUE #520 FIX ACTIVE: no neo card owned - Darkness/Metal hidden from type pickers")
+	print("ISSUE #394 FIX ACTIVE: no neo card owned - Darkness/Metal hidden from type pickers")
 	return false
 
 # Reads both saved rule choices out of Player_Current_Data.json. Called once on boot.
@@ -758,7 +758,7 @@ func scaled_duration(base_seconds: float, multiplier: float) -> float:
 		multiplier = 0.05
 	return base_seconds / multiplier
 
-# ISSUE #34: shorthands for the three animation multipliers. Prefer these over calling
+# ISSUE #35: shorthands for the three animation multipliers. Prefer these over calling
 # scaled_duration() with an explicit multiplier — they keep call sites short enough that wrapping a
 # hardcoded duration stays a drop-in edit:
 #     await get_tree().create_timer(0.5).timeout
@@ -829,12 +829,12 @@ func transition_time(base_seconds: float) -> float:
 
 var sleep_wakeup_fade: bool = false
 
-# ISSUE #52: when a sub-menu (deck/costume/coin/sleeves/options/info) closes back to the standalone
+# ISSUE #53: when a sub-menu (deck/costume/coin/sleeves/options/info) closes back to the standalone
 # Main Menu, the menu redirects to the saved map scene with this flag set so the map is reloaded and
 # the main menu is reopened as a transparent overlay on top of it (rather than showing black behind).
 var reopen_menu_overlay: bool = false
 
-# ISSUE #52 (retest): the live map scene registers itself here while its main-menu overlay is open.
+# ISSUE #53 (retest): the live map scene registers itself here while its main-menu overlay is open.
 # Sub-menus are then opened/closed as overlays on top of the still-loaded map, so returning to the
 # main menu is instant instead of triggering a full world reload (the long black screen). Both
 # helpers return false when there is no host (e.g. the menu was reached from a non-map scene), so
@@ -1049,7 +1049,7 @@ func get_last_interior_scene() -> String:
 	return last_interior_scene
 
 # ============================================================
-# ISSUE #253 - CLICK QUEUEING
+# ISSUE #254 - CLICK QUEUEING
 # ============================================================
 # REVERTED at the user's request (01/09/2026 retest 2). There WAS a global
 # `_input` here that swallowed any mouse press arriving within 260ms of the last
@@ -1071,10 +1071,10 @@ func get_last_interior_scene() -> String:
 
 
 func _ready():
-	_load_animation_speed()   # ISSUE #34: apply the saved Options animation-speed preset
+	_load_animation_speed()   # ISSUE #35: apply the saved Options animation-speed preset
 	_load_display()
-	_load_walking_speed()     # ISSUE #34: apply the saved Options overworld walking-speed preset
-	_load_rule_settings()     # ISSUE #34: apply the saved Options confusion / burn rule choices
+	_load_walking_speed()     # ISSUE #35: apply the saved Options overworld walking-speed preset
+	_load_rule_settings()     # ISSUE #35: apply the saved Options confusion / burn rule choices
 	_load_audio_volumes()     # apply the saved Options music / SFX volume levels to the audio buses
 
 	# The LAST slot played is loaded on boot, before the title screen has asked. That is
@@ -1309,7 +1309,7 @@ func load_progress():
 		progress["npc_interactions"] = old.keys()
 		progress.erase("met_npcs")
 
-	# ISSUE #129: the three starter card backs the player owns from the very first launch.
+	# ISSUE #131: the three starter card backs the player owns from the very first launch.
 	# Kept in step with the "sleeves" array in Player_Data/Player_Game_Progress.json, which is
 	# what a brand-new save actually copies -- this branch only catches a save made before the
 	# key existed. "default" used to stand in here and matched no file on disk, so the sleeve
@@ -1502,11 +1502,12 @@ const STARTER_DECK_PAIRS: Array = ["Water Fight", "Grass Psy", "Fire Shock"]
 # Olly's pick against the player's: "weak" is the one the player's deck beats.
 const OLLY_DECK_WEAK := {"Fire Shock": "Grass Psy", "Water Fight": "Fire Shock", "Grass Psy": "Water Fight"}
 const OLLY_DECK_STRONG := {"Fire Shock": "Water Fight", "Water Fight": "Grass Psy", "Grass Psy": "Fire Shock"}
-# Hard Mode's draft: art ids, one per pack (3 Base Set, 3 Jungle, 3 Fossil).
+# Hard Mode's draft: art ids, one per pack (4 Base Set, 4 Jungle, 4 Fossil - one more of each
+# added 2026-11-03).
 const HARD_MODE_DRAFT_PACKS := [
-	"base1_a", "base1_b", "base1_c",
-	"base2_a", "base2_b", "base2_c",
-	"base3_a", "base3_b", "base3_c",
+	"base1_a", "base1_b", "base1_c", "base1_a",
+	"base2_a", "base2_b", "base2_c", "base2_a",
+	"base3_a", "base3_b", "base3_c", "base3_a",
 ]
 
 # The one-off bonus packs Olly hands over after the match. Fixed contents, opened
@@ -2109,7 +2110,7 @@ func mark_gift_received(npc_name: String):
 # ============================================================
 # COSMETIC ASSET UNIVERSES
 # ============================================================
-# ISSUE #134: "what could I possibly own" for each cosmetic collection. These used to live as
+# ISSUE #136: "what could I possibly own" for each cosmetic collection. These used to live as
 # private helpers in Info_Script (they drive the X / Y counters on the trainer card); the
 # CHT.All_* cheats need exactly the same lists, so they moved here rather than being copied.
 # Each universe is keyed EXACTLY the way that collection is stored in `progress`, so ownership
@@ -2270,9 +2271,9 @@ func add_fish_caught(amount: int = 1) -> void:
 # ============================================================
 # ENERGY STYLE COLLECTION
 # ============================================================
-# Which printing of the six basic Energy a deck uses. ISSUE #155 moved this table here from
+# Which printing of the six basic Energy a deck uses. ISSUE #156 moved this table here from
 # Deck_Build_And_Card_View_Script so the CHT.All_Energy_Styles cheat and the deck builder's picker
-# read the SAME list — the ISSUE #134 rule: a cheat that grants "all" of something must be driven
+# read the SAME list — the ISSUE #136 rule: a cheat that grants "all" of something must be driven
 # by the same universe the screen displays, or the two drift.
 #
 # Key   = the style name, exactly as it is stored in progress["energy_styles"].
@@ -2304,7 +2305,7 @@ func get_energy_styles() -> Array:
 	return styles
 
 
-# ISSUE #155: bulk grant used by the CHT.All_Energy_Styles cheat. One save at the end, the same
+# ISSUE #156: bulk grant used by the CHT.All_Energy_Styles cheat. One save at the end, the same
 # reasoning as add_coins_to_collection(). Returns how many were newly added.
 func add_energy_styles_to_collection(style_names: Array) -> int:
 	var styles : Array = progress.get("energy_styles", [])
@@ -2340,7 +2341,7 @@ func has_coin(coin_name: String) -> bool:
 func get_coins() -> Array:
 	return progress.get("coins", [])
 
-# ISSUE #134: bulk grant used by the CHT.All_Coins cheat. Saves ONCE at the end rather than once
+# ISSUE #136: bulk grant used by the CHT.All_Coins cheat. Saves ONCE at the end rather than once
 # per coin — add_coin_to_collection() writes the whole progress file every call, which over 400+
 # coins would be 400+ disk writes. Names are canonicalised the same way as the singular version,
 # so it accepts either "Pikachu Gold" or "Pikachu Gold.png". Returns how many were newly added.
@@ -2379,7 +2380,7 @@ func add_costume_to_collection(battle_sprite: String) -> void:
 func get_costumes() -> Array:
 	return progress.get("costumes", [])
 
-# ISSUE #134: bulk grant used by the CHT.All_Costumes cheat. One save at the end, same reasoning
+# ISSUE #136: bulk grant used by the CHT.All_Costumes cheat. One save at the end, same reasoning
 # as add_coins_to_collection(). Accepts either a bare sprite name or a stored "1ash.png" filename.
 func add_costumes_to_collection(battle_sprites: Array) -> int:
 	var costumes: Array = progress.get("costumes", [])
@@ -2437,7 +2438,7 @@ func get_items() -> Array:
 	return progress.get("items", [])
 
 
-# ISSUE #134: bulk grant used by the CHT.All_Sleeves cheat. One save at the end, same reasoning as
+# ISSUE #136: bulk grant used by the CHT.All_Sleeves cheat. One save at the end, same reasoning as
 # add_coins_to_collection(). Sleeves are stored as bare basenames, so any extension is stripped.
 func add_sleeves_to_collection(sleeve_names: Array) -> int:
 	var sleeves: Array = progress.get("sleeves", [])

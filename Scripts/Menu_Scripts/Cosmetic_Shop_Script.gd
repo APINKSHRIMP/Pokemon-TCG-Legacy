@@ -121,7 +121,7 @@ const COSTUME_MAX_CELL := 320.0
 const REVEAL_SIZE      := Vector2(432.0, 594.0)
 const REVEAL_FADE      := 1.0   # seconds to fade from black to full colour
 
-## ISSUE #162: TWEAKABLE - peak scale of the selected-item pulse. Raised from 1.02,
+## ISSUE #163: TWEAKABLE - peak scale of the selected-item pulse. Raised from 1.02,
 ## which on a 400px sleeve was a 4px swell nobody could see. 1.10 grows a full-size
 ## cell by ~20px a side, still inside the 60px CELL_SEP so neighbours do not touch.
 const SELECT_PULSE     := 1.10
@@ -216,7 +216,7 @@ func _build_chrome() -> void:
 	UIKit.adopt_label(header_label, bars["header"].centre)
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #292: Cancel is the negative colour
 	UIKit.adopt_button(buy_btn, bars["footer"].centre, "primary")
 
 	if _pages.size() > 1:
@@ -238,9 +238,9 @@ func _build_page_stepper() -> void:
 	_next_btn = Button.new()
 	_page_label = Label.new()
 	_page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UIKit.adopt_button(_prev_btn, stepper, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(_prev_btn, stepper, "neutral", false)   # ISSUE #292
 	UIKit.adopt_label(_page_label, stepper, "title", "field_fg")
-	UIKit.adopt_button(_next_btn, stepper, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(_next_btn, stepper, "neutral", false)   # ISSUE #292
 	_prev_btn.text = "<"
 	_next_btn.text = ">"
 	_prev_btn.custom_minimum_size.x = STEPPER_ARROW_W
@@ -384,7 +384,7 @@ func _grid_area_size() -> Vector2:
 
 # ─── Texture resolution ──────────────────────────────────────────────────────
 
-## Grid art. ISSUE #198: SLEEVES USE THE FULL-SIZE ORIGINAL, not the small/ copy.
+## Grid art. ISSUE #199: SLEEVES USE THE FULL-SIZE ORIGINAL, not the small/ copy.
 ##
 ## The thumbnails are 300x412 and SLEEVE_MAX_CELL is 412, so a shop stocking only a
 ## few sleeves drew each one at up to 1.37x its source and they visibly softened.

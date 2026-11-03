@@ -1,5 +1,5 @@
 extends RefCounted
-## ISSUE #375 — CPU LOOKAHEAD (phase 1).
+## OLD ISSUE 375 — CPU LOOKAHEAD (phase 1).
 ##
 ## The CPU's priority code scores each option on its own, one move at a time. This module plays out the next EXCHANGE
 ## for an option — my move → the player's best reply → my next turn — and values the result in Prizes, using the same
@@ -64,7 +64,7 @@ func player_energy_next() -> float:
 	return CpuWeights.g("look.player_energy_chance", 0.75) if main.player_hand.size() >= 3 else 0.5
 
 
-## ISSUE #375 FORESIGHT: the cards the player will hold at the start of their next turn (hand + normal turn-start draw).
+## OLD ISSUE 375 FORESIGHT: the cards the player will hold at the start of their next turn (hand + normal turn-start draw).
 ## Empty without card foresight. Their coin flips and anything their own searches / shuffles bring are NOT known.
 func player_known_next() -> Array:
 	if not CpuWeights.cheating_cards():
@@ -190,10 +190,10 @@ func attack_value(attack: Dictionary, me, foe) -> float:
 	if my_hp <= 0:
 		die_a = 1.0
 		die_b = 1.0
-	# ISSUE #375 FORESIGHT: no Bench and nothing to bench next turn — Knocking Out their Active next turn wins the game.
+	# OLD ISSUE 375 FORESIGHT: no Bench and nothing to bench next turn — Knocking Out their Active next turn wins the game.
 	if player_out_of_backups():
 		gamma *= CpuWeights.g("look.win_next", 4.0)
-	# ISSUE #459: the Prize taken NOW counts too. Without it a KO-now attack scored 0 here while a
+	# ISSUE #333: the Prize taken NOW counts too. Without it a KO-now attack scored 0 here while a
 	# chip attack that only sets up next turn's KO scored pk_next * pv * gamma (+160) -- so "KO
 	# later" outranked "KO now" and the CPU passed up guaranteed Knock Outs.
 	var v := pk * foe_prizes * pv \

@@ -92,7 +92,7 @@ const ROW_MIN_H    := 53.0     # so a slider row and a button row match
 # screen looking sparse against eight widely spaced rows.
 const ROW_LABEL_SIZE := 19
 
-## ISSUE #275: the sub-caption under a row label. Small enough to read as a note
+## ISSUE #276: the sub-caption under a row label. Small enough to read as a note
 ## on the row above rather than as a row of its own. TWEAKABLE.
 const ROW_SUB_SIZE := 13
 const ROW_SUB_GAP  := 2
@@ -103,7 +103,7 @@ var pending : Dictionary = {}
 var saved   : Dictionary = {}
 
 var section_buttons : Dictionary = {}
-var section_rows : Dictionary = {}   # ISSUE #542: section -> its row (HBoxContainer)
+var section_rows : Dictionary = {}   # ISSUE #416: section -> its row (HBoxContainer)
 var section_sliders : Dictionary = {}
 var section_setters : Dictionary = {}
 
@@ -155,7 +155,7 @@ const THEME_MODE := "theme_mode"
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	# ISSUE #128: every sub-menu plays the same track. This screen had none, so it ran on
+	# ISSUE #130: every sub-menu plays the same track. This screen had none, so it ran on
 	# whatever the main menu was still playing behind it -- and once that overlap was fixed
 	# (Main_Menu_Script.pause_music) it would have been left silent instead.
 	# Not in a match: there the battle theme is still playing under the pause menu
@@ -236,7 +236,7 @@ func _build_chrome() -> void:
 	_controls_btn.pressed.connect(_open_controls)
 
 	var footer := UIKit.add_footer(self)
-	cancel_btn = UIKit.make_footer_button("Cancel", "negative")   # ISSUE #379
+	cancel_btn = UIKit.make_footer_button("Cancel", "negative")   # ISSUE #292
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 	footer.centre.add_child(cancel_btn)
 
@@ -296,7 +296,7 @@ func _build_rows() -> void:
 	# all, so the pause menu never implies they are on the table. Their entries in
 	# pending/saved and section_setters stay exactly as they are: nothing touches
 	# them, so Save sees no change and writes nothing.
-	# ISSUE #385: they are also hidden until the player owns an EX card (see
+	# ISSUE #298: they are also hidden until the player owns an EX card (see
 	# GameState.MATCH_RULES_UNLOCK_SET) - before then there is nothing for an
 	# "EX era" rule to mean. "Fairer retreat" is not on this row at all any more:
 	# it is the CHT_Retreat.Confused cheat (and CHT_Vanilla.Confusion undoes it).
@@ -332,7 +332,7 @@ func _build_rows() -> void:
 	], "(how fast messages type out)")
 	# The stored value stays "where_possible" — it is the key GameState persists and
 	# the one UITheme.motion_reduced() compares against. Only the label is "On".
-	# ISSUE #275: "Reduce motion" is the only row on this screen whose name does not
+	# ISSUE #276: "Reduce motion" is the only row on this screen whose name does not
 	# say what it does - it sounds like a comfort setting when it actually removes
 	# every animation in the game. The sub-caption says so on the row itself.
 	_add_button_row(body, "reduce_motion", "Reduce motion", [
@@ -401,7 +401,7 @@ func _build_rows() -> void:
 func _add_theme_row(parent: VBoxContainer) -> void:
 	_add_picker_row(parent, THEME_LOOK, "Colour theme", UITheme.theme_looks(),
 		"(changes every screen)")
-	# ISSUE #519: the Dark/Light "Mode" row is gone - every theme is dark now, so it had nothing to offer.
+	# ISSUE #393: the Dark/Light "Mode" row is gone - every theme is dark now, so it had nothing to offer.
 	# The THEME_MODE plumbing below stays harmless (no row builds it) in case a second mode ever returns.
 	if UITheme.theme_modes().size() > 1:
 		_add_picker_row(parent, THEME_MODE, "Mode", UITheme.theme_modes())
@@ -458,7 +458,7 @@ func _add_button_row(parent: VBoxContainer, section: String, label_text: String,
 		holder.add_child(btn)
 		buttons[value] = btn
 	section_buttons[section] = buttons
-	section_rows[section] = row   # ISSUE #542: rows that show / hide with another setting
+	section_rows[section] = row   # ISSUE #416: rows that show / hide with another setting
 
 
 ## One label + a slider and its percentage readout.
@@ -484,7 +484,7 @@ func _add_slider_row(parent: VBoxContainer, section: String, label_text: String)
 
 
 ## The label column plus an HBox for whatever controls the row holds.
-## ISSUE #275: `sub_text`, when given, is a smaller second line under the row
+## ISSUE #276: `sub_text`, when given, is a smaller second line under the row
 ## label. It is centred on the LABEL'S OWN TEXT, not on the 370px label column -
 ## the column is a lot wider than any of these names, so centring in the column
 ## would leave the note floating well to the right of the words it belongs to.
@@ -681,18 +681,18 @@ func _refresh_section(section: String) -> void:
 		# the one place on the screen that gradient is still shown.
 		if section == THEME_LOOK:
 			_set_theme_ring(btn, chosen == option)
-		# ISSUE #470: a must-finish tutorial keeps the row On and greyed out.
+		# ISSUE #344: a must-finish tutorial keeps the row On and greyed out.
 		if section == "tutorial_next_match" and GameState.tutorial_option_locked():
 			btn.disabled = true
 			btn.modulate = Color(1, 1, 1, 0.45)
 
-	# ISSUE #542: the window size only means anything in a window - the row is hidden while Fullscreen or
+	# ISSUE #416: the window size only means anything in a window - the row is hidden while Fullscreen or
 	# Borderless is chosen, and comes back the moment Windowed is picked.
 	if section == "window_mode" and section_rows.has("window_size"):
 		var row: Control = section_rows["window_size"]
 		var windowed: bool = String(pending["window_mode"]) == "windowed"
 		if row.visible != windowed:
-			print("ISSUE #542 FIX ACTIVE: window size row ", "shown" if windowed else "hidden", " (", pending["window_mode"], ")")
+			print("ISSUE #416 FIX ACTIVE: window size row ", "shown" if windowed else "hidden", " (", pending["window_mode"], ")")
 		row.visible = windowed
 
 
@@ -819,7 +819,7 @@ func _rebuild() -> void:
 	for child in get_children():
 		if child == audio_player:
 			continue
-		remove_child(child)      # before free: ISSUE #156's queue_free-without-remove_child trap
+		remove_child(child)      # before free: ISSUE #157's queue_free-without-remove_child trap
 		child.queue_free()
 
 	theme = UIKit.base_theme()
@@ -857,5 +857,5 @@ func _leave() -> void:
 	if close_overlay_callback.is_valid():
 		close_overlay_callback.call()
 		return
-	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+	if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")

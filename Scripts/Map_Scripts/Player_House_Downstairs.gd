@@ -11,7 +11,7 @@ const NOTE_LOOK_BACK_DELAY := 0.5   # after the fade in, before the player turns
 # Only for saves that woke up on day 1 ("new" / "rules"; CafeBreakfastCutscene.call_due).
 # It rings once the player has walked this far (world px, summed along the path they
 # actually walked) since coming in, so not the instant they arrive downstairs.
-# ISSUE #478: 4x the old 32px, and measured as distance walked rather than straight-line
+# ISSUE #352: 4x the old 32px, and measured as distance walked rather than straight-line
 # displacement so a small room can't keep the call from ever ringing.
 const CAFE_CALL_ID := "cafe_call_ellie"
 const CAFE_CALL_TRIGGER_DISTANCE := 128.0

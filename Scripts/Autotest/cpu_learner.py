@@ -1,5 +1,5 @@
 """
-CPU counter/matchup learner (ISSUE #375) — used by cpu_tuner.py.
+CPU counter/matchup learner (OLD ISSUE 375) — used by cpu_tuner.py.
 
 Learns WHY one Pokémon / attack does well against another, from self-play, as weights on combinations of TRAITS —
 never "card X beats card Y" — so new sets work by just re-reading their card text.
@@ -81,7 +81,7 @@ def card_traits(c):
     out.append("stage:2" if "Stage 2" in subs else ("stage:1" if "Stage 1" in subs else "stage:0"))
     if "EX" in subs or " ex" in (c.get("name") or ""): out.append("ex")
     for ab in c.get("abilities") or []:
-        # ISSUE #375 counters: what the Power / Body DOES, read from its text (scales to any future set).
+        # OLD ISSUE 375 counters: what the Power / Body DOES, read from its text (scales to any future set).
         at = (ab.get("text") or "").lower()
         blocks = ("can't play" in at or "cannot play" in at or "can't be played" in at or ("no " in at and "can be played" in at))
         if "trainer" in at and blocks:
@@ -238,7 +238,7 @@ class Model:
         os.replace(tmp, path)
 
 
-# ───────────────────────── COUNTERS (ISSUE #375) ─────────────────────────
+# ───────────────────────── COUNTERS (OLD ISSUE 375) ─────────────────────────
 # Which CPU cards win more when the PLAYER shows a given card, and which CPU card traits pay off against a player's play
 # STYLE. Outcome = CPU win minus that CPU deck's running win rate (so strong/weak decks don't masquerade as counters).
 

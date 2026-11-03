@@ -603,8 +603,8 @@ func _build_identity(col: VBoxContainer) -> void:
 	var colour := OptionButton.new()
 	colour.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	for key in MessageBoxTheme.THEMES:
-		# "white" is reserved for the rival, so it is not offered.
-		if str(key) != "white":
+		# "match" is the in-match box's own accent, never a speaker's.
+		if str(key) != "match":
 			colour.add_item(str(key))
 	colour.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_w["message_colour"] = colour

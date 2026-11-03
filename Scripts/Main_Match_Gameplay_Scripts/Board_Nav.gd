@@ -286,7 +286,7 @@ func _collect_cards(node: Node, out: Array) -> void:
 
 
 ## Visible buttons under `node`. `keep_disabled` keeps a dead action row that can
-## still explain itself (ISSUE #265's reason catcher) - A on it shows the reason.
+## still explain itself (ISSUE #266's reason catcher) - A on it shows the reason.
 func _collect_buttons(node: Node, out: Array, keep_disabled: bool) -> void:
 	for child in node.get_children():
 		if child is BaseButton:
@@ -525,13 +525,13 @@ func handle_input(event: InputEvent) -> bool:
 	if UIInput.is_nav_event(event):
 		return true
 
-	# ISSUE #545: while the ring is hidden (the player was on the mouse) the cursor still sits on
+	# ISSUE #419: while the ring is hidden (the player was on the mouse) the cursor still sits on
 	# "Your Hand" from the start of the turn - Space / Enter pressed to get through a message then
 	# OPENED the hand as if it had been Alt-clicked. The first accept or jump only brings the ring
 	# back, the same as the first arrow press. Yes / No keeps its own Space = YES answer.
 	if mode != "yes_no" and not _ring_showing() \
 			and (UIInput.is_accept(event) or UIInput.is_hand_jump(event) or UIInput.is_end_turn_jump(event)):
-		print("ISSUE #545 FIX ACTIVE: first key press only shows the cursor (nothing activated)")
+		print("ISSUE #419 FIX ACTIVE: first key press only shows the cursor (nothing activated)")
 		if UIInput.is_hand_jump(event) and mode == "board":
 			_focus_key = "hand"
 			_mode = mode
@@ -726,18 +726,18 @@ func _process(_delta: float) -> void:
 	_place_ring()
 
 
-## ISSUE #546: the cursor and a mouse-picked card never show together. A card clicked in the bar
+## ISSUE #420: the cursor and a mouse-picked card never show together. A card clicked in the bar
 ## is put down, and any hand card still pulsing "selected" on the open board (a pick the hand
 ## redraw carried over) is cleared - only the cursor's own pulse is left.
 func _drop_mouse_selection() -> void:
 	if hand_drag != null and hand_drag.bar_selected != null:
-		print("ISSUE #546 FIX ACTIVE: cursor up - mouse-picked ", hand_drag.bar_selected.metadata.get("name", ""), " put down")
+		print("ISSUE #420 FIX ACTIVE: cursor up - mouse-picked ", hand_drag.bar_selected.metadata.get("name", ""), " put down")
 		hand_drag.clear_bar_selection()
 	if _mode_now() != "board" or main.player_hand_container == null:
 		return
 	for child in main.player_hand_container.get_children():
 		if child is CardDisplay and (child as CardDisplay).is_selected:
-			print("ISSUE #546 FIX ACTIVE: stale selected hand card cleared")
+			print("ISSUE #420 FIX ACTIVE: stale selected hand card cleared")
 			(child as CardDisplay).set_selected(false)
 
 

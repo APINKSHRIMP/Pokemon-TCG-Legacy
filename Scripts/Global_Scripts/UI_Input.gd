@@ -89,7 +89,7 @@ static func is_log_toggle(event: InputEvent) -> bool:
 	return false
 
 # ── Mouse ────────────────────────────────────────────────────────────────────
-# ISSUE #135: Godot delivers every mouse-wheel notch as an InputEventMouseButton with
+# ISSUE #137: Godot delivers every mouse-wheel notch as an InputEventMouseButton with
 # pressed == true, so the natural-looking test
 #
 #     if event is InputEventMouseButton and event.pressed:
@@ -285,7 +285,7 @@ static func is_hand_expand_held() -> bool:
 
 
 # ── Keys that belong to the mouse ────────────────────────────────────────────
-# ISSUE #544: keys a mouse player presses WITH the mouse - Shift (hold to zoom), Ctrl (debug
+# ISSUE #418: keys a mouse player presses WITH the mouse - Shift (hold to zoom), Ctrl (debug
 # reveal), Alt (Alt + click), the other modifiers, Caps Lock (log), Escape (pause) and Delete
 # (debug menu). Pressing one never switches InputDevice to the keyboard, so no cursor ring
 # appears and nothing gets "selected" by the keyboard cursor.

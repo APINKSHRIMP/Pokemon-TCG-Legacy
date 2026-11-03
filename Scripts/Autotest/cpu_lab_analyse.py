@@ -1,5 +1,5 @@
 """
-Deep analysis of the CPU lab's branch replays (ISSUE #375): per CARD and per situation, where the CPU's own choice is
+Deep analysis of the CPU lab's branch replays (OLD ISSUE 375): per CARD and per situation, where the CPU's own choice is
 beaten by the alternative. Writes lab/deep_analysis.txt.
 
   py cpu_lab_analyse.py [--min 40] [--z 3]

@@ -395,7 +395,7 @@ func _smart() -> bool:
 
 
 func _smart_step() -> void:
-	# ISSUE #375 (smart bot v2, 2026-10-10): a sparring partner that plays like a sensible person, so the CPU's
+	# OLD ISSUE 375 (smart bot v2, 2026-10-10): a sparring partner that plays like a sensible person, so the CPU's
 	# self-play tuning learns from a real opponent. Order: evolve, bench, Energy, Powers, Trainers (only when they help),
 	# retreat when it pays, then the best attack (a KO first, never a suicidal recoil).
 	var m = main

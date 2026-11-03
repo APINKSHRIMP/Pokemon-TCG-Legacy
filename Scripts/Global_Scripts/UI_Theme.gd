@@ -90,7 +90,7 @@ const FONT_SYMBOL_FALLBACK := "C:/Windows/Fonts/seguisym.ttf"
 #   fill or the two collapse into each other.
 ## THE HEADER/FOOTER BAR PAINT, where it differs from chrome_grad_a/b/c.
 ##
-## ISSUE #410 made every chrome_grad a bold gradient so the splash mark and the
+## ISSUE #323 made every chrome_grad a bold gradient so the splash mark and the
 ## selection ring have something to borrow. These five looks keep their ORIGINAL
 ## near-flat bars on top of that. A theme not listed paints its bar from
 ## chrome_grad. Kept outside THEMES so the 39-key contract does not move.
@@ -102,7 +102,7 @@ const BAR_STOPS := {
 }
 
 const THEMES := {
-	# ISSUE #518/#519 (2026-10-30): six looks, DARK ONLY - the Light variants, the old Gengar and Shuppet are
+	# ISSUE #392/#519 (2026-10-30): six looks, DARK ONLY - the Light variants, the old Gengar and Shuppet are
 	# gone; Sunset is now "gengar", Tide "lotad", Canopy "ludicolo". Ids are the bare look name. Every
 	# background was darkened (x0.85) and every white-ink bar pulled 18% toward its field so the bars
 	# no longer glare - see Scripts/Utilities history / Issue_Log #519. Formerly: eight looks, each in a Dark and a Light variant. Every block is 39 keys in
@@ -110,7 +110,7 @@ const THEMES := {
 	# Scripts/Utilities/Theme_Audit.gd. Add a theme here, re-run the builder, then
 	# re-run the audit; nothing else enumerates theme names.
 	#
-	# ISSUE #410: every chrome_grad is a real three-stop gradient now — deep,
+	# ISSUE #323: every chrome_grad is a real three-stop gradient now — deep,
 	# signature, complementary. It feeds the splash mark, the selection ring, the
 	# selected button, the VS band and the message box. The header/footer BARS of
 	# Gengar, Shuppet, Code, Umbreon and Sharpedo do NOT use it: they keep their
@@ -181,10 +181,10 @@ const THEMES := {
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
 		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),
 		# Field — the play area / content background
-		"field":              Color("1A2943"),   # ISSUE #518
+		"field":              Color("1A2943"),   # ISSUE #392
 		"field_glow_top":     Color(0.294, 0.294, 0.867, 0.153),
 		"field_glow_bottom":  Color(0.208, 0.761, 0.208, 0.136),
-		"field_glow_left":    Color("1C2850"),   # ISSUE #518
+		"field_glow_left":    Color("1C2850"),   # ISSUE #392
 		"field_glow_right":   Color("132413"),
 		"field_texture":      Color(1.000, 1.000, 1.000, 0.026),
 		"field_fg":           Color("F1F8F8"),
@@ -236,11 +236,11 @@ const THEMES := {
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
 		"chrome_line":        Color(0.0, 0.0, 0.0, 0.0),
 		# Field — the play area / content background
-		"field":              Color("1E3219"),   # ISSUE #518
+		"field":              Color("1E3219"),   # ISSUE #392
 		"field_glow_top":     Color(0.176, 0.663, 0.624, 0.153),
-		"field_glow_bottom":  Color(0.960, 0.800, 0.250, 0.200),   # ISSUE #518
+		"field_glow_bottom":  Color(0.960, 0.800, 0.250, 0.200),   # ISSUE #392
 		"field_glow_left":    Color("0D2422"),
-		"field_glow_right":   Color("33291A"),   # ISSUE #518
+		"field_glow_right":   Color("33291A"),   # ISSUE #392
 		"field_texture":      Color(1.000, 1.000, 1.000, 0.026),
 		"field_fg":           Color("F2F8F1"),
 		"field_mute":         Color("A7C3A2"),
@@ -284,18 +284,18 @@ const THEMES := {
 	"code": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("3E43A6"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_b":      Color("016A65"),   # ISSUE #410: bold stop, was near-black
-		"chrome_grad_c":      Color("10854E"),   # ISSUE #518
+		"chrome_grad_a":      Color("3E43A6"),   # ISSUE #323: bold stop, was near-black
+		"chrome_grad_b":      Color("016A65"),   # ISSUE #323: bold stop, was near-black
+		"chrome_grad_c":      Color("10854E"),   # ISSUE #392
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.000, 0.898, 0.831, 0.070),
 		"chrome_line":        Color(0.000, 0.898, 0.831, 0.245),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
 		"field":              Color("05080D"),
-		"field_glow_top":     Color(0.180, 0.850, 0.450, 0.128),   # ISSUE #518
+		"field_glow_top":     Color(0.180, 0.850, 0.450, 0.128),   # ISSUE #392
 		"field_glow_bottom":  Color(0.000, 0.898, 0.831, 0.136),
 		"field_glow_left":    Color("081618"),
-		"field_glow_right":   Color("0C1611"),   # ISSUE #518
+		"field_glow_right":   Color("0C1611"),   # ISSUE #392
 		"field_texture":      Color(0.000, 0.898, 0.831, 0.050),
 		"field_fg":           Color("DFF7F5"),
 		"field_mute":         Color("7FA6B2"),
@@ -311,7 +311,7 @@ const THEMES := {
 
 		# Accents and semantics
 		"accent":             Color("00E5D4"),
-		"accent_2":           Color("4FE38C"),   # ISSUE #518
+		"accent_2":           Color("4FE38C"),   # ISSUE #392
 		"good":               Color("67D79B"),
 		"danger":             Color("EF6065"),
 		"warn":               Color("EFC44F"),
@@ -339,17 +339,17 @@ const THEMES := {
 	"umbreon": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("262A30"),   # ISSUE #518
-		"chrome_grad_b":      Color("31353C"),   # ISSUE #518
-		"chrome_grad_c":      Color("7D5F12"),   # ISSUE #410: bold stop, was near-black
+		"chrome_grad_a":      Color("262A30"),   # ISSUE #392
+		"chrome_grad_b":      Color("31353C"),   # ISSUE #392
+		"chrome_grad_c":      Color("7D5F12"),   # ISSUE #323: bold stop, was near-black
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(0.941, 0.906, 0.831, 0.050),
 		"chrome_line":        Color(0.784, 0.635, 0.290, 0.700),   # the BAR keyline, see BAR_STOPS
 		# Field — the play area / content background
-		"field":              Color("111214"),   # ISSUE #518
-		"field_glow_top":     Color(0.560, 0.580, 0.610, 0.085),   # ISSUE #518
+		"field":              Color("111214"),   # ISSUE #392
+		"field_glow_top":     Color(0.560, 0.580, 0.610, 0.085),   # ISSUE #392
 		"field_glow_bottom":  Color(0.784, 0.635, 0.290, 0.128),
-		"field_glow_left":    Color("191B1F"),   # ISSUE #518
+		"field_glow_left":    Color("191B1F"),   # ISSUE #392
 		"field_glow_right":   Color("1D1916"),
 		"field_texture":      Color(0.941, 0.906, 0.831, 0.030),
 		"field_fg":           Color("F1EADB"),
@@ -366,7 +366,7 @@ const THEMES := {
 
 		# Accents and semantics
 		"accent":             Color("C8A24A"),
-		"accent_2":           Color("A9AFB8"),   # ISSUE #518
+		"accent_2":           Color("A9AFB8"),   # ISSUE #392
 		"good":               Color("67D79B"),
 		"danger":             Color("EF6065"),
 		"warn":               Color("EFC44F"),
@@ -394,18 +394,18 @@ const THEMES := {
 	"sharpedo": {
 
 		# Chrome — the header and footer bars
-		"chrome_grad_a":      Color("1F3C77"),   # ISSUE #518
-		"chrome_grad_b":      Color("214D96"),   # ISSUE #518
-		"chrome_grad_c":      Color("B5891E"),   # ISSUE #518
+		"chrome_grad_a":      Color("1F3C77"),   # ISSUE #392
+		"chrome_grad_b":      Color("214D96"),   # ISSUE #392
+		"chrome_grad_c":      Color("B5891E"),   # ISSUE #392
 		"chrome_fg":          Color("FFFFFF"),
 		"chrome_pattern":     Color(1.000, 1.000, 1.000, 0.060),
-		"chrome_line":        Color(0.910, 0.753, 0.290, 0.700),   # ISSUE #518
+		"chrome_line":        Color(0.910, 0.753, 0.290, 0.700),   # ISSUE #392
 		# Field — the play area / content background
 		"field":              Color("12161E"),
 		"field_glow_top":     Color(0.498, 0.659, 0.878, 0.128),
-		"field_glow_bottom":  Color(0.900, 0.750, 0.250, 0.145),   # ISSUE #518
+		"field_glow_bottom":  Color(0.900, 0.750, 0.250, 0.145),   # ISSUE #392
 		"field_glow_left":    Color("0F1727"),
-		"field_glow_right":   Color("1F1A0F"),   # ISSUE #518
+		"field_glow_right":   Color("1F1A0F"),   # ISSUE #392
 		"field_texture":      Color(0.824, 0.902, 1.000, 0.030),
 		"field_fg":           Color("F2F4F7"),
 		"field_mute":         Color("A3AEC2"),
@@ -420,7 +420,7 @@ const THEMES := {
 		"chip_fg":            Color("D8DEE8"),
 
 		# Accents and semantics
-		"accent":             Color("E8C04A"),   # ISSUE #518
+		"accent":             Color("E8C04A"),   # ISSUE #392
 		"accent_2":           Color("7FA8E0"),
 		"good":               Color("67D79B"),
 		"danger":             Color("EF6065"),
@@ -434,9 +434,9 @@ const THEMES := {
 		"status_brn":         Color("E2603A"),
 
 		# Buttons
-		"btn_primary_top":    Color("E0B23C"),   # ISSUE #518
-		"btn_primary_bot":    Color("8A6418"),   # ISSUE #518
-		"btn_primary_fg":     Color("0D0D12"),   # ISSUE #518: dark ink on the new yellow button
+		"btn_primary_top":    Color("E0B23C"),   # ISSUE #392
+		"btn_primary_bot":    Color("8A6418"),   # ISSUE #392
+		"btn_primary_fg":     Color("0D0D12"),   # ISSUE #392: dark ink on the new yellow button
 		"btn_secondary":      Color(1.000, 1.000, 1.000, 0.100),
 		"btn_secondary_fg":   Color("CED4DE"),
 		"btn_edge":           Color(0.000, 0.000, 0.000, 0.300),
@@ -448,7 +448,7 @@ const THEMES := {
 }
 
 # sunset_dark is the look the game shipped in, under its old name spectrum_night.
-const DEFAULT_THEME := "gengar"   # ISSUE #518: was sunset_dark (renamed)
+const DEFAULT_THEME := "gengar"   # ISSUE #392: was sunset_dark (renamed)
 
 # ─── Display names ───────────────────────────────────────────────────────────
 # DELIBERATELY EMPTY. theme_display_name() title-cases an id, so every current
@@ -611,7 +611,7 @@ const TYPE := {
 	"attack_name":   { "size": 16.0,  "face": FONT_UI_SEMIBOLD, "track": 0.03, "upper": false },
 	"attack_damage": { "size": 19.0,  "face": FONT_MONO_MEDIUM, "track": 0.0,  "upper": false },
 	"hp":            { "size": 17.0,  "face": FONT_MONO_MEDIUM, "track": 0.0,  "upper": false },
-	# ISSUE #232: the caption face was IBM Plex Mono REGULAR (weight 400) at 13.5px
+	# ISSUE #233: the caption face was IBM Plex Mono REGULAR (weight 400) at 13.5px
 	# with heavy tracking - the thinnest type on the board, and every label the
 	# fix named ("YOU", "OPPONENT", "YOUR PRIZES", the turn label) is this role.
 	# MEDIUM (weight 500) at 14 is the "make it bold" half; font_at() is the
@@ -631,10 +631,10 @@ const METRICS := {
 
 	# Radii
 	"corner_radius":     11.0,    # chips, small styleboxes
-	# ISSUE #184: buttons are pills, not rounded rectangles. 22 against the 48px
+	# ISSUE #185: buttons are pills, not rounded rectangles. 22 against the 48px
 	# button height reads as a full pill without the 9-patch corners meeting.
 	# Build_UI_Themes derives its TEX_MARGIN from this — re-run it after a change.
-	# 11, matching the chip radius. It was raised to 22 by ISSUE #184 to make
+	# 11, matching the chip radius. It was raised to 22 by ISSUE #185 to make
 	# buttons read as pills; the theme mocks are all authored at 11 and that now
 	# wins. Changing this changes every button face in every theme — re-run
 	# Build_UI_Themes.gd after touching it.
@@ -664,15 +664,15 @@ const METRICS := {
 
 	# Damage counters — ONE block per 10 HP, never a continuous bar, because
 	# attacks and effects key off counter counts.
-	# ISSUE #267: the active row is sized to MATCH THE ATTACK BUTTONS under it.
+	# ISSUE #268: the active row is sized to MATCH THE ATTACK BUTTONS under it.
 	# A 120HP Pokemon shows all 12 blocks, so 12*w + 11*gap has to come to
 	# Main_Match_Core_Gameplay_Script.ACTION_PANEL_W (284): 12*20 + 11*4 = 284.
 	# Width only — the height is what reads as a damage counter and it is unchanged.
 	"dmg_active_w":      20.0,
 	"dmg_active_h":      27.0,
 	"dmg_active_gap":    4.0,
-	# ISSUE #234: bench counters -10% across the board (blocks and gap alike).
-	# ISSUE #268: -20% again, blocks and gap alike (8.64x14.4/2.7 -> 6.91x11.52/2.16).
+	# ISSUE #235: bench counters -10% across the board (blocks and gap alike).
+	# ISSUE #269: -20% again, blocks and gap alike (8.64x14.4/2.7 -> 6.91x11.52/2.16).
 	"dmg_bench_w":       6.912,
 	"dmg_bench_h":       11.52,
 	"dmg_bench_gap":     2.16,
@@ -799,7 +799,7 @@ static func selection_for(block: Dictionary) -> Color:
 	return b if luminance(b) >= 0.22 else block["accent"]
 
 
-## ISSUE #379: THE THREE ACTION COLOURS.
+## ISSUE #292: THE THREE ACTION COLOURS.
 ##
 ## Every button that answers a question is one of three things, and each has
 ## its own solid colour so none of them can be mistaken for a disabled one:
@@ -1043,7 +1043,7 @@ func splash_col(key: String) -> Color:
 		# The mark. Upper arm runs top-left to bottom-right, lower arm top-right
 		# to bottom-left, so stop B is shared and lands in the middle of the
 		# lockup. That is exactly the chrome bar's own three-stop ramp.
-		# ISSUE #379: ...unless a stop would vanish into the field. The flat dark-chrome
+		# ISSUE #292: ...unless a stop would vanish into the field. The flat dark-chrome
 		# themes (Gengar, Code, Umbreon, Sharpedo) have three near-black stops, which
 		# drew the whole mark black on black - see _splash_stop().
 		"mark_upper_a": return _splash_stop("chrome_grad_a")
@@ -1061,7 +1061,7 @@ func splash_col(key: String) -> Color:
 
 		# The wordmark. TCG is a shade off the two big words so it sits behind
 		# them rather than competing.
-		"wordmark": return _splash_readable("chrome_fg", "field_fg")   # ISSUE #379: Canopy's chrome_fg is dark ink
+		"wordmark": return _splash_readable("chrome_fg", "field_fg")   # ISSUE #292: Canopy's chrome_fg is dark ink
 		"tcg":      return col("field_fg")
 
 		# The save select's New Game is BLUE on every theme — beside the green
@@ -1082,7 +1082,7 @@ func splash_col(key: String) -> Color:
 	return SPLASH.get(key, Color.MAGENTA)
 
 
-## ISSUE #379: THE SPLASH MARK MUST READ AGAINST THE FIELD IT SITS ON.
+## ISSUE #292: THE SPLASH MARK MUST READ AGAINST THE FIELD IT SITS ON.
 ##
 ## The mark is the chrome ramp, which on a vivid bar is perfect and on a flat
 ## near-black bar is three shades of black. Any stop that does not clear
@@ -1163,7 +1163,7 @@ func font(role: String) -> Font:
 	return font_at(path)
 
 
-## ISSUE #232: HOW EVERY FACE IN THE GAME IS RASTERISED. TWEAKABLE.
+## ISSUE #233: HOW EVERY FACE IN THE GAME IS RASTERISED. TWEAKABLE.
 ##
 ## The complaint was that thin strokes at small sizes wash out. That is not a
 ## colour problem and not a weight problem - it is what happens when a 1px stem
@@ -1195,7 +1195,7 @@ func font_at(path: String) -> Font:
 	if f == null:
 		push_error("UITheme: could not load font " + path)
 		return ThemeDB.fallback_font
-	# ISSUE #232: sharpen on the way in. FontFile is the only class carrying
+	# ISSUE #233: sharpen on the way in. FontFile is the only class carrying
 	# these; a fallback Font or a FontVariation is left alone.
 	if f is FontFile:
 		var ff := f as FontFile

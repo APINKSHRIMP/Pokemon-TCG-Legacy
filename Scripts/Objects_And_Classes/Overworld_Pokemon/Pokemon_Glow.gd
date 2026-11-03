@@ -104,7 +104,7 @@ static func attach(host: Node, target: Node2D, species: String,
 	glow.top_level = true
 	host.add_child(glow)
 	glow.global_position = glow._follow_point() + glow._offset_now()
-	print("ISSUE #541 FIX ACTIVE: ", species, " glow centred on its drawn art (sprite centered=", (target as Sprite2D).centered if target is Sprite2D else true, ")")
+	print("ISSUE #415 FIX ACTIVE: ", species, " glow centred on its drawn art (sprite centered=", (target as Sprite2D).centered if target is Sprite2D else true, ")")
 	# Somewhere in the middle of the breath, so two of them side by side are not in step.
 	glow._pulse = randf() * PULSE_PERIOD
 	return glow
@@ -138,7 +138,7 @@ func _follow_point() -> Vector2:
 	if sprite == null:
 		return follow.global_position
 	var local := sprite.offset
-	# ISSUE #541: a clipped overworld Pokemon (the surfacing template - Tynamo, Chinchou...) draws with
+	# ISSUE #415: a clipped overworld Pokemon (the surfacing template - Tynamo, Chinchou...) draws with
 	# centered = false and its node at the art's TOP-LEFT, so the light sat half a sprite to the left. Aim at
 	# the middle of what is actually drawn.
 	if not sprite.centered:

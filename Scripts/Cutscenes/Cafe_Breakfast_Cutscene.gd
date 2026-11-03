@@ -100,7 +100,7 @@ const ELLIE_STEP_Y    : float = 1004.0     # "walks down a bit"
 const ELLIE_AISLE_X   : float = 2063.0     # halfway between the chairs either side
 const ELLIE_STOP      := Vector2(2007.0, 1182.0)
 const ELLIE_WALK_SPEED : float = 70.0
-# ISSUE #498: the walk from the table to those spots (no fade). Alexander goes round the
+# ISSUE #372: the walk from the table to those spots (no fade). Alexander goes round the
 # left of the table, the player steps down below it then across.
 const ALEX_STAND_X       : float = 1958.0
 const PLAYER_STEP_DOWN_Y : float = 1140.0
@@ -139,7 +139,7 @@ const OLLY_BYE        := "Well as fun as that was, some of us have places to be.
 const OLLY_ROD        := "[NAME], make sure you come by the shop ASAP right? I've still got a rod for you and a favour to ask."
 
 const ELLIE_MY_TURN   := "Well, now Ol has gone, it's my turn!"
-# ISSUE #488: as Olly walks off. TWEAKABLE: ELLIE_SIGH_AT -- how far along his walk off screen (0-1)
+# ISSUE #362: as Olly walks off. TWEAKABLE: ELLIE_SIGH_AT -- how far along his walk off screen (0-1)
 # she looks down after him; ELLIE_SIGH_AFTER -- the pause once he's gone before she carries on.
 const ELLIE_SIGH       := "Sigh… Don't worry then I'll pay..."
 const ELLIE_SIGH_AT    : float = 0.5
@@ -552,7 +552,7 @@ func _ask_ellie(question: String, again: bool) -> void:
 
 
 func _ask_alex() -> void:
-	# ISSUE #494: he sits straight above the player -- they look at each other for the challenge.
+	# ISSUE #368: he sits straight above the player -- they look at each other for the challenge.
 	if _alex != null and is_instance_valid(_alex):
 		_alex.face("down")
 	player_face("up")
@@ -584,7 +584,7 @@ func _play_after_olly() -> void:
 	close_box()
 
 	# Down off his chair to the path, left to the path into the plaza, and up it.
-	# ISSUE #488: about halfway to the edge of the screen Ellie looks down after him, a beat, and
+	# ISSUE #362: about halfway to the edge of the screen Ellie looks down after him, a beat, and
 	# sighs that she'll pay, while he is still walking. Then she turns back to the player, and her
 	# own lines wait until he is off screen (or ELLIE_SIGH_AFTER, whichever is later).
 	var olly_gone := [false]
@@ -639,7 +639,7 @@ func _play_after_alex() -> void:
 	await _say_script(AFTER_ALEX.get(outcome, AFTER_ALEX["l_l"]))
 	close_box()
 
-	# ISSUE #498: no fade, no cut. Ellie gets up and goes in to pay (out to the aisle, up to the
+	# ISSUE #372: no fade, no cut. Ellie gets up and goes in to pay (out to the aisle, up to the
 	# café door and through it) while Alexander and the player step down from the table to stand
 	# facing each other. A beat later she comes back out of the door.
 	var alex_down := [
@@ -709,7 +709,7 @@ func _play_after_alex() -> void:
 	while _alex != null and is_instance_valid(_alex):
 		await get_tree().process_frame
 
-	# The morning is over. ISSUE #498: no fade and no reload -- the clock already moved on to the
+	# The morning is over. ISSUE #372: no fade and no reload -- the clock already moved on to the
 	# afternoon on the way back from Alexander's match (settle_after_load), so the map came up with
 	# the afternoon's cast (Ellie and Alexander are in the Card Mart) and the player just carries on.
 	_end_morning()

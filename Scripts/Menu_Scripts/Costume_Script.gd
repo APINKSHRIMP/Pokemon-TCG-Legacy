@@ -4,7 +4,7 @@ extends Control
 
 const SPRITE_FOLDER      := "res://Image_Assets/Character_Sprites/In_Battle_Sprites"
 
-# ISSUE #199: SQUARE CELLS, EXPLICIT SIZES, NO EXPAND_FILL.
+# ISSUE #200: SQUARE CELLS, EXPLICIT SIZES, NO EXPAND_FILL.
 #
 # The old cell was a 100x200 portrait TextureRect with SIZE_EXPAND_FILL and
 # EXPAND_FIT_WIDTH_PROPORTIONAL, which is three separate ways of letting the
@@ -25,10 +25,10 @@ var CELL_SIZE            := CELL_SIZE_BASE
 const SPRITE_SEPARATION_BASE := 12
 var SPRITE_SEPARATION    := SPRITE_SEPARATION_BASE
 var SPRITE_SEPARATION_V  := SPRITE_SEPARATION_BASE
-## ISSUE #199: the sprite is drawn at this much of the cell, so it sits INSIDE its
+## ISSUE #200: the sprite is drawn at this much of the cell, so it sits INSIDE its
 ## box with a margin rather than filling it edge to edge.
 const SPRITE_FIT         := 0.84
-## ISSUE #162: TWEAKABLE - peak scale of the selected-costume pulse.
+## ISSUE #163: TWEAKABLE - peak scale of the selected-costume pulse.
 const SELECT_PULSE       := 1.2
 
 # Inset of the grid inside the band between the two chrome bars, and the fixed
@@ -53,7 +53,7 @@ var saved_sprite_name       : String = ""
 var _active_tween           : Tween = null
 var _last_clicked_rect      : Control = null
 
-# ISSUE #32: input-blocking loading overlay shown while the costume grid builds.
+# ISSUE #33: input-blocking loading overlay shown while the costume grid builds.
 var _loading_overlay        : MenuLoadingOverlay = MenuLoadingOverlay.new()
 
 # Flat set of owned costume filenames e.g. {"1dawn_platinum.png": true}
@@ -77,7 +77,7 @@ var _total_costumes         : int = 0
 var zoom_overlay        : CanvasLayer = null
 var is_zoomed           : bool = false
 var last_zoomed_costume : Control = null
-# ISSUE #98: hold-to-preview, matching the deck builder. While Shift is held _process re-reads the
+# ISSUE #102: hold-to-preview, matching the deck builder. While Shift is held _process re-reads the
 # hovered costume every frame; the preview is sticky over the gaps between cells so sliding across
 # the grid never flashes the UI back on. Only releasing Space closes it.
 var zoom_held          : bool = false
@@ -116,7 +116,7 @@ func _ready() -> void:
 	_wrap_grid_in_scroll_container()
 	_apply_grid_layout()
 	UIKit.on_screen_resized(_on_screen_resized)
-	# ISSUE #32: block input behind a loading overlay while the (potentially large) costume grid builds.
+	# ISSUE #33: block input behind a loading overlay while the (potentially large) costume grid builds.
 	# Retest: shrink the blocker 142px top / 134px bottom so the banner buttons (Cancel) stay clickable.
 	# The hide button sits in that unblocked top strip, so disable it outright while a build runs.
 	hide_btn.disabled = true
@@ -203,11 +203,11 @@ func _build_chrome() -> void:
 	_count_chip_holder = bars["header"].left
 	_refresh_count_chip()
 
-	UIKit.adopt_button(hide_btn, bars["header"].right, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(hide_btn, bars["header"].right, "neutral", false)   # ISSUE #292
 	hide_btn.custom_minimum_size.x = FILTER_BTN_W
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #292: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
@@ -275,7 +275,7 @@ func _wrap_grid_in_scroll_container() -> void:
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.columns = COLUMNS
 	grid.add_theme_constant_override("h_separation", SPRITE_SEPARATION)
-	# ISSUE #144 FIX: the scroll container spans the full 1920 and the columns share the leftover
+	# ISSUE #146 FIX: the scroll container spans the full 1920 and the columns share the leftover
 	# width (see the EXPAND_FILL in _add_character_to_grid), so the last costume in a row finishes
 	# against the scrollbar instead of ~120px short of it.
 	grid.add_theme_constant_override("v_separation", SPRITE_SEPARATION_V)
@@ -306,7 +306,7 @@ func _load_characters() -> void:
 
 	SceneCache.start_build_budget()
 	for fname in files:
-		# ISSUE #32 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
+		# ISSUE #33 FIX: bail if the scene was cancelled/freed mid-load (get_tree() would be null).
 		if not is_inside_tree():
 			return
 		# Owned-only mode skips unowned costumes before the per-item frame yield below. That yield is
@@ -317,7 +317,7 @@ func _load_characters() -> void:
 		await SceneCache.yield_if_over_budget()
 
 
-## ISSUE #199: one square cell. The grid child is a WRAPPER Control, not the
+## ISSUE #200: one square cell. The grid child is a WRAPPER Control, not the
 ## TextureRect - the box, the sprite and the click target are three different
 ## things and only the wrapper is allowed to be the cell.
 ##
@@ -326,10 +326,10 @@ func _load_characters() -> void:
 ## empty space while everything around them was framed.
 func _add_character_to_grid(file_name: String) -> void:
 	# Usually already in memory: the pause menu prewarms every owned costume.
-	var texture := SceneCache.cached_texture(SPRITE_FOLDER + "/" + file_name, "costume")   # ISSUE #406: own pool
+	var texture := SceneCache.cached_texture(SPRITE_FOLDER + "/" + file_name, "costume")   # ISSUE #319: own pool
 	if texture == null:
 		return
-	# ISSUE #399: fit the CHARACTER, not its padded canvas (same as the intro, #380).
+	# ISSUE #310: fit the CHARACTER, not its padded canvas (same as the intro, #380).
 	# The cropped texture also goes into the costume_texture meta, so the zoom matches.
 	texture = UIKit.visible_sprite(texture)
 
@@ -401,7 +401,7 @@ func _select_character_by_name(sprite_name: String) -> void:
 # Blue "Show" while the unowned silhouettes are filtered out, yellow "Hide" while everything is on show.
 func _refresh_hide_button() -> void:
 	hide_btn.text = "Show all costumes" if _hide_unowned else "Show owned only"
-	UIKit.style_button(hide_btn, "neutral")   # ISSUE #379
+	UIKit.style_button(hide_btn, "neutral")   # ISSUE #292
 
 
 func _on_hide_pressed() -> void:
@@ -509,7 +509,7 @@ func _apply_selected_animation(rect: Control) -> void:
 	_active_tween = tween
 
 	tween.tween_property(art, "modulate", Color.WHITE * 1.1, 0.2)
-	# ISSUE #162: grows to SELECT_PULSE, up from 1.1 - a 10% pulse was too subtle
+	# ISSUE #163: grows to SELECT_PULSE, up from 1.1 - a 10% pulse was too subtle
 	# to show which costume was picked.
 	tween.parallel().tween_property(rect, "scale", Vector2(SELECT_PULSE, SELECT_PULSE), 0.2)
 	tween.tween_property(art, "modulate", Color.WHITE * 1.0, 0.2)
@@ -570,7 +570,7 @@ func _on_save_pressed() -> void:
 
 
 func _on_cancel_pressed() -> void:
-	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+	if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
@@ -578,7 +578,7 @@ func _on_cancel_pressed() -> void:
 
 func _input(event: InputEvent) -> void:
 	# ── Hold-to-preview ──
-	# Shift, not Space. Space is the accept key (ISSUE #97: an unhandled press fell through to
+	# Shift, not Space. Space is the accept key (ISSUE #101: an unhandled press fell through to
 	# "ui_accept" and re-pressed whichever button still had focus). Shift has no other job here,
 	# so nothing needs consuming. Tested before the InputEventKey branch so a pad reaches it too.
 	if UIInput.is_zoom_start(event):
@@ -593,10 +593,10 @@ func _input(event: InputEvent) -> void:
 	# UIInput: Escape, Backspace or pad B.
 	if UIInput.is_cancel(event):
 		if is_zoomed:
-			zoom_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
+			zoom_held = false   # ISSUE #102: drop the hold too, or _process re-opens the preview
 			_hide_zoom()
 			return
-		if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+		if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 		return
 
@@ -606,7 +606,7 @@ func _input(event: InputEvent) -> void:
 		call_deferred("_check_click_miss")
 
 
-# ISSUE #98: while the zoom key is held, keep the preview locked to whatever costume the mouse is
+# ISSUE #102: while the zoom key is held, keep the preview locked to whatever costume the mouse is
 # over. The is_zoom_held() re-check catches an alt-tab that swallowed the key release, which would
 # otherwise leave the preview stuck open.
 func _process(_delta: float) -> void:
@@ -651,7 +651,7 @@ func _get_hovered_costume() -> Control:
 
 
 func _show_zoom(rect: Control) -> void:
-	# ISSUE #199: the grid child is a wrapper Control now, so the art comes off a
+	# ISSUE #200: the grid child is a wrapper Control now, so the art comes off a
 	# meta rather than off the node.
 	var art: Texture2D = rect.get_meta("costume_texture", null)
 	if art == null:
@@ -660,7 +660,7 @@ func _show_zoom(rect: Control) -> void:
 	last_zoomed_costume = rect
 	zoomed_costume      = rect
 
-	# ISSUE #98: overlay already up — swap the image in place rather than rebuilding the CanvasLayer,
+	# ISSUE #102: overlay already up — swap the image in place rather than rebuilding the CanvasLayer,
 	# which flashed the bright costume grid through for a frame on every hover change.
 	if is_zoomed and zoom_image != null and is_instance_valid(zoom_image):
 		_apply_zoom_texture(art)

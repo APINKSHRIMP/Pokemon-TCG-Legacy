@@ -1,5 +1,5 @@
 extends RefCounted
-## ISSUE #375 (self-play tuning): every tunable number in CPU_AI.gd is read through CpuWeights.g(key, default).
+## OLD ISSUE 375 (self-play tuning): every tunable number in CPU_AI.gd is read through CpuWeights.g(key, default).
 ## The value used is default × multiplier — 1.0 means "as written in the code", so a missing key is always safe.
 ##
 ## Multipliers come from res://NPC_and_Opponent_Data/CPU_Weights.json ({"key": multiplier, ...}) — the shipped,
@@ -18,12 +18,12 @@ static func g(key: String, default_value: float) -> float:
 	return default_value * float(_mult.get(key, 1.0))
 
 
-## A yes/no CPU rule (ISSUE #375 rule audit): on unless its multiplier is set below 0.5 ("rule.x": 0 switches it off).
+## A yes/no CPU rule (OLD ISSUE 375 rule audit): on unless its multiplier is set below 0.5 ("rule.x": 0 switches it off).
 static func on(key: String) -> bool:
 	return g(key, 1.0) >= 0.5
 
 
-# ── Branch replay (ISSUE #375, lab only) ── every real CPU choice is counted; the lab replays a match with choice number
+# ── Branch replay (OLD ISSUE 375, lab only) ── every real CPU choice is counted; the lab replays a match with choice number
 # branch_target replaced by a random alternative, then compares the result with the unbranched match on the same seed.
 static var branch_target := -1
 static var branch_counter := 0
@@ -60,7 +60,7 @@ static func set_multipliers(m: Dictionary) -> void:
 	_loaded = true
 
 
-# ── Learned card synergy (ISSUE #375) ── {"uid_a": {"uid_b": points}} — symmetric; positive = these two win more
+# ── Learned card synergy (OLD ISSUE 375) ── {"uid_a": {"uid_b": points}} — symmetric; positive = these two win more
 # together than apart. Built by the tuner from self-play; shipped copy in res://NPC_and_Opponent_Data/CPU_Synergy.json.
 const SHIPPED_SYNERGY_PATH := "res://NPC_and_Opponent_Data/CPU_Synergy.json"
 static var _syn: Dictionary = {}
@@ -107,7 +107,7 @@ static func _load_shipped() -> void:
 				_mult[k] = float(parsed[k])
 
 
-# ── Learned matchups (ISSUE #375) ── {"cards": {uid: [traits]}, "attacks": {"uid|attack": [traits]}, "bench_traits": [...],
+# ── Learned matchups (OLD ISSUE 375) ── {"cards": {uid: [traits]}, "attacks": {"uid|attack": [traits]}, "bench_traits": [...],
 # "w": {cross: weight}} — trait-combination weights learned from self-play (Scripts/Autotest/cpu_learner.py). Shipped copy
 # in res://NPC_and_Opponent_Data/CPU_Learned.json; empty = no learned terms.
 const SHIPPED_LEARNED_PATH := "res://NPC_and_Opponent_Data/CPU_Learned.json"
@@ -128,7 +128,7 @@ static func set_learned(table: Dictionary) -> void:
 	_learned_loaded = true
 
 
-# ── CPU foresight / "cheat mode" (ISSUE #375) ── two SEPARATE dials, 0.0 = fair (default) .. 1.0 = always:
+# ── CPU foresight / "cheat mode" (OLD ISSUE 375) ── two SEPARATE dials, 0.0 = fair (default) .. 1.0 = always:
 #   cheat_cards — sees hidden CARDS: its own Prize cards, the player's hand and next draw. Subtle: it just seems to pick
 #                 the right Prize or play safe at the right time.
 #   cheat_coins — knows the coin results it is about to flip (the flips stay fair). Obvious if overused (it never goes
@@ -149,7 +149,7 @@ static func cheating_coins() -> bool:
 	return cheat_coins > 0.0 and (cheat_coins >= 1.0 or _cheat_rng.randf() < cheat_coins)
 
 
-# ── Retreat appetite (ISSUE #484) ── 1.0 = retreats whenever its rules say so (default); 0.5 = only half those
+# ── Retreat appetite (ISSUE #358) ── 1.0 = retreats whenever its rules say so (default); 0.5 = only half those
 # times; 0.0 = never retreats (Switch and forced replacements still work). Opponent JSON "cpu_retreat_rate".
 static var retreat_rate := 1.0
 
@@ -160,7 +160,7 @@ static func retreat_allowed() -> bool:
 	return ok
 
 
-# ── Learned counters (ISSUE #375) ── {"cards": {cpu_uid: {player_uid: pts}}, "style": {trait: {style: pts}},
+# ── Learned counters (OLD ISSUE 375) ── {"cards": {cpu_uid: {player_uid: pts}}, "style": {trait: {style: pts}},
 # "traits": {uid: [traits]}} — which CPU cards win more when the player has a given card out, and which CPU card traits
 # pay off against a player's play style (Trainer-heavy, evolving, bench damage...). Shipped: res://NPC_and_Opponent_Data/
 # CPU_Counters.json; the lab passes its own with --counters.
@@ -182,7 +182,7 @@ static func set_counters(table: Dictionary) -> void:
 	_counters_loaded = true
 
 
-# ── Multi-turn planner (ISSUE #375 phase 3) ── turns of lookahead (0 = off). Opponent JSON "cpu_plan_turns"; autotester
+# ── Multi-turn planner (OLD ISSUE 375 phase 3) ── turns of lookahead (0 = off). Opponent JSON "cpu_plan_turns"; autotester
 # --plan-turns=N. Timing accumulators let the tester report thinking time.
 static var plan_turns := 0
 static var plan_ms_total := 0.0

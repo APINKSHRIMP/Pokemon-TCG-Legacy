@@ -12,7 +12,7 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
 const DEFAULT_SPAWN_POSITION             = Vector2(1763, 1810)
 
 func get_scene_path() -> String:     return SCENE_PATH
-## ISSUE #210: the plaza and the hall behind it are one place, so they share a
+## ISSUE #211: the plaza and the hall behind it are one place, so they share a
 ## track. BGM_STARTING_MENU (the PTCG main-menu theme) moved to the boot splash and
 ## the first-launch setup
 ## screen, which is the only other place a menu theme belongs.

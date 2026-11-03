@@ -1,5 +1,5 @@
 """
-A/B test of the self-play tuner's outputs (ISSUE #375): plays the SAME fresh seeds with
+A/B test of the self-play tuner's outputs (OLD ISSUE 375): plays the SAME fresh seeds with
   O   original CPU (no multipliers, no synergy, no learned matchups)
   W   tuned weights only (best_weights.json)
   WS  + learned synergy (synergy.json)
@@ -29,34 +29,34 @@ lrn = T.LEARNED if os.path.exists(T.LEARNED) else None
 ALL = {"O": ({}, None, None, None), "W": (champ, None, None, None), "WS": (champ, syn, None, None), "WL": (champ, None, lrn, None),
        "WSL": (champ, syn, lrn, None), "CARDS": (champ, None, None, ["--cheat-cards=1.0"]), "COINS": (champ, None, None, ["--cheat-coins=1.0"]),
        "BOTH": (champ, None, None, ["--cheat-cards=1.0", "--cheat-coins=1.0"]),
-       # ISSUE #375 lab follow-up: old trainer scoring vs the data-driven fixes, + threshold / counters / learned on top
+       # OLD ISSUE 375 lab follow-up: old trainer scoring vs the data-driven fixes, + threshold / counters / learned on top
        "OLD": ({**champ, "rule.trainer_value_fix": 0.0}, None, None, None),
        "NEW": (champ, None, None, None),
        "T75": ({**champ, "trainer.play_threshold": 0.75}, None, None, None),
        "NEWK": (champ, None, None, ["--counters=" + os.path.join(T.TUNER_DIR, "counters.json")]),
        "NEWL": (champ, None, lrn, None),
        "NEW75": ({**champ, "trainer.play_threshold": 0.75}, None, None, None),
-       # ISSUE #375 lookahead phase 1: off vs on (+ attack-only / retreat-only to see which half helps)
+       # OLD ISSUE 375 lookahead phase 1: off vs on (+ attack-only / retreat-only to see which half helps)
        "NOLOOK": ({**champ, "rule.lookahead": 0.0}, None, None, None),
        "LOOK": (champ, None, None, None),
        "LOOKATK": ({**champ, "look.retreat_stay_margin": 1000.0, "look.retreat_go_margin": 1000.0}, None, None, None),
        "LOOKRET": ({**champ, "look.attack": 0.0}, None, None, None),
        "LOOKCARDS": (champ, None, None, ["--cheat-cards=1.0"]),
        "LOOKBOTH": (champ, None, None, ["--cheat-cards=1.0", "--cheat-coins=1.0"]),
-       # ISSUE #375 lookahead phase 2: phase-1 only vs everything vs each new piece on its own
+       # OLD ISSUE 375 lookahead phase 2: phase-1 only vs everything vs each new piece on its own
        "LOOK1": ({**champ, "look.energy_attach": 0.0, "look.gust": 0.0, "look.heal": 0.0}, None, None, None),
        "LOOK2": (champ, None, None, None),
        "L2E": ({**champ, "look.gust": 0.0, "look.heal": 0.0}, None, None, None),
        "L2G": ({**champ, "look.energy_attach": 0.0, "look.heal": 0.0}, None, None, None),
        "L2H": ({**champ, "look.energy_attach": 0.0, "look.gust": 0.0}, None, None, None),
-       # ISSUE #375 phase 3 planner: off vs N turns, fair vs cheater
+       # OLD ISSUE 375 phase 3 planner: off vs N turns, fair vs cheater
        "PLAN1": (champ, None, None, ["--plan-turns=1"]),
        "PLAN2": (champ, None, None, ["--plan-turns=2"]),
        "PLAN3": (champ, None, None, ["--plan-turns=3"]),
        "PLAN2C": (champ, None, None, ["--plan-turns=2", "--cheat-cards=1.0"]),
        "PLAN3C": (champ, None, None, ["--plan-turns=3", "--cheat-cards=1.0"])}
 pick = args[args.index("--configs") + 1].split(",") if "--configs" in args else ["O", "W", "WS", "WSL"]
-# Ad-hoc variants: "M:key=mult;key=mult" = the current champion with those multipliers (ISSUE #375 sweeps).
+# Ad-hoc variants: "M:key=mult;key=mult" = the current champion with those multipliers (OLD ISSUE 375 sweeps).
 for k in pick:
     if k.startswith("M:") and k not in ALL:
         ws = dict(champ)

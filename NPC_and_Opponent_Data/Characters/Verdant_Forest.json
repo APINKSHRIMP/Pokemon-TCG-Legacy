@@ -1427,30 +1427,6 @@
         }
       ]
     },
-    "RIVAL 5": {
-      "days": "5",
-      "times": "M",
-      "loop": false,
-      "placeholder": true
-    },
-    "RIVAL 6": {
-      "days": "6",
-      "times": "M,A,E,N",
-      "loop": false,
-      "placeholder": true
-    },
-    "RIVAL 7": {
-      "days": "7",
-      "times": "M,A,E,N",
-      "loop": false,
-      "placeholder": true
-    },
-    "RIVAL 8": {
-      "days": "8",
-      "times": "M,A,E,N",
-      "loop": false,
-      "placeholder": true
-    },
     "Rocket Boss Giovanni": {
       "at": [1783, 523],
       "days": "5-11/2",

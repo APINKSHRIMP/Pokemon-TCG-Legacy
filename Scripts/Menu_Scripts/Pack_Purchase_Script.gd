@@ -143,9 +143,9 @@ func _build_chrome() -> void:
 	stepper.offset_bottom = STEPPER_Y + STEPPER_H
 	add_child(stepper)
 
-	UIKit.adopt_button(prev_btn, stepper, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(prev_btn, stepper, "neutral", false)   # ISSUE #292
 	UIKit.adopt_label(set_name_label, stepper, "title", "field_fg")
-	UIKit.adopt_button(next_btn, stepper, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(next_btn, stepper, "neutral", false)   # ISSUE #292
 	prev_btn.text = "<"
 	next_btn.text = ">"
 	prev_btn.custom_minimum_size.x = STEPPER_ARROW_W
@@ -155,7 +155,7 @@ func _build_chrome() -> void:
 	set_name_label.custom_minimum_size.x = STEPPER_NAME_W
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_button, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
+	UIKit.adopt_button(cancel_button, bars["footer"].centre, "negative")   # ISSUE #292: Cancel is the negative colour
 	UIKit.adopt_button(buy_button, bars["footer"].centre, "primary")
 
 	var nav := get_node_or_null("SET NAVIGATION")
@@ -267,7 +267,7 @@ func _refresh_display() -> void:
 	_clear_selection()
 	set_name_label.text = _get_set_name(pack_id)
 	_load_pack_images(pack_id)
-	_prefetch_neighbour_packs()   # ISSUE #207 — fire and forget, one image per frame
+	_prefetch_neighbour_packs()   # ISSUE #208 — fire and forget, one image per frame
 	ShopChrome.set_wallet_cash(wallet_chip, int(player_cash), false)
 	_refresh_pills()
 	_update_buy_button()
@@ -331,7 +331,7 @@ func _load_pack_images(pack_id: String) -> void:
 	pack_hbox.offset_bottom = pack_hbox.offset_top + row_h
 
 
-## ISSUE #207: pack art is CACHED for the life of the screen.
+## ISSUE #208: pack art is CACHED for the life of the screen.
 ##
 ## Godot's ResourceLoader only keeps a resource while something still references
 ## it, and switching sets frees all four TextureRects — so every step of the
@@ -350,7 +350,7 @@ func _load_texture(path: String) -> Texture2D:
 	return tex
 
 
-## ISSUE #207: warms the cache for the sets either side of the one on screen, one
+## ISSUE #208: warms the cache for the sets either side of the one on screen, one
 ## image per frame so it never competes with the current set's own load. The first
 ## visit to a set is then the only one that can hitch, and even that is usually
 ## already paid for by the time the player steps onto it.
@@ -387,7 +387,7 @@ func _prefetch_neighbour_packs() -> void:
 func _refresh_pills() -> void:
 	if not is_inside_tree():
 		return
-	# ISSUE #195: ONE frame is not enough after a set change. _load_pack_images
+	# ISSUE #196: ONE frame is not enough after a set change. _load_pack_images
 	# replaces every child AND moves pack_hbox's own offsets, so the container
 	# re-sorts on the frame after its resize — read a frame too early and every
 	# pack's global rect is still (0,0,0,0), which is what put the pills in the
@@ -541,7 +541,7 @@ func _save_last_pack_loaded(pack_id: String) -> void:
 
 # ─── Set navigation ──────────────────────────────────────────────────────────
 
-## ISSUE #253: TRUE WHILE A SET CHANGE IS STILL BEING DRAWN.
+## ISSUE #254: TRUE WHILE A SET CHANGE IS STILL BEING DRAWN.
 ##
 ## This screen is the example the issue was logged against, and its stacking is
 ## not really an input queue — it is a RENDER lag. _on_next_set steps the index
@@ -575,7 +575,7 @@ func _on_prev_set() -> void:
 	await _step_to_current_set()
 
 
-## ISSUE #253: refreshes the shelf with the arrows held down until it is drawn.
+## ISSUE #254: refreshes the shelf with the arrows held down until it is drawn.
 func _step_to_current_set() -> void:
 	_stepping = true
 	next_btn.disabled = true

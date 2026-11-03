@@ -52,14 +52,14 @@ var _total_sleeves     : int = 0
 var zoom_overlay       : CanvasLayer = null
 var is_zoomed          : bool = false
 var last_zoomed_sleeve : Control = null
-# ISSUE #98: hold-to-preview, matching the deck builder. While Shift is held _process re-reads the
+# ISSUE #102: hold-to-preview, matching the deck builder. While Shift is held _process re-reads the
 # hovered sleeve every frame; the preview is sticky over the gaps between sleeves so sliding across
 # the grid never flashes the UI back on. Only releasing Space closes it.
 var zoom_held         : bool = false
 var zoomed_sleeve      : Control = null
 var zoom_image         : TextureRect = null
 
-# ─── Loading state (ISSUE #32) ────────────────────────────────────────────────
+# ─── Loading state (ISSUE #33) ────────────────────────────────────────────────
 var _loading_overlay   : MenuLoadingOverlay = MenuLoadingOverlay.new()
 var _is_loading        : bool = false
 var _load_cancelled    : bool = false
@@ -95,7 +95,7 @@ func _ready() -> void:
 	_wrap_grid_in_scroll_container()
 	_apply_grid_layout()
 	UIKit.on_screen_resized(_on_screen_resized)
-	# ISSUE #32: block input behind a loading overlay while the (potentially large) sleeve grid builds.
+	# ISSUE #33: block input behind a loading overlay while the (potentially large) sleeve grid builds.
 	# The hide button sits in the overlay's unblocked top strip, so disable it while a build runs.
 	hide_btn.disabled = true
 	_show_loading_overlay()
@@ -110,11 +110,11 @@ func _ready() -> void:
 		_select_sleeve_by_name(saved_sleeve_name)
 
 
-# ─── Loading overlay (ISSUE #32) ──────────────────────────────────────────────
+# ─── Loading overlay (ISSUE #33) ──────────────────────────────────────────────
 
 # Semi-transparent black box with a spinning square, shown while the grid loads. Blocks mouse input
 # (the dim ColorRect uses MOUSE_FILTER_STOP); Escape still cancels via _input.
-# ISSUE #32 (retest): this was an inline copy of the overlay that the other three library menus got
+# ISSUE #33 (retest): this was an inline copy of the overlay that the other three library menus got
 # via MenuLoadingOverlay, so every geometry/opacity tweak had to be made twice and the two drifted.
 # Sleeves now uses the shared class as well — all tuning lives in Menu_Loading_Overlay.gd.
 func _show_loading_overlay() -> void:
@@ -177,11 +177,11 @@ func _build_chrome() -> void:
 	_count_chip_holder = bars["header"].left
 	_refresh_count_chip()
 
-	UIKit.adopt_button(hide_btn, bars["header"].right, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(hide_btn, bars["header"].right, "neutral", false)   # ISSUE #292
 	hide_btn.custom_minimum_size.x = FILTER_BTN_W
 
 	# Cancel first: the footer slot is an HBox, so insertion order is left-to-right.
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #292: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	grid.position = Vector2(GRID_INSET_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
@@ -255,7 +255,7 @@ func _wrap_grid_in_scroll_container() -> void:
 
 func _load_sleeves() -> void:
 	# The small/ folder is the LISTING - the canonical set of sleeve names and what
-	# the count chip measures against - and, again (ISSUE #395), what each cell draws.
+	# the count chip measures against - and, again (ISSUE #309), what each cell draws.
 	var dir := DirAccess.open(SLEEVE_SMALL_FOLDER)
 	if dir == null:
 		push_error("Sleeves: cannot open folder " + SLEEVE_SMALL_FOLDER)
@@ -266,7 +266,7 @@ func _load_sleeves() -> void:
 	var file_name := dir.get_next()
 	while file_name != "":
 		if not dir.current_is_dir() and not file_name.ends_with(".import"):
-			# ISSUE #129: the "1_Default*" card backs used to be filtered out here, because the
+			# ISSUE #131: the "1_Default*" card backs used to be filtered out here, because the
 			# only starter entry was the fake name "default" that matched no file. The player is
 			# now granted three real ones on a new save, so they have to be listed or they could
 			# never be equipped. They are still excluded from the trainer card's collection
@@ -283,7 +283,7 @@ func _load_sleeves() -> void:
 
 	SceneCache.start_build_budget()
 	for fname in files:
-		# ISSUE #32 FIX: bail out cleanly if the player cancelled/escaped (the scene is being freed) —
+		# ISSUE #33 FIX: bail out cleanly if the player cancelled/escaped (the scene is being freed) —
 		# calling get_tree() on a node that has left the tree is what crashed the game before.
 		if _load_cancelled or not is_inside_tree():
 			return
@@ -299,7 +299,7 @@ func _add_sleeve_to_grid(file_name: String) -> void:
 	var base_name : String = file_name.get_basename()
 	var is_owned  : bool   = _owned_sleeves.has(base_name)
 
-	# ISSUE #395: BACK TO THE SMALL COPY (reverses #274).
+	# ISSUE #309: BACK TO THE SMALL COPY (reverses #274).
 	#
 	# #274 swapped the grid to the full-size originals on the theory that only the
 	# cell COUNT made this screen slow. In play the load got noticeably longer, so
@@ -307,7 +307,7 @@ func _add_sleeve_to_grid(file_name: String) -> void:
 	# by the hold-Shift zoom (_show_zoom -> _large_sleeve_texture). The original
 	# stays as the fallback for a sleeve with no small copy.
 	# Usually already in memory: the pause menu prewarms every owned sleeve.
-	var texture := SceneCache.cached_texture(SLEEVE_SMALL_FOLDER + "/" + file_name, "sleeve")   # ISSUE #406: own pool
+	var texture := SceneCache.cached_texture(SLEEVE_SMALL_FOLDER + "/" + file_name, "sleeve")   # ISSUE #319: own pool
 	if texture == null:
 		texture = _large_sleeve_texture(base_name)
 	if texture == null:
@@ -365,7 +365,7 @@ func _select_sleeve_by_name(sleeve_name: String) -> void:
 # Blue "Show" while the unowned placeholders are filtered out, yellow "Hide" while all are on show.
 func _refresh_hide_button() -> void:
 	hide_btn.text = "Show all sleeves" if _hide_unowned else "Show owned only"
-	UIKit.style_button(hide_btn, "neutral")   # ISSUE #379
+	UIKit.style_button(hide_btn, "neutral")   # ISSUE #292
 
 
 func _on_hide_pressed() -> void:
@@ -521,8 +521,8 @@ func _on_save_pressed() -> void:
 
 
 func _on_cancel_pressed() -> void:
-	_load_cancelled = true   # ISSUE #32: stop the load loop before the scene is freed
-	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+	_load_cancelled = true   # ISSUE #33: stop the load loop before the scene is freed
+	if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
@@ -530,7 +530,7 @@ func _on_cancel_pressed() -> void:
 
 func _input(event: InputEvent) -> void:
 	# ── Hold-to-preview ──
-	# Shift, not Space. Space is the accept key (ISSUE #97: an unhandled press fell through to
+	# Shift, not Space. Space is the accept key (ISSUE #101: an unhandled press fell through to
 	# "ui_accept" and re-pressed whichever button still had focus). Shift has no other job here,
 	# so nothing needs consuming. Tested before the InputEventKey branch so a pad reaches it too.
 	if UIInput.is_zoom_start(event):
@@ -545,11 +545,11 @@ func _input(event: InputEvent) -> void:
 	# UIInput: Escape, Backspace or pad B.
 	if UIInput.is_cancel(event):
 		if is_zoomed:
-			zoom_held = false   # ISSUE #98: drop the hold too, or _process re-opens the preview
+			zoom_held = false   # ISSUE #102: drop the hold too, or _process re-opens the preview
 			_hide_zoom()
 			return
-		_load_cancelled = true   # ISSUE #32: stop the load loop before the scene is freed
-		if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+		_load_cancelled = true   # ISSUE #33: stop the load loop before the scene is freed
+		if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 		return
 
@@ -559,7 +559,7 @@ func _input(event: InputEvent) -> void:
 		call_deferred("_check_click_miss")
 
 
-# ISSUE #98: while the zoom key is held, keep the preview locked to whatever sleeve the mouse is
+# ISSUE #102: while the zoom key is held, keep the preview locked to whatever sleeve the mouse is
 # over. The is_zoom_held() re-check catches an alt-tab that swallowed the key release, which would
 # otherwise leave the preview stuck open.
 func _process(_delta: float) -> void:
@@ -632,7 +632,7 @@ func _show_zoom(wrapper: Control) -> void:
 	last_zoomed_sleeve = wrapper
 	zoomed_sleeve      = wrapper
 
-	# ISSUE #98: overlay already up — swap the image in place rather than rebuilding the CanvasLayer,
+	# ISSUE #102: overlay already up — swap the image in place rather than rebuilding the CanvasLayer,
 	# which flashed the bright sleeve grid through for a frame on every hover change.
 	if is_zoomed and zoom_image != null and is_instance_valid(zoom_image):
 		_apply_zoom_texture(zoom_texture)

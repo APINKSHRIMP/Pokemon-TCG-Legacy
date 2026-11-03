@@ -175,7 +175,7 @@ const FOOTER_BTN_GAP := 20
 # physical thing floating just above the screen, so keep the growth small and the
 # alpha well under half or it reads as a second, dirtier copy of the item.
 #
-# ISSUE #197: EVERY NUMBER HERE IS A FRACTION OF THE ITEM, NOT A PIXEL COUNT.
+# ISSUE #198: EVERY NUMBER HERE IS A FRACTION OF THE ITEM, NOT A PIXEL COUNT.
 # The first version dropped every shadow by a flat (11, 14) px. That is a couple
 # of percent on a 430px booster pack — which is why the pack shop was the one
 # screen that looked right — and better than a tenth of a 100px coin or a 90px
@@ -183,13 +183,13 @@ const FOOTER_BTN_GAP := 20
 # fractions also mean the shadow never has to know the item's size, which is not
 # settled on the frame a container child is added.
 #
-# ISSUE #197 (retest 2): SAME SIZE as the item, offset RIGHT and DOWN. The
+# ISSUE #198 (retest 2): SAME SIZE as the item, offset RIGHT and DOWN. The
 # same-size half stands - a shadow bigger than its caster reads as a second copy
 # peeking out on every side at once, where an identically sized one displaced
 # further reads as one object lifted off the page. Only the direction changed
 # back: the light is above and to the left, so the shadow falls right and down.
 const SHADOW_GROW  := 0.0                     # same size as the item
-# ISSUE #197 (retest 4): ONE NUMBER, AND THE SAME NUMBER OF PIXELS IN BOTH
+# ISSUE #198 (retest 4): ONE NUMBER, AND THE SAME NUMBER OF PIXELS IN BOTH
 # DIRECTIONS. The light is above and to the left, so the shadow falls right and
 # down, and it has to be EQUALLY visible right and down or it stops reading as a
 # lift off the page.
@@ -464,7 +464,7 @@ static func _bar_slot(row: HBoxContainer, align: int) -> HBoxContainer:
 		else (BoxContainer.ALIGNMENT_END if align == HORIZONTAL_ALIGNMENT_RIGHT
 		else BoxContainer.ALIGNMENT_CENTER))
 	slot.add_theme_constant_override("separation", 12)
-	# ISSUE #270: IGNORE, NOT PASS. A slot paints nothing, so it must never be
+	# ISSUE #271: IGNORE, NOT PASS. A slot paints nothing, so it must never be
 	# pickable — and PASS is pickable. Godot's picker returns the topmost control
 	# whose filter is STOP *or PASS*, and PASS then forwards the event up the
 	# PARENT chain; it never re-tries the siblings drawn behind it. The two side
@@ -672,7 +672,7 @@ static func make_chip(text: String, variant: String = "on_field",
 	return chip
 
 
-## ISSUE #380 / #399: a character sprite cropped to its VISIBLE pixels.
+## ISSUE #293 / #399: a character sprite cropped to its VISIBLE pixels.
 ##
 ## The sprite canvases are not padded alike (the Black/White sprites fill barely
 ## half of a 128px square), so fitting the whole canvas made those characters come
@@ -839,12 +839,12 @@ static func add_drop_shadow(item: TextureRect, grow: float = SHADOW_GROW,
 	shadow.stretch_mode = item.stretch_mode
 	shadow.flip_h = item.flip_h
 	shadow.flip_v = item.flip_v
-	# ISSUE #197: sized and placed by ANCHORS, so it stays the same size as the
+	# ISSUE #198: sized and placed by ANCHORS, so it stays the same size as the
 	# item and a fixed fraction right/down of it at every item size on every screen.
 	# Setting a pixel size here would be inert anyway — a full-rect anchored
 	# Control recomputes its rect from these fractions on the next layout pass.
 	#
-	# ISSUE #197 (retest 4): the vertical fraction is the horizontal one times the
+	# ISSUE #198 (retest 4): the vertical fraction is the horizontal one times the
 	# item's ASPECT, so `drop` is the same number of PIXELS right as it is down on
 	# a tall pack, a square coin and a wide banner alike. The aspect comes from the
 	# texture rather than the rect, deliberately: the rect's size is not settled on
@@ -1238,7 +1238,7 @@ static func _walk(node: Node) -> Array[Node]:
 	return out
 
 
-## ISSUE #253: hold a set of controls DEAD until the work they started is on
+## ISSUE #254: hold a set of controls DEAD until the work they started is on
 ## screen, then hand them back.
 ##
 ## This is the shape that actually fixes "the button keeps firing after I stopped
@@ -1260,7 +1260,7 @@ static func hold_buttons(buttons: Array, held: bool) -> void:
 			(b as BaseButton).disabled = held
 
 
-## ISSUE #254: THE selection colour — the one "this is on" fill in the game.
+## ISSUE #255: THE selection colour — the one "this is on" fill in the game.
 ##
 ## It is the `selected` button variant's own fill, so anything that has to paint
 ## a selected state by hand — a locked-on filter chip, a type chip that carries

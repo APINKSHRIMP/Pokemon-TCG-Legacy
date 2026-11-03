@@ -147,7 +147,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var direction := direction_at(_player.global_position)
 	if direction == "":
 		return
-	# ISSUE #384: someone to talk to wins. Leave the press unhandled so it reaches
+	# ISSUE #297: someone to talk to wins. Leave the press unhandled so it reaches
 	# the Player's own _unhandled_input, which starts the conversation.
 	if _player.has_method("has_interact_candidate") and _player.call("has_interact_candidate"):
 		return

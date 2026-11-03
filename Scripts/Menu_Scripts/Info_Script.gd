@@ -6,7 +6,7 @@ const SPRITE_FOLDER      := "res://Image_Assets/Character_Sprites/In_Battle_Spri
 const MAX_NAME_LENGTH    := 21
 const OWNED_CARDS_SUFFIX := "_player_owned_cards.json"
 
-# ISSUE #134: the cosmetic-collection folder constants that used to sit here now live in
+# ISSUE #136: the cosmetic-collection folder constants that used to sit here now live in
 # GameState (COIN_ASSET_FOLDER / COSTUME_ASSET_FOLDER / SLEEVE_SMALL_FOLDER / COIN_BACK_IMAGE /
 # DEFAULT_SLEEVE_PREFIX), so the X / Y counters below and the CHT.All_* cheats read one list.
 
@@ -45,7 +45,7 @@ const SPARKLE_COLOURS       := {
 }
 
 # Target display sizes — uniform regardless of source image dimensions.
-## ISSUE #200: the costume's fit box went 230x300 -> 322x420 -> 386x504, and is
+## ISSUE #201: the costume's fit box went 230x300 -> 322x420 -> 386x504, and is
 ## now DERIVED rather than written down at all — see SPRITE_SIZE further down,
 ## which takes whatever the top panel has left after the name field and the dates.
 
@@ -58,7 +58,7 @@ const SET_DICT_PATH := "res://Player_Data/Player_Owned_Cards/Set_ID_Names_Dictio
 const PROMO_SET_IDS := ["basep", "np"]
 const NEAREST_SETS  := 3
 
-## ISSUE #201 (retest): THE LEFT COLUMN IS 50% WIDER (300 -> 450) AND THE RIGHT
+## ISSUE #202 (retest): THE LEFT COLUMN IS 50% WIDER (300 -> 450) AND THE RIGHT
 ## ONE GIVES UP EXACTLY THAT WIDTH. The name box had 264px of usable width for a
 ## 21-character name at font 36, so a long name ran straight off the end of the
 ## box; widening the column is what actually fixes that, and it also makes room
@@ -68,12 +68,12 @@ const PANEL_PAD      := 18.0
 const LEFT_X         := 34.0
 const LEFT_W         := 450.0
 const LEFT_Y         := 104.0
-## ISSUE #200 (retest 2): 800 -> 880. A 504px sprite plus the name box, the dates
+## ISSUE #201 (retest 2): 800 -> 880. A 504px sprite plus the name box, the dates
 ## and the equipped pair does not fit in an 800px panel however tight the gaps
 ## get, and the room the fix asks for is genuinely there: the content band runs to
 ## UIKit.CONTENT_BOTTOM (988) and the right column's last panel stops at 904, so
 ## the left panel can reach 984 without touching anything on the screen.
-## ISSUE #200 (retest 3): THE LEFT COLUMN IS TWO BOXES, NOT ONE.
+## ISSUE #201 (retest 3): THE LEFT COLUMN IS TWO BOXES, NOT ONE.
 ##
 ## The user asked for the trainer half and the equipped half to be separate
 ## panels, each lining up with a panel opposite it in the right column - so the
@@ -94,7 +94,7 @@ const RIGHT_X        := 518.0
 ## Live: the right column takes all of a wider screen's extra width (see _ready).
 var RIGHT_W          := 1368.0 + UIKit.screen_extra().x
 
-## ISSUE #203: EVERY font on this screen is 50% larger except the "Trainer card"
+## ISSUE #204: EVERY font on this screen is 50% larger except the "Trainer card"
 ## title in the header and the button labels — those two are chrome and take their
 ## roles straight from UITheme. Read the sizes through _stat_font() rather than
 ## writing numbers, so the multiplier stays in one place.
@@ -125,21 +125,21 @@ const SETS_H         := 216.0
 ## The left panel's vertical rhythm, top to bottom. ALL TWEAKABLE — every gap in
 ## _build_left_panel is one of these, so the stack can be retuned from here
 ## without reading the builder.
-## ISSUE #200 (retest 3): SPRITE_TOP_GAP 20 -> 10 is the "move the sprite, the
+## ISSUE #201 (retest 3): SPRITE_TOP_GAP 20 -> 10 is the "move the sprite, the
 ## name box and the dates up 10 pixels" - the three are one measured stack, so
 ## lifting its head lifts all of it and the gaps between them are untouched.
-const SPRITE_TOP_GAP := 10.0   # top box top -> top of the costume art (ISSUE #200)
-const NAME_TOP_GAP   := 10.0   # bottom of the ART -> name box     (ISSUE #200)
-const DOB_H          := 56.0   # height of the "DOB / $" block (two lines; ISSUE #407 dropped "Trainer since")
-const EQUIP_TOP_GAP  := 14.0   # bottom box top -> thumbnails      (ISSUE #200)
-## ISSUE #200 (retest 3): "move the sleeve and coin down 10 pixels", inside their
+const SPRITE_TOP_GAP := 10.0   # top box top -> top of the costume art (ISSUE #201)
+const NAME_TOP_GAP   := 10.0   # bottom of the ART -> name box     (ISSUE #201)
+const DOB_H          := 56.0   # height of the "DOB / $" block (two lines; ISSUE #320 dropped "Trainer since")
+const EQUIP_TOP_GAP  := 14.0   # bottom box top -> thumbnails      (ISSUE #201)
+## ISSUE #201 (retest 3): "move the sleeve and coin down 10 pixels", inside their
 ## own box. 14 + 10 = 24 off the top, which leaves 26 under the captions - the
 ## pair sits very nearly centred in the band.
 const EQUIP_DOWN_NUDGE := 10.0
 
 ## Equipped thumbnails under the costume sprite. The "Equipped" heading that used
 ## to sit over them was removed in #200 — each thumbnail captions itself.
-## ISSUE #200 (retest 2): EQUIP_GAP 18 -> 28. (retest 4): 28 -> 140 - the user
+## ISSUE #201 (retest 2): EQUIP_GAP 18 -> 28. (retest 4): 28 -> 140 - the user
 ## said 28 looked no different from 18, and it did not: 10px between two 96px
 ## thumbnails is inside the noise. 140 puts them at opposite ends of the box
 ## instead of side by side. The pair is 2*96 + 140 = 332 wide, centred in the
@@ -152,17 +152,17 @@ const GUIDE_BTN_W    := 300.0
 const BAG_BTN_W      := 220.0
 const BAG_SCENE      := "res://Scenes/Main_Menu_Scenes/Bag_Scene.tscn"
 const NAME_BOX_H     := 62.0
-## ISSUE #203: +50% (24 -> 36). ISSUE #201 (retest): -25% again (36 -> 27) - at
+## ISSUE #204: +50% (24 -> 36). ISSUE #202 (retest): -25% again (36 -> 27) - at
 ## 36 a full-length name overran the box no matter how wide it was.
 const NAME_FONT      := 27
-## ISSUE #201 (retest): how far the name box overhangs the panel padding on EACH
+## ISSUE #202 (retest): how far the name box overhangs the panel padding on EACH
 ## side. Small on purpose: it is a text field, not a panel.
 const NAME_BOX_BLEED := 5.0
-## ISSUE #204: gap between the name box and the "Trainer since" / cash lines. It
-## was 10px and the two read as one block. ISSUE #200 (retest 2): -5 (24 -> 19).
+## ISSUE #205: gap between the name box and the "Trainer since" / cash lines. It
+## was 10px and the two read as one block. ISSUE #201 (retest 2): -5 (24 -> 19).
 const DOB_GAP        := 19.0
 
-## ISSUE #200 (retest 3): THE FIT BOX IS WHATEVER IS LEFT, NOT A NUMBER.
+## ISSUE #201 (retest 3): THE FIT BOX IS WHATEVER IS LEFT, NOT A NUMBER.
 ##
 ## The top box is now pinned top and bottom (LEFT_TOP_H), and the name field, the
 ## dates and the gaps between them are fixed heights - so the costume art gets the
@@ -175,7 +175,7 @@ const DOB_GAP        := 19.0
 const SPRITE_FIT_H  := LEFT_TOP_H - (SPRITE_TOP_GAP + NAME_TOP_GAP
 	+ NAME_BOX_H + DOB_GAP + DOB_H + PANEL_PAD)
 
-## ISSUE #200 (retest 4): +25%, AND IT IS THE *WIDTH* THAT DELIVERS IT.
+## ISSUE #201 (retest 4): +25%, AND IT IS THE *WIDTH* THAT DELIVERS IT.
 ##
 ## Nearly every in-battle sprite on disk is SQUARE (160x160, 180x180, 928x928 -
 ## 250 of the 258 files). Fitted into the 298x389 portrait box the previous pass
@@ -203,7 +203,7 @@ var OWNED_CARDS_FOLDER: String:
 
 var saved_player_name : String = ""
 
-var _cheat_label       : RichTextLabel = null   # ISSUE #132: RichTextLabel, for the [rainbow] BBCode
+var _cheat_label       : RichTextLabel = null   # ISSUE #134: RichTextLabel, for the [rainbow] BBCode
 var _cheat_label_token : int   = 0
 
 var _sparkle : CPUParticles2D = null
@@ -223,7 +223,7 @@ var _sparkle : CPUParticles2D = null
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	# ISSUE #128: every sub-menu plays the same track. This screen had none, so it ran on
+	# ISSUE #130: every sub-menu plays the same track. This screen had none, so it ran on
 	# whatever the main menu was still playing behind it -- and once that overlap was fixed
 	# (Main_Menu_Script.pause_music) it would have been left silent instead.
 	add_child(audio_player)
@@ -235,7 +235,7 @@ func _ready() -> void:
 		audio_player.play()
 
 
-	# ISSUE #200 (retest 2): DATA FIRST, THEN LAYOUT. The stack below the costume is
+	# ISSUE #201 (retest 2): DATA FIRST, THEN LAYOUT. The stack below the costume is
 	# measured from the bottom of the ART, and the art's real height is not known
 	# until its texture has been loaded and fitted — so _build_chrome (which calls
 	# _build_left_panel) has to run after the sprite exists, not before it.
@@ -267,7 +267,7 @@ func _build_chrome() -> void:
 
 	# The medals screen does not exist yet, so the button is left as it is —
 	# present, styled, and wired to nothing. Do not invent a count for it.
-	UIKit.adopt_button(medals_btn, bars["header"].right, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(medals_btn, bars["header"].right, "neutral", false)   # ISSUE #292
 	medals_btn.custom_minimum_size.x = MEDALS_BTN_W
 
 	# The Bag (key items: rods, permits). Built here rather
@@ -275,24 +275,24 @@ func _build_chrome() -> void:
 	var bag_btn := Button.new()
 	bag_btn.name = "bag_button"
 	bag_btn.text = "View Bag"
-	UIKit.adopt_button(bag_btn, bars["header"].right, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(bag_btn, bars["header"].right, "neutral", false)   # ISSUE #292
 	bag_btn.custom_minimum_size.x = BAG_BTN_W
 	bag_btn.pressed.connect(_on_bag_pressed)
 
 	# The Field Guide sits beside Medals in the same header slot. Unlike Medals it
 	# HAS a screen behind it, so it is wired up.
-	UIKit.adopt_button(guide_btn, bars["header"].right, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(guide_btn, bars["header"].right, "neutral", false)   # ISSUE #292
 	guide_btn.custom_minimum_size.x = GUIDE_BTN_W
 	guide_btn.pressed.connect(_on_field_guide_pressed)
 
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #292: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 
 	# stats_control is the parent every stat panel is added to; it spans the whole
 	# content band now rather than the nine painted bars it used to sit on.
 	stats_control.position = Vector2.ZERO
 	stats_control.size = UIKit.screen_size()
-	# ISSUE #201: THIS IS WHY THE NAME BOX COULD NOT BE CLICKED. stats_control now
+	# ISSUE #202: THIS IS WHY THE NAME BOX COULD NOT BE CLICKED. stats_control now
 	# spans the whole screen, it is a later sibling than player_name, and Godot
 	# picks GUI input by walking siblings in REVERSE order — so a Control with the
 	# default MOUSE_FILTER_STOP sitting over everything swallowed every click on
@@ -309,7 +309,7 @@ func _build_chrome() -> void:
 ## top of this panel, and showing it twice was the thing the user flagged; the
 ## sleeve and coin sit under it instead.
 func _build_left_panel() -> void:
-	# ISSUE #200 (retest 3): TWO panels, both in the same UIKit.make_panel() style
+	# ISSUE #201 (retest 3): TWO panels, both in the same UIKit.make_panel() style
 	# as the three opposite them. The top one ends level with the "Matches won"
 	# box; the bottom one occupies exactly the "Set completion" band, top and
 	# bottom. See LEFT_TOP_H / LEFT_BOT_Y - both are derived from the right
@@ -330,7 +330,7 @@ func _build_left_panel() -> void:
 
 	var centre_x := LEFT_X + LEFT_W * 0.5
 
-	# ISSUE #200/#201/#202: ONE VERTICAL STACK, measured top-down, so the sprite and
+	# ISSUE #201/#201/#202: ONE VERTICAL STACK, measured top-down, so the sprite and
 	# the wider column cannot push the dates out of the bottom of the panel. Every
 	# gap below is a named constant, and SPRITE_FIT_H is the remainder after them -
 	# so the sum fits LEFT_TOP_H by construction rather than by luck.
@@ -349,7 +349,7 @@ func _build_left_panel() -> void:
 		player_sprite.custom_minimum_size = SPRITE_SIZE
 	player_sprite.position = Vector2(centre_x - player_sprite.size.x * 0.5, sprite_y)
 
-	# ISSUE #200 (retest 2): the name box rides NAME_TOP_GAP under the BOTTOM OF THE
+	# ISSUE #201 (retest 2): the name box rides NAME_TOP_GAP under the BOTTOM OF THE
 	# ART, not under the bottom of the fit BOX. A portrait sprite letterboxed into
 	# this box can leave 80px of empty space beneath it, and measuring from the box
 	# put the name that far adrift of the costume.
@@ -357,7 +357,7 @@ func _build_left_panel() -> void:
 	if player_sprite.texture != null and player_sprite.size.y > 1.0:
 		art_bottom = player_sprite.position.y + player_sprite.size.y
 	var name_y := art_bottom + NAME_TOP_GAP
-	# ISSUE #201: NAME_BOX_BLEED wider on each side than the panel padding.
+	# ISSUE #202: NAME_BOX_BLEED wider on each side than the panel padding.
 	name_box.position = Vector2(LEFT_X + PANEL_PAD - NAME_BOX_BLEED, name_y)
 	name_box.size = Vector2(LEFT_W - PANEL_PAD * 2.0 + NAME_BOX_BLEED * 2.0, NAME_BOX_H)
 	name_box.custom_minimum_size = name_box.size
@@ -369,7 +369,7 @@ func _build_left_panel() -> void:
 	name_box.add_theme_font_size_override("font_size", NAME_FONT)
 
 	dob_cash_lbl.theme = null
-	# ISSUE #203: +50%. ISSUE #204: DOB_GAP below the name box, not 10px.
+	# ISSUE #204: +50%. ISSUE #205: DOB_GAP below the name box, not 10px.
 	UIKit.style_label(dob_cash_lbl, "small_label", "field_mute", _stat_font("small_label"))
 	dob_cash_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var dob_y := name_y + NAME_BOX_H + DOB_GAP
@@ -377,13 +377,13 @@ func _build_left_panel() -> void:
 	dob_cash_lbl.size = Vector2(LEFT_W - PANEL_PAD * 2.0, DOB_H)
 
 	# ── Equipped: sleeve and coin ──
-	# ISSUE #200 (retest 2): THE "EQUIPPED" HEADING IS GONE. Each thumbnail already
+	# ISSUE #201 (retest 2): THE "EQUIPPED" HEADING IS GONE. Each thumbnail already
 	# carries its own caption ("Sleeve", "Coin"), so the heading was labelling two
 	# things that were labelled, and it was the row that had pushed the captions
 	# out of the bottom of the panel when the thumbnails moved down for #202.
 	# Removing it is what buys the space back.
 	var data := _read_current_data()
-	# ISSUE #200 (retest 3): the pair lives in the BOTTOM panel now and is measured
+	# ISSUE #201 (retest 3): the pair lives in the BOTTOM panel now and is measured
 	# from that panel's own top, not from the bottom of the dates in the panel
 	# above - the two boxes are independent, which is the point of splitting them.
 	var total_w := EQUIP_SIZE.x * 2.0 + EQUIP_GAP
@@ -454,7 +454,7 @@ func _load_player_data() -> void:
 	name_box.text = saved_player_name
 
 	# DOB and cash share one centred Label under the name box.
-	# ISSUE #407: the "Trainer since" line is gone - the card shows the birthday only.
+	# ISSUE #320: the "Trainer since" line is gone - the card shows the birthday only.
 	var dob: String = data.get("date_of_birth", "")
 	dob_cash_lbl.text = "DOB: " + (dob if dob != "" else "--/--") \
 		+ "\n$" + str(GameState.get_cash())
@@ -465,15 +465,15 @@ func _load_player_data() -> void:
 		if not sprite_name.ends_with(".png"):
 			sprite_name += ".png"
 		var tex := load(SPRITE_FOLDER + "/" + sprite_name) as Texture2D
-		# ISSUE #399: fit the CHARACTER, not its padded canvas (same as the intro, #380).
+		# ISSUE #310: fit the CHARACTER, not its padded canvas (same as the intro, #380).
 		tex = UIKit.visible_sprite(tex)
 		if tex:
 			_apply_fit_size(player_sprite, tex, SPRITE_SIZE)
-			# ISSUE #200: recentre in BOTH axes. A wide sprite fitted into the
+			# ISSUE #201: recentre in BOTH axes. A wide sprite fitted into the
 			# taller box leaves letterboxing at the bottom, which used to read as
 			# the sprite sitting high in the panel.
 			player_sprite.position.x = LEFT_X + LEFT_W * 0.5 - player_sprite.size.x * 0.5
-			# ISSUE #200 (retest 2): the art is TOP-aligned in its fit box now, not
+			# ISSUE #201 (retest 2): the art is TOP-aligned in its fit box now, not
 			# centred — "the top of the sprite about 20 pixels under the top of the
 			# box". Centring it in a box a fifth taller than the art pushed a wide
 			# costume down into the name field.
@@ -496,7 +496,7 @@ func _load_player_data() -> void:
 
 
 
-## ISSUE #203: a type role's size, scaled up for this screen only. Pass the result
+## ISSUE #204: a type role's size, scaled up for this screen only. Pass the result
 ## as style_label / set_label's `size_px` so the face, tracking and casing of the
 ## role are all kept — only the size changes.
 func _stat_font(role: String) -> int:
@@ -513,7 +513,7 @@ func _apply_fit_size(rect: TextureRect, tex: Texture2D, target: Vector2) -> void
 	rect.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
 	rect.stretch_mode = TextureRect.STRETCH_SCALE
 	rect.texture      = tex
-	# ISSUE #200: CLEAR THE MINIMUM SIZE FIRST. _build_left_panel sets
+	# ISSUE #201: CLEAR THE MINIMUM SIZE FIRST. _build_left_panel sets
 	# custom_minimum_size to the full 230x300 box, and Godot clamps `size` up to
 	# the combined minimum — so the fitted size below was silently thrown away and
 	# a portrait sprite was stretched to fill a wider box. The fit maths was always
@@ -554,7 +554,7 @@ func _on_save_pressed() -> void:
 		return
 
 	var new_name := name_box.text.strip_edges()
-	# ISSUE #408: a blank (or all-spaces) name used to fall through here - Save went grey as if
+	# ISSUE #321: a blank (or all-spaces) name used to fall through here - Save went grey as if
 	# it had worked, but nothing was written. Refuse it out loud and leave Save live.
 	if new_name == "":
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
@@ -578,7 +578,7 @@ func _on_save_pressed() -> void:
 	var cheat_msg := CheatManager.check_and_apply(new_name)
 	if cheat_msg != "":
 		_flash_cheat_message(cheat_msg)
-		# ISSUE #133 FIX: the cheats that just ran can move almost every counter on this card —
+		# ISSUE #135 FIX: the cheats that just ran can move almost every counter on this card —
 		# cards owned, sets unlocked, sets completed, coins, costumes, sleeves — but the stat rows
 		# were built once in _ready() and never touched again, so the player had to leave and
 		# re-enter the trainer card to see any of it. Rebuild them in place instead.
@@ -590,7 +590,7 @@ func _on_save_pressed() -> void:
 func _on_field_guide_pressed() -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 	var path := "res://Scenes/Main_Menu_Scenes/Field_Guide_Scene.tscn"
-	# ISSUE #52 shape: opened over the map it becomes another overlay on the
+	# ISSUE #53 shape: opened over the map it becomes another overlay on the
 	# sub-menu stack; opened from the main menu it is a scene change.
 	if GameState.open_sub_menu(path):
 		return
@@ -606,7 +606,7 @@ func _on_bag_pressed() -> void:
 
 
 func _on_cancel_pressed() -> void:
-	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+	if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
@@ -614,14 +614,14 @@ func _on_cancel_pressed() -> void:
 
 func _input(event: InputEvent) -> void:
 	if UIInput.is_cancel(event):   # Escape, Backspace or pad B
-		if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+		if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 		SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
 # ─── Statistics ──────────────────────────────────────────────────────────────
 
 func _populate_stats() -> void:
-	# ISSUE #133: callable more than once — the Save button rebuilds these rows after a cheat has
+	# ISSUE #135: callable more than once — the Save button rebuilds these rows after a cheat has
 	# changed the underlying numbers.
 	for old_row in stats_control.get_children():
 		stats_control.remove_child(old_row)
@@ -640,7 +640,7 @@ func _populate_stats() -> void:
 		if cards["set_ids"].has(String(set_id)):
 			sets_unlocked += 1
 
-	# ISSUE #139 FIX: include_defaults = true, so the three "1_Default*" card backs the player
+	# ISSUE #141 FIX: include_defaults = true, so the three "1_Default*" card backs the player
 	# owns from first launch count on BOTH sides of the fraction.
 	var sleeve_universe  := GameState.get_sleeve_universe(true)
 	var coin_universe    := GameState.get_coin_universe()
@@ -684,7 +684,7 @@ func _build_meter_panel(rows: Array) -> void:
 	for r in rows:
 		var label := Label.new()
 		UIKit.set_label(label, "small_label", String(r[0]), "field_fg",
-			_stat_font("small_label"))    # ISSUE #203
+			_stat_font("small_label"))    # ISSUE #204
 		label.position = Vector2(RIGHT_X + PANEL_PAD, y + 2.0)
 		label.size = Vector2(METER_LABEL_W, METER_ROW_H_TXT)
 		stats_control.add_child(label)
@@ -697,7 +697,7 @@ func _build_meter_panel(rows: Array) -> void:
 
 		var value := Label.new()
 		UIKit.set_label(value, "hp", _fraction(int(r[1]), int(r[2])), "field_fg",
-			_stat_font("hp"))             # ISSUE #203
+			_stat_font("hp"))             # ISSUE #204
 		value.position = Vector2(RIGHT_X + RIGHT_W - PANEL_PAD - METER_VALUE_W, y)
 		value.size = Vector2(METER_VALUE_W, METER_ROW_H_TXT)
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -722,13 +722,13 @@ func _build_stat_boxes(boxes: Array) -> void:
 		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stats_control.add_child(panel)
 
-		# ISSUE #273: heading AND numeral centred in the box. Both labels are already
+		# ISSUE #274: heading AND numeral centred in the box. Both labels are already
 		# the full inner width of the panel, so this is one alignment each - a
 		# left-aligned caption over a left-aligned numeral read as text that had
 		# been pushed into the corner rather than as a stat tile.
 		var caption := Label.new()
 		UIKit.set_label(caption, "small_label", String(boxes[i][0]), "field_mute",
-			_stat_font("small_label"))    # ISSUE #203
+			_stat_font("small_label"))    # ISSUE #204
 		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		caption.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD)
 		caption.size = Vector2(w - PANEL_PAD * 2.0, 30.0)
@@ -761,7 +761,7 @@ func _build_nearest_sets(per_set: Dictionary) -> void:
 	stats_control.add_child(panel)
 
 	var heading := Label.new()
-	# ISSUE #203: +50%. ISSUE #202/#189: headings are centred.
+	# ISSUE #204: +50%. ISSUE #203/#189: headings are centred.
 	UIKit.set_label(heading, "small_label", "Nearest sets to completion", "field_mute",
 		_stat_font("small_label"))
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -805,7 +805,7 @@ func _build_nearest_sets(per_set: Dictionary) -> void:
 		# The set name sits on the SAME row as its bar, per the user's note.
 		var label := Label.new()
 		UIKit.set_label(label, "small_label", String(names.get(c["id"], c["id"])), "field_fg",
-			_stat_font("small_label"))    # ISSUE #203
+			_stat_font("small_label"))    # ISSUE #204
 		label.position = Vector2(RIGHT_X + PANEL_PAD, y + 2.0)
 		label.size = Vector2(METER_LABEL_W, METER_ROW_H_TXT)
 		stats_control.add_child(label)
@@ -818,7 +818,7 @@ func _build_nearest_sets(per_set: Dictionary) -> void:
 
 		var value := Label.new()
 		UIKit.set_label(value, "hp", _fraction(int(c["owned"]), int(c["total"])), "field_fg",
-			_stat_font("hp"))             # ISSUE #203
+			_stat_font("hp"))             # ISSUE #204
 		value.position = Vector2(RIGHT_X + RIGHT_W - PANEL_PAD - METER_VALUE_W, y)
 		value.size = Vector2(METER_VALUE_W, METER_ROW_H_TXT)
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -937,7 +937,7 @@ func _scan_card_collection() -> Dictionary:
 
 # ─── Cosmetic collection counting ────────────────────────────────────────────
 
-# ISSUE #134: the three universes below moved to GameState (get_coin_universe /
+# ISSUE #136: the three universes below moved to GameState (get_coin_universe /
 # get_costume_universe / get_sleeve_universe) so the CHT.All_* cheats grant exactly the set of
 # cosmetics these counters measure. Two copies of the folder-listing rules would have drifted.
 # Each universe is keyed EXACTLY the way that collection is stored in progress, so ownership is
@@ -954,7 +954,7 @@ func _count_owned(universe: Dictionary, owned: Array) -> int:
 
 # ─── Cheat notification ──────────────────────────────────────────────────────
 
-# ISSUE #132 TWEAKABLES — the cheat popup's look and timing.
+# ISSUE #134 TWEAKABLES — the cheat popup's look and timing.
 # HOLD_TIME is dead air at full opacity before the rise/fade starts; it is the "1 second longer"
 # the popup now lives for (total on-screen time = HOLD_TIME + RISE_TIME).
 # RISE_PX / RISE_TIME set the drift SPEED between them, exactly as in Pack_Opening_Manager's
@@ -979,18 +979,18 @@ const CHEAT_BOX_HEIGHT   : float = 120.0
 const CHEAT_BOX_Y_OFFSET : float = -42.0
 
 
-## ISSUE #408: shown when Save is pressed with a blank name.
+## ISSUE #321: shown when Save is pressed with a blank name.
 const INVALID_NAME_TEXT := "Invalid name"
 
 
 ## `rainbow` false draws the message in the theme's danger colour instead - the same float-up
-## popup, used for the invalid-name warning (ISSUE #408).
+## popup, used for the invalid-name warning (ISSUE #321).
 func _flash_cheat_message(message: String, rainbow: bool = true) -> void:
-	# ISSUE #53 FIX: drive the cheat popup as a self-contained "float up + fade out" like the in-match
+	# ISSUE #54 FIX: drive the cheat popup as a self-contained "float up + fade out" like the in-match
 	# floating labels, animated by a Tween OWNED BY the CanvasLayer (a root child). Previously the
 	# cleanup awaited a timer bound to THIS script; escaping the Info sub-menu freed the script and
 	# cancelled the await, leaving the label stuck on screen forever. Now it always fades.
-	# ISSUE #132: same mechanism, restyled — bold, rainbow-cycled text that holds before it fades.
+	# ISSUE #134: same mechanism, restyled — bold, rainbow-cycled text that holds before it fades.
 	_cheat_label_token += 1
 	var my_token := _cheat_label_token
 
@@ -1004,7 +1004,7 @@ func _flash_cheat_message(message: String, rainbow: bool = true) -> void:
 	layer.layer = 128
 	get_tree().root.add_child(layer)
 
-	# ISSUE #132: RichTextLabel rather than Label purely for BBCode's built-in [rainbow], which
+	# ISSUE #134: RichTextLabel rather than Label purely for BBCode's built-in [rainbow], which
 	# offsets the hue per character and advances it every frame — the same colour wave the "Bonus!"
 	# label uses in Pack_Opening_Manager._show_bonus_label().
 	var theme_kenney : Theme = UIKit.button_theme("secondary")

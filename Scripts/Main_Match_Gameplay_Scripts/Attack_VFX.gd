@@ -131,9 +131,9 @@ const SCREEN_SHAKE_STEP := 0.03
 
 const CONTACT_BODIES := ["lunge", "dash", "leap", "spin", "vanish_strike", "dive"]
 
-## ISSUE #510: the recipe a heal (Potion etc.) plays on the healed card.
+## ISSUE #384: the recipe a heal (Potion etc.) plays on the healed card.
 const HEAL_RECIPE := "Heal"
-## ISSUE #509: fade used when a multi-hit clip is cut down to its first hit.
+## ISSUE #383: fade used when a multi-hit clip is cut down to its first hit.
 const SFX_ONE_HIT_FADE := 0.04
 
 var _manifest: Dictionary = {}
@@ -213,7 +213,7 @@ func _ready() -> void:
 	_hue_shader = Shader.new()
 	_hue_shader.code = HUE_SHADER
 	set_process(false)
-	# ISSUE #514: decks that loaded before this node existed.
+	# ISSUE #388: decks that loaded before this node existed.
 	if main.get("_vfx_prewarm_backlog") is Array and not (main._vfx_prewarm_backlog as Array).is_empty():
 		prewarm_uids(main._vfx_prewarm_backlog)
 		main._vfx_prewarm_backlog.clear()
@@ -221,7 +221,7 @@ func _ready() -> void:
 
 
 # ============================================================
-# ISSUE #514: PREWARM -- every effect frame and sound an attack can play used to load() synchronously
+# ISSUE #388: PREWARM -- every effect frame and sound an attack can play used to load() synchronously
 # the first time it played, mid-animation, which is the stutter. When a deck loads, every attack of
 # every Pokemon in it (plus the Special Condition overlays and the heal effect) is resolved to its
 # frame + sound paths, and those load on a background thread ONE request at a time (several parallel
@@ -258,7 +258,7 @@ func prewarm_uids(uids: Array) -> void:
 	var before := _prewarm_queue.size()
 	for r in recipes:
 		_prewarm_recipe(r)
-	print("ISSUE #514 FIX ACTIVE: prewarming ", _prewarm_queue.size() - before, " attack effect frames/sounds")
+	print("ISSUE #388 FIX ACTIVE: prewarming ", _prewarm_queue.size() - before, " attack effect frames/sounds")
 	set_process(true)
 
 
@@ -347,22 +347,22 @@ func set_pending(attacker: card_object, attack: Dictionary) -> void:
 	_pending = {"attacker": attacker, "attack": attack, "turn": main.turn_number, "played": false}
 
 
-## ISSUE #511: a "flip N coins, X damage times the number of heads" attack tells the pending attack how
+## ISSUE #385: a "flip N coins, X damage times the number of heads" attack tells the pending attack how
 ## many heads came up, so the effect and its sound play once per head (3 heads = 3 slashes) instead of
 ## the recipe's fixed count.
 func set_pending_hits(attacker: card_object, heads: int) -> void:
 	if _pending.is_empty() or _pending["attacker"] != attacker:
 		return
 	_pending["hits"] = maxi(0, heads)
-	print("ISSUE #511 FIX ACTIVE: ", _pending["attack"].get("name", ""), " plays ", heads, " hit(s)")
+	print("ISSUE #385 FIX ACTIVE: ", _pending["attack"].get("name", ""), " plays ", heads, " hit(s)")
 
 
-## ISSUE #522: true when all of the attack's damage goes to a Pokemon the attacker chooses (map "choose").
+## ISSUE #396: true when all of the attack's damage goes to a Pokemon the attacker chooses (map "choose").
 func is_chosen_target_attack(attack: Dictionary) -> bool:
 	return bool(_map.get(str(attack.get("name", "")).strip_edges(), {}).get("choose", false))
 
 
-## ISSUE #511: the recipe with its hit count (reaction, sound repeats and every multi-copy step) set to
+## ISSUE #385: the recipe with its hit count (reaction, sound repeats and every multi-copy step) set to
 ## the heads actually flipped.
 func _apply_hits(recipe: Dictionary, hits: int) -> Dictionary:
 	if hits <= 0 or recipe.is_empty():
@@ -413,7 +413,7 @@ func play_hit(attacker: card_object, defender: card_object, pend: Dictionary, da
 		return
 	var recipe := recipe_for(attacker, pend["attack"])
 	if pend.has("hits"):
-		recipe = _apply_hits(recipe, int(pend["hits"]))   # ISSUE #511
+		recipe = _apply_hits(recipe, int(pend["hits"]))   # ISSUE #385
 	if not recipe.is_empty():
 		_last_play = {"recipe": recipe, "attacker": attacker, "turn": main.turn_number}
 	if bool(pend.get("played", false)) or recipe.is_empty():
@@ -442,7 +442,7 @@ func bench_hit(pokemon: card_object, damage: int, from_attack: bool) -> void:
 		await get_tree().create_timer(start - now).timeout
 		if _bail():
 			return
-	# ISSUE #522: a chosen-target attack (Stare...) held its effect back from the declare beat; the
+	# ISSUE #396: a chosen-target attack (Stare...) held its effect back from the declare beat; the
 	# Pokemon it chose is benched, so the WHOLE effect plays here, on that Pokemon.
 	if from_attack and not _pending.is_empty() and not bool(_pending.get("played", false)) \
 			and int(_pending["turn"]) == main.turn_number and _pending["attacker"] != pokemon \
@@ -452,7 +452,7 @@ func bench_hit(pokemon: card_object, damage: int, from_attack: bool) -> void:
 		var full := recipe_for(pend["attacker"], pend["attack"])
 		if not full.is_empty():
 			_last_play = {"recipe": full, "attacker": pend["attacker"], "turn": main.turn_number}
-			print("ISSUE #522 FIX ACTIVE: '", pend["attack"].get("name", ""), "' plays on chosen ", pokemon.metadata.get("name", "?"))
+			print("ISSUE #396 FIX ACTIVE: '", pend["attack"].get("name", ""), "' plays on chosen ", pokemon.metadata.get("name", "?"))
 			await play(pend["attacker"], pokemon, full, {"damage": damage})
 			return
 	var src: Dictionary = {}
@@ -503,7 +503,7 @@ func play_status(card: card_object, kind: String) -> void:
 	await play(card, card, recipe, {})
 
 
-## ISSUE #510: `card` has just been healed (Card_Ops.heal_pokemon - Potion, Super Potion, every heal
+## ISSUE #384: `card` has just been healed (Card_Ops.heal_pokemon - Potion, Super Potion, every heal
 ## that goes through it). Plays the "Heal" recipe on the card itself, without its sound (heal_pokemon
 ## already plays the heal chime). Skipped when a heal ATTACK (Recover...) just played its own effect on
 ## this card. Fire and forget, so the damage counters refill while it plays.
@@ -519,7 +519,7 @@ func play_heal(card: card_object) -> void:
 	recipe.erase("sfx")
 	recipe.erase("_sfx")
 	recipe["_id"] = "heal " + HEAL_RECIPE
-	print("ISSUE #510 FIX ACTIVE: heal effect on ", card.metadata.get("name", "?"))
+	print("ISSUE #384 FIX ACTIVE: heal effect on ", card.metadata.get("name", "?"))
 	await play(card, card, recipe, {})
 
 
@@ -586,7 +586,7 @@ func recipe_by_name(name: String, type: String, cost: int) -> Dictionary:
 		r["_sfx"] = str(m["sfx"])
 		r.erase("sfx_pitch")
 	if not r.is_empty() and m.has("sfx_len"):
-		r["_sfx_len"] = float(m["sfx_len"])   # ISSUE #509: play only the first hit of the clip
+		r["_sfx_len"] = float(m["sfx_len"])   # ISSUE #383: play only the first hit of the clip
 	return r
 
 
@@ -1166,7 +1166,7 @@ func _sfx_begin(ctx: _Ctx, steps: Array, body: String, contact: bool, est: float
 		ctx.sfx_plan = {"multi": one, "hits": hits, "pitch": pitch, "db": db, "len": float(ctx.recipe.get("_sfx_len", -1.0))}
 		return
 	if hits == 1 and ctx.recipe.has("_sfx_len") and one != "":
-		# ISSUE #509: one head -> one punch.
+		# ISSUE #383: one head -> one punch.
 		ctx.sfx_plan = {"multi": one, "hits": 1, "pitch": pitch, "db": db, "len": float(ctx.recipe["_sfx_len"])}
 		return
 	var est_imp := GameState.match_time(_impact_estimate(steps, body, contact))
@@ -1220,10 +1220,10 @@ func _sfx_later(clip: String, delay: float, db: float, pitch: float) -> void:
 
 
 ## One hit per reaction hit, MULTI_GAP apart (match-time scaled, like the reaction itself).
-## ISSUE #509: `length` > 0 cuts each repeat to that many seconds (Comet Punch: one punch per head).
+## ISSUE #383: `length` > 0 cuts each repeat to that many seconds (Comet Punch: one punch per head).
 func _sfx_repeat(clip: String, hits: int, pitch: float, db: float, length: float = -1.0) -> void:
 	if length > 0.0:
-		print("ISSUE #509 FIX ACTIVE: ", clip, " x", hits, " cut to ", length, "s each")
+		print("ISSUE #383 FIX ACTIVE: ", clip, " x", hits, " cut to ", length, "s each")
 	for i in hits:
 		var pl := _sfx_play(clip, 0.0, -1.0, db, pitch * (1.0 + 0.04 * float(i % 2)))
 		if length > 0.0 and pl != null:
@@ -1255,7 +1255,7 @@ func _sfx_play(clip: String, from: float, length: float, db: float, pitch: float
 	return p
 
 
-## ISSUE #509: a hard-ish cut (SFX_ONE_HIT_FADE) right at the end of the first hit, before the next one in the clip.
+## ISSUE #383: a hard-ish cut (SFX_ONE_HIT_FADE) right at the end of the first hit, before the next one in the clip.
 func _sfx_cut_at(p: AudioStreamPlayer, at: float) -> void:
 	await get_tree().create_timer(maxf(at, 0.01)).timeout
 	if is_instance_valid(p):

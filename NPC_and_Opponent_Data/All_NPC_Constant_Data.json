@@ -520,7 +520,7 @@
       "gift_value": "WAITER",
       "sprite": "Waiter",
       "friendly_name": "SS Anne Waiter",
-      "message_colour": "grey"
+      "message_colour": "white"
     },
     "SS Anne Waitress": {
       "gift_type": "costume",
@@ -599,7 +599,7 @@
     "Super Elder": {
       "sprite": "Elder",
       "friendly_name": "Card Elder",
-      "message_colour": "grey"
+      "message_colour": "white"
     },
     "Super Elder Hamish": {
       "sprite": "Elder",
@@ -773,7 +773,7 @@
     },
     "Waitress": {
       "sprite": "Bakushin_Waitress",
-      "message_colour": "grey",
+      "message_colour": "white",
       "friendly_name": "Waitress"
     },
     "Ellie 2": {
@@ -973,7 +973,7 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Self Affliction",
-      "message_colour": "aqua"
+      "message_colour": "white"
     },
     "Engineer Allan": {
       "prize_cards": 3,
@@ -1369,7 +1369,7 @@
       "costume_reward": "Scientist_M,Scientist_F",
       "sprite": "Scientist_M2",
       "cash_reward": "135",
-      "message_colour": "lilac"
+      "message_colour": "white"
     },
     "Mewtwo": {
       "coin_reward": "Mewtwo Gold",

@@ -374,7 +374,7 @@ func _build_fighter(centre_x: float, is_player: bool) -> Fighter:
 ## still stand on the same floor.
 func set_trainer(f: Fighter, tex: Texture2D, trainer_name: String, deck_name: String) -> void:
 	var ui := _ui()
-	# ISSUE #399: fit the CHARACTER, not its padded canvas. The Black/White sprites
+	# ISSUE #310: fit the CHARACTER, not its padded canvas. The Black/White sprites
 	# fill about half their 128px square, so scaling the whole canvas to SPRITE_H
 	# drew them at half everyone else's height. Same crop as the trainer card,
 	# costume grid and setup screen. Covers the VS intro, the outro and the
@@ -569,7 +569,7 @@ func prepare_entrance() -> void:
 	player.drift.position = Vector2.ZERO
 	opponent.drift.position = Vector2.ZERO
 
-	# ISSUE #289: parked INVISIBLE as well as parked offset. Everything that flies
+	# ISSUE #290: parked INVISIBLE as well as parked offset. Everything that flies
 	# in was fully opaque and stationary while the screen faded up, so the eye had
 	# already read the finished picture before anything moved and the entrance
 	# looked like a twitch rather than an arrival. Same reasoning as
@@ -646,7 +646,7 @@ func play_entrance() -> void:
 ## One element's single-phase drop. Public because the screens reuse it for the
 ## pieces they own - the REWARDS label, a round title.
 ##
-## ISSUE #289: the element FADES UP AS IT TRAVELS. It starts fully transparent and
+## ISSUE #290: the element FADES UP AS IT TRAVELS. It starts fully transparent and
 ## reaches full opacity as it lands, so a line of text arrives rather than being
 ## already there and then jumping. The fade runs on its own tween in parallel with
 ## the move: putting both on one sequential tween would play them one after the
@@ -711,7 +711,7 @@ func snap_to_rest() -> void:
 	player.drift.position = Vector2(-SPRITE_P2_PX, 0.0)
 	opponent.fast.position = Vector2.ZERO
 	opponent.drift.position = Vector2(SPRITE_P2_PX, 0.0)
-	# ISSUE #289: at rest is fully opaque - reduce motion and click-to-skip both
+	# ISSUE #290: at rest is fully opaque - reduce motion and click-to-skip both
 	# land here, and neither may leave an element invisible.
 	for anim in [player.name_anim, opponent.name_anim, _top_slot_anim, _below_badge_anim]:
 		anim.position = Vector2.ZERO

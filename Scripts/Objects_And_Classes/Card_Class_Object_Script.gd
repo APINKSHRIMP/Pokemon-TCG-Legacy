@@ -82,7 +82,7 @@ var attack_blocked_by_id: int = -1  # instance_id of the pokemon that set the bl
 # Venomoth Shift: temporary type override (persists until changed or leaves play)
 var temporary_type: String = ""
 
-# ISSUE #364: a Prize card turned face up by an effect (Card-Flip Game, Prize Shift, Island Hermit). Shown face up in
+# OLD ISSUE 364: a Prize card turned face up by an effect (Card-Flip Game, Prize Shift, Island Hermit). Shown face up in
 # the Prize block and excluded from "face-down Prize" choices. Cleared when the card is taken as a Prize.
 var prize_face_up: bool = false
 
@@ -110,7 +110,7 @@ var lightning_rod_marked: bool = false   # basep-46 Electabuzz Lightning Rod —
 
 # NEO1 (Neo Genesis) properties
 var screech_damage_bonus: int = 0      # neo1-31/69 Screech: +20 damage from next attack received this turn
-var screech_set_turn: int = -1         # ISSUE #316: turn the Screech/Crunch bonus was placed (it lasts until the end of the attacker's NEXT turn)
+var screech_set_turn: int = -1         # OLD ISSUE 316: turn the Screech/Crunch bonus was placed (it lasts until the end of the attacker's NEXT turn)
 var has_char_counter: bool = false     # neo1-47 Quilava Char: each turn owner flips; tails = 20 damage
 var endure_active: bool = false        # neo1-43 Phanpy Endure: survive KO at 10 HP one time
 var jaw_clamp_locked: bool = false     # neo1-31 Croconaw Jaw Clamp: target can't retreat next turn
@@ -143,6 +143,10 @@ var gym2_focus_energy_active: bool = false # Lt. Surge's Raticate/Rattata Focus 
 var gym2_lie_low_counter: int = 0          # Brock's Dugtrio Lie Low — Earthdrill is usable while this is > 0
 var ditto_giant_growth: bool = false       # Koga's Ditto Giant Growth — max HP 80, Pound base damage 30
 var max_hp_override: int = 0               # If > 0, overrides the metadata HP value (Koga's Ditto Giant Growth)
+## ISSUE #433: the match_effects max_hp_modifier shift (+/-N for the whole match). Kept apart from
+## max_hp_override so Giant Growth / Gaseous Form / stadium HP bonuses no longer wipe it - it is
+## applied on top of whatever the card's max HP is (floor 10).
+var match_hp_shift: int = 0
 
 # EX3 (EX Dragon) properties
 var ex3_buffer_piece_turns: int = 0        # ex3-83 Buffer Piece Tool: end-of-turn counter; discarded after the opponent's turn following play
@@ -280,6 +284,13 @@ func reset_power_used() -> void:
 
 # Utility: get max HP (metadata HP, unless temporarily overridden)
 func get_max_hp() -> int:
+	var base_max := _get_max_hp_unshifted()
+	if match_hp_shift != 0 and base_max > 0:
+		return maxi(10, base_max + match_hp_shift)
+	return base_max
+
+
+func _get_max_hp_unshifted() -> int:
 	if max_hp_override > 0:
 		return max_hp_override
 	var hp = int(metadata.get("hp", "0"))
@@ -307,14 +318,14 @@ func get_effective_types() -> Array:
 			return ["Colorless"]
 	if has_effect("crystal_type_active"):
 		return [get_effect_data("crystal_type_active")]
-	# ISSUE #374: neo3 Submerge (Lanturn) — Water until the end of the turn; reverts while Asleep/Confused/Paralyzed.
+	# OLD ISSUE 374: neo3 Submerge (Lanturn) — Water until the end of the turn; reverts while Asleep/Confused/Paralyzed.
 	if has_effect("neo3_submerge") and special_condition not in ["Asleep", "Confused", "Paralyzed"]:
 		return ["Water"]
 	# ex2 Lunar/Solar Eclipse (Lunatone/Solrock): temporary type override until end of turn.
 	if has_effect("ex2_type_override"):
 		var t_ov = get_effect_data("ex2_type_override")
-		return t_ov.duplicate() if t_ov is Array else [t_ov]   # ISSUE #371: Type Change can copy several types
-	# ISSUE #45 FIX: Venomoth's Shift (and similar temporary_type overrides like Texture Magic) fully
+		return t_ov.duplicate() if t_ov is Array else [t_ov]   # OLD ISSUE 371: Type Change can copy several types
+	# ISSUE #46 FIX: Venomoth's Shift (and similar temporary_type overrides like Texture Magic) fully
 	# change this Pokémon's type until it changes again or leaves play. Routing it through the
 	# effective-types path means Weakness/Resistance now actually respect the shifted type (previously
 	# the shift changed nothing about damage).
@@ -412,7 +423,7 @@ func react_energy_count() -> int:
 # Constructor - initialize the card with a UID and load its metadata
 func _init(card_uid: String, card_metadata: Dictionary) -> void:
 	uid = card_uid
-	# ISSUE #375: every card OWNS its metadata. It used to hold a reference to the set cache's dictionary, shared by
+	# OLD ISSUE 375: every card OWNS its metadata. It used to hold a reference to the set cache's dictionary, shared by
 	# every copy of that card in the match — so an effect that rewrites a card's data (Brock's Ninetales Shapeshift)
 	# rewrote all copies at once, in the deck, hand and discard pile too.
 	metadata = card_metadata.duplicate(true)

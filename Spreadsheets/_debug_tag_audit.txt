@@ -1,9 +1,9 @@
 ==============================================================================
 ISSUE DEBUG-TAG AUDIT
 ==============================================================================
-issues with tags in code : 443
-issues with live prints  : 84
-rows in Game_Issues          : 418
+issues with tags in code : 370
+issues with live prints  : 49
+rows in Game_Issues          : 436
 
 ------------------------------------------------------------------------------
 [1] CLEANUP REQUIRED — resolved issues still printing (0 issues, 0 lines)
@@ -11,61 +11,14 @@ rows in Game_Issues          : 418
   none — every resolved issue is clean.
 
 ------------------------------------------------------------------------------
-[2] ORPHAN TAGS — tag number not present in the log (48)
+[2] ORPHAN TAGS — tag number not present in the log (0)
 ------------------------------------------------------------------------------
-  ISSUE #291: 4 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:541, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:663, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:670, Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:8086
-  ISSUE #292: 2 print(s) — Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:3255, Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:9364
-  ISSUE #294: 8 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:2862, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:3565, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:3619, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:5192, Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:1069, Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:1079
-  ISSUE #295: 2 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:10854, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:16487
-  ISSUE #296: 5 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:5996, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:6012, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:6036, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:6058, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:6082
-  ISSUE #297: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:601
-  ISSUE #298: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:2013
-  ISSUE #299: 3 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:2534, Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10391, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:1792
-  ISSUE #300: 3 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:5926, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:7426, Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:8209
-  ISSUE #301: 2 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:1579, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:3218
-  ISSUE #302: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:3644
-  ISSUE #303: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:4554
-  ISSUE #304: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:494
-  ISSUE #305: 3 print(s) — Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10254, Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10259, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:4044
-  ISSUE #306: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:3072
-  ISSUE #307: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:2409
-  ISSUE #308: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:3743
-  ISSUE #309: 5 print(s) — Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:713, Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:733, Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:7323, Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10644, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:1334
-  ISSUE #310: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:8159
-  ISSUE #312: 3 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:1676, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:2964, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:4036
-  ISSUE #313: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:4675
-  ISSUE #314: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:4714
-  ISSUE #315: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:3607
-  ISSUE #317: 6 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:2972, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:10358, Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:479, Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:484, Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:7934, Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10417
-  ISSUE #318: 10 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:9756, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:9936, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:10265, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:10425, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:10589, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:10711
-  ISSUE #319: 26 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:11527, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:11818, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:12100, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:12456, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:12538, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:12867
-  ISSUE #320: 11 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:16031, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:16259, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:16658, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:16787, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:16988, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:17188
-  ISSUE #321: 2 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:18133, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:32469
-  ISSUE #324: 5 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:18518, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:18838, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:33523, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:33776, Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:293
-  ISSUE #325: 2 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:33809, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:34013
-  ISSUE #326: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:3096
-  ISSUE #329: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:12563
-  ISSUE #338: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:30704
-  ISSUE #346: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:12256
-  ISSUE #364: 7 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:8775, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:8903, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:26891, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:7234, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:7256, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:16363
-  ISSUE #365: 11 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:12947, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:6140, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:7010, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:19045, Scripts/Main_Match_Gameplay_Scripts/Special_Energy_Effects.gd:327, Scripts/Main_Match_Gameplay_Scripts/Special_Energy_Effects.gd:342
-  ISSUE #366: 5 print(s) — Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:4635, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:6764, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:9522, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:10601, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:10776
-  ISSUE #367: 7 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:14359, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:26864, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:10479, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:16192, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:6197, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:9553
-  ISSUE #368: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:33435
-  ISSUE #369: 5 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:10879, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:5920, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:10369, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:7603, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:9451
-  ISSUE #370: 2 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:9274, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:32672
-  ISSUE #371: 9 print(s) — Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:596, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:15845, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:15864, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:15907, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:4236, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:7818
-  ISSUE #372: 3 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:11601, Scripts/Main_Match_Gameplay_Scripts/Special_Energy_Effects.gd:361, Scripts/Main_Match_Gameplay_Scripts/Special_Energy_Effects.gd:382
-  ISSUE #373: 11 print(s) — Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:281, Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:1671, Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:4683, Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:6630, Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:8724, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:2738
-  ISSUE #374: 13 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:15254, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:15440, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:15504, Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:79, Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:381, Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:5665
-  ISSUE #375: 47 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:2523, Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:28131, Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:149, Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd:757, Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:46, Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:603
-  ISSUE #378: 1 print(s) — Scripts/Objects_And_Classes/Overworld_Pokemon/Pokemon_Surfacer.gd:112
-  ISSUE #451: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:6616
+  none.
 
 ------------------------------------------------------------------------------
-[3] KEEP — prints on issues still open/untested (36)
+[3] KEEP — prints on issues still open/untested (49)
 ------------------------------------------------------------------------------
-  #390 (Untested Fix, 2), #509 (Untested Fix, 1), #510 (Untested Fix, 1), #511 (Untested Fix, 1), #513 (Untested Fix, 2), #514 (Untested Fix, 1), #515 (Untested Fix, 1), #516 (Untested Fix, 1), #517 (Untested Fix, 1), #520 (Untested Fix, 6), #521 (Untested Fix, 1), #522 (Untested Fix, 2), #523 (Untested Fix, 1), #524 (Untested Fix, 4), #525 (Untested Fix, 2), #526 (Untested Fix, 2), #527 (Untested Fix, 1), #528 (Untested Fix, 2), #529 (Untested Fix, 1), #530 (Untested Fix, 1), #531 (Untested Fix, 1), #532 (Untested Fix, 1), #533 (Untested Fix, 1), #536 (Untested Fix, 2), #537 (Untested Fix, 1), #538 (Untested Fix, 1), #539 (Untested Fix, 1), #540 (Untested Fix, 2), #541 (Untested Fix, 1), #542 (Untested Fix, 1), #543 (Untested Fix, 1), #544 (Untested Fix, 1), #545 (Untested Fix, 2), #546 (Untested Fix, 2), #547 (Untested Fix, 2), #548 (Untested Fix, 1)
+  #304 (Untested Fix, 2), #383 (Untested Fix, 1), #384 (Untested Fix, 1), #385 (Untested Fix, 1), #387 (Untested Fix, 2), #388 (Untested Fix, 1), #389 (Untested Fix, 1), #390 (Untested Fix, 1), #391 (Untested Fix, 1), #394 (Untested Fix, 6), #395 (Untested Fix, 1), #396 (Untested Fix, 2), #397 (Untested Fix, 1), #398 (Untested Fix, 4), #399 (Untested Fix, 2), #400 (Untested Fix, 2), #401 (Untested Fix, 1), #402 (Untested Fix, 2), #403 (Untested Fix, 1), #404 (Untested Fix, 1), #405 (Untested Fix, 1), #406 (Untested Fix, 1), #407 (Untested Fix, 1), #410 (Untested Fix, 2), #411 (Untested Fix, 1), #412 (Untested Fix, 1), #413 (Untested Fix, 1), #414 (Untested Fix, 2), #415 (Untested Fix, 1), #416 (Untested Fix, 1), #417 (Untested Fix, 1), #418 (Untested Fix, 1), #419 (Untested Fix, 2), #420 (Untested Fix, 2), #421 (Untested Fix, 2), #422 (Untested Fix, 1), #423 (Untested Fix, 2), #424 (Untested Fix, 2), #425 (Untested Fix, 1), #426 (Untested Fix, 1), #427 (Untested Fix, 1), #428 (Untested Fix, 1), #429 (Untested Fix, 1), #430 (Untested Fix, 1), #431 (Untested Fix, 1), #433 (Untested Fix, 1), #434 (Untested Fix, 1), #435 (Untested Fix, 1), #436 (Untested Fix, 1)
 
 NOTE: `# ISSUE #n ...` comments are permanent documentation and are NOT
       reported here. Only executable print/push_error lines are.

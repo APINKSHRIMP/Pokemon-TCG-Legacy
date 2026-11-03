@@ -10,14 +10,14 @@ extends Node
 
 var main: Node
 
-# ISSUE #74: Lass (base1-75, the only card with this name) is deliberately held back until every
+# ISSUE #76: Lass (base1-75, the only card with this name) is deliberately held back until every
 # other CPU action has resolved, so it is skipped by the normal trainer phases and played by
 # cpu_phase_play_lass_last() immediately before the attack phase.
-const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")   # ISSUE #375 self-play tuning
+const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")   # OLD ISSUE 375 self-play tuning
 const LASS_UID := "base1-75"
-const CPU_PRE_DRAW_PAUSE := 0.2    # ISSUE #290: seconds between "Your opponent draws a card" and the draw itself
-const CPU_POST_DRAW_PAUSE := 0.2   # ISSUE #290: seconds between the CPU's turn-start draw and its first action
-# ISSUE #375 lookahead (phase 1): plays out the next exchange for attack choice and retreat. rule.lookahead switches it.
+const CPU_PRE_DRAW_PAUSE := 0.2    # ISSUE #291: seconds between "Your opponent draws a card" and the draw itself
+const CPU_POST_DRAW_PAUSE := 0.2   # ISSUE #291: seconds between the CPU's turn-start draw and its first action
+# OLD ISSUE 375 lookahead (phase 1): plays out the next exchange for attack choice and retreat. rule.lookahead switches it.
 const CpuLookahead = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Lookahead.gd")
 var _lookahead = null
 var _la_forced_replacement = null
@@ -25,7 +25,7 @@ const CpuPlanner = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Planne
 var _planner = null
 var _plan_cache := {}
 
-## ISSUE #375 phase 3: the multi-turn plan for the current decision point ({} when the planner is off). Cached per turn
+## OLD ISSUE 375 phase 3: the multi-turn plan for the current decision point ({} when the planner is off). Cached per turn
 ## and phase, so each phase plans once against the board as it is at that moment.
 func cpu_plan(phase: String) -> Dictionary:
 	if CpuWeights.plan_turns <= 0 or main.opponent_active_pokemon == null or main.player_active_pokemon == null:
@@ -43,7 +43,7 @@ func cpu_plan(phase: String) -> Dictionary:
 	_plan_cache[key] = pl
 	if not pl.is_empty():
 		var d: Dictionary = pl["desc"]
-		print("ISSUE #375 PLANNER [", phase, "] ", CpuWeights.plan_turns, " turns, ", pl["nodes"], " nodes, ", snappedf(pl["ms"], 0.1),
+		print("OLD ISSUE 375 PLANNER [", phase, "] ", CpuWeights.plan_turns, " turns, ", pl["nodes"], " nodes, ", snappedf(pl["ms"], 0.1),
 			" ms: energy→", d["energy_card"].metadata.get("name", "") if d.get("energy_card") != null else "none",
 			", retreat→", d["retreat_card"].metadata.get("name", "") if d.get("retreat_card") != null else "stay",
 			", gust→", d["gust_card"].metadata.get("name", "") if d.get("gust_card") != null else "none",
@@ -71,23 +71,23 @@ func invalidate_cpu_evaluation() -> void:
 func opponent_start_turn_checks() -> void:
 	if main._should_bail():
 		return
-	# ISSUE #309: Trainer locks now lift at the END of the locked side's turn (Trainer_Effects.tick_trainer_lock)
+	# OLD ISSUE 309: Trainer locks now lift at the END of the locked side's turn (Trainer_Effects.tick_trainer_lock)
 	main.turn_number += 1
-	await main.turn_label_gap()   # ISSUE #495
+	await main.turn_label_gap()   # ISSUE #369
 	if main._should_bail(): return
-	# ISSUE #281: the mirror of the player's "Start turn" - down out of the "Opponent" caption.
+	# ISSUE #282: the mirror of the player's "Start turn" - down out of the "Opponent" caption.
 	main.show_floating_label("Start turn", main._turn_float_anchor(true), Color.WHITE, false)
 	print("OPPONENT'S TURN START. TURN NUMBER IS ", main.turn_number)
 	await get_tree().create_timer(GameState.match_time(0.5)).timeout
 	if main._should_bail(): return
 	main.opponents_turn_active = true
 	main.reset_field_pokemon_turn_flags(true)
-	main.card_ops.reveal_context_text = ""   # ISSUE #401: last turn's attack text never decides a reveal
+	main.card_ops.reveal_context_text = ""   # ISSUE #314: last turn's attack text never decides a reveal
 	main.tutorial.on_cpu_turn_start()
 
 	await main.show_message("Your opponent draws a card")
 	if main._should_bail(): return
-	# ISSUE #290: matching beat before the draw so the card doesn't fly the instant the message closes.
+	# ISSUE #291: matching beat before the draw so the card doesn't fly the instant the message closes.
 	await get_tree().create_timer(GameState.match_time(CPU_PRE_DRAW_PAUSE)).timeout
 	if main._should_bail(): return
 	var drawn_card = await main.draw_card_from_deck(true)
@@ -104,7 +104,7 @@ func opponent_start_turn_checks() -> void:
 	main.refresh_hand_display(true)
 	main.update_deck_icon(true)
 
-	# ISSUE #290: a short beat after the draw lands so the CPU doesn't act the instant the card arrives.
+	# ISSUE #291: a short beat after the draw lands so the CPU doesn't act the instant the card arrives.
 	await get_tree().create_timer(GameState.match_time(CPU_POST_DRAW_PAUSE)).timeout
 	if main._should_bail(): return
 
@@ -114,7 +114,7 @@ func opponent_start_turn_checks() -> void:
 	main.powers_and_bodies.update_ditto_transform(true)
 	main.powers_and_bodies.update_ditto_transform(false)
 	if GameState.autotest != null: GameState.autotest.cpu_turn_start(main)   # AUTOTEST: what the CPU could play
-	if main._rec() != null: main._rec().turn_start(true)   # ISSUE #375 DEV: match recorder
+	if main._rec() != null: main._rec().turn_start(true)   # OLD ISSUE 375 DEV: match recorder
 
 	# NEO1: process turn-start tools (Gold Berry, Berry, Miracle Berry) and Char counters for CPU's side
 	await main.powers_and_bodies.process_turn_start_tools_and_counters(true)
@@ -138,10 +138,10 @@ func opponent_start_turn_checks() -> void:
 func cpu_turn_orchestrator() -> void:
 	if main._should_bail():
 		return
-	cpu_trainer_phase = "early"        # ISSUE #373
+	cpu_trainer_phase = "early"        # OLD ISSUE 373
 	cpu_final_power_check = false
-	cpu_undeveloped_draw = false       # ISSUE #524
-	_turn_start_active = main.opponent_active_pokemon   # ISSUE #492
+	cpu_undeveloped_draw = false       # ISSUE #398
+	_turn_start_active = main.opponent_active_pokemon   # ISSUE #366
 	# Phase 0: Activate beneficial Pokemon Powers (Rain Dance, Energy Trans, Damage Swap)
 	await main.powers_and_bodies.cpu_phase_activate_powers()
 	if main._should_bail(): return
@@ -156,7 +156,7 @@ func cpu_turn_orchestrator() -> void:
 	if main._should_bail():
 		return
 	# Phase 1a: Play Bill first (always highest priority)
-	cpu_trainer_phase = "early"   # ISSUE #373: hand-replacing draw cards wait unless the hand is stuck
+	cpu_trainer_phase = "early"   # OLD ISSUE 373: hand-replacing draw cards wait unless the hand is stuck
 	await cpu_phase_play_trainer_cards_priority()
 	if main._should_bail(): return
 	if main.opponent_turn_force_end:
@@ -203,8 +203,8 @@ func cpu_turn_orchestrator() -> void:
 
 	# Phase 4b: Play remaining trainer cards after evolutions/bench plays
 	cpu_trainer_phase = "mid"
-	cpu_undeveloped_draw = false   # ISSUE #524: Phases 2/3 just developed any early (stuck-hand) draw
-	# ISSUE #524: cards drawn from here on (a mid-phase Trainer, a stuck-hand Oak, the late phase) are
+	cpu_undeveloped_draw = false   # ISSUE #398: Phases 2/3 just developed any early (stuck-hand) draw
+	# ISSUE #398: cards drawn from here on (a mid-phase Trainer, a stuck-hand Oak, the late phase) are
 	# developed after the late phase - the snapshot used to be taken only just before Phase 7b.
 	var hand_before_mid: Array = main.opponent_hand.duplicate()
 	await cpu_phase_play_trainer_cards_remaining()
@@ -220,7 +220,7 @@ func cpu_turn_orchestrator() -> void:
 	if main._should_bail():
 		return
 	# Phase 5: First retreat evaluation (before energy attachment)
-	# ISSUE #493: Phase 4b's Trainers (Gust of Wind, Switch, Energy Removal...) change the board the
+	# ISSUE #367: Phase 4b's Trainers (Gust of Wind, Switch, Energy Removal...) change the board the
 	# Phase 4 snapshot was built from. Retreat on the CURRENT board -- the stale one still thought
 	# Pikachu faced the Gusted-away Diglett, so it fled the Staryu it could Knock Out.
 	invalidate_cpu_evaluation()
@@ -228,7 +228,7 @@ func cpu_turn_orchestrator() -> void:
 	var retreat_deferred = await cpu_phase_retreat_first_pass(cpu_eval)
 
 	# Phase 6: Energy attachment
-	# ISSUE #35 FIX (retest): rebuild the evaluation immediately before energy attachment. cpu_eval
+	# ISSUE #36 FIX (retest): rebuild the evaluation immediately before energy attachment. cpu_eval
 	# was built back in Phase 4 (line ~137), but Phase 5's retreat (and any Phase-4b trainer) can
 	# swap the Active / change the bench afterwards. The old code carried that stale snapshot into
 	# Phase 6, so energy was scored against the pre-retreat board — e.g. the CPU retreated Magnemite
@@ -270,16 +270,15 @@ func cpu_turn_orchestrator() -> void:
 		await main.inbetween_turn_checks(false)
 		return
 
-	# ISSUE #373: a late draw (Oak, Birch, ...) brought new cards — develop with them like a person would
+	# OLD ISSUE 373: a late draw (Oak, Birch, ...) brought new cards — develop with them like a person would
 	# (evolve, bench, the Energy attachment if it hasn't been used, then any newly drawn Trainers).
-	# ISSUE #524 (retest): repeat - each draw card in the late phase now stops the Trainer loop, so the new hand is
+	# ISSUE #398 (retest): repeat - each draw card in the late phase now stops the Trainer loop, so the new hand is
 	# developed before the next Oak is even considered (capped so a deck of draw cards can't loop forever).
 	var _redevelop_rounds := 0
 	while _redevelop_rounds < 4 and main.opponent_hand.any(func(c): return not hand_before_mid.has(c)):
 		_redevelop_rounds += 1
 		hand_before_mid = main.opponent_hand.duplicate()
-		print("ISSUE #373 FIX ACTIVE: CPU drew new cards late in the turn — developing again")
-		print("ISSUE #524 FIX ACTIVE: re-developing with cards drawn since the mid phase (round ", _redevelop_rounds, ")")
+		print("ISSUE #398 FIX ACTIVE: re-developing with cards drawn since the mid phase (round ", _redevelop_rounds, ")")
 		await cpu_phase_evolution()
 		if main._should_bail(): return
 		await cpu_phase_bench_play()
@@ -288,7 +287,7 @@ func cpu_turn_orchestrator() -> void:
 			invalidate_cpu_evaluation()
 			await cpu_phase_energy_attachment(get_cpu_evaluation())
 			if main._should_bail(): return
-		cpu_undeveloped_draw = false   # ISSUE #524: the new hand has been used - another draw card may follow
+		cpu_undeveloped_draw = false   # ISSUE #398: the new hand has been used - another draw card may follow
 		await cpu_phase_play_trainer_cards_remaining()
 		if main._should_bail(): return
 		if main.opponent_turn_force_end:
@@ -302,7 +301,7 @@ func cpu_turn_orchestrator() -> void:
 	# Phase 7c: Final power re-check. Trainers (Rare Candy, Pokemon Breeder) and energy attachment
 	# can each unlock a power that wasn't usable earlier in the turn — see ISSUE base1-2.
 	print("ISSUE base1-2 FIX ACTIVE: final CPU power re-check before attack")
-	cpu_final_power_check = true   # ISSUE #373: turn-ending powers are only weighed here
+	cpu_final_power_check = true   # OLD ISSUE 373: turn-ending powers are only weighed here
 	await main.powers_and_bodies.cpu_phase_activate_powers()
 	cpu_final_power_check = false
 	if main._should_bail(): return
@@ -313,7 +312,7 @@ func cpu_turn_orchestrator() -> void:
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
 		return
-	# Phase 7d: Lass is always the very last card played before attacking (ISSUE #74) — by now every
+	# Phase 7d: Lass is always the very last card played before attacking (ISSUE #76) — by now every
 	# other Trainer the CPU wanted has been spent, so the shuffle only costs the player.
 	await cpu_phase_play_lass_last()
 	if main._should_bail(): return
@@ -457,7 +456,7 @@ func evaluate_single_pokemon(pokemon: card_object) -> Dictionary:
 
 	return data
 
-# ISSUE #103: damage a Pokemon is GUARANTEED to take from its own Special Conditions between now and
+# ISSUE #107: damage a Pokemon is GUARANTEED to take from its own Special Conditions between now and
 # the opponent's next attack. process_status_between_turns() runs for both Actives at the end of every
 # turn, so exactly one tick lands in that window.
 #
@@ -475,7 +474,7 @@ func status_damage_before_next_attack(pokemon: card_object, is_opponent: bool) -
 		total += 40 if (main.powers_and_bodies.is_fiery_aura_active() or main.is_stadium_in_play("ex12-74")) else 20
 	return total
 
-# ISSUE #103: true when the CPU's Active dies to its own status alone, whatever the player does.
+# ISSUE #107: true when the CPU's Active dies to its own status alone, whatever the player does.
 # Nothing the CPU spends on it (Defender, Energy, PlusPower) can change that outcome.
 func cpu_active_dies_to_status() -> bool:
 	var active = main.opponent_active_pokemon
@@ -495,7 +494,7 @@ func evaluate_ko_threats() -> Dictionary:
 	if main.opponent_active_pokemon == null or main.player_active_pokemon == null:
 		return result
 
-	# ISSUE #103 FIX ACTIVE: the CPU's Active takes its poison/burn tick BEFORE the player's next
+	# ISSUE #107 FIX ACTIVE: the CPU's Active takes its poison/burn tick BEFORE the player's next
 	# attack lands, so the HP that attack actually has to chew through is what's left after the tick.
 	# Scoring against raw current_hp is why the CPU spent a Defender saving a poisoned 10-HP Pokemon
 	# from a knockout that poison was going to deliver anyway.
@@ -539,7 +538,7 @@ func evaluate_ko_threats() -> Dictionary:
 			elif main.player_active_pokemon.attached_energies.size() < 1:
 				pass
 
-	# ISSUE #375 FORESIGHT: knowing the player's hand and next draw, replace the guesswork about "1 Energy away" threats with
+	# OLD ISSUE 375 FORESIGHT: knowing the player's hand and next draw, replace the guesswork about "1 Energy away" threats with
 	# what the player can REALLY do next turn (attach an Energy it holds / draws, evolve with a card it holds / draws).
 	if CpuWeights.cheating_cards():
 		var fs := _cpu_foresight_threat(cpu_active_hp)
@@ -571,7 +570,7 @@ func evaluate_ko_threats() -> Dictionary:
 
 	return result
 
-## ISSUE #375 FORESIGHT: what the player's Active (or what it evolves into from a card in hand / the next draw) can really do
+## OLD ISSUE 375 FORESIGHT: what the player's Active (or what it evolves into from a card in hand / the next draw) can really do
 ## to our Active next turn, given whether the player holds or draws an Energy.
 func _cpu_foresight_threat(cpu_hp: int) -> Dictionary:
 	var out := {"guaranteed": false, "potential": false}
@@ -600,10 +599,9 @@ func _cpu_foresight_threat(cpu_hp: int) -> Dictionary:
 				out["guaranteed"] = true
 			elif int(main.calculate_final_damage(rng_d["max"], types, me)["damage"]) >= cpu_hp:
 				out["potential"] = true
-	print("ISSUE #375 FORESIGHT: player threat next turn — energy coming ", energy_next, ", forms ", forms.size(), " -> ", out)
 	return out
 
-## ISSUE #375 FORESIGHT: the coins this attack will use (after a Confusion check), or [] when not cheating / no flip.
+## OLD ISSUE 375 FORESIGHT: the coins this attack will use (after a Confusion check), or [] when not cheating / no flip.
 var _cpu_known_coins: Array = []
 func _cpu_foresee_attack_coins(attack: Dictionary, me: card_object) -> Array:
 	var tl := String(attack.get("text", "")).to_lower()
@@ -666,7 +664,7 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 	if required_cost.size() == 0:
 		return 0
 
-	# ISSUE #525: the pool is a list of Energy UNITS, each the list of types that one unit may pay for
+	# ISSUE #399: the pool is a list of Energy UNITS, each the list of types that one unit may pay for
 	# ("Any" = every type). Before, every TYPE a card listed counted as a separate Energy: one Rainbow
 	# Energy (8 types) paid for 8 Energy, so 2 Rainbow + 1 Lightning paid Rocket's Zapdos's 4-Energy
 	# Electroburn. Rainbow / Multi / Dark Metal / Crystal Energy are ONE unit with several options; DCE is
@@ -752,7 +750,7 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 	return unmet
 
 
-## ISSUE #525: one augmenting-path step of the typed-cost matching in get_unmet_energy_count.
+## ISSUE #399: one augmenting-path step of the typed-cost matching in get_unmet_energy_count.
 func _energy_match_try(ri: int, typed: Array, pool: Array, unit_owner: Array, seen: Array) -> bool:
 	for ui in range(pool.size()):
 		if seen[ui]:
@@ -771,7 +769,7 @@ func can_cpu_ko_player_active() -> bool:
 	if main.opponent_active_pokemon == null or main.player_active_pokemon == null:
 		return false
 
-	var cpu_types = main.opponent_active_pokemon.get_effective_types()   # ISSUE #373: Type Shift / Submerge / Eclipse count
+	var cpu_types = main.opponent_active_pokemon.get_effective_types()   # OLD ISSUE 373: Type Shift / Submerge / Eclipse count
 	var player_hp = main.player_active_pokemon.current_hp
 
 	for attack in main.opponent_active_pokemon.metadata.get("attacks", []):
@@ -855,7 +853,7 @@ func _any_bench_survives_player_attack() -> bool:
 			return true
 	return false
 
-# ISSUE #69: the best damage `pokemon` can deal to `target` THIS turn with a currently-affordable
+# ISSUE #70: the best damage `pokemon` can deal to `target` THIS turn with a currently-affordable
 # attack (0 unmet energy). Uses the conservative minimum roll. Returns 0 if it cannot attack.
 func _best_usable_damage_against(pokemon: card_object, target: card_object) -> int:
 	if pokemon == null or target == null:
@@ -870,7 +868,7 @@ func _best_usable_damage_against(pokemon: card_object, target: card_object) -> i
 		best = max(best, result["damage"])
 	return best
 
-# ISSUE #63/#65: the player Active's effective damage against `target` with any currently-usable
+# ISSUE #64/#65: the player Active's effective damage against `target` with any currently-usable
 # attack, respecting `target`'s current Defender count. use_max picks the max roll (worst case for
 # the CPU) vs the min roll (the guaranteed floor).
 func _player_effective_damage_against(target: card_object, use_max: bool) -> int:
@@ -887,34 +885,34 @@ func _player_effective_damage_against(target: card_object, use_max: bool) -> int
 		best = max(best, result["damage"])
 	return best
 
-# ISSUE #63: the player Active's maximum damage against `target` with any currently-usable attack.
+# ISSUE #64: the player Active's maximum damage against `target` with any currently-usable attack.
 func _player_max_damage_against(target: card_object) -> int:
 	return _player_effective_damage_against(target, true)
 
-# ISSUE #69: a benched Pokemon that is a clear OFFENSIVE upgrade over the current Active against the
+# ISSUE #70: a benched Pokemon that is a clear OFFENSIVE upgrade over the current Active against the
 # player's Active — it survives coming in and deals meaningfully more damage (≥+20 and ≥1.5×). Null if none.
 func _offensive_retreat_target() -> card_object:
 	if main.opponent_active_pokemon == null or main.player_active_pokemon == null:
 		return null
-	# ISSUE #373: take the Knock Out — the Active can't, a Benched Pokémon can (and the retreat leaves Energy to pay).
+	# OLD ISSUE 373: take the Knock Out — the Active can't, a Benched Pokémon can (and the retreat leaves Energy to pay).
 	var ko_sub := _cpu_bench_ko_retreat_target()
 	if ko_sub != null:
 		return ko_sub
-	var walled_sub := _cpu_walled_retreat_target()   # ISSUE #537
+	var walled_sub := _cpu_walled_retreat_target()   # ISSUE #411
 	if walled_sub != null:
 		return walled_sub
 	var active_damage = _best_usable_damage_against(main.opponent_active_pokemon, main.player_active_pokemon)
-	# ISSUE #453: damage past a Knock Out is worth nothing -- if the Active already KOs, no Benched
+	# ISSUE #327: damage past a Knock Out is worth nothing -- if the Active already KOs, no Benched
 	# Pokémon hits "harder" in any way that matters (Hitmonchan's Jab vs a 10 HP Ekans: it paid 2
 	# Energy to retreat into Mewtwo for the bigger number).
-	if active_damage >= _player_active_hp_to_ko():   # ISSUE #497: counts the player's Poison/Burn tick
+	if active_damage >= _player_active_hp_to_ko():   # ISSUE #371: counts the player's Poison/Burn tick
 		return null
 	var best: card_object = null
 	var best_damage = active_damage
 	for bench_pokemon in main.opponent_bench:
 		if _is_guaranteed_ko_by(bench_pokemon, main.player_active_pokemon):
 			continue
-		# ISSUE #491: a person doesn't swap a Pokémon that Resists the Defender for one that's Weak to
+		# ISSUE #365: a person doesn't swap a Pokémon that Resists the Defender for one that's Weak to
 		# it just to hit a bit harder -- only when the newcomer Knocks Out straight away.
 		if _type_matchup_worse(main.opponent_active_pokemon, bench_pokemon, main.player_active_pokemon) \
 				and _best_usable_damage_against(bench_pokemon, main.player_active_pokemon) < _player_active_hp_to_ko():
@@ -925,7 +923,7 @@ func _offensive_retreat_target() -> card_object:
 			best_damage = bench_damage
 	return best
 
-## ISSUE #537: is the CPU's Active WALLED by the Defending Pokemon - it has damaging attacks, but every one of them
+## ISSUE #411: is the CPU's Active WALLED by the Defending Pokemon - it has damaging attacks, but every one of them
 ## (even with Energy it doesn't have yet) is cut to 0 (Invisible Wall vs Psyburn, a Harden-style threshold...)?
 ## Then attaching more Energy or a setup attack (Energy Absorption) never gets anywhere.
 func _cpu_active_walled(me: card_object, foe: card_object) -> bool:
@@ -942,7 +940,7 @@ func _cpu_active_walled(me: card_object, foe: card_object) -> bool:
 			return false
 	return any_damaging
 
-## ISSUE #537: the Benched Pokemon to bring in when the Active is walled - the one that does the most damage it can
+## ISSUE #411: the Benched Pokemon to bring in when the Active is walled - the one that does the most damage it can
 ## use now (anything above 0 beats a wall), and isn't walked into a guaranteed Knock Out. Null if none / not walled.
 func _cpu_walled_retreat_target() -> card_object:
 	var me = main.opponent_active_pokemon
@@ -959,10 +957,10 @@ func _cpu_walled_retreat_target() -> card_object:
 			best_dmg = d
 			best = b
 	if best != null:
-		print("ISSUE #537 FIX ACTIVE: ", me.metadata.get("name", ""), " is walled by ", foe.metadata.get("name", ""), " - ", best.metadata.get("name", ""), " can do ", best_dmg)
+		print("ISSUE #411 FIX ACTIVE: ", me.metadata.get("name", ""), " is walled by ", foe.metadata.get("name", ""), " - ", best.metadata.get("name", ""), " can do ", best_dmg)
 	return best
 
-# ISSUE #497: the damage the CPU's attack needs to Knock Out the player's Active this turn -- its HP
+# ISSUE #371: the damage the CPU's attack needs to Knock Out the player's Active this turn -- its HP
 # less the Poison/Burn it is certain to take at the end of this turn (a KO there still gives the Prize).
 func _player_active_hp_to_ko() -> int:
 	var foe = main.player_active_pokemon
@@ -970,7 +968,7 @@ func _player_active_hp_to_ko() -> int:
 		return 0
 	return maxi(0, foe.current_hp - status_damage_before_next_attack(foe, false))
 
-# ISSUE #491: is `incoming` a worse Weakness/Resistance matchup against `foe` than `current`? Weak to
+# ISSUE #365: is `incoming` a worse Weakness/Resistance matchup against `foe` than `current`? Weak to
 # it where `current` isn't, or `current` Resists it and `incoming` doesn't.
 func _type_matchup_worse(current: card_object, incoming: card_object, foe: card_object) -> bool:
 	if current == null or incoming == null or foe == null:
@@ -988,7 +986,7 @@ func _has_type_entry(p: card_object, key: String, types: Array) -> bool:
 			return true
 	return false
 
-# ISSUE #492: has the CPU already moved a different Pokémon into its Active spot this turn (Switch,
+# ISSUE #366: has the CPU already moved a different Pokémon into its Active spot this turn (Switch,
 # a retreat, an effect)? Then it doesn't change it again -- back-and-forth swaps waste the turn.
 func _cpu_active_changed_this_turn() -> bool:
 	if _turn_start_active == null or not is_instance_valid(_turn_start_active):
@@ -997,13 +995,13 @@ func _cpu_active_changed_this_turn() -> bool:
 		return true
 	return false
 
-# ISSUE #373: a Benched Pokémon that Knocks Out the player's Active this turn when the Active itself can't.
+# OLD ISSUE 373: a Benched Pokémon that Knocks Out the player's Active this turn when the Active itself can't.
 func _cpu_bench_ko_retreat_target() -> card_object:
 	var foe = main.player_active_pokemon
 	var me = main.opponent_active_pokemon
 	if foe == null or me == null:
 		return null
-	# ISSUE #497: the Active "Knocks Out" when its hit plus the player's own Poison/Burn tick at the end
+	# ISSUE #371: the Active "Knocks Out" when its hit plus the player's own Poison/Burn tick at the end
 	# of this turn finishes the job (Weedle's 10 on a Poisoned 20 HP Farfetch'd) -- no retreat for that.
 	var foe_hp: int = _player_active_hp_to_ko()
 	if _best_usable_damage_against(me, foe) >= foe_hp:
@@ -1018,7 +1016,7 @@ func _cpu_bench_ko_retreat_target() -> card_object:
 			best_hp = bp.current_hp
 	return best
 
-# ISSUE #63: true if a benched Pokemon would survive the player's attack meaningfully better than the
+# ISSUE #64: true if a benched Pokemon would survive the player's attack meaningfully better than the
 # current Active (higher HP-after-hit margin). Retreating into an equally/worse-doomed Pokemon is pointless.
 func _retreat_improves_survival() -> bool:
 	if main.opponent_active_pokemon == null:
@@ -1030,7 +1028,7 @@ func _retreat_improves_survival() -> bool:
 			return true
 	return false
 
-# ISSUE #63: true if any non-doomed benched Pokemon can already attack the player's Active — used to
+# ISSUE #64: true if any non-doomed benched Pokemon can already attack the player's Active — used to
 # justify swapping an idle (can't-attack) Active out.
 func _bench_attacker_available() -> bool:
 	for bench_pokemon in main.opponent_bench:
@@ -1413,7 +1411,7 @@ func evaluate_evolution_pair(evo_card: card_object, target: card_object) -> Dict
 		score += 150.0
 		reasons.append("Can attack immediately after evolving (+150 pts)")
 
-	# ISSUE #36 FIX: penalise a POINTLESS, tempo-losing evolution. If ALL of these hold there's no
+	# ISSUE #37 FIX: penalise a POINTLESS, tempo-losing evolution. If ALL of these hold there's no
 	# benefit to evolving this turn (e.g. a healthy Charmeleon with 2 Fire that can already attack,
 	# facing a Rattata that can't threaten it, evolving into a Charizard that needs 4 Energy):
 	#   1) Energy attachment is already used up this turn (can't pay a bigger cost now)
@@ -1446,7 +1444,7 @@ func evaluate_evolution_pair(evo_card: card_object, target: card_object) -> Dict
 		score += EVOLUTION_WASTE_PENALTY
 		reasons.append("Pointless evolution — can attack now, can't after, energy spent, not under threat (" + str(EVOLUTION_WASTE_PENALTY) + " pts)")
 
-	# ISSUE #456: the Active can Knock Out the Defending Pokémon right now (PlusPowers counted), but
+	# ISSUE #330: the Active can Knock Out the Defending Pokémon right now (PlusPowers counted), but
 	# the evolved form can't attack this turn -- evolving throws the sure KO away (Spearow + PlusPower
 	# vs a 20 HP Pikachu, evolved into a Fearow with 1 Energy). "Can't attack" allows for the one
 	# Energy still to be attached this turn, if there is one in hand.
@@ -1567,7 +1565,7 @@ func get_attack_text_penalty(attack_text: String, pokemon_name: String) -> int:
 func _cpu_active_can_ko_player_active(active_data: Dictionary) -> bool:
 	if main.player_active_pokemon == null:
 		return false
-	var player_hp = _player_active_hp_to_ko()   # ISSUE #497: counts the player's Poison/Burn tick
+	var player_hp = _player_active_hp_to_ko()   # ISSUE #371: counts the player's Poison/Burn tick
 	for attack in active_data.get("attack_data", []):
 		if attack.get("unmet", 999) == 0 and attack.get("damage_min", 0) >= player_hp:
 			return true
@@ -1656,7 +1654,7 @@ func evaluate_retreat_reasons(cpu_eval: Dictionary) -> bool:
 						break
 
 		if nearest_attack > matching_energy_in_hand + 1:
-			# ISSUE #63: don't retreat an idle Active into a replacement that is just as doomed and can't
+			# ISSUE #64: don't retreat an idle Active into a replacement that is just as doomed and can't
 			# attack either. Only worthwhile if some bench Pokemon can attack, would survive, or is an
 			# offensive upgrade — otherwise we just feed another Pokemon to the same KO for no gain.
 			if not _bench_attacker_available() and not _retreat_improves_survival() and _offensive_retreat_target() == null:
@@ -1664,26 +1662,25 @@ func evaluate_retreat_reasons(cpu_eval: Dictionary) -> bool:
 			print("CPU considering retreat: active has no viable attack path")
 			return true
 
-	# Reason 3b — ISSUE #373: shake off Confusion (or a Poison/Burn that is wearing it down) the way a person
+	# Reason 3b — OLD ISSUE 373: shake off Confusion (or a Poison/Burn that is wearing it down) the way a person
 	# would — only when the retreat is cheap, the Active can't just win the exchange, and something on the Bench
 	# can attack in its place.
 	if CpuWeights.on("rule.retreat_status_escape") and _cpu_status_escape_retreat(active_data):
-		print("ISSUE #373 FIX ACTIVE: CPU considering retreat to shed a Special Condition")
 		return true
 
-	# Reason 4 — ISSUE #69: Offensive retreat. Even with a healthy, attacking Active, if a benched
+	# Reason 4 — ISSUE #70: Offensive retreat. Even with a healthy, attacking Active, if a benched
 	# Pokemon that would survive coming in can deal meaningfully MORE damage to the player's Active
 	# (e.g. a powered-up Pinsir behind a Weedle only doing 10), swap it in to hit harder.
-	# ISSUE #373: not straight after a retreat last turn — swapping back and forth wastes Energy and tempo.
+	# OLD ISSUE 373: not straight after a retreat last turn — swapping back and forth wastes Energy and tempo.
 	if cpu_last_retreat_turn >= main.turn_number - 2 and _cpu_bench_ko_retreat_target() == null \
-			and _cpu_walled_retreat_target() == null:   # ISSUE #537: a walled Active always gets out
+			and _cpu_walled_retreat_target() == null:   # ISSUE #411: a walled Active always gets out
 		return false
 	if CpuWeights.on("rule.retreat_offensive") and _offensive_retreat_target() != null:
 		return true
 
 	return false
 
-# ISSUE #373: is the Active worth retreating purely to clear its Special Condition?
+# OLD ISSUE 373: is the Active worth retreating purely to clear its Special Condition?
 func _cpu_status_escape_retreat(active_data: Dictionary) -> bool:
 	var act = main.opponent_active_pokemon
 	if act == null or main.opponent_bench.is_empty():
@@ -1711,11 +1708,11 @@ func is_retreat_cost_worthwhile(cpu_eval: Dictionary) -> bool:
 	if retreat_cost == 0:
 		return true
 
-	# ISSUE #373: a cheap retreat that sheds Confusion / a mounting Poison or Burn for a ready attacker.
+	# OLD ISSUE 373: a cheap retreat that sheds Confusion / a mounting Poison or Burn for a ready attacker.
 	if _cpu_status_escape_retreat(active_data):
 		return true
 
-	# ISSUE #69: an offensive-upgrade retreat is worthwhile regardless of the energy lost by the
+	# ISSUE #70: an offensive-upgrade retreat is worthwhile regardless of the energy lost by the
 	# retreating Pokemon — the whole point is to bring the stronger bench attacker into the Active spot.
 	if _offensive_retreat_target() != null:
 		return true
@@ -1744,7 +1741,7 @@ func is_retreat_cost_worthwhile(cpu_eval: Dictionary) -> bool:
 	var high_investment = active.attached_energies.size() >= 3 or has_evo
 	var high_hp = active.current_hp > int(active.metadata.get("hp", "0")) * 0.5
 
-	# ISSUE #49 FIX: if the Active is DOOMED where it stands, retreating SAVES it and denies the player
+	# ISSUE #50 FIX: if the Active is DOOMED where it stands, retreating SAVES it and denies the player
 	# a prize — worth the energy loss even if the incoming Active can't attack, and critical on the last
 	# prize where the KO loses the game. Two doomed cases:
 	#   • Poisoned and the between-turns poison tick alone will KO it — retreating leaves the Active spot,
@@ -1763,7 +1760,7 @@ func is_retreat_cost_worthwhile(cpu_eval: Dictionary) -> bool:
 		print("CPU retreat worthwhile: preserving high-investment pokemon")
 		return true
 
-	# ISSUE #63: don't waste a retreat swapping into an equally- or worse-doomed Pokemon. If the swap
+	# ISSUE #64: don't waste a retreat swapping into an equally- or worse-doomed Pokemon. If the swap
 	# neither improves our survival odds, nor upgrades our attacker, nor moves an idle (can't-attack)
 	# Active out for a bench Pokemon that CAN attack, there is nothing to gain — stay put.
 	var active_can_attack = active_data.get("can_attack", false)
@@ -1808,7 +1805,7 @@ func cpu_phase_retreat_first_pass(cpu_eval: Dictionary) -> bool:
 		print("CPU cannot retreat: active is ", main.opponent_active_pokemon.special_condition)
 		return false
 
-	# ISSUE #375 branch replay: retreat when it wouldn't / stay when it would (only when a retreat is affordable now).
+	# OLD ISSUE 375 branch replay: retreat when it wouldn't / stay when it would (only when a retreat is affordable now).
 	var _rt_able: bool = main.opponent_active_pokemon.attached_energies.size() >= main.get_retreat_cost(main.opponent_active_pokemon)
 	if _rt_able and CpuWeights.branch_target > 0:
 		var _rt_would: bool = evaluate_retreat_reasons(cpu_eval) and is_retreat_cost_worthwhile(cpu_eval)
@@ -1819,7 +1816,7 @@ func cpu_phase_retreat_first_pass(cpu_eval: Dictionary) -> bool:
 				await execute_cpu_retreat(cpu_eval)
 			return false
 
-	# ISSUE #375 PLANNER: with the multi-turn planner on, its plan decides retreat vs stay (and who comes in).
+	# OLD ISSUE 375 PLANNER: with the multi-turn planner on, its plan decides retreat vs stay (and who comes in).
 	if CpuWeights.plan_turns > 0 and _rt_able and CpuWeights.g("plan.retreat", 1.0) > 0.0:
 		var _pl_r: Dictionary = cpu_plan("retreat")
 		if not _pl_r.is_empty():
@@ -1829,26 +1826,22 @@ func cpu_phase_retreat_first_pass(cpu_eval: Dictionary) -> bool:
 			var margin: float = CpuWeights.g("plan.margin", 60.0)
 			var rules_go: bool = evaluate_retreat_reasons(cpu_eval) and is_retreat_cost_worthwhile(cpu_eval)
 			if rules_go and v_stay - v_go >= margin:
-				print("ISSUE #375 PLANNER: staying in (plan beats retreating by ", int(v_stay - v_go), ")")
 				return false
 			if not rules_go and rc != null and v_go - v_stay >= margin and rc in main.opponent_bench:
-				print("ISSUE #375 PLANNER: retreating into ", rc.metadata.get("name", ""), " (plan)")
 				_la_forced_replacement = rc
 				await execute_cpu_retreat(cpu_eval)
 				_la_forced_replacement = null
 				return false
 
-	# ISSUE #375 LOOKAHEAD: compare staying with each Benched Pokémon over the next exchange. Overrides the rules only when
+	# OLD ISSUE 375 LOOKAHEAD: compare staying with each Benched Pokémon over the next exchange. Overrides the rules only when
 	# the difference is clear: stay when retreating loses the exchange, retreat when a Benched Pokémon clearly wins it.
 	if CpuWeights.on("rule.lookahead") and _rt_able:
 		var la: Dictionary = _la().retreat_choice()
 		var rules_would: bool = evaluate_retreat_reasons(cpu_eval) and is_retreat_cost_worthwhile(cpu_eval)
 		var delta: float = float(la.get("delta", 0.0))
 		if rules_would and delta < -CpuWeights.g("look.retreat_stay_margin", 60.0):
-			print("ISSUE #375 LOOKAHEAD: staying in — retreating loses the next exchange by ", int(-delta))
 			return false
 		if not rules_would and delta > CpuWeights.g("look.retreat_go_margin", 120.0) and la.get("best") != null:
-			print("ISSUE #375 LOOKAHEAD: retreating into ", la["best"].metadata.get("name", ""), " — wins the next exchange by ", int(delta))
 			_la_forced_replacement = la["best"]
 			await execute_cpu_retreat(cpu_eval)
 			_la_forced_replacement = null
@@ -1925,7 +1918,7 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	# MATCH EFFECT: no_retreat — belt-and-braces guard for any direct callers
 	if main.match_effects.retreat_blocked(true) or main.tutorial.cpu_retreat_blocked():
 		return
-	# ISSUE #484: some opponents retreat less (or never) -- the café's Olly never, Ellie half as often.
+	# ISSUE #358: some opponents retreat less (or never) -- the café's Olly never, Ellie half as often.
 	if not main.tutorial.cpu_scripted() and not CpuWeights.retreat_allowed():
 		return
 	var best_replacement = pick_best_bench_replacement(main.opponent_bench, main.player_active_pokemon, cpu_eval)
@@ -1950,13 +1943,13 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 		main.display_pokemon(true)
 		return
 		
-	# ISSUE #43 FIX: pick the retreat-cost Energy but DON'T discard it here. Previously the CPU popped
+	# ISSUE #44 FIX: pick the retreat-cost Energy but DON'T discard it here. Previously the CPU popped
 	# each Energy and called send_card_to_discard, then animate_retreat -> animate_energies_to_discard
 	# discarded them AGAIN (it also erases-from-attached + appends-to-discard), so the discard pile
 	# jumped by 2× the retreat cost. The player flow never pre-discards; the CPU now matches it —
 	# animate_energies_to_discard (inside animate_retreat) performs the single discard + animation.
 	var retreat_cost = main.get_retreat_cost(main.opponent_active_pokemon)
-	# ISSUE #163: pay the retreat cost with the LEAST valuable Energy attached, not
+	# ISSUE #164: pay the retreat cost with the LEAST valuable Energy attached, not
 	# whatever happens to be on top of the stack — which is how a Double Colorless
 	# ended up paying a retreat while a spare basic sat underneath it.
 	var discarded_energies = cpu_own_energy_discard_order(
@@ -1985,7 +1978,7 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	best_replacement.current_location = "active"
 	main.opponent_active_pokemon = best_replacement
 	main.opponent_retreated_this_turn = true
-	cpu_last_retreat_turn = main.turn_number   # ISSUE #373: no back-and-forth retreating on consecutive turns
+	cpu_last_retreat_turn = main.turn_number   # OLD ISSUE 373: no back-and-forth retreating on consecutive turns
 
 	print("CPU retreated " + old_active.metadata["name"] + " for " + best_replacement.metadata["name"])
 	await main.animate_retreat(old_active, best_replacement, discarded_energies, true)
@@ -2031,18 +2024,18 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 # CPU automatically picks a random prize card and moves it to hand
 func pick_best_bench_replacement(bench: Array, against_pokemon: card_object, cpu_eval: Dictionary) -> card_object:
 	if _la_forced_replacement != null and _la_forced_replacement in bench:
-		return _la_forced_replacement   # ISSUE #375 LOOKAHEAD: the retreat was made FOR this Pokémon
+		return _la_forced_replacement   # OLD ISSUE 375 LOOKAHEAD: the retreat was made FOR this Pokémon
 	# ISSUE #8 FIX ACTIVE: don't retreat into another guaranteed KO when a survivable bench
 	# option exists. score_bench_as_replacement() only ever gave a soft +100 survivability bonus,
 	# so a guaranteed-KO'd attacker could still outscore a survivable one and get picked, wasting
 	# the retreat cost. If at least one bench Pokemon would NOT be guaranteed KO'd by the
 	# opposing active's best usable attack, guaranteed-KO candidates are excluded outright.
-	# ISSUE #373: a retreat made to take a Knock Out brings in the Pokémon that takes it.
+	# OLD ISSUE 373: a retreat made to take a Knock Out brings in the Pokémon that takes it.
 	if main.opponent_active_pokemon != null and against_pokemon == main.player_active_pokemon:
 		var ko_sub := _cpu_bench_ko_retreat_target()
 		if CpuWeights.on("rule.replace_ko_taker") and ko_sub != null and ko_sub in bench:
 			return ko_sub
-		# ISSUE #537: a retreat made because the Active is walled brings in the Pokemon that gets through.
+		# ISSUE #411: a retreat made because the Active is walled brings in the Pokemon that gets through.
 		var walled_sub := _cpu_walled_retreat_target()
 		if walled_sub != null and walled_sub in bench:
 			return walled_sub
@@ -2061,7 +2054,7 @@ func pick_best_bench_replacement(bench: Array, against_pokemon: card_object, cpu
 			best_score = score
 			best_replacement = bench_pokemon
 
-	# ISSUE #375 branch replay: bring up a different Benched Pokémon.
+	# OLD ISSUE 375 branch replay: bring up a different Benched Pokémon.
 	var _r_pick := CpuWeights.branch_point("replace", bench.size(), bench.find(best_replacement), bench.map(func(b): return b.metadata.get("name", "")))
 	if _r_pick >= 0 and _r_pick < bench.size() and bench[_r_pick] != best_replacement:
 		best_replacement = bench[_r_pick]
@@ -2152,14 +2145,14 @@ func score_bench_as_replacement(bench_pokemon: card_object, against_pokemon: car
 
 	# HP tiebreaker
 	score += bench_pokemon.current_hp * CpuWeights.g("replace.hp", 0.1)
-	# ISSUE #375: learned matchup (self-play) — how this Pokémon tends to fare against that one, and why.
+	# OLD ISSUE 375: learned matchup (self-play) — how this Pokémon tends to fare against that one, and why.
 	score += CpuWeights.g("learn.matchup", 100.0) * cpu_learned_matchup(bench_pokemon, against_pokemon)
 
 	return score
 
 # Scores a single (pokemon, energy_card) pair using all Phase 2 rules
 func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
-	await main.settle_after_draw()   # ISSUE #472
+	await main.settle_after_draw()   # ISSUE #346
 	# Phase 0.1: Skip if no energy cards in hand
 	var energy_cards_in_hand = []
 	for card in main.opponent_hand:
@@ -2205,7 +2198,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 
 	# Phase 3.3: Tiebreaking
 	best = resolve_energy_tiebreak(scored_pairs, cpu_eval)
-	# ISSUE #375 PLANNER: the multi-turn plan's Energy target wins when it is a legal, sane attachment.
+	# OLD ISSUE 375 PLANNER: the multi-turn plan's Energy target wins when it is a legal, sane attachment.
 	var _pl_e: Dictionary = cpu_plan("energy")
 	var _cpu_e_target = best["pokemon"]
 	if not _pl_e.is_empty() and _pl_e["desc"].get("energy_card") != null and _pl_e["desc"]["energy_card"] != _cpu_e_target \
@@ -2215,9 +2208,8 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 			if sp["pokemon"] == _pl_e["desc"]["energy_card"] and float(sp["score"]) > -300.0 and (pick == null or float(sp["score"]) > float(pick["score"])):
 				pick = sp
 		if pick != null and pick != best:
-			print("ISSUE #375 PLANNER: Energy onto ", pick["pokemon"].metadata.get("name", ""), " (plan) instead of ", best["pokemon"].metadata.get("name", ""))
 			best = pick
-	# ISSUE #375 branch replay: another legal attachment, or none at all (last option).
+	# OLD ISSUE 375 branch replay: another legal attachment, or none at all (last option).
 	var _e_opts: Array = scored_pairs.filter(func(sp): return float(sp["score"]) > -500.0)
 	if best in _e_opts:
 		var _e_labels: Array = _e_opts.map(func(sp): return sp["energy_card"].metadata.get("name", "") + " -> " + sp["pokemon"].metadata.get("name", ""))
@@ -2263,7 +2255,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 		print("CPU energy attachment blocked: Freeze Lock")
 		return
 
-	# ISSUE #284: measure the sleeve WHERE IT SITS IN THE OPPONENT'S FAN, before the
+	# ISSUE #285: measure the sleeve WHERE IT SITS IN THE OPPONENT'S FAN, before the
 	# erase below takes its node away. Same reasoning as the player's own attach
 	# (#283) - the flight used to start at the hand container's left edge.
 	var energy_from: Dictionary = main.hand_card_rect(energy, true)   # FLIGHTS: computed slot (right even if the fan is hidden)
@@ -2284,7 +2276,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 
 	var energy_target_node = main.opponent_energy_container if target == main.opponent_active_pokemon else main.opponent_bench_container
 	var energy_texture = main.get_card_texture(energy)
-	# ISSUE #284: THE ENERGY LANDS ON ITS SLOT AND SINKS BEHIND THE POKEMON.
+	# ISSUE #285: THE ENERGY LANDS ON ITS SLOT AND SINKS BEHIND THE POKEMON.
 	#
 	# Two separate faults on the bench branch. It aimed at the Pokemon's OWN
 	# position - "the origin of the pokemon it's being attached to" - rather than
@@ -2294,7 +2286,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# ANIM_BEHIND_Z at 82% of the flight, so it slides under the card instead of
 	# over it. Both branches get it - the Active's stack sits behind the card too.
 	if target == main.opponent_active_pokemon:
-		# ISSUE #40 FIX: fly the Energy to its EXACT final slot in the opponent Active energy stack
+		# ISSUE #41 FIX: fly the Energy to its EXACT final slot in the opponent Active energy stack
 		# (position AND size), read off the freshly-built stack. Previously it flew to the Active card's
 		# position (which for the opponent sat ~300px left of the energy stack) and then snapped over.
 		var slot_rect = main.measure_and_hide_new_active_energy_slot(true)
@@ -2377,7 +2369,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	invalidate_cpu_evaluation()
 	
 # Chooses and executes an attack to end the CPU turn (Phase 8)
-# ISSUE #35 FIX (retest) helpers -------------------------------------------------------------------
+# ISSUE #36 FIX (retest) helpers -------------------------------------------------------------------
 
 # True if this Pokemon is certain to be KO'd before it can act on the CPU's next turn: either the
 # player has a guaranteed lethal attack (cpu_active_guaranteed_ko) or it's poisoned/damaged enough
@@ -2385,7 +2377,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 func _active_is_doomed(pokemon: card_object, cpu_eval: Dictionary) -> bool:
 	if cpu_eval.get("cpu_active_guaranteed_ko", false):
 		return true
-	# ISSUE #103: was a raw `current_hp <= poison_damage` test, which missed the poison_damage_multiplier
+	# ISSUE #107: was a raw `current_hp <= poison_damage` test, which missed the poison_damage_multiplier
 	# match effect and ignored burn entirely. Route through the shared helper so every status that is
 	# guaranteed to tick counts.
 	if status_damage_before_next_attack(pokemon, true) >= pokemon.current_hp:
@@ -2442,7 +2434,7 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 	var is_active = (pokemon == main.opponent_active_pokemon)
 	var energy_types = main.get_energy_provided_by_card(energy_card)
 
-	# ISSUE #35 FIX (retest): dominant guards that run BEFORE the additive bonuses (+90 Active, type
+	# ISSUE #36 FIX (retest): dominant guards that run BEFORE the additive bonuses (+90 Active, type
 	# match, "needs energy", etc.) so those can't out-weigh them. These stop the CPU pouring surplus
 	# Energy into the Active when a bench Pokemon could actually use it. A needy bench scores ~+90..+110,
 	# so a dominant negative here guarantees the bench wins.
@@ -2455,7 +2447,7 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 		#     secures a KO right now — the flying poisoned 10-HP Pikachu with 3 Energy + 4 empty bench.
 		if CpuWeights.on("rule.energy_doomed_guard") and _can_atk and _doomed and not _enables_ko:
 			return -400.0
-		# ISSUE #103 FIX ACTIVE: (a) only fired when the Active could ALREADY attack, so the CPU happily
+		# ISSUE #107 FIX ACTIVE: (a) only fired when the Active could ALREADY attack, so the CPU happily
 		# poured Energy into a Pokemon that its own poison was certain to knock out before it ever got
 		# to use it. Energy sunk into a Pokemon dying to status is gone whether or not it can attack —
 		# only an attach that wins the KO *this* turn is worth making.
@@ -2467,7 +2459,7 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 		if CpuWeights.on("rule.energy_full_guard") and not _enables_ko and _active_fully_powered_no_benefit(pokemon, pokemon_data):
 			return -300.0
 
-	# ISSUE #176: UTILITY ENERGY IS ONLY WORTH PLAYING WHEN ITS UTILITY LANDS.
+	# ISSUE #177: UTILITY ENERGY IS ONLY WORTH PLAYING WHEN ITS UTILITY LANDS.
 	#
 	# Full Heal Energy and Potion Energy both provide a single Colorless — the
 	# weakest energy in the game — and are worth holding for the turn their real
@@ -2494,14 +2486,14 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 			return -500.0  # Hard disqualification: this pokemon can't effectively use DCE
 	
 	# Flat active/bench modifier: active pokemon almost always takes priority.
-	# ISSUE #35 FIX: bumped the Active bonus by +50 (40 -> 90) to put more weight on keeping the
+	# ISSUE #36 FIX: bumped the Active bonus by +50 (40 -> 90) to put more weight on keeping the
 	# Active powered up rather than feeding the bench.
 	if is_active:
 		score += CpuWeights.g("energy.active_bonus", 90.0)
 	else:
 		score -= CpuWeights.g("energy.bench_penalty", 20.0)
 
-	# ISSUE #35 FIX: penalise attaching Energy to a DAMAGED Pokemon — it may be knocked out before
+	# ISSUE #36 FIX: penalise attaching Energy to a DAMAGED Pokemon — it may be knocked out before
 	# it can use the Energy, wasting the attach. Penalty scales with damage taken: (100 - HP%).
 	# A full-HP Pokemon = 0 penalty; a 20/40 HP Magnemite (50%) = -50.
 	var max_hp_35 = int(pokemon.metadata.get("hp", "0"))
@@ -2593,13 +2585,12 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 								score += CpuWeights.g("energy.extra_energy_attack", 60.0)
 								print("ENERGY SCORE: +60 for extra energy bonus attack on ", pokemon.metadata["name"])
 
-	# ISSUE #375 LOOKAHEAD (phase 2): what this Energy does to the next exchange — on the Active, and on a Benched
+	# OLD ISSUE 375 LOOKAHEAD (phase 2): what this Energy does to the next exchange — on the Active, and on a Benched
 	# Pokémon that will have to take over if the Active is likely to fall.
 	if CpuWeights.on("rule.lookahead") and score > -300.0:
 		var la_e: float = _la().energy_value(pokemon, energy_card)
 		if la_e != 0.0:
 			score += la_e
-			print("ISSUE #375 LOOKAHEAD: energy on ", pokemon.metadata.get("name", ""), " next-exchange value ", int(la_e))
 
 	return score
 	
@@ -3206,7 +3197,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		print("CPU cannot attack: active is Asleep")
 		return
 	
-	# ISSUE #293: the CPU's attack list is the SAME list the player's menu is built from —
+	# OLD ISSUE 293: the CPU's attack list is the SAME list the player's menu is built from —
 	# get_attacks_for_card() — so Sabrina's Alakazam's Psylink copies, Technical Machines, Recall,
 	# Brock's Ninetales' Shapeshift form, Memory Berry etc. are all available to it. It used to read
 	# metadata["attacks"] only, so the CPU could never use any granted or copied attack.
@@ -3224,7 +3215,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		print("CPU cannot attack: no usable attacks")
 		return
 
-	var cpu_types = main.opponent_active_pokemon.get_effective_types()   # ISSUE #373: Type Shift / Submerge / Eclipse count
+	var cpu_types = main.opponent_active_pokemon.get_effective_types()   # OLD ISSUE 373: Type Shift / Submerge / Eclipse count
 	var player_hp = main.player_active_pokemon.current_hp
 	var pokemon_name = main.opponent_active_pokemon.metadata.get("name", "")
 	
@@ -3248,11 +3239,10 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		if main.is_attack_disabled(main.opponent_active_pokemon, attack.get("name", "")):
 			print("CPU: Cannot use " + attack.get("name", "") + " — disabled this turn")
 			continue
-		# ISSUE #292: the attack's own "can't be used" condition (Dream Eater on an awake target, Lucky
+		# OLD ISSUE 292: the attack's own "can't be used" condition (Dream Eater on an awake target, Lucky
 		# Shot / Fling / Drag Off with no Bench to target, Retaliation without 2 counters, ...).
 		var cpu_unusable: String = main.attack_effects.attack_unusable_reason(attack, main.opponent_active_pokemon)
 		if cpu_unusable != "":
-			print("ISSUE #292 FIX ACTIVE: CPU skips " + attack.get("name", "") + " — " + cpu_unusable)
 			continue
 
 		# ISSUE #9 FIX ACTIVE: Metronome (and Super Metronome) print with no damage/effect text of
@@ -3272,13 +3262,13 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 
 		var score = 0.0
 		var damage_range = main.attack_effects.estimate_attack_damage_range(damage_source_attack, main.opponent_active_pokemon, main.player_active_pokemon)
-		# ISSUE #459: "this attack's damage isn't affected by (Weakness or) Resistance" (46 attacks) -- the
+		# ISSUE #333: "this attack's damage isn't affected by (Weakness or) Resistance" (46 attacks) -- the
 		# estimate took Resistance off anyway, so a Land Sonic that KOs looked like it didn't.
 		var ign_weak: bool = "isn't affected by weakness" in attack_text
 		var ign_res: bool = ign_weak or "isn't affected by resistance" in attack_text
 		var min_result = main.calculate_final_damage(damage_range["min"], cpu_types, main.player_active_pokemon, null, false, ign_weak, ign_res)
 		var max_result = main.calculate_final_damage(damage_range["max"], cpu_types, main.player_active_pokemon, null, false, ign_weak, ign_res)
-		# ISSUE #95: coin-flip attacks have a min of 0, so scoring base damage off min valued every one
+		# ISSUE #99: coin-flip attacks have a min of 0, so scoring base damage off min valued every one
 		# of them at nothing (Comet Punch with 4 Energy scored 0 and lost to Fetch). Score off the
 		# AVERAGE roll instead; min/max still drive the guaranteed/potential KO tests below.
 		var exp_result = main.calculate_final_damage(damage_range["expected"], cpu_types, main.player_active_pokemon, null, false, ign_weak, ign_res)
@@ -3300,7 +3290,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		var effective_min_damage = min_result["damage"] + guaranteed_poison_bonus
 		var effective_max_damage = max_result["damage"] + guaranteed_poison_bonus
 		var effective_exp_damage = exp_result["damage"] + guaranteed_poison_bonus
-		# ISSUE #375 FORESIGHT: knowing the coins it is about to flip, the CPU scores the damage they WILL produce.
+		# OLD ISSUE 375 FORESIGHT: knowing the coins it is about to flip, the CPU scores the damage they WILL produce.
 		_cpu_known_coins = []
 		if CpuWeights.cheating_coins():
 			_cpu_known_coins = _cpu_foresee_attack_coins(damage_source_attack, main.opponent_active_pokemon)
@@ -3308,10 +3298,8 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 				effective_min_damage = 0
 				effective_max_damage = 0
 				effective_exp_damage = 0
-				print("ISSUE #375 FORESIGHT: Confusion check will fail — ", attack.get("name", ""), " does nothing")
 			elif not _cpu_known_coins.is_empty() and effective_max_damage > effective_min_damage:
 				var known_d := _cpu_foreseen_damage(damage_source_attack, _cpu_known_coins, effective_min_damage, effective_max_damage)
-				print("ISSUE #375 FORESIGHT: ", attack.get("name", ""), " will do ", known_d, " (coins ", _cpu_known_coins.slice(0, 4), ")")
 				effective_min_damage = known_d
 				effective_max_damage = known_d
 				effective_exp_damage = known_d
@@ -3323,13 +3311,13 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		# ---- POTENTIAL KO: Variable damage might KO ----
 		elif effective_max_damage >= player_hp:
 			score += CpuWeights.g("attack.possible_ko", 200.0)
-			# ISSUE #95: a coin attack whose AVERAGE roll already kills is a far better bet than one
+			# ISSUE #99: a coin attack whose AVERAGE roll already kills is a far better bet than one
 			# that only kills on an all-heads miracle — separate the two instead of scoring both +200.
 			if effective_exp_damage >= player_hp:
 				score += CpuWeights.g("attack.likely_ko", 100.0)
 
 		# ---- BASE DAMAGE CONTRIBUTION ----
-		# ISSUE #95 FIX ACTIVE: average roll, not the guaranteed floor (see exp_result above).
+		# ISSUE #99 FIX ACTIVE: average roll, not the guaranteed floor (see exp_result above).
 		score += effective_exp_damage * CpuWeights.g("attack.damage_mult", 2.0)
 		if effective_exp_damage != effective_min_damage:
 			pass
@@ -3390,7 +3378,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			else:
 				score -= discard_count * 15.0
 			
-			# ISSUE #375 (user's rule): Energy on a Pokémon that is about to be Knocked Out is lost anyway, so paying it as a
+			# OLD ISSUE 375 (user's rule): Energy on a Pokémon that is about to be Knocked Out is lost anyway, so paying it as a
 			# cost is FREE when the KO is certain and half-price when it's only possible — the long-term effect bought with
 			# it (Confusion, a lock...) then wins over a risky one-turn stall.
 			if cpu_will_be_koed:
@@ -3709,7 +3697,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 					water_count += 1
 			score += water_count * 8.0  # scale with water in discard
 		if attack_name_lower == "flower dance":
-			# ISSUE #323: only the CPU's OWN Bellossom count (the damage is now estimated exactly as well)
+			# OLD ISSUE 323: only the CPU's OWN Bellossom count (the damage is now estimated exactly as well)
 			var bellosom_count = 0
 			for p in get_all_cpu_field_pokemon():
 				if "Bellossom" in p.metadata.get("name",""):
@@ -3776,7 +3764,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		if attack_name_lower == "crunch":
 			score += 20.0  # future damage bonus is very useful
 		if attack_name_lower == "sketch":
-			# ISSUE #323: only when the Defending Pokémon attacked last turn (same test as the attack itself)
+			# OLD ISSUE 323: only when the Defending Pokémon attacked last turn (same test as the attack itself)
 			var sk_rec: Dictionary = main.mirror_record_on_opponent
 			if not sk_rec.is_empty() and int(sk_rec.get("turn", -99)) == main.turn_number - 1 \
 					and sk_rec.get("attacker_id", -2) == main.player_active_pokemon.get_instance_id() and not main.opponent_active_pokemon.placed_on_field_this_turn:
@@ -4667,33 +4655,30 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		var effect_score = score_parsed_effects(parsed_effects, main.player_active_pokemon)
 		score += effect_score
 
-		# ISSUE #312: utility attacks whose effect isn't damage or a parsed rider (searches, recovery,
+		# OLD ISSUE 312: utility attacks whose effect isn't damage or a parsed rider (searches, recovery,
 		# set-up, disruption) used to score ~0, so the CPU only ever used them when it had nothing else.
 		var utility = cpu_utility_attack_value(attack, main.opponent_active_pokemon, main.player_active_pokemon, cpu_will_be_koed)
 		if utility != 0.0:
 			score += utility
-			print("ISSUE #313 FIX ACTIVE: utility value ", int(utility), " for ", attack.get("name", ""))
 
-		# ISSUE #373: human context — a KO that wins the game or takes 2 Prizes, Special Conditions timed to the
+		# OLD ISSUE 373: human context — a KO that wins the game or takes 2 Prizes, Special Conditions timed to the
 		# board (Paralysis when their next attack would KO us, Poison on a big Pokémon that is staying in), and
 		# no endless non-damaging stalling while a damaging attack is available.
 		var ctx_adj := _cpu_attack_context_adjust(parsed_effects, effective_min_damage, effective_exp_damage, player_hp, ko_threats, attacks, i, attack_text)
 		if ctx_adj != 0.0:
 			score += ctx_adj
-			print("ISSUE #373 FIX ACTIVE: context adjustment ", int(ctx_adj), " for ", attack.get("name", ""))
-		# ISSUE #375 PLANNER: the multi-turn plan's attack.
+		# OLD ISSUE 375 PLANNER: the multi-turn plan's attack.
 		var _pl_a: Dictionary = cpu_plan("attack")
 		var _pl_atk: String = String(_pl_a["desc"].get("attack", "")) if not _pl_a.is_empty() else ""
 		if _pl_atk != "" and _pl_atk == String(attack.get("name", "")) \
 				and float(_pl_a["value"]) - CpuPlanner.best_where(_pl_a, func(d): return String(d.get("attack", "")) != _pl_atk) >= CpuWeights.g("plan.margin", 60.0):
 			score += CpuWeights.g("plan.attack_bonus", 250.0)
-		# ISSUE #375 LOOKAHEAD: the next exchange — KO set-ups, being KO'd back, what they promote after our KO.
+		# OLD ISSUE 375 LOOKAHEAD: the next exchange — KO set-ups, being KO'd back, what they promote after our KO.
 		if CpuWeights.on("rule.lookahead"):
 			var la_v: float = _la().attack_value(damage_source_attack, main.opponent_active_pokemon, main.player_active_pokemon)
 			score += la_v
-			print("ISSUE #375 LOOKAHEAD: ", attack.get("name", ""), " next-exchange value ", int(la_v))
 
-		# ISSUE #459: a sure Knock Out (minimum damage after W/R covers their HP) -- unless the attack is
+		# ISSUE #333: a sure Knock Out (minimum damage after W/R covers their HP) -- unless the attack is
 		# flagged as doing nothing here, or its recoil would knock out our own Active too.
 		var sure_ko: bool = effective_min_damage >= player_hp and score > -9000.0 \
 			and not (has_self_damage and int(self_damage_amount) >= main.opponent_active_pokemon.current_hp)
@@ -4705,7 +4690,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	if best_attack_index == -1:
 		print("CPU found no suitable attack")
 		return
-	# ISSUE #459: a person always takes a guaranteed Knock Out. If the best score went to an attack that
+	# ISSUE #333: a person always takes a guaranteed Knock Out. If the best score went to an attack that
 	# doesn't KO while one that does was payable, use the best-scoring KO attack instead.
 	var _ko_best := {}
 	var _chosen_ko := false
@@ -4717,14 +4702,14 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	if not _chosen_ko and not _ko_best.is_empty():
 		best_attack_index = int(_ko_best["index"])
 		best_attack_score = float(_ko_best["score"])
-	# ISSUE #375 branch replay: maybe use another usable attack instead.
+	# OLD ISSUE 375 branch replay: maybe use another usable attack instead.
 	var _b_opts: Array = attack_score_log.map(func(e): return int(e["index"]))
 	var _b_pick := CpuWeights.branch_point("attack", _b_opts.size(), _b_opts.find(best_attack_index), attack_score_log.map(func(e): return e["name"]))
 	if _b_pick >= 0 and _b_pick < _b_opts.size() and _b_opts[_b_pick] != best_attack_index:
 		best_attack_index = _b_opts[_b_pick]
 		_branch_note()
 
-	# ISSUE #373: track consecutive non-damaging attacks by the same Active (the stall guard reads this).
+	# OLD ISSUE 373: track consecutive non-damaging attacks by the same Active (the stall guard reads this).
 	var chosen_exp := 0
 	var any_damaging := false
 	for entry in attack_score_log:
@@ -4752,10 +4737,10 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 				print("  - " + entry["name"] + " (Score: " + str(int(entry["score"])) + ")")
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
-	if main.card_fx != null: main.card_fx.attack_declared(main.opponent_active_pokemon)   # ISSUE #474
+	if main.card_fx != null: main.card_fx.attack_declared(main.opponent_active_pokemon)   # ISSUE #348
 	await main.show_message("Opponent's " + main.opponent_active_pokemon.metadata["name"].to_upper() + " used " + chosen_name.to_upper() + "!")
 	if main._should_bail(): return
-	await main.play_attack_intent(main.opponent_active_pokemon, main.player_active_pokemon, chosen_attack)   # ISSUE #474
+	await main.play_attack_intent(main.opponent_active_pokemon, main.player_active_pokemon, chosen_attack)   # ISSUE #348
 	if main._should_bail(): return
 
 	# Baby Pokemon rule: CPU must flip before attacking a Baby Pokemon (tails = CPU turn ends)
@@ -4779,7 +4764,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		main.opponent_attacked_this_turn = true
 		return
 
-	# ISSUE #291: shared pre-attack checks (Leer / Tail Wag / Intimidate / Suggestion / Smokescreen /
+	# OLD ISSUE 291: shared pre-attack checks (Leer / Tail Wag / Intimidate / Suggestion / Smokescreen /
 	# Confusion / Blindness) for EVERY attack, before any dispatched effect code runs.
 	main.attack_effects.begin_attack(chosen_attack, main.opponent_active_pokemon, main.player_active_pokemon, true)
 	if await main.attack_effects.run_attack_prechecks(main.opponent_active_pokemon, main.player_active_pokemon, true):
@@ -4820,7 +4805,7 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		if await main.attack_effects.dispatch_attack(chosen_attack, main.opponent_active_pokemon, main.player_active_pokemon, true):
 			return
 
-	# ISSUE #291: Tail Wag / Leer / Sand-attack / Smokescreen are handled by run_attack_prechecks above
+	# OLD ISSUE 291: Tail Wag / Leer / Sand-attack / Smokescreen are handled by run_attack_prechecks above
 	# (they used to be checked only here, after dispatch, so dispatched attacks ignored them).
 
 	# Swords Dance: boost Slash damage (base Scyther = 60, ex8 Ninjask = 80)
@@ -4882,10 +4867,10 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	var result = main.calculate_final_damage(resolved_base, cpu_types, main.player_active_pokemon, main.opponent_active_pokemon)
 	var final_damage = result["damage"]
 
-	# ISSUE #294: an invincible Defending Pokemon only blocks the damage and the effects aimed at it —
+	# OLD ISSUE 294: an invincible Defending Pokemon only blocks the damage and the effects aimed at it —
 	# the attacker's own costs and bench/self effects still resolve (see the matching player path).
 	if main.check_defender_invincible(main.player_active_pokemon, false):
-		print("ISSUE #294 FIX ACTIVE: defender invincible — CPU damage skipped, attacker-side effects still resolve")
+		pass
 	else:
 		final_damage = main.apply_defender_no_damage_shield(main.player_active_pokemon, final_damage, false)
 		await main.display_and_apply_attack_damage(main.opponent_active_pokemon, main.player_active_pokemon, final_damage, result["modifiers"], true, resolved_base)
@@ -4959,14 +4944,14 @@ func get_maximum_damage_attack(pokemon_card: card_object) -> Dictionary:
 
 # Main function to evaluate a basic pokemon and return a score by calling criterion 1-5 and returns the total score with breakdown reasoning
 func cpu_phase_bench_play() -> void:
-	await main.settle_after_draw()   # ISSUE #472
+	await main.settle_after_draw()   # ISSUE #346
 	var bench_thresholds = {0: -999, 1: int(CpuWeights.g("bench.threshold_1", 100.0)), 2: int(CpuWeights.g("bench.threshold_2", 200.0)), 3: int(CpuWeights.g("bench.threshold_3", 350.0)), 4: int(CpuWeights.g("bench.threshold_4", 500.0))}
 
-	# ISSUE #373: respect the real Bench cap (Narrow Gym 4, Giant Stump 3, match rules) — it always allowed 5.
+	# OLD ISSUE 373: respect the real Bench cap (Narrow Gym 4, Giant Stump 3, match rules) — it always allowed 5.
 	while main.opponent_bench.size() < main.get_max_bench_size():
 		var current_bench_count = main.opponent_bench.size()
 		var score_threshold = bench_thresholds.get(current_bench_count, 9999)
-		# ISSUE #375 (think like a person): an Active that can't attack, with no Energy in hand to fix it, needs a
+		# OLD ISSUE 375 (think like a person): an Active that can't attack, with no Energy in hand to fix it, needs a
 		# replacement attacker coming — bench a reasonable Basic rather than holding it (autotester: a stranded
 		# Venusaur sat for 15 turns while a Bulbasaur stayed in hand at "340 < 350").
 		if not _cpu_active_can_attack() and not main.opponent_hand.any(func(c): return c.metadata.get("supertype", "") == "Energy"):
@@ -4988,7 +4973,7 @@ func cpu_phase_bench_play() -> void:
 			if not main.is_basic_pokemon(card):
 				continue
 			var result = evaluate_opponents_start_setup_pokemon_choices(card, main.opponent_hand)
-			var score = result.get("total_score", 0) + 2.0 * cpu_counter_bonus(card)   # ISSUE #375: learned counters
+			var score = result.get("total_score", 0) + 2.0 * cpu_counter_bonus(card)   # OLD ISSUE 375: learned counters
 			if score > best_score:
 				best_score = score
 				best_card = card
@@ -5004,7 +4989,7 @@ func cpu_phase_bench_play() -> void:
 				print("CPU: Not benching a Pokémon — bench is at " + str(current_bench_count) + "/5, but every Basic in hand scored below the threshold (" + str(score_threshold) + ")")
 			# else: no Basics in hand at all, nothing to say
 			break
-		# ISSUE #375 branch replay: bench it anyway / hold it back.
+		# OLD ISSUE 375 branch replay: bench it anyway / hold it back.
 		var _bench_go: bool = best_score > score_threshold
 		var _bn_pick := CpuWeights.branch_point("bench", 2, 1 if _bench_go else 0, ["hold", best_card.metadata.get("name", "")])
 		if (_bn_pick == 1) != _bench_go:
@@ -5015,7 +5000,7 @@ func cpu_phase_bench_play() -> void:
 			print("CPU: Not benching " + best_card.metadata["name"] + " (Score: " + str(int(best_score)) + ") — below the threshold (" + str(score_threshold) + ") needed to justify a " + str(current_bench_count) + "-Pokémon bench")
 			break
 
-		# ISSUE #283/#284: the sleeve's place in the fan, before the erase frees it.
+		# ISSUE #284/#284: the sleeve's place in the fan, before the erase frees it.
 		var bench_from: Dictionary = main.hand_card_rect(best_card, true)
 		# Play the pokemon onto the bench
 		main.opponent_hand.erase(best_card)
@@ -5056,6 +5041,21 @@ func cpu_phase_bench_play() -> void:
 		# EX4-83 Team Magma Hideout: playing a non-Team-Magma Basic from hand adds 1 damage counter
 		await main.trainer_effects.ex4_team_magma_hideout_trigger(best_card, true)
 		if main._should_bail(): return
+		# ISSUE #428: on-bench-from-hand triggers the PLAYER's path ran and the CPU's never did -
+		# Legendary Ascent was "player-side only" because of this, not because of its own code
+		# (it has a full CPU branch), and the same was true of Delta Switch, Hot Plate and [Vanish].
+		var subs_428: Array = best_card.metadata.get("subtypes", [])
+		if "Basic" in subs_428 or "Baby" in subs_428:
+			main.powers_and_bodies.check_neo4_hot_plate(best_card, true)
+		if best_card.has_ability("[Vanish]"):
+			await main.powers_and_bodies.trigger_neo4_vanish(best_card, true)
+			if main._should_bail(): return
+		if best_card.has_ability("Legendary Ascent"):
+			print("ISSUE #428 FIX ACTIVE: CPU Legendary Ascent for ", best_card.metadata.get("name", ""))
+		await main.powers_and_bodies.trigger_ex6_legendary_ascent(best_card, true)
+		if main._should_bail(): return
+		await main.powers_and_bodies.trigger_ex11_delta_switch(best_card, true)
+		if main._should_bail(): return
 		# EX8 Dragon Boost (Rayquaza ex ex8-102): move any number of basic Energy to Rayquaza ex
 		await main.powers_and_bodies.trigger_ex8_dragon_boost(best_card, true)
 		if main._should_bail(): return
@@ -5072,7 +5072,7 @@ func cpu_phase_bench_play() -> void:
 		if best_card.has_ability("Tropical Heal"):
 			await main.powers_and_bodies.trigger_ex15_tropical_heal(best_card, true)
 			if main._should_bail(): return
-		# NEO3 Howl (Entei neo3-6): may discard the top 5, attach Fire Energy among them; ends the turn (ISSUE #374)
+		# NEO3 Howl (Entei neo3-6): may discard the top 5, attach Fire Energy among them; ends the turn (OLD ISSUE 374)
 		if best_card.has_ability("Howl"):
 			await main.powers_and_bodies.trigger_neo3_howl(best_card, true)
 			if main._should_bail(): return
@@ -5132,12 +5132,12 @@ func cpu_phase_evolution() -> void:
 		for reason in best["reasons"]:
 			print("  - " + reason)
 
-		# ISSUE #283/#284: measured before perform_evolution takes it out of the hand.
+		# ISSUE #284/#284: measured before perform_evolution takes it out of the hand.
 		var evo_from: Dictionary = main.hand_card_rect(best["evo_card"], true)
 		# Set the globals that perform_evolution reads from
 		main.evolution_card_awaiting_target = best["evo_card"]
 		main.selected_card_for_action = best["target"]
-		# ISSUE #532: the evolution's "when you play this" Powers (Sneak Attack, Reel In, Summon Minions...) wait until the
+		# ISSUE #406: the evolution's "when you play this" Powers (Sneak Attack, Reel In, Summon Minions...) wait until the
 		# card has been announced and has landed - _after_evolution() runs below, after the flight and evolve effect.
 		await main.perform_evolution(true, true)
 		if main._should_bail(): return
@@ -5174,7 +5174,7 @@ func cpu_phase_evolution() -> void:
 		main.evolution_card_awaiting_target = null
 		main.selected_card_for_action = null
 
-		print("ISSUE #532 FIX ACTIVE: on-evolve Powers for ", best["evo_card"].metadata["name"], " run after it has landed")
+		print("ISSUE #406 FIX ACTIVE: on-evolve Powers for ", best["evo_card"].metadata["name"], " run after it has landed")
 		await main._after_evolution(best["evo_card"], best["target"], true)
 		if main._should_bail(): return
 		invalidate_cpu_evaluation()
@@ -5204,11 +5204,11 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 	if "Supporter" in card.metadata.get("subtypes", []) and main.trainer_effects.opponent_played_supporter_this_turn:
 		return -100.0
 
-	# ISSUE #373: every draw card is scored on the cards it really gives versus what the hand loses.
+	# OLD ISSUE 373: every draw card is scored on the cards it really gives versus what the hand loses.
 	if CPU_DRAW_CARDS.has(card_id):
 		return _cpu_score_draw_card(card)
 
-	# ISSUE #375 (user): cards that GRANT attacks (every Technical Machine, Memory Berry) are scored by trying them on —
+	# OLD ISSUE 375 (user): cards that GRANT attacks (every Technical Machine, Memory Berry) are scored by trying them on —
 	# the best damage the Active could do with the card attached vs now. Some TMs heal / disrupt instead; with no damage
 	# gain they fall through to their own score below.
 	if "Technical Machine" in card.metadata.get("subtypes", []) or card_id in ["ecard2-128", "ex14-80"]:
@@ -5226,7 +5226,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"base1-75": return _cpu_score_lass()
 		"base1-76": return _cpu_score_pokemon_breeder()
 		"base1-77": return _cpu_score_pokemon_trader()
-		"base1-78": return _cpu_score_scoop_family(false, false)  # ISSUE #373: Scoop Up
+		"base1-78": return _cpu_score_scoop_family(false, false)  # OLD ISSUE 373: Scoop Up
 		"base1-79": return _cpu_score_super_energy_removal()
 		"base1-80": return _cpu_score_defender()
 		"base1-81": return _cpu_score_energy_retrieval()
@@ -5244,16 +5244,16 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"base1-95": return _cpu_score_switch()
 		"base1-70": return _cpu_score_clefairy_doll()
 		"base3-58": return _cpu_score_mr_fuji()
-		"base3-59": return _cpu_score_energy_fetch(1, false)  # ISSUE #373: Energy Search
+		"base3-59": return _cpu_score_energy_fetch(1, false)  # OLD ISSUE 373: Energy Search
 		"base3-60": return _cpu_score_gambler()
-		"base3-61": return _cpu_score_recycle()  # ISSUE #499: scored on the best card it could fetch
-		"base3-62": return _cpu_score_fossil(card)  # ISSUE #375: Mysterious Fossil — scored on its evolution, like the ex Fossils
+		"base3-61": return _cpu_score_recycle()  # ISSUE #373: scored on the best card it could fetch
+		"base3-62": return _cpu_score_fossil(card)  # OLD ISSUE 375: Mysterious Fossil — scored on its evolution, like the ex Fossils
 		"base2-64": return _cpu_score_poke_ball()  # Poké Ball
-		"base5-15", "base5-71": return _cpu_score_here_comes_team_rocket()  # ISSUE #375
+		"base5-15", "base5-71": return _cpu_score_here_comes_team_rocket()  # OLD ISSUE 375
 		"base5-16", "base5-72": return _cpu_score_rockets_sneak_attack()
 		"base5-73": return _cpu_score_the_bosss_way()
 		"base5-74": return _cpu_score_challenge()
-		"base5-75": return _cpu_score_ko_10_coin(false)  # ISSUE #375: Digger — only to finish a Pokémon on 10 HP
+		"base5-75": return _cpu_score_ko_10_coin(false)  # OLD ISSUE 375: Digger — only to finish a Pokémon on 10 HP
 		"base5-76": return _cpu_score_imposter_oaks_revenge()
 		"base5-77": return _cpu_score_nightly_garbage_run()
 		"base5-78": return _cpu_score_goop_gas_attack()
@@ -5299,7 +5299,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"gym2-101": return _cpu_score_gym2_brocks_protection()
 		"gym2-103": return _cpu_score_gym2_erikas_kindness()
 		"gym2-105": return _cpu_score_gym2_giovannis_last_resort()
-		"gym2-107": return _cpu_score_bench_insurance(35.0)  # ISSUE #375: Lt. Surge's Secret Plan — fully implemented now (#309)
+		"gym2-107": return _cpu_score_bench_insurance(35.0)  # OLD ISSUE 375: Lt. Surge's Secret Plan — fully implemented now (#309)
 		"gym2-108": return _cpu_score_gym2_mistys_wish()
 		"gym2-111": return _cpu_score_gym2_blaines_quiz_2()
 		"gym2-112": return _cpu_score_gym2_blaines_quiz_3()
@@ -5335,7 +5335,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"neo1-95": return 55.0   # New Pokédex: see top 5, rearrange
 		"neo1-96": return _cpu_score_neo1_professor_elm()
 		"neo1-97": return 60.0   # Sprout Tower stadium: useful defensive
-		"neo1-98": return _cpu_score_scoop_family(true, true)  # ISSUE #373: Super Scoop Up
+		"neo1-98": return _cpu_score_scoop_family(true, true)  # OLD ISSUE 373: Super Scoop Up
 		"neo1-99": return _cpu_score_neo1_berry()
 		"neo1-100": return _cpu_score_neo1_double_gust()
 		"neo1-101": return _cpu_score_neo1_moo_moo_milk()
@@ -5360,12 +5360,12 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ecard1-145": return _cpu_score_pokemon_center()  # Pokemon Nurse
 		"ecard1-146": return _cpu_score_gust_of_wind()  # Pokemon Reversal
 		"ecard1-147": return 40.0  # Power Charge: coin-flip energy recycling
-		"ecard1-148": return _cpu_score_evolution_search()  # ISSUE #373: Professor Elm's Training Method searches an Evolution
+		"ecard1-148": return _cpu_score_evolution_search()  # OLD ISSUE 373: Professor Elm's Training Method searches an Evolution
 		"ecard1-149": return _cpu_score_professor_oak(card)  # Professor Oak's Research
 		"ecard1-150": return 35.0  # Strength Charm: modest one-off damage boost
-		"ecard1-151": return _cpu_score_scoop_family(true, true)  # ISSUE #373: Super Scoop Up
+		"ecard1-151": return _cpu_score_scoop_family(true, true)  # OLD ISSUE 373: Super Scoop Up
 		"ecard1-152": return _cpu_score_gust_of_wind()  # Warp Point
-		"ecard1-153": return _cpu_score_energy_fetch(1, false)  # ISSUE #373: Energy Search
+		"ecard1-153": return _cpu_score_energy_fetch(1, false)  # OLD ISSUE 373: Energy Search
 		"ecard1-154": return _cpu_score_full_heal()
 		"ecard1-155": return _cpu_score_neo1_moo_moo_milk()  # Moo-Moo Milk
 		"ecard1-156": return _cpu_score_potion()
@@ -5383,7 +5383,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ecard2-133": return 55.0  # Seer: conditional basic energy fetch
 		"ecard2-134": return _cpu_score_energy_removal()  # Super Energy Removal 2: same family as Energy Removal
 		"ecard2-135": return 35.0  # Time Shard: reactive, situational energy recovery
-		"ecard2-136": return _cpu_score_town_volunteers()  # ISSUE #375: situational (was a flat score below the play threshold = never played)
+		"ecard2-136": return _cpu_score_town_volunteers()  # OLD ISSUE 375: situational (was a flat score below the play threshold = never played)
 		"ecard2-137": return 30.0  # Traveling Salesman: only useful with TM/Tool cards in deck
 		"ecard2-118": return 55.0  # Apricorn Forest (Stadium): free bench development over time
 		"ecard2-138": return 20.0  # Undersea Ruins (Stadium): situational, usually self-harming
@@ -5399,7 +5399,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ecard3-126": return _cpu_score_poke_ball()  # Friend Ball
 		"ecard3-127": return _cpu_score_potion()  # Hyper Potion
 		"ecard3-128": return 35.0  # Lure Ball: coin-flip dependent Evolution recovery
-		"ecard3-132": return _cpu_score_stadium_generic(card) - 10.0  # ISSUE #375: situational (was a flat score below the play threshold = never played)
+		"ecard3-132": return _cpu_score_stadium_generic(card) - 10.0  # OLD ISSUE 375: situational (was a flat score below the play threshold = never played)
 		"ecard3-137": return 40.0  # Mystery Zone (Stadium): situational Evolution-for-Energy trade
 		"ecard3-138": return 55.0  # Oracle: deck manipulation, solid consistency
 		"ecard3-140": return 50.0  # Underground Expedition: bottom-of-deck card advantage
@@ -5412,14 +5412,14 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex1-80": return _cpu_score_energy_removal()  # Energy Removal 2
 		"ex1-81": return 40.0  # Energy Restore: modest energy recovery
 		"ex1-82": return 30.0  # Energy Switch: situational energy redistribution
-		"ex1-83": return _cpu_score_energy_fetch(3, true)  # ISSUE #373: Lady Outing (Supporter)
+		"ex1-83": return _cpu_score_energy_fetch(3, true)  # OLD ISSUE 373: Lady Outing (Supporter)
 		"ex1-84": return 40.0  # Lum Berry (Tool): passive Special Condition safety net
 		"ex1-85": return 45.0  # Oran Berry (Tool): passive healing safety net
 		"ex1-86": return _cpu_score_poke_ball()  # Poke Ball
-		"ex1-87": return _cpu_score_reversal(true)   # ISSUE #375: Pokémon Reversal — flip, then the PLAYER chooses
+		"ex1-87": return _cpu_score_reversal(true)   # OLD ISSUE 375: Pokémon Reversal — flip, then the PLAYER chooses
 		"ex1-88": return 50.0  # PokeNav: guaranteed card selection from top 3
 		"ex1-89": return 65.0  # Professor Birch (Supporter): strong hand refill, best early/when low on cards
-		"ex1-90": return _cpu_score_energy_fetch(1, false)  # ISSUE #373: Energy Search
+		"ex1-90": return _cpu_score_energy_fetch(1, false)  # OLD ISSUE 373: Energy Search
 		"ex1-91": return _cpu_score_potion()  # Potion
 		"ex1-92": return _cpu_score_switch()  # Switch
 		# ---- EX2 (SANDSTORM) TRAINER SCORING ----
@@ -5428,13 +5428,13 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex2-88": return _cpu_score_ex2_rare_candy()  # Rare Candy: only if a valid evolution jump exists
 		"ex2-89": return _cpu_score_ex2_wallys_training()  # Wally's Training (Supporter): only if Active can evolve
 		"ex2-90", "ex2-91", "ex2-92", "ex13-91", "ex13-92", "ex13-93", "ex16-84", "ex16-85", "ex16-86":
-			return _cpu_score_fossil(card)  # ISSUE #373: Fossils — played to evolve, not as filler
-		"ex4-79", "ex4-84", "pop2-9": return 30.0  # ISSUE #373: Team Aqua/Magma/Multi Technical Machine 01 (were never scored)
+			return _cpu_score_fossil(card)  # OLD ISSUE 373: Fossils — played to evolve, not as filler
+		"ex4-79", "ex4-84", "pop2-9": return 30.0  # OLD ISSUE 373: Team Aqua/Magma/Multi Technical Machine 01 (were never scored)
 		# ============================ EX3 (EX DRAGON) CPU SCORING =============================
 		"ex3-82": return 35.0  # Balloon Berry (Tool): free-retreat safety net
 		"ex3-83": return 45.0  # Buffer Piece (Tool): -20 damage for a turn cycle
 		"ex3-84": return 40.0  # Energy Recycle System (Item): basic Energy recovery
-		"ex3-87": return _cpu_score_scoop_family(true, false, func(p): return not main.is_ex_pokemon(p))  # ISSUE #373: Mr. Briney's Compassion
+		"ex3-87": return _cpu_score_scoop_family(true, false, func(p): return not main.is_ex_pokemon(p))  # OLD ISSUE 373: Mr. Briney's Compassion
 		"ex3-88": return 60.0  # TV Reporter (Supporter): net +2 cards
 		# ── EX4 (Team Magma vs Team Aqua) ──
 		"ex4-69": return 55.0  # Team Aqua Schemer (Supporter): discard 1 Pokemon, draw 3-4
@@ -5454,7 +5454,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex8-84": return 35.0  # Balloon Berry (Tool): free-retreat safety net
 		"ex8-85": return 30.0  # Crystal Shard (Tool): type-override utility
 		"ex8-86": return 30.0  # Energy Charge (Item): coin-flip Energy recovery to deck
-		"ex8-87": return _cpu_score_energy_fetch(3, true)  # ISSUE #373: Lady Outing (Supporter)
+		"ex8-87": return _cpu_score_energy_fetch(3, true)  # OLD ISSUE 373: Lady Outing (Supporter)
 		"ex8-88": return 55.0  # Master Ball (Item): dig 7 for any Pokemon
 		"ex8-90": return 55.0  # Professor Cozmo's Discovery (Supporter): draw 2-3
 		"ex8-92": return 35.0  # Strength Charm (Tool): one-off +10 damage
@@ -5462,7 +5462,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex9-76": return _cpu_score_full_heal()          # Double Full Heal
 		"ex9-77": return 55.0                            # Lanette's Net Search (Supporter)
 		"ex9-78": return 30.0                            # Lum Berry (Tool): between-turn status cure
-		"ex9-79": return _cpu_score_energy_fetch(2, true)  # ISSUE #373: Mr. Stone's Project (Supporter)
+		"ex9-79": return _cpu_score_energy_fetch(2, true)  # OLD ISSUE 373: Mr. Stone's Project (Supporter)
 		"ex9-80": return 30.0                            # Oran Berry (Tool): between-turn heal 20
 		"ex9-81": return 50.0                            # PokéNav
 		"ex9-82": return 65.0                            # Professor Birch (Supporter)
@@ -5476,14 +5476,14 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex10-84": return 35.0                           # Energy Switch
 		"ex10-86": return 60.0                           # Mary's Request (Supporter): draw
 		"ex10-87": return 45.0                           # Poké Ball
-		"ex10-88": return _cpu_score_reversal(false)   # ISSUE #375: Pokémon Reversal — flip, then WE choose (was a flat 40: always played)
-		"ex10-89": return _cpu_score_evolution_search()  # ISSUE #373: Professor Elm's Training Method (Supporter)
+		"ex10-88": return _cpu_score_reversal(false)   # OLD ISSUE 375: Pokémon Reversal — flip, then WE choose (was a flat 40: always played)
+		"ex10-89": return _cpu_score_evolution_search()  # OLD ISSUE 373: Professor Elm's Training Method (Supporter)
 		"ex10-93": return 40.0                           # Warp Point
-		"ex10-94": return _cpu_score_energy_fetch(1, false)  # ISSUE #373: Energy Search
+		"ex10-94": return _cpu_score_energy_fetch(1, false)  # OLD ISSUE 373: Energy Search
 		"ex10-95": return _cpu_score_potion()            # Potion
 		# ex10 Pokémon Tools (Curse Powder/Energy Root/Fluffy Berry/Protective Orb/Sitrus Berry/Solid Rage)
 		"ex10-80": return 30.0                           # Curse Powder (Tool)
-		"ex10-83": return _cpu_score_energy_root()  # ISSUE #375: situational (was a flat score below the play threshold = never played)
+		"ex10-83": return _cpu_score_energy_root()  # OLD ISSUE 375: situational (was a flat score below the play threshold = never played)
 		"ex10-85": return 30.0                           # Fluffy Berry (Tool): free retreat
 		"ex10-90": return 30.0                           # Protective Orb (Tool): no Weakness
 		"ex10-91": return 35.0                           # Sitrus Berry (Tool): between-turn heal 30
@@ -5491,7 +5491,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		# ── EX13 (EX Holon Phantoms) ──
 		"ex13-85": return 55.0                           # Holon Adventurer (Supporter): discard 1, draw 3-4
 		"ex13-86": return 40.0                           # Holon Fossil (Item): coin-flip fossil Pokemon to Bench
-		"ex13-88": return _cpu_score_energy_fetch(2, true)  # ISSUE #373: Mr. Stone's Project (Supporter)
+		"ex13-88": return _cpu_score_energy_fetch(2, true)  # OLD ISSUE 373: Mr. Stone's Project (Supporter)
 		"ex13-89": return 55.0                           # Professor Cozmo's Discovery (Supporter): draw 2-3
 		"ex13-90": return _cpu_score_ex2_rare_candy()    # Rare Candy
 		# Holon Lake (ex13-87 Stadium) uses the generic stadium-play heuristic.
@@ -5500,9 +5500,9 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex15-73": return 40.0  # Copycat (Supporter): draw up to opponent's hand size
 		"ex15-75": return 50.0  # Holon Mentor (Supporter): fetch up to 3 Basics
 		"ex15-76": return 35.0  # Island Hermit (Supporter): draw 2 (reveal up to 2 Prizes)
-		"ex15-77": return _cpu_score_energy_fetch(2, true)  # ISSUE #373: Mr. Stone's Project (Supporter)
+		"ex15-77": return _cpu_score_energy_fetch(2, true)  # OLD ISSUE 373: Mr. Stone's Project (Supporter)
 		"ex15-78": return 30.0  # Old Rod (Item): coin-flip discard recovery
-		"ex15-79": return _cpu_score_evolution_search()  # ISSUE #373: Professor Elm's Training Method (Supporter)
+		"ex15-79": return _cpu_score_evolution_search()  # OLD ISSUE 373: Professor Elm's Training Method (Supporter)
 		"ex15-80": return 55.0  # Professor Oak's Research (Supporter): shuffle hand, draw 5
 		"ex15-81": return 35.0  # Strength Charm (Tool): one-off +10 damage
 		"ex15-82": return 60.0  # TV Reporter (Supporter): net +2 cards
@@ -5519,13 +5519,13 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex16-83": return 55.0                           # Steven's Advice (Supporter): draw up to opp Pokemon count
 		# Battle Frontier / Drake's / Glacia's / Phoebe's / Sidney's Stadiums use the generic stadium heuristic.
 		# ── POP SERIES (pop1–pop5) — all reprints; Stadiums use the generic stadium heuristic ──
-		"pop2-8": return _cpu_score_scoop_family(true, false, func(p): return not main.is_ex_pokemon(p))  # ISSUE #373: Mr. Briney's Compassion
+		"pop2-8": return _cpu_score_scoop_family(true, false, func(p): return not main.is_ex_pokemon(p))  # OLD ISSUE 373: Mr. Briney's Compassion
 		"pop2-11": return 60.0                           # TV Reporter (Supporter): net +2 cards
 		"pop4-9": return 70.0                            # Pokémon Fan Club: free bench development
 		"pop5-6": return _cpu_score_maintenance()        # Bill's Maintenance: shuffle-1/draw-3
 		"pop5-7": return _cpu_score_ex2_rare_candy()     # Rare Candy: only if a valid evolution jump exists
 		# ── BASE SET PROMOS (basep) — Stadiums use the generic stadium heuristic ──
-		"basep-16": return _cpu_score_turn_ender(false)  # ISSUE #375: situational (was a flat score below the play threshold = never played)
+		"basep-16": return _cpu_score_turn_ender(false)  # OLD ISSUE 375: situational (was a flat score below the play threshold = never played)
 		"basep-40": return _cpu_score_pokemon_center()  # Pokémon Center: same effect as base1-85
 		# ── NEO3 (NEO REVELATION) ──
 		"neo3-60": return 35.0  # Balloon Berry (Tool): free-retreat safety net
@@ -5535,11 +5535,11 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		# ── NEO4 (NEO DESTINY) ──
 		"neo4-93": return 30.0  # EXP.ALL (Tool): passive energy-save-on-KO safety net
 		"neo4-94": return _cpu_score_neo4_impostor_oaks_invention()  # prize-count disruption, situational
-		"neo4-96": return _cpu_score_turn_ender(true)  # ISSUE #375: situational (was a flat score below the play threshold = never played)
+		"neo4-96": return _cpu_score_turn_ender(true)  # OLD ISSUE 375: situational (was a flat score below the play threshold = never played)
 		"neo4-97": return 30.0  # Counterattack Claws (Tool): coin-flip retaliation, one-shot
 		"neo4-98": return 45.0  # Energy Amplifier: coin-flip up to 3 basic Energy to hand
-		"neo4-101": return _cpu_score_magnifier()  # ISSUE #375: situational (was a flat score below the play threshold = never played)
-		"neo4-102": return _cpu_score_personality_test()  # ISSUE #375
+		"neo4-101": return _cpu_score_magnifier()  # OLD ISSUE 375: situational (was a flat score below the play threshold = never played)
+		"neo4-102": return _cpu_score_personality_test()  # OLD ISSUE 375
 		"neo4-103": return _cpu_score_neo4_team_rockets_evil_deeds()  # hand disruption
 		"neo4-104": return _cpu_score_neo4_heal_powder()  # coin-flip full cure + heal
 		"neo4-105": return _cpu_score_neo4_mail_from_bill()  # only playable with < 5 cards in hand
@@ -5565,7 +5565,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex6-96": return 20.0  # PokéDex HANDY909: deck reorder, no card advantage
 		"ex6-97": return 40.0  # Pokémon Reversal
 		"ex6-98": return 55.0  # Prof. Oak's Research (Supporter): shuffle hand, draw 5
-		"ex6-99": return _cpu_score_scoop_family(true, true)  # ISSUE #373: Super Scoop Up
+		"ex6-99": return _cpu_score_scoop_family(true, true)  # OLD ISSUE 373: Super Scoop Up
 		"ex6-100": return 45.0  # VS Seeker: recover a used Supporter
 		"ex6-101": return _cpu_score_potion()  # Potion
 		"ex6-102": return _cpu_score_switch()  # Switch
@@ -5577,58 +5577,58 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex7-86": return 35.0  # Rocket's Admin. (Supporter): both players redraw to their Prize count
 		"ex7-88": return 45.0  # Rocket's Mission (Supporter): discard 1, draw 3-4
 		"ex7-89": return 40.0  # Rocket's Poké Ball: guaranteed Dark-named search
-		"ex7-91": return _cpu_score_surprise_time_machine()  # ISSUE #375
-		"ex7-92":   # ISSUE #375: Swoop! Teleporter — the deck Basic that fits the board better than one in play
+		"ex7-91": return _cpu_score_surprise_time_machine()  # OLD ISSUE 375
+		"ex7-92":   # OLD ISSUE 375: Swoop! Teleporter — the deck Basic that fits the board better than one in play
 			var sw := cpu_best_swoop()
 			return 35.0 + float(sw["value"]) * 0.4 if float(sw["value"]) >= 25.0 else -100.0
-		"ex7-93": return _cpu_score_ko_10_coin(true)  # ISSUE #375: Venture Bomb — only to finish a Pokémon on 10 HP
-		"ex7-111": return _cpu_score_here_comes_team_rocket()  # ISSUE #375
+		"ex7-93": return _cpu_score_ko_10_coin(true)  # OLD ISSUE 375: Venture Bomb — only to finish a Pokémon on 10 HP
+		"ex7-111": return _cpu_score_here_comes_team_rocket()  # OLD ISSUE 375
 		# Rocket's Hideout / Rocket's Tricky Gym (Stadiums) use the generic heuristic.
 		# ── EX11 (EX DELTA SPECIES) ──
 		"ex11-89": return 45.0  # Dual Ball: 2-coin Basic search
 		"ex11-90": return 45.0  # Great Ball
-		"ex11-91": return _cpu_score_holon_farmer()  # ISSUE #375
+		"ex11-91": return _cpu_score_holon_farmer()  # OLD ISSUE 375
 		"ex11-92": return 40.0  # Holon Lass (Supporter): discard-cost Energy dig scaled by total Prizes left
 		"ex11-93": return 50.0  # Holon Mentor (Supporter): discard-cost, up to 3 low-HP Basics to hand
 		"ex11-95": return 35.0  # Holon Researcher (Supporter): discard-cost, 1 Metal Energy or δ Basic to hand
 		"ex11-97": return _cpu_score_ex11_holon_scientist()  # discard-cost, draw up to opponent's hand size
 		"ex11-98": return 40.0  # Holon Transceiver: fetch a Holon Supporter from deck or discard
 		"ex11-99": return 55.0  # Master Ball: dig 7 for any Basic/Evolution, guaranteed
-		"ex11-100": return _cpu_score_scoop_family(true, true)  # ISSUE #373: Super Scoop Up
+		"ex11-100": return _cpu_score_scoop_family(true, true)  # OLD ISSUE 373: Super Scoop Up
 		"ex11-101": return _cpu_score_potion()  # Potion
 		"ex11-102": return _cpu_score_switch()  # Switch
 		# Holon Research Tower / Holon Ruins (Stadiums) use the generic heuristic.
 		# ── EX12 (EX LEGEND MAKER) ──
 		"ex12-73": return 55.0  # Fieldworker (Supporter): draw 3 (opponent may draw 1)
-		"ex12-78", "ex12-79", "ex12-80": return _cpu_score_fossil(card)  # ISSUE #373: Fossils
+		"ex12-78", "ex12-79", "ex12-80": return _cpu_score_fossil(card)  # OLD ISSUE 373: Fossils
 		# Cursed Stone / Full Flame / Giant Stump / Power Tree / Strange Cave (Stadiums) use the generic heuristic.
 		# ── EX14 (EX CRYSTAL GUARDIANS) ──
 		"ex14-71": return _cpu_score_maintenance()  # Bill's Maintenance
 		"ex14-72": return 55.0  # Castaway (Supporter): Supporter + Tool + basic Energy in one
 		"ex14-73": return 55.0  # Celio's Network (Supporter)
 		"ex14-74": return _cpu_score_ex14_cessation_crystal()  # global Power/Body lock — good if opponent leans on abilities
-		"ex14-76": return _cpu_score_crystal_shard()  # ISSUE #375: situational (was a flat score below the play threshold = never played)
+		"ex14-76": return _cpu_score_crystal_shard()  # OLD ISSUE 375: situational (was a flat score below the play threshold = never played)
 		"ex14-77": return _cpu_score_full_heal()  # Double Full Heal
 		"ex14-78": return 45.0  # Dual Ball
 		"ex14-80": return 25.0  # Memory Berry (Tool): borrow a lower-stage attack, niche
-		"ex14-81": return _cpu_score_mysterious_shard()  # ISSUE #375: situational (was a flat score below the play threshold = never played)
+		"ex14-81": return _cpu_score_mysterious_shard()  # OLD ISSUE 375: situational (was a flat score below the play threshold = never played)
 		"ex14-82": return _cpu_score_poke_ball()  # Poké Ball
 		"ex14-83": return 50.0  # PokéNav
 		"ex14-84": return 40.0  # Warp Point
 		"ex14-85": return _cpu_score_ex14_windstorm()  # discard opponent's Tools/Stadiums, situational
-		"ex14-86": return _cpu_score_energy_fetch(1, false)  # ISSUE #373: Energy Search
+		"ex14-86": return _cpu_score_energy_fetch(1, false)  # OLD ISSUE 373: Energy Search
 		"ex14-87": return _cpu_score_potion()  # Potion
 		# Crystal Beach / Holon Circle (Stadiums) use the generic heuristic.
 		# pop1 has no Trainer cards. pop3's only Trainers are High/Low Pressure System
 		# (Stadiums), which use the generic stadium heuristic — nothing to add for either.
-	# ISSUE #375: the "generic stadium heuristic" the comments above refer to never existed — every unscored Stadium
+	# OLD ISSUE 375: the "generic stadium heuristic" the comments above refer to never existed — every unscored Stadium
 	# got 0, under the play threshold, so the CPU never played one (autotester CPU-usage report).
 	if main.trainer_effects.is_stadium_trainer(card):
 		return _cpu_score_stadium_generic(card)
 	return 0.0
 
 
-# ISSUE #375: Stadium value the way a person judges it — never replace your own, knocking out the opponent's is worth
+# OLD ISSUE 375: Stadium value the way a person judges it — never replace your own, knocking out the opponent's is worth
 # something by itself, and the card's own effect decides the rest (who it helps more on THIS board).
 func _cpu_score_stadium_generic(card: card_object) -> float:
 	if main.current_stadium_card != null and main.current_stadium_owner_is_opponent:
@@ -5670,7 +5670,7 @@ func _cpu_score_stadium_generic(card: card_object) -> float:
 	return s
 
 
-# ISSUE #375: Pokémon Personality Test — the opponent has to guess Light / Dark / neither for an Evolution card; a wrong
+# OLD ISSUE 375: Pokémon Personality Test — the opponent has to guess Light / Dark / neither for an Evolution card; a wrong
 # guess draws the CPU 3. Good odds whenever there is an Evolution card in hand and cards left to draw.
 func _cpu_score_personality_test() -> float:
 	var has_evo: bool = main.opponent_hand.any(func(c): return c.metadata.get("supertype", "") == "Pokémon" and not main.is_basic_pokemon(c))
@@ -5679,7 +5679,7 @@ func _cpu_score_personality_test() -> float:
 	return 45.0 if main.opponent_hand.size() <= 6 else 30.0
 
 
-# ISSUE #375: Holon Farmer — discard 1, put up to 3 basic Energy + 3 Pokémon from the discard pile back into the deck.
+# OLD ISSUE 375: Holon Farmer — discard 1, put up to 3 basic Energy + 3 Pokémon from the discard pile back into the deck.
 # Worth a Supporter when there is real material to recycle, more so as the deck runs low.
 func _cpu_score_holon_farmer() -> float:
 	if main.opponent_hand.size() < 2:
@@ -5695,7 +5695,7 @@ func _cpu_score_holon_farmer() -> float:
 	return 10.0 + n * 7.0 + (15.0 if main.opponent_deck.size() < 15 else 0.0)
 
 
-# ISSUE #375: Digger (coin war of 10 damage) / Venture Bomb (heads 1 counter on theirs, tails 1 on ours) — a person plays
+# OLD ISSUE 375: Digger (coin war of 10 damage) / Venture Bomb (heads 1 counter on theirs, tails 1 on ours) — a person plays
 # these to finish off a Pokémon on 10 HP, and not when our own Active / Pokémon could be the one finished instead.
 func _cpu_score_ko_10_coin(any_target: bool) -> float:
 	var targets: Array = main.card_ops.get_all_pokemon_in_play(false) if any_target else [main.player_active_pokemon]
@@ -5722,7 +5722,7 @@ func _cpu_score_ex3_mr_brineys_compassion() -> float:
 
 # RARE CANDY (ex2-88): valuable only when the CPU has a Basic in play with a matching evolution in hand.
 func _cpu_score_ex2_rare_candy() -> float:
-	# ISSUE #375: Rare Candy skips a stage — it needs a STAGE 2 in hand whose line starts at a Basic in play (the same
+	# OLD ISSUE 375: Rare Candy skips a stage — it needs a STAGE 2 in hand whose line starts at a Basic in play (the same
 	# test Pokémon Breeder uses). It checked for a card that evolves DIRECTLY from the Basic (a Stage 1), so the CPU
 	# played it when it was useless and held it when it mattered (autotester CPU-usage report: used 9% of chances).
 	return _cpu_score_pokemon_breeder() - 25.0
@@ -5827,7 +5827,7 @@ func _cpu_score_ex14_cessation_crystal() -> float:
 	return 10.0
 
 func _cpu_score_ex14_windstorm() -> float:
-	# ISSUE #375: only the PLAYER's Tools / Stadium are targets (it counted the CPU's own Stadium too), and one good target
+	# OLD ISSUE 375: only the PLAYER's Tools / Stadium are targets (it counted the CPU's own Stadium too), and one good target
 	# is worth the card (20 per target sat under the play threshold, so it was never played for a single target).
 	var count = 0
 	for p in ([main.player_active_pokemon] if main.player_active_pokemon != null else []) + main.player_bench:
@@ -5965,7 +5965,7 @@ func _cpu_score_neo2_fossil_egg() -> float:
 	return -50.0
 
 func _cpu_score_neo2_hyper_devolution_spray() -> float:
-	# ISSUE #375: one stage down, valued on the board like Devolution Spray.
+	# OLD ISSUE 375: one stage down, valued on the board like Devolution Spray.
 	var evolved = get_all_cpu_field_pokemon().filter(func(p): return not p.attached_pre_evolutions.is_empty())
 	return 35.0 + _cpu_last_devolve_value * 0.4 if cpu_pick_devolution_spray_target(evolved, false) != null else -100.0
 
@@ -5978,7 +5978,7 @@ func _cpu_score_neo2_ruin_wall() -> float:
 
 func _cpu_score_professor_oak(card: card_object) -> float:
 	var hand = main.opponent_hand
-	# ISSUE #489: a known strong top 7 (seen with Pokédex) makes the refresh worth more, a weak one less.
+	# ISSUE #363: a known strong top 7 (seen with Pokédex) makes the refresh worth more, a weak one less.
 	var known_adj: float = clampf(cpu_known_draw_delta(7) * 0.4, -40.0, 40.0)
 	if known_adj != 0.0:
 		pass
@@ -5986,7 +5986,7 @@ func _cpu_score_professor_oak(card: card_object) -> float:
 	# Check for playable evolutions
 	for c in hand:
 		if c == card: continue
-		# ISSUE #489: the same card is coming in the 7 drawn, so discarding this copy costs nothing.
+		# ISSUE #363: the same card is coming in the 7 drawn, so discarding this copy costs nothing.
 		if cpu_knows_upcoming(c.metadata.get("name", ""), 7):
 			continue
 		var subtypes = c.metadata.get("subtypes", [])
@@ -5999,7 +5999,7 @@ func _cpu_score_professor_oak(card: card_object) -> float:
 	if hand.size() <= 4: return 40.0 + known_adj
 	return -50.0 + known_adj
 
-# ISSUE #373: Professor Elm's Training Method — worth a Supporter only if the deck holds an Evolution that fits.
+# OLD ISSUE 373: Professor Elm's Training Method — worth a Supporter only if the deck holds an Evolution that fits.
 func _cpu_score_evolution_search() -> float:
 	var best := -1
 	for c in main.opponent_deck:
@@ -6015,14 +6015,14 @@ func _cpu_score_computer_search(card: card_object) -> float:
 	return 60.0
 
 func _cpu_score_devolution_spray() -> float:
-	# ISSUE #375: valued on the board (cpu_devolve_value), not just "has a Special Condition".
+	# OLD ISSUE 375: valued on the board (cpu_devolve_value), not just "has a Special Condition".
 	var evolved = get_all_cpu_field_pokemon().filter(func(p): return not p.attached_pre_evolutions.is_empty())
 	var best := cpu_pick_devolution_spray_target(evolved, true)
 	return 35.0 + _cpu_last_devolve_value * 0.4 if best != null else -100.0
 
 var _cpu_last_devolve_value := 0.0
 
-## ISSUE #375 (user: think like a person): the CPU's evolved Pokémon most worth devolving, or null if none is worth it
+## OLD ISSUE 375 (user: think like a person): the CPU's evolved Pokémon most worth devolving, or null if none is worth it
 ## (value >= 30). to_basic: Devolution Spray can strip every stage; one-stage effects (Hyper Devolution Spray) pass false.
 func cpu_pick_devolution_spray_target(pool: Array, to_basic: bool = true) -> card_object:
 	var best: card_object = null
@@ -6038,7 +6038,7 @@ func cpu_pick_devolution_spray_target(pool: Array, to_basic: bool = true) -> car
 	return best
 
 
-## ISSUE #375: what devolving `p` down to `lower` is worth. The user's cases: it sheds a Special Condition that would
+## OLD ISSUE 375: what devolving `p` down to `lower` is worth. The user's cases: it sheds a Special Condition that would
 ## kill it (Poison on its last 10 HP) or stop it attacking (Paralysis / Sleep) or risk it (Confusion) — best when the
 ## lower form can still attack; the lower form can Knock Out the Defending Pokémon when the current form can't; or a
 ## different evolution in hand to re-evolve into. Costs: the HP lost, and a lower form that just gets KO'd next turn.
@@ -6073,7 +6073,7 @@ func cpu_devolve_value(p: card_object, lower: card_object) -> float:
 	return s
 
 
-## ISSUE #375: best damage `form` would do to `foe` with `energies` attached (after Weakness / Resistance).
+## OLD ISSUE 375: best damage `form` would do to `foe` with `energies` attached (after Weakness / Resistance).
 func _cpu_best_damage(form: card_object, energies: Array, foe: card_object) -> int:
 	if form == null or foe == null:
 		return 0
@@ -6091,9 +6091,9 @@ func _cpu_best_damage(form: card_object, energies: Array, foe: card_object) -> i
 	return best
 
 
-## ISSUE #375: Surprise! Time Machine — devolve one stage, then evolve into a DIFFERENT card from the deck. Worth it when
+## OLD ISSUE 375: Surprise! Time Machine — devolve one stage, then evolve into a DIFFERENT card from the deck. Worth it when
 ## the deck holds an evolution that hits harder (or Knocks Out), is a Pokémon-ex, or fixes a bad Weakness matchup.
-## ISSUE #375: an attack-granting card (TM / Memory Berry) tried on the Active: 75 if it makes a KO possible, more for a
+## OLD ISSUE 375: an attack-granting card (TM / Memory Berry) tried on the Active: 75 if it makes a KO possible, more for a
 ## bigger damage gain, 0 when it adds no damage (caller falls back to the card's own score).
 func _cpu_score_attack_granting(card: card_object) -> float:
 	var me = main.opponent_active_pokemon
@@ -6105,7 +6105,6 @@ func _cpu_score_attack_granting(card: card_object) -> float:
 	var after := _cpu_best_damage(me, me.attached_energies, foe)
 	me.attached_cards.erase(card)
 	var gain := after - before
-	print("ISSUE #375 FIX ACTIVE: ", card.metadata.get("name", ""), " tried on ", me.metadata.get("name", ""), ": best damage ", before, " -> ", after)
 	if after >= foe.current_hp and before < foe.current_hp:
 		return 75.0
 	if gain >= 20:
@@ -6119,7 +6118,7 @@ func _cpu_score_attack_granting(card: card_object) -> float:
 func _cpu_active_can_attack_or_could(me: card_object) -> bool:
 	return main.turn_number > 1 and me.special_condition not in ["Paralyzed", "Asleep"]
 
-## ISSUE #375 (user): Swoop! Teleporter — the best (in-play Basic -> deck Basic) swap: {"value", "target", "new"}. Shared by
+## OLD ISSUE 375 (user): Swoop! Teleporter — the best (in-play Basic -> deck Basic) swap: {"value", "target", "new"}. Shared by
 ## the play score and the effect's choice. Value: a Stage 1/2 in hand that needs the new Basic (and none in play), the
 ## Energy already attached powering the new Basic's attacks but not the old one's, and damage gained vs the Defending
 ## Pokémon. Throwing away a Basic whose own evolution is in hand costs a lot; it must survive the damage it inherits.
@@ -6154,7 +6153,7 @@ func cpu_best_swoop() -> Dictionary:
 				out = {"value": v, "target": o, "new": n}
 	return out
 
-## ISSUE #375: Pokémon Reversal — a coin-flip gust. When the CPU picks the target it's worth half of Gust of Wind's value
+## OLD ISSUE 375: Pokémon Reversal — a coin-flip gust. When the CPU picks the target it's worth half of Gust of Wind's value
 ## (KO / strand a Benched Pokémon). When the PLAYER picks (ex1-87) it only helps to push away an Active that threatens
 ## to Knock Out the CPU while the player's Bench holds nothing as dangerous.
 func _cpu_score_reversal(player_chooses: bool) -> float:
@@ -6171,7 +6170,7 @@ func _cpu_score_reversal(player_chooses: bool) -> float:
 		return -100.0
 	return 35.0
 
-## ISSUE #375 (user): Here Comes Team Rocket! lets BOTH players choose their Prizes from now on. It's worth it to the
+## OLD ISSUE 375 (user): Here Comes Team Rocket! lets BOTH players choose their Prizes from now on. It's worth it to the
 ## side about to take Prizes — the CPU can Knock Out this turn, or it is ahead in the Prize race. Never twice.
 func _cpu_score_here_comes_team_rocket() -> float:
 	if main.opponent_prizes_face_up:
@@ -6226,7 +6225,7 @@ func _cpu_score_item_finder() -> float:
 		best = max(best, cpu_score_trainer_card(t))
 	return best if best >= 50.0 else 0.0
 
-# ISSUE #74 FIX: Lass shuffles BOTH players' Trainer cards into their decks, so it is only worth
+# ISSUE #76 FIX: Lass shuffles BOTH players' Trainer cards into their decks, so it is only worth
 # playing when the player has a hand worth gutting and the CPU has little of its own to lose.
 #
 # FIX 2 (retest): the first formula multiplied by our OWN hand size, so the ideal case — a hand of
@@ -6269,7 +6268,7 @@ func _cpu_score_lass() -> float:
 	return 35.0 + min(value - LASS_MIN_VALUE, 60.0) / 2.0
 
 func _cpu_score_pokemon_breeder() -> float:
-	# ISSUE #529: only Pokemon the rules let evolve right now (not turn 1-2, not played this turn, no evolve lock).
+	# ISSUE #403: only Pokemon the rules let evolve right now (not turn 1-2, not played this turn, no evolve lock).
 	var may_evolve: Array = main.get_pokemon_that_may_evolve_now(true)
 	for card in main.opponent_hand:
 		var subtypes = card.metadata.get("subtypes", [])
@@ -6280,7 +6279,7 @@ func _cpu_score_pokemon_breeder() -> float:
 	return -100.0
 
 func _cpu_score_pokemon_trader() -> float:
-	# ISSUE #375 LAB FINDING (247k branch replays): the CPU held Pokémon Trader far too often — playing it beat holding
+	# OLD ISSUE 375 LAB FINDING (247k branch replays): the CPU held Pokémon Trader far too often — playing it beat holding
 	# it in EVERY situation (z +7.4, n 6,023). It used to score only when a duplicate of an in-play Basic sat in hand.
 	# Now: trade the least useful Pokémon in hand for the most useful one left in the deck (the same pickers the effect
 	# itself uses), worth playing whenever that is not a downgrade.
@@ -6296,7 +6295,6 @@ func _cpu_score_pokemon_trader() -> float:
 		for c in deck_mons:
 			best = maxf(best, cpu_rank_keep_value(c))
 		var gain := best - worst
-		print("ISSUE #375 LAB FIX: Pokémon Trader gain ", int(gain))
 		return clampf(CpuWeights.g("trainer.trader_base", 40.0) + gain * 0.5, 0.0, 85.0)
 	for card in main.opponent_hand:
 		if card.metadata.get("supertype", "").to_lower() != "pokémon": continue
@@ -6330,13 +6328,13 @@ func _cpu_score_super_energy_removal() -> float:
 	for bp in main.opponent_bench:
 		if bp.attached_energies.size() > 0: own_energy = true
 	if not own_energy: return 0.0
-	# ISSUE #373: worth our own Energy only when it really sets the player back.
+	# OLD ISSUE 373: worth our own Energy only when it really sets the player back.
 	if p_energy >= 2 and cpu_removal_delays_attack(main.player_active_pokemon, 2): return 90.0
 	if p_energy >= 3: return 70.0
 	if p_energy >= 2: return 45.0
 	return 0.0
 
-# ISSUE #65: only play Defender(s) when the maths says it actually prevents a knockout. Do NOT use it
+# ISSUE #66: only play Defender(s) when the maths says it actually prevents a knockout. Do NOT use it
 # on a hit that wouldn't KO anyway, and do NOT waste it when the KO is guaranteed even with every
 # Defender stacked. Handles stacking (each Defender is -20) — the trainer loop re-scores after each
 # attach, so returning a high score keeps attaching until the KO is prevented (or nothing left).
@@ -6344,7 +6342,7 @@ func _cpu_score_defender() -> float:
 	var active = main.opponent_active_pokemon
 	if active == null or main.player_active_pokemon == null: return 0.0
 
-	# ISSUE #103 FIX ACTIVE: a Defender only blunts the player's ATTACK — it does nothing about poison
+	# ISSUE #107 FIX ACTIVE: a Defender only blunts the player's ATTACK — it does nothing about poison
 	# or burn. The HP that has to survive the attack is what's left after this turn's status tick, and
 	# if the tick alone is lethal the Defender is thrown away entirely. This is the reported case: a
 	# poisoned Active on 10 HP got a Defender to "save" it from an attack, then died to the poison.
@@ -6355,12 +6353,12 @@ func _cpu_score_defender() -> float:
 
 	# Damage the player can do to us right now (respecting Defenders already attached).
 	var incoming_max_now = _player_effective_damage_against(active, true)
-	# ISSUE #375 LAB FINDING: playing Defender beat holding it in every situation (z +5.4, n 10,272) — 20 less damage on
-	# each hit adds up even when it doesn't stop a Knock Out this turn. ISSUE #65's "only to prevent a KO" hold is
+	# OLD ISSUE 375 LAB FINDING: playing Defender beat holding it in every situation (z +5.4, n 10,272) — 20 less damage on
+	# each hit adds up even when it doesn't stop a Knock Out this turn. ISSUE #66's "only to prevent a KO" hold is
 	# overturned by the data (kept switchable: rule.trainer_value_fix).
 	var def_fix: bool = CpuWeights.on("rule.trainer_value_fix")
 	var def_any_hit: float = CpuWeights.g("trainer.defender_any_hit", 45.0) if (def_fix and incoming_max_now > 0) else 0.0
-	# ISSUE #65: if the incoming attack can't KO us even on its best roll, don't waste a Defender.
+	# ISSUE #66: if the incoming attack can't KO us even on its best roll, don't waste a Defender.
 	if incoming_max_now < effective_hp:
 		return def_any_hit
 
@@ -6415,7 +6413,7 @@ func _cpu_score_full_heal() -> float:
 
 func _cpu_score_maintenance() -> float:
 	if main.opponent_hand.size() < 4: return 0.0
-	# ISSUE #489: after a Pokédex the CPU knows what it is about to draw. A shuffle throws that away, so
+	# ISSUE #363: after a Pokédex the CPU knows what it is about to draw. A shuffle throws that away, so
 	# it is worth more when the known cards are poor (5 Energy with plenty in hand) and a waste when
 	# they are good (a Bill on top -- draw into it first).
 	var delta := cpu_known_draw_delta(5)
@@ -6424,7 +6422,7 @@ func _cpu_score_maintenance() -> float:
 		return v
 	return 30.0
 
-# ── ISSUE #489: what the CPU knows about the top of its own deck ──────────────────────────────────
+# ── ISSUE #363: what the CPU knows about the top of its own deck ──────────────────────────────────
 # Pokédex / New Pokédex show it the next cards in order. Remembered as card references; a card that
 # has since been drawn drops off the front, and anything else out of place (a shuffle) forgets it all.
 var _known_top: Array = []
@@ -6459,7 +6457,7 @@ func cpu_known_draw_delta(n: int) -> float:
 		delta += main.trainer_effects._cpu_pokedex_priority(known[i]) - avg
 	return delta
 
-## ISSUE #489: is a card with this name among the next `n` known draws? (Safe to discard the copy in hand.)
+## ISSUE #363: is a card with this name among the next `n` known draws? (Safe to discard the copy in hand.)
 func cpu_knows_upcoming(card_name: String, n: int) -> bool:
 	var known: Array = cpu_known_top()
 	for i in mini(n, known.size()):
@@ -6467,7 +6465,7 @@ func cpu_knows_upcoming(card_name: String, n: int) -> bool:
 			return true
 	return false
 
-# ISSUE #70: PlusPower only helps if we actually attack for damage this turn. Don't play it when the
+# ISSUE #71: PlusPower only helps if we actually attack for damage this turn. Don't play it when the
 # CPU can't attack (first turn of the game, Paralyzed/Asleep) or its only usable attack does 0 damage.
 func _cpu_score_pluspower() -> float:
 	var active = main.opponent_active_pokemon
@@ -6478,7 +6476,7 @@ func _cpu_score_pluspower() -> float:
 	# Paralyzed/Asleep Active can't attack this turn.
 	if active.special_condition in ["Paralyzed", "Asleep"]:
 		return 0.0
-	# ISSUE #452/#454: PlusPower is added AFTER Weakness/Resistance, so its effect is a flat +10 on
+	# ISSUE #326/#454: PlusPower is added AFTER Weakness/Resistance, so its effect is a flat +10 on
 	# top of what the attack already does (calculate_final_damage without an attacker leaves out
 	# the PlusPowers already attached; `have` adds them back). A human only spends one when it
 	# turns a non-KO into a KO, or at least cuts the number of hits the KO needs -- never when
@@ -6516,7 +6514,7 @@ func _cpu_score_pluspower() -> float:
 	return 0.0
 
 func _cpu_score_pokemon_center() -> float:
-	# ISSUE #373: healed damage against the Energy it strips (only from the damaged Pokémon), plus a big bonus when
+	# OLD ISSUE 373: healed damage against the Energy it strips (only from the damaged Pokémon), plus a big bonus when
 	# it rescues the Active from a Knock Out. Damage Swap parks counters on Energy-free Pokémon first, so the two
 	# work together the way a stall deck intends.
 	var healed := 0
@@ -6549,19 +6547,19 @@ func _cpu_score_revive() -> float:
 	return 0.0
 
 func _cpu_score_super_potion() -> float:
-	return _cpu_score_heal_item(40, true)   # ISSUE #373
+	return _cpu_score_heal_item(40, true)   # OLD ISSUE 373
 
 func _cpu_score_energy_removal() -> float:
 	if main.player_active_pokemon == null: return 0.0
 	var e = main.player_active_pokemon.attached_energies.size()
 	if e == 0: return 0.0
-	# ISSUE #373: the real question is whether it stops (or delays) the player's next attack.
+	# OLD ISSUE 373: the real question is whether it stops (or delays) the player's next attack.
 	if cpu_removal_delays_attack(main.player_active_pokemon, 1):
 		return 80.0 if evaluate_ko_threats().get("cpu_active_guaranteed_ko", false) or evaluate_ko_threats().get("cpu_active_potential_ko", false) else 65.0
 	if e >= 2: return 50.0
 	return 30.0
 
-# ISSUE #373: true if removing the `count` most valuable Energy from `target` leaves its best damaging attack
+# OLD ISSUE 373: true if removing the `count` most valuable Energy from `target` leaves its best damaging attack
 # 2+ Energy short — i.e. the player can't just attach one and attack next turn.
 func cpu_removal_delays_attack(target: card_object, count: int) -> bool:
 	if target == null or target.attached_energies.is_empty():
@@ -6595,29 +6593,27 @@ func _cpu_score_gust_of_wind() -> float:
 	var _pl_g: Dictionary = cpu_plan("trainer")
 	if not _pl_g.is_empty() and _pl_g["desc"].get("gust_card") != null and _pl_g["desc"]["gust_card"] in main.player_bench \
 			and float(_pl_g["value"]) - CpuPlanner.best_where(_pl_g, func(d): return d.get("gust_card") == null) >= CpuWeights.g("plan.margin", 60.0):
-		return CpuWeights.g("plan.gust_score", 90.0)   # ISSUE #375 PLANNER: the plan gusts this turn
+		return CpuWeights.g("plan.gust_score", 90.0)   # OLD ISSUE 375 PLANNER: the plan gusts this turn
 	var la_gust := 0.0
 	if CpuWeights.on("rule.lookahead") and CpuWeights.g("look.gust", 1.0) > 0.0:
 		var gv: Dictionary = _la().gust_value()
 		var gain: float = float(gv.get("v", 0.0)) * CpuWeights.g("look.gust", 1.0)
 		if gain > CpuWeights.g("look.gust_min", 40.0):
 			la_gust = clampf(30.0 + gain * 0.25, 30.0, 95.0)
-			print("ISSUE #375 LOOKAHEAD: Gust onto ", gv["target"].metadata.get("name", ""), " wins the exchange by ", int(gain))
 	var base_gust := _cpu_score_gust_of_wind_base()
 	return maxf(base_gust, la_gust)
 
 
 func _cpu_score_gust_of_wind_base() -> float:
-	# ISSUE #451: if the player's Active is already a sure KO, a gust only earns its place when the
+	# OLD ISSUE 451: if the player's Active is already a sure KO, a gust only earns its place when the
 	# Benched Pokémon it drags up is worth more to knock out (more Prizes, evolved, Energy on it).
 	var active_ko: bool = main.player_active_pokemon != null and _cpu_can_ko_now(main.player_active_pokemon)
 	for bp in main.player_bench:
 		if active_ko and _gust_ko_worth(bp) <= _gust_ko_worth(main.player_active_pokemon):
-			print("ISSUE #451 FIX ACTIVE: no gust onto ", bp.metadata.get("name", ""), " -- the Active is already a KO worth as much")
 			continue
 		if _cpu_can_ko_now(bp):
 			return 95.0 if main.is_ex_pokemon(bp) or main.opponent_prize_cards.size() <= 1 else 85.0
-	# ISSUE #373: the stall gust — the player's Active is about to KO ours, so drag up a Benched Pokémon that
+	# OLD ISSUE 373: the stall gust — the player's Active is about to KO ours, so drag up a Benched Pokémon that
 	# can't attack and can't easily retreat, buying turns.
 	if evaluate_ko_threats().get("cpu_active_guaranteed_ko", false):
 		for bp in main.player_bench:
@@ -6627,7 +6623,6 @@ func _cpu_score_gust_of_wind_base() -> float:
 					can_hit = true
 					break
 			if not can_hit and main.get_retreat_cost(bp) > bp.attached_energies.size():
-				print("ISSUE #373 FIX ACTIVE: CPU values a stall gust onto ", bp.metadata.get("name", ""))
 				return 60.0
 	return 0.0
 
@@ -6648,7 +6643,7 @@ func _cpu_can_ko_now(target: card_object) -> bool:
 	return false
 
 
-## ISSUE #451: what knocking `p` out is worth, for comparing two KO targets: Prizes first, then
+## OLD ISSUE 451: what knocking `p` out is worth, for comparing two KO targets: Prizes first, then
 ## the investment it carries (an Evolution, its Energy).
 func _gust_ko_worth(p: card_object) -> float:
 	var prizes := 2.0 if main.is_ex_pokemon(p) else 1.0
@@ -6658,7 +6653,7 @@ func _gust_ko_worth(p: card_object) -> float:
 func _cpu_score_potion() -> float:
 	return _cpu_score_heal_item(20, false)
 
-# ISSUE #373: a heal item is spent when it rescues a Pokémon from a Knock Out (or nearly so); otherwise it is held.
+# OLD ISSUE 373: a heal item is spent when it rescues a Pokémon from a Knock Out (or nearly so); otherwise it is held.
 func _cpu_score_heal_item(amount: int, costs_energy: bool) -> float:
 	var act = main.opponent_active_pokemon
 	if act == null: return 0.0
@@ -6668,11 +6663,10 @@ func _cpu_score_heal_item(amount: int, costs_energy: bool) -> float:
 	var best = cpu_pick_heal_target(pool, amount)
 	if best == null: return -50.0
 	var threats := evaluate_ko_threats()
-	# ISSUE #375 LOOKAHEAD: heal when it turns "KO'd by their reply" into "survives" — and only then.
+	# OLD ISSUE 375 LOOKAHEAD: heal when it turns "KO'd by their reply" into "survives" — and only then.
 	if best == act and CpuWeights.on("rule.lookahead") and CpuWeights.g("look.heal", 1.0) > 0.0:
 		var hv: float = _la().heal_value(mini(amount, act.get_max_hp() - act.current_hp)) * CpuWeights.g("look.heal", 1.0)
 		if hv > CpuWeights.g("look.heal_min", 40.0):
-			print("ISSUE #375 LOOKAHEAD: heal saves ", int(hv), " of next-exchange value")
 			return clampf(40.0 + hv * 0.2, 40.0, 90.0)
 	if best == act and bool(threats.get("cpu_active_guaranteed_ko", false)):
 		if not bool(threats.get("cpu_active_dies_to_status", false)) and _cpu_heal_prevents_ko(act, mini(amount, act.get_max_hp() - act.current_hp)):
@@ -6689,13 +6683,13 @@ func _cpu_score_switch() -> float:
 	if main.opponent_bench.size() == 0: return 0.0
 	var act = main.opponent_active_pokemon
 	if act == null: return 0.0
-	# ISSUE #373: Switch is the ONLY way out of Paralysis / Sleep, and a free way out of Confusion — that is where
+	# OLD ISSUE 373: Switch is the ONLY way out of Paralysis / Sleep, and a free way out of Confusion — that is where
 	# a person spends it. For an ordinary retreat, keep it if the retreat itself is free.
 	if act.special_condition in ["Paralyzed", "Asleep"] and (_bench_attacker_available() or evaluate_ko_threats().get("cpu_active_guaranteed_ko", false)):
 		return 80.0
 	if act.special_condition == "Confused" and _bench_attacker_available():
 		return 60.0
-	# ISSUE #492: one change of Active a turn. A Switch after a retreat / an earlier Switch (or a
+	# ISSUE #366: one change of Active a turn. A Switch after a retreat / an earlier Switch (or a
 	# retreat after this Switch -- see _cpu_active_changed_this_turn) just shuffles the same two
 	# Pokémon back and forth.
 	if main.opponent_retreated_this_turn or _cpu_active_changed_this_turn():
@@ -6705,7 +6699,7 @@ func _cpu_score_switch() -> float:
 	if evaluate_retreat_reasons(cpu_eval):
 		if main.get_retreat_cost(act) == 0 and not main.opponent_retreated_this_turn:
 			return 0.0
-		# ISSUE #492: the same "is the swap worth anything" test the retreat itself has to pass.
+		# ISSUE #366: the same "is the swap worth anything" test the retreat itself has to pass.
 		var act_data: Dictionary = cpu_eval["pokemon_data"].get(act.get_instance_id(), {})
 		var gain: bool = _retreat_improves_survival() or _offensive_retreat_target() != null \
 			or (not act_data.get("can_attack", false) and _bench_attacker_available()) \
@@ -6715,7 +6709,7 @@ func _cpu_score_switch() -> float:
 		return 70.0
 	return 0.0
 
-# ISSUE #373: Energy Search / Lady Outing / Mr. Stone's Project — worth playing when the board is short of Energy the
+# OLD ISSUE 373: Energy Search / Lady Outing / Mr. Stone's Project — worth playing when the board is short of Energy the
 # hand can't supply (a Supporter has to beat the other Supporters on that basis). `n` = cards fetched.
 func _cpu_score_energy_fetch(n: int, supporter: bool) -> float:
 	if not main.opponent_deck.any(func(c): return c.metadata.get("supertype", "") == "Energy" and "Basic" in c.metadata.get("subtypes", [])):
@@ -6724,7 +6718,7 @@ func _cpu_score_energy_fetch(n: int, supporter: bool) -> float:
 	var need := 0
 	for p in get_all_cpu_field_pokemon():
 		need += main.powers_and_bodies._cpu_unmet_energy(p)
-	# ISSUE #375 LAB FINDING: playing Energy Search beat holding it (z +3.8, n 3,399) — it scored 20-25, under the play
+	# OLD ISSUE 375 LAB FINDING: playing Energy Search beat holding it (z +3.8, n 3,399) — it scored 20-25, under the play
 	# threshold, whenever Energy was already in hand. Banking Energy and thinning the deck is worth a card.
 	var es_fix: bool = CpuWeights.on("rule.trainer_value_fix") and not supporter
 	if need <= 0:
@@ -6736,7 +6730,7 @@ func _cpu_score_energy_fetch(n: int, supporter: bool) -> float:
 	if supporter: v -= 10.0
 	return clampf(v, 15.0, 75.0)
 
-# ISSUE #373: a Fossil is worth benching when its evolution is in hand (or still in the deck); otherwise it is
+# OLD ISSUE 373: a Fossil is worth benching when its evolution is in hand (or still in the deck); otherwise it is
 # only a bench token.
 func _cpu_score_fossil(card: card_object) -> float:
 	if main.opponent_bench.size() >= main.get_max_bench_size():
@@ -6752,7 +6746,7 @@ func _cpu_score_clefairy_doll() -> float:
 	return _cpu_score_bench_insurance(40.0)
 
 
-# ISSUE #499: Recycle is only as good as the best card in the discard it can put back on top (never another
+# ISSUE #373: Recycle is only as good as the best card in the discard it can put back on top (never another
 # Recycle), and the coin halves it. TWEAKABLE: RECYCLE_KEEP_FLOOR -- a keep value at or under this is a card
 # a person wouldn't spend Recycle (and their next draw) on.
 const RECYCLE_KEEP_FLOOR := 40.0
@@ -6766,11 +6760,11 @@ func _cpu_score_recycle() -> float:
 	var v: float = clampf(best - RECYCLE_KEEP_FLOOR, -100.0, 60.0)
 	return v
 
-## ISSUE #499: the discard-pile cards Recycle could usefully return -- anything but a Recycle.
+## ISSUE #373: the discard-pile cards Recycle could usefully return -- anything but a Recycle.
 func cpu_recycle_candidates() -> Array:
 	return main.opponent_discard_pile.filter(func(c): return c.metadata.get("name", "") != "Recycle")
 
-# ISSUE #375: bench tokens / bluffs are insurance — a person plays one when losing the Active would leave them with
+# OLD ISSUE 375: bench tokens / bluffs are insurance — a person plays one when losing the Active would leave them with
 # nothing (0-1 Benched Pokémon), not as filler. The old 20 was under the play threshold, so they were never played.
 func _cpu_score_bench_insurance(value: float) -> float:
 	if main.opponent_bench.size() >= main.get_max_bench_size():
@@ -6782,7 +6776,7 @@ func _cpu_score_bench_insurance(value: float) -> float:
 	return -100.0
 
 
-## ISSUE #375: can the CPU's Active actually attack this turn (status, Energy)?
+## OLD ISSUE 375: can the CPU's Active actually attack this turn (status, Energy)?
 func _cpu_active_can_attack() -> bool:
 	var me = main.opponent_active_pokemon
 	if me == null or main.turn_number <= 1 or me.special_condition in ["Paralyzed", "Asleep"]:
@@ -6793,7 +6787,7 @@ func _cpu_active_can_attack() -> bool:
 	return false
 
 
-# ISSUE #375: Town Volunteers — shuffle 5 Pokémon / basic Energy from the discard pile back into the deck.
+# OLD ISSUE 375: Town Volunteers — shuffle 5 Pokémon / basic Energy from the discard pile back into the deck.
 func _cpu_score_town_volunteers() -> float:
 	var n := 0
 	for c in main.opponent_discard_pile:
@@ -6805,7 +6799,7 @@ func _cpu_score_town_volunteers() -> float:
 	return 15.0
 
 
-# ISSUE #375: Energy Root — +20 HP (no Poké-Powers/Bodies). Best when 20 HP takes the Active out of KO range.
+# OLD ISSUE 375: Energy Root — +20 HP (no Poké-Powers/Bodies). Best when 20 HP takes the Active out of KO range.
 func _cpu_score_energy_root() -> float:
 	var me = main.opponent_active_pokemon
 	if me == null or main.is_ex_pokemon(me) or not me.attached_cards.is_empty() or "Dark" in me.metadata.get("name", ""):
@@ -6818,7 +6812,7 @@ func _cpu_score_energy_root() -> float:
 	return 32.0
 
 
-# ISSUE #375: Computer Error / Thought Wave Machine end the turn — only when the CPU can't attack anyway.
+# OLD ISSUE 375: Computer Error / Thought Wave Machine end the turn — only when the CPU can't attack anyway.
 func _cpu_score_turn_ender(strips_energy: bool) -> float:
 	if _cpu_active_can_attack():
 		return -100.0
@@ -6828,7 +6822,7 @@ func _cpu_score_turn_ender(strips_energy: bool) -> float:
 	return 40.0 if main.opponent_hand.size() <= 4 and main.opponent_deck.size() > 8 else 15.0
 
 
-# ISSUE #375: Magnifier — ignore Resistance for this turn's attack.
+# OLD ISSUE 375: Magnifier — ignore Resistance for this turn's attack.
 func _cpu_score_magnifier() -> float:
 	var me = main.opponent_active_pokemon
 	var foe = main.player_active_pokemon
@@ -6841,7 +6835,7 @@ func _cpu_score_magnifier() -> float:
 	return 10.0
 
 
-# ISSUE #375: Crystal Shard — the holder becomes Colorless: worth it when the opponent's Active hits our Weakness.
+# OLD ISSUE 375: Crystal Shard — the holder becomes Colorless: worth it when the opponent's Active hits our Weakness.
 func _cpu_score_crystal_shard() -> float:
 	var me = main.opponent_active_pokemon
 	var foe = main.player_active_pokemon
@@ -6854,7 +6848,7 @@ func _cpu_score_crystal_shard() -> float:
 	return 10.0
 
 
-# ISSUE #375: Mysterious Shard — the holder takes nothing from Pokémon-ex attacks next turn.
+# OLD ISSUE 375: Mysterious Shard — the holder takes nothing from Pokémon-ex attacks next turn.
 func _cpu_score_mysterious_shard() -> float:
 	var me = main.opponent_active_pokemon
 	var foe = main.player_active_pokemon
@@ -6864,7 +6858,7 @@ func _cpu_score_mysterious_shard() -> float:
 
 # CPU plays highest-priority trainer cards (Bill first)
 func cpu_phase_play_trainer_cards_priority() -> void:
-	await main.settle_after_draw()   # ISSUE #472
+	await main.settle_after_draw()   # ISSUE #346
 	# Check trainer lock (Psyduck Headache)
 	if main.trainer_effects.opponent_trainer_locked:
 		print("CPU: Trainer cards locked this turn (Headache)")
@@ -6881,21 +6875,21 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 	while played:
 		played = false
 		var best_card: card_object = null
-		var best_score: float = CPU_TRAINER_PLAY_THRESHOLD   # ISSUE #375: was a hard-coded 29.9 (the tunable never applied)
+		var best_score: float = CPU_TRAINER_PLAY_THRESHOLD   # OLD ISSUE 375: was a hard-coded 29.9 (the tunable never applied)
 		# MATCH EFFECT: trainer_discard_cost — demand more value when each trainer costs cards
 		best_score += 10.0 * main.match_effects.trainer_discard_cost(true)
 
 		var trainer_scores = {}
 		for card in main.opponent_hand:
 			if not main.trainer_effects.is_trainer_card(card): continue
-			if card.uid == LASS_UID: continue  # ISSUE #74: Lass is held back until cpu_phase_play_lass_last()
-			var score = cpu_score_trainer_for_play(card)  # ISSUE #373
+			if card.uid == LASS_UID: continue  # ISSUE #76: Lass is held back until cpu_phase_play_lass_last()
+			var score = cpu_score_trainer_for_play(card)  # OLD ISSUE 373
 			trainer_scores[card] = score
 			if score > best_score:
 				best_score = score
 				best_card = card
 
-		# ISSUE #375 branch replay: play a different (playable) Trainer, or none, instead.
+		# OLD ISSUE 375 branch replay: play a different (playable) Trainer, or none, instead.
 		var _t_opts: Array = [null]
 		for _tc in trainer_scores:
 			if main.trainer_effects.validate_trainer_can_be_played(_tc, true) == "":
@@ -6926,7 +6920,7 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 			if main.opponent_turn_force_end:
 				return  # turn was force-ended by a trainer card; let the orchestrator wrap up
 			if _was_replacer:
-				cpu_undeveloped_draw = true   # ISSUE #524: develop the new hand before another Oak
+				cpu_undeveloped_draw = true   # ISSUE #398: develop the new hand before another Oak
 			played = true
 		elif not trainer_scores.is_empty():
 			for card in trainer_scores:
@@ -6934,7 +6928,7 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 
 # CPU re-evaluates and plays remaining trainer cards
 func cpu_phase_play_trainer_cards_remaining() -> void:
-	await main.settle_after_draw()   # ISSUE #472
+	await main.settle_after_draw()   # ISSUE #346
 	if main.tutorial.cpu_scripted():
 		return   # a scripted tutorial turn played its Trainers in the priority phase
 	# Check trainer lock (Psyduck Headache)
@@ -6944,14 +6938,14 @@ func cpu_phase_play_trainer_cards_remaining() -> void:
 	while played:
 		played = false
 		var best_card: card_object = null
-		var best_score: float = CPU_TRAINER_PLAY_THRESHOLD   # ISSUE #375: was a hard-coded 29.9 (the tunable never applied)
+		var best_score: float = CPU_TRAINER_PLAY_THRESHOLD   # OLD ISSUE 375: was a hard-coded 29.9 (the tunable never applied)
 		# MATCH EFFECT: trainer_discard_cost — demand more value when each trainer costs cards
 		best_score += 10.0 * main.match_effects.trainer_discard_cost(true)
 
 		for card in main.opponent_hand:
 			if not main.trainer_effects.is_trainer_card(card): continue
-			if card.uid == LASS_UID: continue  # ISSUE #74: Lass is held back until cpu_phase_play_lass_last()
-			var score = cpu_score_trainer_for_play(card)  # ISSUE #373
+			if card.uid == LASS_UID: continue  # ISSUE #76: Lass is held back until cpu_phase_play_lass_last()
+			var score = cpu_score_trainer_for_play(card)  # OLD ISSUE 373
 			if score > best_score:
 				best_score = score
 				best_card = card
@@ -6969,14 +6963,14 @@ func cpu_phase_play_trainer_cards_remaining() -> void:
 			if main.opponent_turn_force_end:
 				return  # turn was force-ended by a trainer card; let the orchestrator wrap up
 			if _was_replacer:
-				# ISSUE #524 (retest): stop here so the orchestrator evolves / benches / attaches with the new hand
+				# ISSUE #398 (retest): stop here so the orchestrator evolves / benches / attaches with the new hand
 				# before any further Trainer - it used to loop straight into a second Oak.
 				cpu_undeveloped_draw = true
-				print("ISSUE #524 FIX ACTIVE: ", best_card.metadata["name"], " refilled the hand - developing before more Trainers")
+				print("ISSUE #398 FIX ACTIVE: ", best_card.metadata["name"], " refilled the hand - developing before more Trainers")
 				return
 			played = true
 
-# ISSUE #74 FIX: Lass is played LAST, after every other action of the turn has resolved (powers,
+# ISSUE #76 FIX: Lass is played LAST, after every other action of the turn has resolved (powers,
 # evolutions, bench plays, every other trainer, energy attachment, retreats) and immediately before
 # the attack. Playing it earlier throws away the CPU's own Trainers before it has had the chance to
 # use them — e.g. holding Energy Search, Pokemon Trader and Bill, it should spend all three first
@@ -7023,7 +7017,7 @@ func cpu_search_deck_for_best_card(deck: Array) -> card_object:
 			if targets.size() > 0: score = 80.0
 		elif card.metadata.get("supertype", "").to_lower() == "energy": score = 50.0
 		elif main.is_basic_pokemon(card) and main.opponent_bench.size() < 3: score = 40.0
-		score += cpu_synergy_bonus(card) + cpu_counter_bonus(card)   # ISSUE #375: learned card synergy / counters
+		score += cpu_synergy_bonus(card) + cpu_counter_bonus(card)   # OLD ISSUE 375: learned card synergy / counters
 		if score > best_score:
 			best_score = score
 			best = card
@@ -7044,7 +7038,7 @@ func cpu_search_deck_for_best_pokemon(pokemon_list: Array) -> card_object:
 		else:
 			var result = evaluate_opponents_start_setup_pokemon_choices(card, main.opponent_hand)
 			score = result.get("total_score", 0) / 10.0
-		score += cpu_synergy_bonus(card) + cpu_counter_bonus(card)   # ISSUE #375: learned card synergy / counters
+		score += cpu_synergy_bonus(card) + cpu_counter_bonus(card)   # OLD ISSUE 375: learned card synergy / counters
 		if score > best_score:
 			best_score = score
 			best = card
@@ -7063,7 +7057,7 @@ func cpu_search_deck_for_best_pokemon(pokemon_list: Array) -> card_object:
 # Positive = value this card MORE in the given context; negative = less. `context` is a short tag such as
 # "keep", "discard", "snipe". Add `match card.uid:` entries here as perfect-combo cases are found in testing.
 func cpu_decision_override(_card: card_object, _context: String) -> float:
-	# ISSUE #373: combo pieces a person holds on to (contexts "keep" and "discard" are both higher = keep).
+	# OLD ISSUE 373: combo pieces a person holds on to (contexts "keep" and "discard" are both higher = keep).
 	if _card == null or not (_context in ["keep", "discard"]):
 		return 0.0
 	var uid := _card.uid.to_lower()
@@ -7098,7 +7092,7 @@ func cpu_decision_override(_card: card_object, _context: String) -> float:
 		return 15.0
 	return 0.0
 
-# ISSUE #375 (learned synergy): how much `card` fits what the CPU already has — summed from the self-play synergy
+# OLD ISSUE 375 (learned synergy): how much `card` fits what the CPU already has — summed from the self-play synergy
 # table (CpuWeights.synergy(): pairs that win more together than apart) over its Pokémon in play (full weight) and the
 # rest of its hand (half weight). Scaled by the tunable "search.synergy". 0 when no table is loaded.
 func cpu_synergy_bonus(card: card_object) -> float:
@@ -7124,7 +7118,7 @@ func cpu_synergy_bonus(card: card_object) -> float:
 			total += 0.5 * float(row.get(u2, 0.0))
 	return clampf(total * CpuWeights.g("search.synergy", 1.0), -40.0, 40.0)
 
-# ───────────── ISSUE #375: LEARNED MATCHUPS (self-play) ─────────────
+# ───────────── OLD ISSUE 375: LEARNED MATCHUPS (self-play) ─────────────
 # Live relations between two Pokémon — the "why" facts the learner combines with card traits. The autotester records
 # exactly these for training (Autotest_Runner tune mode), so play and training always agree.
 func cpu_rel_features(me: card_object, foe: card_object) -> Array:
@@ -7204,7 +7198,7 @@ func cpu_learned_attack_value(me: card_object, attack: Dictionary, foe: card_obj
 			s += float(w.get("BR|%s|%s" % [a, r], 0.0))
 	return s
 
-# ISSUE #375 branch replay: the board when a lab branch fired (what the alternative choice is judged against).
+# OLD ISSUE 375 branch replay: the board when a lab branch fired (what the alternative choice is judged against).
 func _branch_ctx() -> Dictionary:
 	var me = main.opponent_active_pokemon
 	var foe = main.player_active_pokemon
@@ -7216,9 +7210,8 @@ func _branch_ctx() -> Dictionary:
 func _branch_note() -> void:
 	if CpuWeights.needs_branch_ctx():
 		CpuWeights.branch_record["ctx"] = _branch_ctx()
-		print("ISSUE #375 BRANCH: ", CpuWeights.branch_record)
 
-# ISSUE #375 LEARNED COUNTERS: the player's play style read from PUBLIC information (their Pokémon in play + discard pile),
+# OLD ISSUE 375 LEARNED COUNTERS: the player's play style read from PUBLIC information (their Pokémon in play + discard pile),
 # using the trait list shipped with the counter table — the same definitions the lab trains with (cpu_learner.opp_style).
 func cpu_opp_style() -> Array:
 	var tab: Dictionary = CpuWeights.counters()
@@ -7272,7 +7265,7 @@ func cpu_counter_bonus(card: card_object) -> float:
 					total += float(srow.get(s, 0.0))
 	return clampf(total * CpuWeights.g("search.counter", 1.0), -40.0, 40.0)
 
-# ───────────── ISSUE #375 DEV: SHADOW CPU (what the CPU would do in the PLAYER's seat) ─────────────
+# ───────────── OLD ISSUE 375 DEV: SHADOW CPU (what the CPU would do in the PLAYER's seat) ─────────────
 # The CPU's code reads the opponent_* side, so the two sides' match data is swapped, the normal scoring functions are
 # asked (nothing is executed), and the sides are swapped straight back — all in one frame, no awaits in between.
 const _SHADOW_FIELDS := ["active_pokemon", "hand", "bench", "deck", "discard_pile", "prize_cards", "energy_played_this_turn",
@@ -7407,14 +7400,14 @@ func cpu_pick_best_keep(pool: Array) -> card_object:
 		if s > best_s:
 			best_s = s
 			best = c
-	# ISSUE #375 branch replay: take a different card.
+	# OLD ISSUE 375 branch replay: take a different card.
 	var _f_pick := CpuWeights.branch_point("fetch", pool.size(), pool.find(best), pool.map(func(c): return c.metadata.get("name", "") if c != null else ""))
 	if _f_pick >= 0 and _f_pick < pool.size() and pool[_f_pick] != best:
 		best = pool[_f_pick]
 		_branch_note()
 	return best
 
-# ISSUE #176: how much to add (or take off) for Full Heal Energy / Potion Energy.
+# ISSUE #177: how much to add (or take off) for Full Heal Energy / Potion Energy.
 #
 # Both are Colorless providers whose value is in the effect they fire ON ATTACH.
 # The rule the player set: play them when the effect actually does something, OR
@@ -7424,7 +7417,7 @@ func cpu_pick_best_keep(pool: Array) -> card_object:
 # Returns a score contribution. -600 is a hard disqualification, matching the DCE
 # guard below it, and is only returned when the card can do literally nothing for
 # this target and the CPU has another energy it could attach instead.
-## ISSUE #528: does the CPU hold a BASIC Energy (other than `exclude`) that would move `pokemon` closer to one of its
+## ISSUE #402: does the CPU hold a BASIC Energy (other than `exclude`) that would move `pokemon` closer to one of its
 ## attacks - a type its unmet costs name, or any type when an unmet attack still has a Colorless slot? Used to keep
 ## Rainbow / Potion / Full Heal Energy for when they're actually needed.
 func cpu_hand_has_useful_basic(pokemon: card_object, exclude: card_object) -> bool:
@@ -7480,10 +7473,10 @@ func _score_utility_energy(pokemon: card_object, energy_card: card_object,
 		return 60.0            # both halves of the card pay off — play it now
 	if effect_lands:
 		return 30.0            # worth it for the cure / heal alone
-	# ISSUE #528: with nothing to heal / cure, a basic Energy in hand that does the same job goes down instead -
+	# ISSUE #402: with nothing to heal / cure, a basic Energy in hand that does the same job goes down instead -
 	# the utility card is saved for the turn its effect lands.
 	if cpu_hand_has_useful_basic(pokemon, energy_card):
-		print("ISSUE #528 FIX ACTIVE: holding ", energy_name, " - a basic Energy in hand does the job and nothing needs its effect")
+		print("ISSUE #402 FIX ACTIVE: holding ", energy_name, " - a basic Energy in hand does the job and nothing needs its effect")
 		return -150.0
 	if energy_needed:
 		# The Colorless is wanted, but a plain basic would do the same job without
@@ -7492,7 +7485,7 @@ func _score_utility_energy(pokemon: card_object, energy_card: card_object,
 	return -600.0              # provides nothing and cures nothing
 
 
-# ISSUE #164: WHICH DAMAGED POKEMON THE CPU HEALS.
+# ISSUE #165: WHICH DAMAGED POKEMON THE CPU HEALS.
 #
 # Every healing Trainer used to take `damaged[0]` — the first entry of
 # build_field_pokemon_array, which is a BENCH Pokemon. The reported case: the CPU
@@ -7546,7 +7539,7 @@ func cpu_rank_heal_target(pokemon: card_object, heal_amount: int) -> float:
 	return score
 
 
-# ISSUE #164: true when `heal` lifts the CPU's Active out of range of every attack
+# ISSUE #165: true when `heal` lifts the CPU's Active out of range of every attack
 # the player can actually use right now. Mirrors evaluate_ko_threats' arithmetic —
 # status damage lands BEFORE the player's attack, so it comes off first.
 func _cpu_heal_prevents_ko(pokemon: card_object, heal: int) -> bool:
@@ -7568,7 +7561,7 @@ func _cpu_heal_prevents_ko(pokemon: card_object, heal: int) -> bool:
 	return true
 
 
-# ISSUE #164: the best of `pool` to heal, or null when nothing can benefit.
+# ISSUE #165: the best of `pool` to heal, or null when nothing can benefit.
 func cpu_pick_heal_target(pool: Array, heal_amount: int) -> card_object:
 	var best: card_object = null
 	var best_s := -INF
@@ -7580,7 +7573,7 @@ func cpu_pick_heal_target(pool: Array, heal_amount: int) -> card_object:
 	return best
 
 
-# ISSUE #163: WHICH OF ITS **OWN** ENERGY THE CPU GIVES UP.
+# ISSUE #164: WHICH OF ITS **OWN** ENERGY THE CPU GIVES UP.
 #
 # Retreating, paying an attack's discard cost and answering an opponent's energy
 # removal all used to take `attached_energies[0]` or "the top of the stack" — the
@@ -7644,7 +7637,7 @@ func cpu_own_energy_value(pokemon: card_object, energy: card_object) -> float:
 	return score
 
 
-# ISSUE #163: the single least valuable Energy on one of the CPU's own Pokemon.
+# ISSUE #164: the single least valuable Energy on one of the CPU's own Pokemon.
 func cpu_pick_own_energy_to_discard(pokemon: card_object) -> card_object:
 	if pokemon == null or pokemon.attached_energies.is_empty():
 		return null
@@ -7658,7 +7651,7 @@ func cpu_pick_own_energy_to_discard(pokemon: card_object) -> card_object:
 	return worst
 
 
-# ISSUE #163: `count` Energy to give up, cheapest first. Used by retreat, which
+# ISSUE #164: `count` Energy to give up, cheapest first. Used by retreat, which
 # pays several at once — scoring them one at a time and taking the N worst is a
 # good enough approximation and far cheaper than re-scoring after each removal.
 func cpu_own_energy_discard_order(pokemon: card_object, count: int) -> Array:
@@ -7713,13 +7706,13 @@ func cpu_rank_snipe_target(pokemon: card_object, damage: int) -> float:
 		score += _cpu_threat_score(pokemon)                       # prefer softening a real threat
 		if main.is_ex_pokemon(pokemon):
 			score += 60.0
-		# ISSUE #503: set up the NEXT Knock Out -- leaving a Pokémon on 10-20 HP (one Curse / one more bench
+		# ISSUE #377: set up the NEXT Knock Out -- leaving a Pokémon on 10-20 HP (one Curse / one more bench
 		# hit away) beats chipping a healthy one. Dark Mind hit the highest-HP Benched Pokémon over one on 20.
 		score += maxf(0.0, 70.0 - float(pokemon.current_hp - damage))
 	score -= float(pokemon.current_hp) * 0.1                      # lowest-HP tiebreak among equals
 	return score + cpu_decision_override(pokemon, "snipe")
 
-## ISSUE #503: Gengar's Curse -- which damage counter to move, from which of the player's Pokémon to which.
+## ISSUE #377: Gengar's Curse -- which damage counter to move, from which of the player's Pokémon to which.
 ## {"from", "to", "why"} or {} when no move helps. In order: a Knock Out (an ex first); bring the Defending
 ## Pokémon into this turn's attack range; leave a Pokémon one counter / one bench hit from a KO; else pile
 ## onto the Defending Pokémon. The counter always comes off the Pokémon furthest from being Knocked Out,
@@ -7781,7 +7774,7 @@ func cpu_pick_snipe_target(pool: Array, damage: int) -> card_object:
 			best = p
 	return best
 
-# ISSUE #300: how much the CPU wants a given Energy card back (Energy Conversion & co.) — need for its
+# OLD ISSUE 300: how much the CPU wants a given Energy card back (Energy Conversion & co.) — need for its
 # Pokémon's unpaid attack costs, plus a bump for special Energy.
 func cpu_energy_need_value(energy: card_object) -> float:
 	if energy == null:
@@ -7799,7 +7792,7 @@ func cpu_energy_need_value(energy: card_object) -> float:
 				elif c == "Colorless": v += 1.0
 	return v
 
-# ISSUE #300: the attacking type that matters most on one side of the board. `cpu_side` = the CPU's own
+# OLD ISSUE 300: the attacking type that matters most on one side of the board. `cpu_side` = the CPU's own
 # Pokémon (Conversion 1: make the player WEAK to it); false = the player's (Conversion 2: RESIST it).
 # Weighted by each Pokémon's threat, Active counted double; falls back to the first legal type.
 func cpu_dominant_attack_type(cpu_side: bool, legal: Array) -> String:
@@ -7822,7 +7815,7 @@ func cpu_dominant_attack_type(cpu_side: bool, legal: Array) -> String:
 			best = t
 	return best if best != "" else legal[0]
 
-# ISSUE #300: the most damage the CPU's Active can do to `target` this/next turn (0 if none). Used to
+# OLD ISSUE 300: the most damage the CPU's Active can do to `target` this/next turn (0 if none). Used to
 # avoid healing a player Pokémon the CPU is about to Knock Out.
 func cpu_best_damage_vs(target: card_object) -> int:
 	var me = main.opponent_active_pokemon
@@ -7837,7 +7830,7 @@ func cpu_best_damage_vs(target: card_object) -> int:
 		best = max(best, d)
 	return best
 
-# ISSUE #312: board-aware value of a utility attack (no damage, nothing the text parser scores). Positive
+# OLD ISSUE 312: board-aware value of a utility attack (no damage, nothing the text parser scores). Positive
 # when the effect actually helps right now, negative when it would do nothing or hurt. Comparable to the
 # damage scale used by cpu_phase_attack (score ≈ 2 × damage).
 func cpu_utility_attack_value(attack: Dictionary, me: card_object, foe: card_object, doomed: bool) -> float:
@@ -7957,7 +7950,7 @@ func cpu_utility_attack_value(attack: Dictionary, me: card_object, foe: card_obj
 			return 25.0 if not main.player_bench.is_empty() else -100.0
 		"magic darts":
 			return 30.0
-	# ISSUE #323: neo1-4 / ecard1-3 utility attacks (none of these was valued before, so the CPU only used them
+	# OLD ISSUE 323: neo1-4 / ecard1-3 utility attacks (none of these was valued before, so the CPU only used them
 	# when nothing else was usable).
 	var top_foe := 0
 	if foe != null and me != null:
@@ -8105,7 +8098,7 @@ func cpu_utility_attack_value(attack: Dictionary, me: card_object, foe: card_obj
 			return -20.0 if doomed else 30.0
 	return 0.0
 
-# ISSUE #307: the biggest BASE damage (before Weakness/Resistance) the CPU's Active can do this turn with
+# OLD ISSUE 307: the biggest BASE damage (before Weakness/Resistance) the CPU's Active can do this turn with
 # an attack it can already pay for — the follow-up damage a gust (Fragrance Trap) sets up.
 func cpu_best_damage_vs_any() -> int:
 	var me = main.opponent_active_pokemon
@@ -8118,7 +8111,7 @@ func cpu_best_damage_vs_any() -> int:
 		best = max(best, int(main.attack_effects.estimate_attack_damage_range(atk, me, null).get("max", 0)))
 	return best
 
-# ISSUE #300: where to park a PLAYER Energy card the CPU is moving (Magnetic Lines) — the player's Benched
+# OLD ISSUE 300: where to park a PLAYER Energy card the CPU is moving (Magnetic Lines) — the player's Benched
 # Pokemon that gains the least from it: no attack that needs its type, and the lowest threat.
 func cpu_pick_energy_dump_target(pool: Array, energy: card_object) -> card_object:
 	var best: card_object = null
@@ -8138,7 +8131,7 @@ func cpu_pick_energy_dump_target(pool: Array, energy: card_object) -> card_objec
 			best = p
 	return best if best != null else (pool[0] if not pool.is_empty() else null)
 
-# ISSUE #310: which of the PLAYER's Pokémon to strip Energy from (Energy Removal, Super Energy Removal):
+# OLD ISSUE 310: which of the PLAYER's Pokémon to strip Energy from (Energy Removal, Super Energy Removal):
 # the Active first (it attacks next turn), weighted by threat, and especially one that drops below the
 # cost of its best attack.
 func cpu_pick_energy_removal_target(pool: Array) -> card_object:
@@ -8156,10 +8149,9 @@ func cpu_pick_energy_removal_target(pool: Array) -> card_object:
 		if s > best_s:
 			best_s = s
 			best = p
-	print("ISSUE #310 FIX ACTIVE: CPU Energy Removal target -> ", best.metadata.get("name", "") if best != null else "none")
 	return best
 
-# ISSUE #300: GUST TARGET — which of the PLAYER's Benched Pokemon the CPU should drag into the Active spot
+# OLD ISSUE 300: GUST TARGET — which of the PLAYER's Benched Pokemon the CPU should drag into the Active spot
 # (Drag Off, Flytrap, Lure, Gust of Wind...). `damage` is the attack's follow-up damage to the new
 # Defending Pokemon (0 for a pure gust); `attacker` lets Weakness/Resistance/PlusPower count.
 # Priorities: 1) a Knock Out with the follow-up damage (Pokemon-ex = 2 Prizes, worth more);
@@ -8191,22 +8183,21 @@ func cpu_pick_gust_target(pool: Array, damage: int = 0, attacker: card_object = 
 		else:
 			s -= _cpu_threat_score(p)                            # don't hand the player its best attacker
 		s += cpu_decision_override(p, "gust")
-		# ISSUE #375 PLANNER: the planned Gust target.
+		# OLD ISSUE 375 PLANNER: the planned Gust target.
 		var _pl_t: Dictionary = cpu_plan("trainer")
 		if not _pl_t.is_empty() and _pl_t["desc"].get("gust_card") == p:
 			s += 5000.0
-		# ISSUE #375 LOOKAHEAD: the exchange our Active would have against this target.
+		# OLD ISSUE 375 LOOKAHEAD: the exchange our Active would have against this target.
 		if CpuWeights.on("rule.lookahead") and CpuWeights.g("look.gust", 1.0) > 0.0 and p in main.player_bench:
 			var gme = attacker if attacker != null else main.opponent_active_pokemon
 			s += _la().exchange(gme, p, true, 0) * CpuWeights.g("look.gust_pick", 1.0)
-		# ISSUE #375: learned matchup — drag up what OUR Active fares best against.
+		# OLD ISSUE 375: learned matchup — drag up what OUR Active fares best against.
 		var gust_me = attacker if attacker != null else main.opponent_active_pokemon
 		if gust_me != null and p in main.player_bench:
 			s += CpuWeights.g("learn.gust", 100.0) * cpu_learned_matchup(gust_me, p)
 		if s > best_s:
 			best_s = s
 			best = p
-	print("ISSUE #300 FIX ACTIVE: CPU gust target -> ", best.metadata.get("name", "") if best != null else "none")
 	return best
 
 # OWN-POKEMON BENEFIT RECIPIENT — rank one of the CPU's own Pokemon (active or bench) as the target for
@@ -8314,9 +8305,9 @@ func _cpu_has_evolution_base(evo: card_object) -> bool:
 	return false
 
 ######################################################################################################################################################
-################################################ HUMAN-PLAY LAYER (ISSUE #373) ######################################################################
+################################################ HUMAN-PLAY LAYER (OLD ISSUE 373) ######################################################################
 ######################################################################################################################################################
-# ISSUE #373: the opponent should sequence its turn the way a person would.
+# OLD ISSUE 373: the opponent should sequence its turn the way a person would.
 #   * Hand-replacing draw cards (Professor Oak, Oak's Research, Professor Elm, Gambler, Copycat, Desert Shaman,
 #     Rocket's Admin.) wait until everything else worth doing has been done — Bill, searches, evolutions, benching,
 #     the Energy attachment — unless the hand is stuck, in which case they go first to dig for plays.
@@ -8332,9 +8323,9 @@ var CPU_TRAINER_PLAY_THRESHOLD: float:
 var cpu_trainer_phase := "late"
 var cpu_no_damage_streak := 0        # consecutive CPU attacks that did no damage while a damaging one was available
 var cpu_last_retreat_turn := -99     # main.turn_number of the CPU's last voluntary retreat
-var _turn_start_active: card_object = null   # ISSUE #492: the CPU's Active when its turn began
+var _turn_start_active: card_object = null   # ISSUE #366: the CPU's Active when its turn began
 var cpu_final_power_check := false   # true only for the last power pass before the attack (turn-ending powers)
-var cpu_undeveloped_draw := false    # ISSUE #524: a hand-replacer was just played; develop the new hand before another
+var cpu_undeveloped_draw := false    # ISSUE #398: a hand-replacer was just played; develop the new hand before another
 
 # How each draw card treats the hand: "wipe" discards it, "shuffle" shuffles it back, "add" keeps it,
 # "discard1" costs 1 card from hand.
@@ -8350,7 +8341,7 @@ const CPU_DRAW_CARDS := {
 
 var _cpu_streak_attacker: card_object = null
 
-# ISSUE #373: situational attack adjustment (see cpu_phase_attack). Same scale as the rest of the attack scoring
+# OLD ISSUE 373: situational attack adjustment (see cpu_phase_attack). Same scale as the rest of the attack scoring
 # (score ≈ 2 × damage, +500 for a guaranteed KO).
 func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: int, player_hp: int, ko_threats: Dictionary, attacks: Array, index: int, text: String = "") -> float:
 	var me = main.opponent_active_pokemon
@@ -8369,7 +8360,7 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 	var potential: bool = bool(ko_threats.get("cpu_active_potential_ko", false))
 	var foe_max := _player_effective_damage_against(me, true)
 	for e in parsed_effects:
-		# ISSUE #375 (think like a person): a condition the attack puts on OUR OWN Pokémon (Foul Odor, Dream Dance,
+		# OLD ISSUE 375 (think like a person): a condition the attack puts on OUR OWN Pokémon (Foul Odor, Dream Dance,
 		# Outrage...) is a cost — the CPU used to count only the half that hit the player.
 		if e.get("type", "") == "status" and e.get("target", "") == "self" and not kos:
 			var sst: String = e.get("status", "")
@@ -8386,7 +8377,6 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 					"Burned": cost = 12.0
 				if guaranteed: cost *= 0.3   # going down next turn anyway
 				adj -= cost * (0.5 if e.get("flip", "none") != "none" else 1.0)
-				print("ISSUE #375 FIX ACTIVE: self-inflicted ", sst, " costs ", int(cost))
 			continue
 		if e.get("type", "") != "status" or e.get("target", "") != "defender":
 			continue
@@ -8396,13 +8386,13 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 			continue
 		var mult := 0.5 if e.get("flip", "none") != "none" else 1.0
 		if e.get("flip", "none") != "none" and not _cpu_known_coins.is_empty():
-			mult = 1.0 if (bool(_cpu_known_coins[0]) == (e.get("flip", "") == "heads")) else 0.0   # ISSUE #375 FORESIGHT
+			mult = 1.0 if (bool(_cpu_known_coins[0]) == (e.get("flip", "") == "heads")) else 0.0   # OLD ISSUE 375 FORESIGHT
 		if kos:
 			# A Knocked Out Pokémon keeps no Special Condition — don't let it decide between two KOs.
 			var base_v := {"Paralyzed": 80.0, "Asleep": 50.0, "Confused": 40.0, "Poisoned": 30.0, "Burned": 25.0}
 			adj -= float(base_v.get(st, 0.0)) * mult
 			continue
-		# ISSUE #375 (the user's rule — think like a person): a condition is worth what it stops, for as long as it STICKS.
+		# OLD ISSUE 375 (the user's rule — think like a person): a condition is worth what it stops, for as long as it STICKS.
 		#   Paralysis = one turn: their next attack and retreat are stopped. Best on a cheap retreater (which would just
 		#               walk out of Confusion) — and only half as good when it's a coin flip.
 		#   Confusion = until they retreat / evolve: each attack has a 50% chance to fail and hurt themselves. It sticks to
@@ -8420,7 +8410,7 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 		elif potential: adj += CpuWeights.g("attack.protect_when_threatened", 30.0) * flip_w
 		elif exp_dmg <= 0: adj -= 25.0
 
-	# ISSUE #375 (the user's rule): "damage done to this Pokémon during your opponent's next turn is reduced by N"
+	# OLD ISSUE 375 (the user's rule): "damage done to this Pokémon during your opponent's next turn is reduced by N"
 	# (Teary Eyes, Minimize...). Compare what the reduction SAVES (as a share of our HP) with what our best other attack
 	# DEALS (as a share of their HP). A 120 HP opponent hitting our 40 HP Teddiursa for 20: Teary Eyes saves 50% of our HP,
 	# Scratch deals 8% of theirs — stall, and spend the turns attaching / evolving / building the Bench instead.
@@ -8447,18 +8437,16 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 			if bonus > 0.0:
 				defensive_ok = true
 			adj += bonus
-			print("ISSUE #375 FIX ACTIVE: damage-reduction stall ", attacks[index].get("name", ""), " saves ", int(save_share * 100.0), "% of our HP vs ", int(deal_share * 100.0), "% dealt -> ", int(bonus))
 
-	# ISSUE #375 (user: "think like a human"): SETUP attacks. Early, on an undeveloped board, a person fills the Bench /
+	# OLD ISSUE 375 (user: "think like a human"): SETUP attacks. Early, on an undeveloped board, a person fills the Bench /
 	# evolves / accelerates Energy rather than poking for 10-20. Matched on wording, so every card that says the same
 	# thing is covered (Call for Friends, Look for Friends, Ascension, Hatch, Fast Evolution, Collect, Energy Stream...).
 	if not kos and tl != "":
 		var setup := _cpu_setup_attack_value(tl, me, guaranteed) * CpuWeights.g("attack.setup_value", 1.0)
 		if setup > 0.0:
 			adj += setup
-			print("ISSUE #375 FIX ACTIVE: setup value ", int(setup), " for ", attacks[index].get("name", ""))
 
-	# ISSUE #375: learned attack value (self-play) — e.g. poison vs high HP, Paralysis vs a Power holder, bench damage vs
+	# OLD ISSUE 375: learned attack value (self-play) — e.g. poison vs high HP, Paralysis vs a Power holder, bench damage vs
 	# a Bench of stallers. 0 until a learned table exists.
 	adj += CpuWeights.g("learn.attack", 100.0) * cpu_learned_attack_value(me, attacks[index], foe)
 
@@ -8472,10 +8460,10 @@ func _cpu_attack_context_adjust(parsed_effects: Array, min_dmg: int, exp_dmg: in
 				damaging_alt = true
 				break
 		if damaging_alt:
-			adj -= CpuWeights.g("attack.stall_penalty", 45.0) * cpu_no_damage_streak * (0.5 if defensive_ok else 1.0)   # ISSUE #375: a justified stall is penalised less
+			adj -= CpuWeights.g("attack.stall_penalty", 45.0) * cpu_no_damage_streak * (0.5 if defensive_ok else 1.0)   # OLD ISSUE 375: a justified stall is penalised less
 	return adj
 
-## ISSUE #375 (the user's rule — think like a person): what inflicting Special Condition `st` on the player's Active is
+## OLD ISSUE 375 (the user's rule — think like a person): what inflicting Special Condition `st` on the player's Active is
 ## worth right now — what it stops, for as long as it STICKS. Shared by attack choice (_cpu_attack_context_adjust)
 ## and every "choose 1 Special Condition" effect (Attack_Effects.choose_special_condition), so the same reasoning
 ## applies to every card. Coin flips are NOT applied here (callers multiply by 0.5).
@@ -8515,11 +8503,10 @@ func cpu_status_value(st: String, exp_dmg: int, ko_threats: Dictionary) -> float
 			else: v = (6.0 if st == "Poisoned" else 5.0) * stays + (6.0 if foe.current_hp >= 80 else 0.0)
 	if foe_max == 0 and foe.attached_energies.is_empty() and st in ["Paralyzed", "Asleep", "Confused"]:
 		v -= 25.0                                                              # it can't attack anyway
-	print("ISSUE #375 FIX ACTIVE: status value ", st, " = ", snappedf(v, 0.1), " (stays ~", stays, " turns, retreat ", retreat, ", threat ", threat_stop, ")")
 	return v
 
 
-## ISSUE #375: the CPU's pick for "choose 1 Special Condition" — the condition worth the most on this board.
+## OLD ISSUE 375: the CPU's pick for "choose 1 Special Condition" — the condition worth the most on this board.
 func cpu_pick_status(allowed: Array) -> String:
 	var foe = main.player_active_pokemon
 	var threats := evaluate_ko_threats()
@@ -8535,7 +8522,7 @@ func cpu_pick_status(allowed: Array) -> String:
 	return best
 
 
-## ISSUE #375: what a setup attack's effect is worth on THIS board (0 when it isn't a setup attack).
+## OLD ISSUE 375: what a setup attack's effect is worth on THIS board (0 when it isn't a setup attack).
 func _cpu_setup_attack_value(tl: String, me: card_object, doomed: bool) -> float:
 	var flip := 0.5 if "flip a coin" in tl else 1.0
 	var bench: int = main.opponent_bench.size()
@@ -8564,7 +8551,7 @@ func _cpu_setup_attack_value(tl: String, me: card_object, doomed: bool) -> float
 		v = 12.0
 	return v * flip
 
-## ISSUE #539: a Trainer that attaches to a Pokemon to change this turn's attack or the next incoming one.
+## ISSUE #413: a Trainer that attaches to a Pokemon to change this turn's attack or the next incoming one.
 func cpu_is_attach_for_turn(card: card_object) -> bool:
 	if card == null:
 		return false
@@ -8634,7 +8621,7 @@ func cpu_hand_actionable_count(exclude: card_object) -> int:
 func cpu_hand_is_stuck(exclude: card_object = null) -> bool:
 	return cpu_hand_actionable_count(exclude) == 0
 
-# ISSUE #373: board-aware score for every draw card in CPU_DRAW_CARDS.
+# OLD ISSUE 373: board-aware score for every draw card in CPU_DRAW_CARDS.
 func _cpu_score_draw_card(card: card_object) -> float:
 	var uid := card.uid.to_lower()
 	var mode: String = CPU_DRAW_CARDS.get(uid, "add")
@@ -8658,13 +8645,13 @@ func _cpu_score_draw_card(card: card_object) -> float:
 		"wipe":
 			score -= cpu_hand_loss_value(card)
 			if cpu_hand_is_stuck(card): score += 15.0
-			# ISSUE #524: _cpu_score_professor_oak's rule (dead code since #373 routed Oak here) - never wipe a
+			# ISSUE #398: _cpu_score_professor_oak's rule (dead code since #373 routed Oak here) - never wipe a
 			# hand holding an evolution that can go onto the board right now.
 			for c in main.opponent_hand:
 				if c != card and c.metadata.get("supertype", "") == "Pokémon" and not main.is_basic_pokemon(c) \
 						and not main.get_valid_evolution_targets(c, true).is_empty():
 					score -= 40.0
-					print("ISSUE #524 FIX ACTIVE: ", card.metadata.get("name", ""), " -40 - ", c.metadata.get("name", ""), " can evolve now")
+					print("ISSUE #398 FIX ACTIVE: ", card.metadata.get("name", ""), " -40 - ", c.metadata.get("name", ""), " can evolve now")
 					break
 		"shuffle":
 			score -= cpu_hand_loss_value(card) * 0.7
@@ -8686,33 +8673,33 @@ func _cpu_score_draw_card(card: card_object) -> float:
 	if uid == "ex12-73" or uid == "ecard3-123": score -= 3.0
 	return clampf(score, -100.0, 95.0)
 
-# ISSUE #373: the score used when the CPU decides what to PLAY (the plain cpu_score_trainer_card is also used for
+# OLD ISSUE 373: the score used when the CPU decides what to PLAY (the plain cpu_score_trainer_card is also used for
 # keep/discard decisions, where "not now" must not read as "worthless").
 func cpu_score_trainer_for_play(card: card_object) -> float:
 	var s := cpu_score_trainer_card(card)
 	if s <= CPU_TRAINER_PLAY_THRESHOLD:
 		return s
-	# ISSUE #539: cards that go ON a Pokemon for this turn's attack / the opponent's next one (PlusPower, Defender,
+	# ISSUE #413: cards that go ON a Pokemon for this turn's attack / the opponent's next one (PlusPower, Defender,
 	# Technical Machines) are scored against the board as it is NOW - played before evolving / attaching / retreating
 	# they backed a Pokemon that then changed (PlusPower on an Active that then evolved and couldn't attack).
 	if cpu_trainer_phase != "late" and cpu_is_attach_for_turn(card):
-		print("ISSUE #539 FIX ACTIVE: CPU holds ", card.metadata.get("name", ""), " (", int(s), ") until evolving/Energy/retreat are done")
+		print("ISSUE #413 FIX ACTIVE: CPU holds ", card.metadata.get("name", ""), " (", int(s), ") until evolving/Energy/retreat are done")
 		return -50.0
 	if CpuWeights.on("rule.hold_draw_cards") and cpu_is_hand_replacer(card):
 		var stuck := cpu_hand_is_stuck(card)
 		var reason := ""
-		# ISSUE #524: a card that throws the hand away (Professor Oak, Birch...) waits for the LATE phase -
+		# ISSUE #398: a card that throws the hand away (Professor Oak, Birch...) waits for the LATE phase -
 		# after Bill and the other Trainers, evolving, benching, the Energy attachment and retreat - unless
 		# nothing in the hand can be used at all. It used to be allowed in the "mid" phase whenever there
 		# was no Energy left to attach, which threw away playable Basics / evolutions the CPU then never
 		# got to play (the orchestrator only re-developed after the late phase).
 		if cpu_trainer_phase in ["early", "mid"] and not stuck:
 			reason = "develop the board first" if cpu_trainer_phase == "early" else "use the hand first (bench, evolve, attach, other Trainers)"
-		# ISSUE #524 (retest): a draw card just refilled the hand and the orchestrator hasn't developed with it
+		# ISSUE #398 (retest): a draw card just refilled the hand and the orchestrator hasn't developed with it
 		# yet - Oak straight into a second Oak threw away the Pokemon/Energy it had just drawn.
 		elif cpu_undeveloped_draw and not stuck:
 			reason = "play the cards it just drew first"
-			print("ISSUE #524 FIX ACTIVE: holding ", card.metadata.get("name", ""), " - new hand not developed yet")
+			print("ISSUE #398 FIX ACTIVE: holding ", card.metadata.get("name", ""), " - new hand not developed yet")
 		else:
 			for c in main.opponent_hand:
 				if c == card or not main.trainer_effects.is_trainer_card(c) or c.uid == LASS_UID or cpu_is_hand_replacer(c):
@@ -8721,7 +8708,6 @@ func cpu_score_trainer_for_play(card: card_object) -> float:
 					reason = "play " + c.metadata.get("name", "") + " first"
 					break
 		if reason != "":
-			print("ISSUE #373 FIX ACTIVE: CPU holds ", card.metadata.get("name", ""), " (", int(s), ") — ", reason)
 			return -50.0
 	return s
 
@@ -8817,16 +8803,14 @@ func cpu_hand_energy_keep(energy: card_object) -> float:
 	if hand_energy.size() >= 4: v -= 15.0
 	return clampf(v, 10.0, 85.0)
 
-# ISSUE #373: take a face-up Prize the CPU wants rather than a random one (face-down Prizes stay random).
-# ISSUE #375 (user): the CPU does NOT know its face-down Prizes — those are picked at random. Only Prizes it can see
+# OLD ISSUE 373: take a face-up Prize the CPU wants rather than a random one (face-down Prizes stay random).
+# OLD ISSUE 375 (user): the CPU does NOT know its face-down Prizes — those are picked at random. Only Prizes it can see
 # (an effect turned them over, or Here Comes Team Rocket! put its side face up) are chosen on purpose.
 func cpu_pick_prize(prizes: Array) -> card_object:
 	if CpuWeights.cheating_cards():
-		print("ISSUE #375 FORESIGHT: CPU sees all its Prize cards")
 		return cpu_pick_best_keep(prizes)
 	var face_up: Array = prizes.filter(func(c): return main.prize_is_face_up(c, true))
 	var face_down: Array = prizes.filter(func(c): return not main.prize_is_face_up(c, true))
-	print("ISSUE #375 FIX ACTIVE: CPU prize pick — ", face_up.size(), " visible, ", face_down.size(), " face down (random)")
 	if face_up.is_empty():
 		return prizes[randi() % prizes.size()]
 	var best = cpu_pick_best_keep(face_up)
@@ -8841,7 +8825,7 @@ func opponent_take_prize_card() -> void:
 	if main.opponent_prize_cards.size() == 0:
 		return
 	
-	# ISSUE #373: a face-up Prize (Island Hermit, Card-Flip Game, ...) is taken on purpose when it is worth it.
+	# OLD ISSUE 373: a face-up Prize (Island Hermit, Card-Flip Game, ...) is taken on purpose when it is worth it.
 	var chosen_card = cpu_pick_prize(main.opponent_prize_cards)
 	
 	await main.show_message("OPPONENT TAKES A PRIZE CARD!")
@@ -8985,7 +8969,7 @@ func _cpu_score_the_bosss_way() -> float:
 				# Check if we have matching basic on field
 				var all_cpu = get_all_cpu_field_pokemon()
 				for p in all_cpu:
-					if card.metadata.get("evolvesFrom", "") == p.metadata.get("name", ""):
+					if main.can_evolve_from(card, p):   # ISSUE #432
 						return 85.0  # Can evolve immediately next turn
 				return 60.0  # Good to have in hand
 	return -100.0  # No Dark evolutions in deck
@@ -9119,12 +9103,12 @@ func _cpu_score_gym1_rockets_trap() -> float:
 	return 25.0 + min(3, main.player_hand.size()) * 5.0
 
 func _cpu_score_gym1_blaines_quiz() -> float:
-	# ISSUE #375: not 50/50 — the player has to guess a Pokémon's printed LENGTH, which they'll usually miss, so the CPU
+	# OLD ISSUE 375: not 50/50 — the player has to guess a Pokémon's printed LENGTH, which they'll usually miss, so the CPU
 	# usually draws 2. (Was a flat 15, under the play threshold: never played.)
 	return _cpu_score_quiz(0.8, 2, true)
 
 
-# ISSUE #375: the Blaine's Quizzes as the draw cards they really are — `cpu_win` = chance the player guesses wrong.
+# OLD ISSUE 375: the Blaine's Quizzes as the draw cards they really are — `cpu_win` = chance the player guesses wrong.
 func _cpu_score_quiz(cpu_win: float, cards: int, needs_pokemon: bool) -> float:
 	if main.opponent_hand.size() >= 7 or main.opponent_deck.size() <= cards + 2:
 		return -20.0
@@ -9180,7 +9164,7 @@ func _cpu_score_gym1_good_manners(card: card_object) -> float:
 func _cpu_score_gym1_lt_surges_treaty() -> float:
 	# The OPPONENT (player) chooses. Heuristic: if CPU is behind on prizes, the player will likely deny prizes (let CPU draw 1).
 	# Either way: outcome is mildly positive (1 prize OR 1 draw). Moderate but symmetric.
-	# ISSUE #375 LAB FINDING: a flat 20 sat under the play threshold, so it was NEVER played (0 of 279 chances) while the
+	# OLD ISSUE 375 LAB FINDING: a flat 20 sat under the play threshold, so it was NEVER played (0 of 279 chances) while the
 	# branch replays had playing it ahead (z +2.2). A free Prize-or-card is worth a card slot.
 	if CpuWeights.on("rule.trainer_value_fix"):
 		return CpuWeights.g("trainer.treaty", 35.0)
@@ -9428,10 +9412,10 @@ func _cpu_score_gym2_mistys_wish() -> float:
 	return 10.0
 
 func _cpu_score_gym2_blaines_quiz_2() -> float:
-	return _cpu_score_quiz(0.67, 2, false)   # ISSUE #375: a 3-way guess (Energy / Trainer / Pokémon)
+	return _cpu_score_quiz(0.67, 2, false)   # OLD ISSUE 375: a 3-way guess (Energy / Trainer / Pokémon)
 
 func _cpu_score_gym2_blaines_quiz_3() -> float:
-	return _cpu_score_quiz(0.5, 3, true)   # ISSUE #375: name the card from one of its attacks
+	return _cpu_score_quiz(0.5, 3, true)   # OLD ISSUE 375: name the card from one of its attacks
 
 func _cpu_score_gym2_koga_ninja_trick() -> float:
 	# Need a Koga-named active
@@ -9499,7 +9483,7 @@ func _cpu_score_gym2_mistys_tears(card: card_object) -> float:
 	return 10.0
 
 func _cpu_score_gym2_rockets_secret_experiment() -> float:
-	# ISSUE #375 (user: think like a person): heads = take ANY card from the deck; tails = no Trainers until the end of
+	# OLD ISSUE 375 (user: think like a person): heads = take ANY card from the deck; tails = no Trainers until the end of
 	# next turn. Worth it when the deck holds something the board really needs, and when few Trainers in hand would be
 	# locked out — so it is naturally played after the other Trainers this turn (they score higher).
 	var want := 0.0

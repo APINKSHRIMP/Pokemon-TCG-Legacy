@@ -43,7 +43,7 @@ const SCREEN_CENTER_X: float = 960.0
 # -- TWEAKABLE: the badge and the stats row -------------------
 const OUTCOME_FONT_SIZE : int = 46      # the word inside the wheel
 const STATS_SEPARATION  : int = 96      # gap between the three stat items
-## ISSUE #288: 0.5 -> 1.0. "Double the fade in time for all scene transitions."
+## ISSUE #289: 0.5 -> 1.0. "Double the fade in time for all scene transitions."
 ## The same doubling is applied on the match board, the intro, the outro and the
 ## best-of-three tracker, so every boundary in a match moves at one pace. It is
 ## still multiplied by the Animation speed preset via transition_time(), and
@@ -126,13 +126,13 @@ const GIFT_FLIP_DURATIONS = [0.01, 0.02, 0.04, 0.06, 0.08, 0.1, 0.11, 0.12, 0.2]
 var click_enabled: bool  = false
 var transitioning: bool  = false
 
-# ISSUE #33 FIX: skip support for the match-end reward animations. While _in_skippable_anim is true
+# ISSUE #34 FIX: skip support for the match-end reward animations. While _in_skippable_anim is true
 # (reward fly-in, coin/card flip, costume fade), a mouse click sets _skip_anim to fast-forward that
 # animation to its finished state, instead of the click being ignored (the previous fix only covered
 # the overworld MapManager gift reveal, so match-end rewards couldn't be skipped at all).
 var _in_skippable_anim: bool = false
 var _skip_anim: bool = false
-# ISSUE #34: set once in _ready() when the player has turned the intro/outro animation off. Only the
+# ISSUE #35: set once in _ready() when the player has turned the intro/outro animation off. Only the
 # reward-row FLY-IN honours it — the gift reveals (coin/card flip, costume fade) deliberately ignore
 # it and keep playing at Item speed, since those are the rewards themselves, not ceremony.
 var _force_skip_anim: bool = false
@@ -186,7 +186,7 @@ func _ready() -> void:
 	var is_first_win = not GameState.has_beaten_opponent(GameState.current_opponent_name)
 	_was_first_win = battle_won and is_first_win
 
-	# ISSUE #122 FIX ACTIVE: the opponent's name used to be glued onto the FRONT of their own
+	# ISSUE #124 FIX ACTIVE: the opponent's name used to be glued onto the FRONT of their own
 	# dialogue as plain text ("MISTY:\nnice match!"), which is exactly what the message box's
 	# name chip is for. The name now goes on a sprite chip above the box like every overworld
 	# NPC, and the body holds only what the opponent actually says.
@@ -199,7 +199,7 @@ func _ready() -> void:
 	if battle_won:
 		build_rewards(is_first_win)
 
-	# ISSUE #34: Options "Play Match Intro / Outro Animation?" = skip animations.
+	# ISSUE #35: Options "Play Match Intro / Outro Animation?" = skip animations.
 	# build_rewards() above has already GRANTED everything (cash, coin, cards, costumes) and marked
 	# the opponent beaten — the arrays below only drive the optional full-screen reveal animations.
 	# So when there is nothing to reveal, the whole outro is ceremony over rewards the player already
@@ -295,11 +295,11 @@ func _input(event: InputEvent) -> void:
 			player_clicked.emit()
 		return
 
-	# ISSUE #135 FIX: UIInput.is_click() is "a real mouse button went down" -- it filters out the
+	# ISSUE #137 FIX: UIInput.is_click() is "a real mouse button went down" -- it filters out the
 	# wheel, which Godot also reports as a pressed mouse button. Scrolling used to advance the outro
 	# dialogue and fast-forward the reward animations.
 	if UIInput.is_click(event):
-		# ISSUE #33 FIX: a click during a skippable animation (reward fly-in, coin/card flip, costume
+		# ISSUE #34 FIX: a click during a skippable animation (reward fly-in, coin/card flip, costume
 		# fade) fast-forwards it to its finished state. This is checked BEFORE the normal click gate so
 		# it works even during the fly-in, when click_enabled is still false.
 		if _in_skippable_anim and not transitioning:
@@ -313,7 +313,7 @@ func _input(event: InputEvent) -> void:
 				return
 			player_clicked.emit()
 
-# ISSUE #33 FIX: awaits a tween, but returns early (killing the tween) if the player clicks to skip.
+# ISSUE #34 FIX: awaits a tween, but returns early (killing the tween) if the player clicks to skip.
 # Uses the finished signal for natural completion and polls _skip_anim each frame for the skip.
 func _await_tween_or_skip(tw: Tween) -> void:
 	if tw == null or not tw.is_valid():
@@ -328,7 +328,7 @@ func _await_tween_or_skip(tw: Tween) -> void:
 # Instantly places the REWARDS caption and every reward row at its resting position.
 # Called when the fly-in finishes OR is skipped, so a skipped fly-in shows all
 # rewards at once exactly where they would have ended up.
-## ISSUE #289: settled means opaque as well as in position. Both the natural end
+## ISSUE #290: settled means opaque as well as in position. Both the natural end
 ## of the fly-in and a click-to-skip come through here, so neither can leave a
 ## reward line half-faded.
 func _snap_rewards_to_final() -> void:
@@ -459,8 +459,9 @@ func build_rewards(is_first_win: bool) -> void:
 	# The nodes come later, in _build_rewards_block(), once the frame exists.
 	var row_index: int = 0
 
-	# --- 1. Cash reward (always granted, tripled on first win -- never in Hard Mode) ---
-	var tripled: bool = is_first_win and not GameState.is_hard_mode()
+	# --- 1. Cash reward (always granted, tripled on a first win - Hard Mode included, 2026-11-03;
+	# Hard Mode still has no rematches, see MapManager HARD_MODE_NO_REMATCH_TEXT) ---
+	var tripled: bool = is_first_win
 	var cash_amount = int(opponent_data.get("cash_reward", "0"))
 	if tripled:
 		cash_amount *= 3
@@ -708,7 +709,7 @@ func _place_reward_row(block: Control, row: Dictionary, y: float) -> void:
 	var icon_x := centre - total * 0.5
 	var value_x := icon_x + icon_px + REWARD_ICON_GAP
 
-	# ISSUE #289: parked transparent, like every other element that flies in.
+	# ISSUE #290: parked transparent, like every other element that flies in.
 	value.position = Vector2(REWARD_OFFSCREEN_X, y)
 	value.size = Vector2(main_w + note_w, REWARD_ROW_H)
 	value.modulate.a = 0.0
@@ -721,7 +722,7 @@ func _place_reward_row(block: Control, row: Dictionary, y: float) -> void:
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.position = Vector2(-REWARD_OFFSCREEN_X, y + (REWARD_ROW_H - icon_px) * 0.5)
 	icon.size = Vector2(icon_px, icon_px)
-	icon.modulate.a = 0.0   # ISSUE #289
+	icon.modulate.a = 0.0   # ISSUE #290
 	block.add_child(icon)
 
 	row["icon_node"] = icon
@@ -765,7 +766,7 @@ func animate_rewards() -> void:
 		tween.set_ease(Tween.EASE_OUT)
 		tween.tween_property(row["icon_node"], "position:x", row["icon_final_x"], dur).set_delay(delay)
 		tween.tween_property(row["value_node"], "position:x", row["value_final_x"], dur).set_delay(delay)
-		# ISSUE #289: the prize icon and its figure fade up as they fly in, so a
+		# ISSUE #290: the prize icon and its figure fade up as they fly in, so a
 		# reward line arrives instead of sliding in already fully drawn.
 		var fade_dur: float = maxf(dur * BattleFrame.DROP_FADE_SHARE, 0.01)
 		tween.tween_property(row["icon_node"], "modulate:a", 1.0, fade_dur).set_delay(delay)
@@ -937,7 +938,7 @@ func _play_gift_sequence() -> void:
 		_show_gift_message("You received a " + _format_pack_name(pack_art) + "!")
 		await player_clicked
 		_hide_gift_message()
-		# ISSUE #487: the SAME pack is the one that opens. It glides from the reveal into the rect
+		# ISSUE #361: the SAME pack is the one that opens. It glides from the reveal into the rect
 		# PackOpeningManager opens from and the opening starts with no fade-in; the reveal is only
 		# cleared once the opening's own pack is on screen over it -- no flash, no swap.
 		await _glide_gift_to_pack_rect(rect)
@@ -962,7 +963,7 @@ func _open_reward_pack(pack_art: String, intro_fade: float = 0.4) -> void:
 	var was_click_enabled := click_enabled
 	click_enabled = false
 	PackOpeningManager.open_packs([pack_art], intro_fade)
-	# ISSUE #487: the reveal's pack stays under the opening until the opening's pack is drawn.
+	# ISSUE #361: the reveal's pack stays under the opening until the opening's pack is drawn.
 	await get_tree().process_frame
 	if _gift_container != null and is_instance_valid(_gift_container):
 		_gift_container.visible = false
@@ -970,7 +971,7 @@ func _open_reward_pack(pack_art: String, intro_fade: float = 0.4) -> void:
 	click_enabled = was_click_enabled
 
 
-## ISSUE #487: tween the revealed pack (position AND size) into PackOpeningManager's start rect, the
+## ISSUE #361: tween the revealed pack (position AND size) into PackOpeningManager's start rect, the
 ## way the Card Mart hands its bought pack over (Pack_Purchase_Script). TWEAKABLE: PACK_HANDOFF_TIME.
 const PACK_HANDOFF_TIME := 0.35
 func _glide_gift_to_pack_rect(rect: TextureRect) -> void:
@@ -1029,7 +1030,7 @@ func _show_gift(tex: Texture2D, kind: String) -> void:
 		"pack":    sz = PACK_REVEAL_BOX
 		_:         sz = Vector2(300, 300)
 
-	# ISSUE #77 FIX: these boxes were used as fixed sizes with STRETCH_SCALE, so any texture whose
+	# ISSUE #75 FIX: these boxes were used as fixed sizes with STRETCH_SCALE, so any texture whose
 	# aspect ratio didn't match got squashed — the in-battle costume sprites are square (e.g.
 	# 539x539) but were forced into a 432x594 portrait box, which is why a won costume appeared
 	# stretched thin. Treat the box as a MAXIMUM and aspect-fit the texture inside it, the same
@@ -1079,7 +1080,7 @@ func _play_flip_anim(rect: TextureRect, back_tex: Texture2D, front_tex: Texture2
 	rect.pivot_offset = rect.size / 2.0
 	var swaps = [front_tex, back_tex, front_tex, back_tex, front_tex,
 				 back_tex, front_tex, back_tex, front_tex]
-	# ISSUE #33 FIX: the coin/card flip is click-skippable — a click snaps it to its finished
+	# ISSUE #34 FIX: the coin/card flip is click-skippable — a click snaps it to its finished
 	# face-up state (front texture, full scale) instead of the click being ignored.
 	# NOTE: deliberately NOT _force_skip_anim. This is a reward reveal, not intro/outro ceremony, so
 	# it plays at Item speed even when the player has the intro/outro animation turned off.
@@ -1103,7 +1104,7 @@ func _play_costume_fadein_anim(rect: TextureRect) -> void:
 	if rect == null or not is_instance_valid(rect):
 		return
 	rect.modulate = Color(0, 0, 0, 1)
-	# ISSUE #33 FIX: the costume fade-in is click-skippable — a click snaps it to fully visible.
+	# ISSUE #34 FIX: the costume fade-in is click-skippable — a click snaps it to fully visible.
 	# As with the flip above, a reward reveal ignores _force_skip_anim and runs at Item speed.
 	_in_skippable_anim = true
 	_skip_anim = false
@@ -1294,7 +1295,7 @@ func transition_back_to_map() -> void:
 	_stop_outcome_jingle()
 
 	var tween = create_tween()
-	# ISSUE #288: the "outro to overworld" half, doubled with the rest. It was the
+	# ISSUE #289: the "outro to overworld" half, doubled with the rest. It was the
 	# one boundary still carrying a hardcoded number instead of FADE_TIME.
 	tween.tween_property(self, "modulate:a", 0.0, FADE_TIME)
 	await tween.finished

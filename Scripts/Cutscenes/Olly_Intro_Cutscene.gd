@@ -16,7 +16,7 @@ extends Cutscene
 #             pair's bonus pack (bonus1_a/b/c), the energy cards and the coin talk.
 #   "played"  pick a full Deck, Olly plays the weaker one. One chance, then the energy.
 #   "expert"  pick a full Deck, Olly plays the stronger one. One chance, then the energy.
-#   Hard Mode nine draft packs, the energy, the deck builder (no way out but saving),
+#   Hard Mode twelve draft packs, the energy, the deck builder (no way out but saving),
 #             then "Let me test ya" with 6 prizes. One chance.
 #
 # Crossing a scene boundary (the deck builder, the match) frees this object, so the
@@ -135,7 +135,7 @@ const LINES_AFTER_BONUS := [
 	"He also gave me a load of each energy card so we'll never run out. Here.",
 ]
 const TEXT_ENERGY := "You received a load of energy cards!"
-# ISSUE #476: the deck walkthrough's lines. LINES_AFTER_BONUS[0] opens it; the binder line is
+# ISSUE #350: the deck walkthrough's lines. LINES_AFTER_BONUS[0] opens it; the binder line is
 # dropped there (the walkthrough builds the deck instead) and the energy line follows it.
 const LINE_ENERGY_AFTER_BONUS := "He also gave me a load of each energy card so we'll never run out. Here."
 const NEWBY_BETTER_DECK := "Better Deck"
@@ -166,7 +166,7 @@ const LINE_ENERGY_ADVANCED := "I also got a load of each energy card so we'll ne
 const LINES_CAFE_MORNING := [
 	"El and Alexander have just gone for breakfast at Café Mieux. I got them each a deck too.",
 	"I gave Alexander the day off because it's a bank holiday. A lot of stuff's closed today but I've got stuff to do so I'll be open.",
-	# ISSUE #482: the Card Mart nudge. Olly isn't at the café himself, so "get there" not "get here".
+	# ISSUE #356: the Card Mart nudge. Olly isn't at the café himself, so "get there" not "get here".
 	"Before you get there, call in at the Card Mart and get yourself some new packs!",
 	"Make sure your deck is the best it can be, they'll want to battle when you get there!",
 	"El told me to tell you to meet them at the café ASAP, she said they'll be waiting for you.",
@@ -333,7 +333,7 @@ func _play_handover() -> void:
 			SoundManagerScript.crossfade_bgm(SoundManagerScript.BGM_DRAFT_TIME, 0.4, 0.4)
 			PackOpeningManager.open_packs(GameState.HARD_MODE_DRAFT_PACKS)
 			await PackOpeningManager.all_packs_opened
-			# ISSUE #543: back to what the map plays NOW - nothing outdoors at Bedtime.
+			# ISSUE #417: back to what the map plays NOW - nothing outdoors at Bedtime.
 			var after_draft: String = map._bgm_now() if map.has_method("_bgm_now") else map.get_bgm_path()
 			if after_draft != "":
 				SoundManagerScript.crossfade_bgm(after_draft)
@@ -390,7 +390,7 @@ const GIFT_DONE_KEY := "olly_intro_pack_given"
 func _gift_pack(text: String, art_id: String) -> void:
 	if GameState.progress.get(GIFT_DONE_KEY, false):
 		return
-	# ISSUE #487: the pack on the reveal glides into the opening's rect and opens from there.
+	# ISSUE #361: the pack on the reveal glides into the opening's rect and opens from there.
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
 	MapManager.show_pack_reveal(text, "res://Image_Assets/Packs/" + art_id + ".png",
 			func(): line_advanced.emit())
@@ -489,7 +489,7 @@ func _play_after_battle() -> void:
 		"basic":
 			await say_all(_speaker, LINES_NEW_BONUS)
 			await _gift_pack(TEXT_NEW_BONUS, "starter1_a")
-			# ISSUE #476: the deck builder walkthrough, Basic Starter Deck -> Better Deck.
+			# ISSUE #350: the deck builder walkthrough, Basic Starter Deck -> Better Deck.
 			await _deck_walkthrough("starter1_a", GameState.STARTER_DECK_BASIC, NEWBY_BETTER_DECK)
 			await say(_speaker, LINE_ENERGY_AFTER_BONUS)
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
@@ -500,7 +500,7 @@ func _play_after_battle() -> void:
 			var pair: String = GameState.progress.get(GameState.INTRO_PAIR_KEY, "Fire Shock")
 			var bonus_art: String = GameState.BONUS_PACK_FOR_PAIR.get(pair, "bonus1_a")
 			await _gift_pack(TEXT_RULES_BONUS, bonus_art)
-			# ISSUE #476: "<pair> Starter Deck" -> "<pair> Deck", from the bonus pack's cards.
+			# ISSUE #350: "<pair> Starter Deck" -> "<pair> Deck", from the bonus pack's cards.
 			await _deck_walkthrough(bonus_art, pair + " Starter Deck", pair + " Deck")
 			await say(_speaker, LINE_ENERGY_AFTER_BONUS)
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
@@ -565,7 +565,7 @@ func _check_exit() -> void:
 	finish()
 
 # ============================================================
-# ISSUE #476 — THE MENU WALKTHROUGHS (deck builder, coin case)
+# ISSUE #350 — THE MENU WALKTHROUGHS (deck builder, coin case)
 # ============================================================
 # Olly's "your deck can only keep 60 cards" line stays on screen (it can't be cleared yet, no caret)
 # while the escape menu opens with the Cards & Deck tile glowing and everything else dimmed, then the

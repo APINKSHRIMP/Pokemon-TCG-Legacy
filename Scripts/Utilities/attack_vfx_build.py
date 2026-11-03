@@ -112,8 +112,8 @@ RECIPES = {
     'Slap':             rec(L, T('DoubleSlap', size=0.8)),
     'DoubleSlap':       rec(L, T('DoubleSlap', size=0.8, count=2, stagger=0.22, jitter=0.18)),
     'Scratch':          rec(L, T('QuickSwipe', orient=True, size=0.9)),
-    # ISSUE #512: one diagonal slash per swipe (the multi-claw read as a bite / clamp). The runtime sets
-    # count to the number of heads flipped (ISSUE #511), so 3 heads = 3 slashes.
+    # ISSUE #386: one diagonal slash per swipe (the multi-claw read as a bite / clamp). The runtime sets
+    # count to the number of heads flipped (ISSUE #385), so 3 heads = 3 slashes.
     'FurySwipes':       rec(L, T('LightSlash', size=1.0, count=3, stagger=0.18, jitter=0.2)),
     'Slash':            rec(L, T('SwipeAttack', size=1.0)),
     'DoubleClaw':       rec(L, T('DoubleClaw', size=1.0)),
@@ -569,7 +569,7 @@ RECIPES.update({
     'GenericBeam':   rec(H, BM('WhiteLineBeam', size=0.35, dur=0.5), T('GenericPulseOut', size=1.0, par=True, delay=0.15)),
     'Growl':         rec(K, S('Growl', size=1.2, off=[0.45, 0]), T('StatDown', delay=0.25, **STAT_DOWN)),
     'Leer':          rec(W, T('MeanLook', size=0.8), T('StatDown', delay=0.2, **STAT_DOWN)),
-    # ISSUE #522: Stare is 10 damage to a CHOSEN Pokemon, not a stat drop - just the eye, on that Pokemon.
+    # ISSUE #396: Stare is 10 damage to a CHOSEN Pokemon, not a stat drop - just the eye, on that Pokemon.
     'Stare':         rec(W, T('MeanLook', size=0.8)),
     'TailWhip':      rec(W, T('Swagger', size=0.6, count=2, stagger=0.2, jitter=0.2), T('StatDown', delay=0.15, **STAT_DOWN)),
     'ScaryFace':     rec(W, T('ScaryFace', size=0.9), T('StatDown', delay=0.3, **STAT_DOWN)),
@@ -703,7 +703,7 @@ RECIPES.update({
     'MistBall':      rec(H, P('MistBall', size=0.45, spin=180), T('PsychicAttack', size=1.0), T('CloudPuff', size=1.0, par=True)),
     'Hypnosis':      rec(W, T('HypnoSpiral', size=0.6, spin=360, loops=2), T('PsychicLights', size=0.9, par=True, delay=0.15)),
     'Amnesia':       rec(H, S('Amnesia', size=1.0), S('StatUp', **STAT_UP)),
-    'Meditate':      rec(RISE, S('PsychicPowerUp', size=1.0)),   # ISSUE #535: no StatUp arrows
+    'Meditate':      rec(RISE, S('PsychicPowerUp', size=1.0)),   # ISSUE #409: no StatUp arrows
     'Barrier':       rec(GROW, S('Protect', size=1.1, hue=150), S('StatUp', **STAT_UP)),
     'Telekinesis':   rec(W, T('PsychicPalm', size=1.0), T('PsychicLights', size=0.9, par=True)),
     # ---- dark / ghost ----
@@ -874,7 +874,7 @@ BENCH_FX = {
 # named after a move use that move automatically; these are the rest. A TCG attack that IS a game move
 # (Thunderbolt, Ember, Hyper Beam...) plays its own move's clip whatever recipe it uses.
 SFX_OF = {
-    'Stare': 'Mean Look',   # ISSUE #522
+    'Stare': 'Mean Look',   # ISSUE #396
     'Anger': 'Rage', 'Barrage': 'Barrage 1hit', 'BeatUp': 'Beat Up 1hit', 'BigFireball': 'Overheat', 'BlueFlame': 'Will O Wisp',
     'BoneRush': 'Bone Rush 1hit', 'Bonemerang': 'Bonemerang 2hits', 'BugSwarm': 'Attack Order', 'CallForFamily': 'Helping Hand',
     'CatKick': 'Low Kick', 'ChainLightning': 'Discharge', 'ChantingBell': 'Heal Bell', 'Cheer': 'Helping Hand', 'Clap': 'Encore',
@@ -909,7 +909,7 @@ SFX_OF = {
     'TripleNeedle': 'Twineedle', 'VineWrap': 'Wrap', 'WaterSlash': 'Aqua Jet', 'Web': 'Spider Web', 'Whisper': 'Grass Whistle',
     'Hidden Power': 'Hidden Power', 'Shockwave': 'Shock Wave', 'SleepPowder': 'Sleep Powder', 'Rest': 'Rest',
 }
-# ISSUE #509: clips whose "1hit" take still holds several hits (Comet Punch 1hit = 4 punches). The map entry
+# ISSUE #383: clips whose "1hit" take still holds several hits (Comet Punch 1hit = 4 punches). The map entry
 # gets 'sfx_len' = the first hit only (onset 0 -> onset 1), so a multi-hit attack plays ONE punch per heads.
 SFX_ONE_ONSET = {'Comet Punch 1hit'}
 # Pitch for recipes that borrow a bigger move's sound for a smaller effect (and the reverse).
@@ -1044,7 +1044,7 @@ STATUS = {
     'Toxic':     rec(N, T('PoisonColumn', size=0.7), T('ToxicSpike', size=0.8, count=2, stagger=0.12, jitter=0.2, par=True), T('QuickPoisonHit', size=0.9, par=True)),
     'Burned':    rec(N, T('Embers', size=1.0), T('MiniCombustion', size=0.35, count=3, stagger=0.12, jitter=0.25, par=True)),
     'Paralyzed': rec(N, T('Electrocute', size=1.0), T('SparkScatter', size=0.9, par=True)),
-    # ISSUE #534: plain sleep gets the soft "Zz" - the spiky Nightmare frames are only for Nightmare-style attacks.
+    # ISSUE #408: plain sleep gets the soft "Zz" - the spiky Nightmare frames are only for Nightmare-style attacks.
     'Asleep':    rec(N, T('SleepZ', size=0.3, off=[0.25, -0.35], mirror=False, dur=0.9, fade=0.4, count=2, stagger=0.35, jitter=0.08)),
     'Confused':  rec(N, T('ConfusingHit', size=0.9, off=[0, -0.25], range=[0, 8])),
 }
@@ -1671,7 +1671,7 @@ def build():
                 mapping[name]['by_type'] = bt
         if re.search(r"bench", tl) and re.search(r"damage", tl) and not re.search(r"prevent all damage", tl):
             mapping[name]['bench'] = True
-        # ISSUE #522: all of its damage goes to ONE Pokemon the attacker chooses (Stare, Flitter, Dig Under...).
+        # ISSUE #396: all of its damage goes to ONE Pokemon the attacker chooses (Stare, Flitter, Dig Under...).
         # The runtime holds the effect back from the declare beat and plays it on the chosen Pokemon instead
         # of on the Defending Pokemon first.
         if not damaging and re.search(r"choose (1|one) of (your )?opponent'?s", tl) and 'damage' in tl:

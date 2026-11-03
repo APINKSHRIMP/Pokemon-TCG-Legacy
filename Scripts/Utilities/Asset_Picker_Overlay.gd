@@ -354,7 +354,7 @@ func _populate() -> void:
 func _add_cell(value: String, cell: Vector2) -> void:
 	var wrapper := Control.new()
 	wrapper.custom_minimum_size = cell
-	# ISSUE #144 shape: without SIZE_EXPAND a GridContainer sizes each column to its
+	# ISSUE #146 shape: without SIZE_EXPAND a GridContainer sizes each column to its
 	# widest child's MINIMUM width and leaves the leftover width unused on the right.
 	wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wrapper.clip_contents = true

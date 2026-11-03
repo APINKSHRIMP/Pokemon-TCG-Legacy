@@ -124,7 +124,7 @@ func _process(delta: float) -> void:
 
 func _run_taxi_intro() -> void:
 	_cutscene_active = true
-	# ISSUE #31 FIX: do NOT clear taxi_intro_pending here. If the player quits partway through the
+	# ISSUE #32 FIX: do NOT clear taxi_intro_pending here. If the player quits partway through the
 	# cutscene the flag must stay set so the taxi animation replays in full on the next load (name/
 	# sprite entry is already skipped via first_launch_complete). The flag is cleared only once the
 	# cutscene finishes and the player is sent into their house (see below).
@@ -170,7 +170,7 @@ func _run_taxi_intro() -> void:
 	await get_tree().create_timer(2.0).timeout
 
 	await _scripted_walk("up", 90.0)
-	# ISSUE #381: THE WALK IS AIMED AT THE REAL FRONT DOOR.
+	# ISSUE #294: THE WALK IS AIMED AT THE REAL FRONT DOOR.
 	# It used to be "right 115, up 180, up 70" - hand-measured to the house's OLD
 	# spot, so once the house moved the player walked through the fence into the
 	# empty plot where it used to be. The route is now read off the house's own
@@ -212,7 +212,7 @@ func _run_taxi_intro() -> void:
 
 	# Fade to black and enter the player house
 	_player.lock_movement()
-	# ISSUE #31 FIX: the cutscene has fully played and the player is now being forced into their
+	# ISSUE #32 FIX: the cutscene has fully played and the player is now being forced into their
 	# house — this is the point at which the taxi intro is genuinely "done", so clear the flag here.
 	GameState.progress["taxi_intro_pending"] = false
 	GameState.progress["show_intro_house_message"] = true

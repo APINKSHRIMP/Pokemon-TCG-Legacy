@@ -66,6 +66,7 @@ const KEYBOARD_ROWS := {
 		["Esc|Backspace", "Back, close"],
 		["Shift", "Enlarge a card, coin or sleeve (hold)"],
 		["PgUp|PgDn", "Deck builder: previous / next set"],
+		["Q", "Jump to the main button (Buy, Save, Sell)"],
 		["Space|Enter", "Text box: open the on-screen keyboard"],
 		["Type", "Keyboard: type straight in, Enter done, Esc close"],
 	],
@@ -102,7 +103,7 @@ const PAD_ROWS := {
 		["a", "Press, pick, add a card / type a key"],
 		["x", "Remove a card / keyboard: space"],
 		["b", "Back / keyboard: delete a letter"],
-		["y", "Keyboard: capitals"],
+		["y", "Jump to Buy / Save / keyboard: capitals"],
 		["menu", "Keyboard: done"],
 	],
 }

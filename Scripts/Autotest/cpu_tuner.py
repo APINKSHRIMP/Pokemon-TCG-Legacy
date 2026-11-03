@@ -1,5 +1,5 @@
 """
-CPU self-play weight tuner (ISSUE #375).
+CPU self-play weight tuner (OLD ISSUE 375).
 
 Plays the CPU (real opponents' decks and rules) against the smart bot thousands of times, nudging the tunable
 numbers in CPU_AI.gd (every CpuWeights.g("key", default) call) and keeping a change only when it wins measurably

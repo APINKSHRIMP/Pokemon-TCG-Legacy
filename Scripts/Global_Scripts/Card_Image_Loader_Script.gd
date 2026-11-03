@@ -36,7 +36,7 @@ var original_modulate: Color
 func load_card_image(card_passed_uid: String, card_target_size, card_object_ref: card_object = null, face_down: bool = false, sleeve_path: String = ""):
 	# Store reference to the card object so we can emit it when clicked
 	self.card_ref = card_object_ref
-	# ISSUE #309: Lt. Surge's Secret Plan — a face-down card on the Bench shows its back to everyone
+	# OLD ISSUE 309: Lt. Surge's Secret Plan — a face-down card on the Bench shows its back to everyone
 	if card_object_ref != null and card_object_ref.secret_plan_face_down:
 		face_down = true
 
@@ -157,7 +157,7 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseButton and event.pressed:
-		# ISSUE #89 FIX: the mouse wheel is delivered as an InputEventMouseButton with pressed == true,
+		# ISSUE #92 FIX: the mouse wheel is delivered as an InputEventMouseButton with pressed == true,
 		# so scrolling with the cursor over a card counted as clicking that card and emitted
 		# card_clicked — scrolling a hand of 8+ cards kept selecting whichever card was under the
 		# cursor. Scrolling is not a click.

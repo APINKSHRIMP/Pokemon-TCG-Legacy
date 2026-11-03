@@ -76,7 +76,7 @@ func set_direction(direction: String):
 	current_direction = direction
 	animated_sprite.play("idle_" + current_direction)
 
-# ISSUE #57: turn the player to face a target position (an NPC/opponent) when interacting, mirroring
+# ISSUE #58: turn the player to face a target position (an NPC/opponent) when interacting, mirroring
 # the way the NPC turns to face the player. Uses the dominant axis of the offset.
 # The target must be a GLOBAL position: actors are children of the map's NPCS/OPPONENTS container,
 # which is not always at the origin (the two marts offset theirs by 121,59), so their local positions
@@ -101,7 +101,7 @@ func _ready():
 	animated_sprite.scale = Vector2(0.5, 0.5)
 	animated_sprite.frame_changed.connect(_on_walk_frame)
 
-	# ISSUE #81 FIX: these four steps used to be orphaned INSIDE refresh_sprite() (that function was
+	# ISSUE #82 FIX: these four steps used to be orphaned INSIDE refresh_sprite() (that function was
 	# accidentally inserted mid-_ready(), so everything below it silently became part of it). With the
 	# signals never connected, no interaction bubble appeared and spacebar did nothing.
 	interaction_area.body_entered.connect(_on_interaction_area_body_entered)
@@ -138,7 +138,7 @@ func _on_walk_frame() -> void:
 	if _footstep_stream != null:
 		SoundManagerScript.play_sfx(_footstep_stream, randf_range(FOOTSTEP_PITCH_MIN, FOOTSTEP_PITCH_MAX))
 
-# ISSUE #52: the overworld map is no longer reloaded when a sub-menu closes, so a costume change made
+# ISSUE #53: the overworld map is no longer reloaded when a sub-menu closes, so a costume change made
 # in the Costume menu has to be pushed onto the live player node instead of arriving via _ready().
 func refresh_sprite() -> void:
 	var file := FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
@@ -191,7 +191,7 @@ func _physics_process(_delta):
 	var is_running: bool = UIInput.is_run_held()   # Shift or pad L1 - the zoom button everywhere else
 	var active_run_multiplier: float = debug_run_multiplier if DebugMode.is_enabled() else run_multiplier
 	var speed_scale: float = active_run_multiplier if is_running else 1.0
-	# ISSUE #34: the global overworld walking-speed multiplier scales both walk and run (Options: slow
+	# ISSUE #35: the global overworld walking-speed multiplier scales both walk and run (Options: slow
 	# 0.8, standard 1.0, fast 1.2).
 	var walk_mult: float = GameState.overworld_walking_speed
 
@@ -225,7 +225,7 @@ func _unhandled_input(event):
 		# the message box itself, the deck-validation popup, or a gift reveal
 		# still animating. Accept answers YES on a Yes/No question.
 		if MapManager.wants_message_input():
-			# ISSUE #51 FIX: consume the input BEFORE handling. Answering "yes"
+			# ISSUE #52 FIX: consume the input BEFORE handling. Answering "yes"
 			# (e.g. opening the shop) triggers a scene change that frees this
 			# player node, after which get_viewport() returns null and
 			# set_input_as_handled() crashes. Grab the viewport first and guard.
@@ -237,8 +237,8 @@ func _unhandled_input(event):
 			MapManager.handle_message_accept()
 			return
 
-		# ISSUE #81 FIX: gate the interact emit on can_move, for the same reason the mouse-wheel zoom
-		# below is gated. Since ISSUE #52 the map stays loaded underneath menu/sub-menu overlays and the
+		# ISSUE #82 FIX: gate the interact emit on can_move, for the same reason the mouse-wheel zoom
+		# below is gated. Since ISSUE #53 the map stays loaded underneath menu/sub-menu overlays and the
 		# player is merely lock_movement()'d, so an unconsumed Space/Enter inside the deck builder fell
 		# through to here and could start a battle with whoever the player happened to be standing next
 		# to. The message-panel branch above stays ungated — dialogue is handled while frozen by design.
@@ -256,7 +256,7 @@ func _unhandled_input(event):
 	if event is InputEventMouseButton:
 		if event.pressed:
 			if MapManager.message_panel != null and MapManager.message_panel.visible:
-				# ISSUE #135 FIX: a wheel notch is an InputEventMouseButton with pressed == true, so
+				# ISSUE #137 FIX: a wheel notch is an InputEventMouseButton with pressed == true, so
 				# scrolling anywhere on the map used to dismiss the message the player was reading.
 				# Swallow the scroll instead (it must not fall through to the camera zoom below either,
 				# which would silently zoom the map behind the box).
@@ -264,7 +264,7 @@ func _unhandled_input(event):
 					return
 				MapManager.handle_message_accept()
 				return
-			# ISSUE #81: don't let the mouse wheel zoom the overworld camera while the player is locked
+			# ISSUE #82: don't let the mouse wheel zoom the overworld camera while the player is locked
 			# — i.e. while a menu/sub-menu overlay (deck/card/coin/sleeves) is open on top of the still-
 			# loaded map. Scroll events fall THROUGH those sub-menu Controls to this _unhandled_input, so
 			# without this guard scrolling a card/deck list zoomed the map underneath, only visible on
@@ -278,7 +278,7 @@ func _unhandled_input(event):
 				camera.zoom = (camera.zoom - Vector2(0.05, 0.05)).clamp(_zoom_floor(), Vector2(10, 10))
 				_apply_camera_room()
 
-## ISSUE #384: true while Space/Enter would talk to someone (an NPC, opponent or
+## ISSUE #297: true while Space/Enter would talk to someone (an NPC, opponent or
 ## Pokemon). The FishingZone asks this first - talking always beats casting.
 func has_interact_candidate() -> bool:
 	return _active_candidate != null and is_instance_valid(_active_candidate)

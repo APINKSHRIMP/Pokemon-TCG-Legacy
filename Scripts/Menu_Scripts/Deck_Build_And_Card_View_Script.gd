@@ -27,10 +27,10 @@ const DECK_NAME_W     := 330.0
 const DECK_NAME_H     := 52.0
 ## 40% down from 54: the arrows were competing with the set name.
 const STEPPER_ARROW_W := 32.0
-## ISSUE #183: the glyph is doubled (10 -> 20) and set in the bold face — at 10px
+## ISSUE #184: the glyph is doubled (10 -> 20) and set in the bold face — at 10px
 ## the '<' and '>' were barely visible against the header gradient.
 const STEPPER_ARROW_FONT := 20
-## ISSUE #183: the button is 10px taller than it is wide.
+## ISSUE #184: the button is 10px taller than it is wide.
 const STEPPER_ARROW_H := STEPPER_ARROW_W + 10.0
 ## Deck name, up from the 19px `name` role.
 const DECK_NAME_FONT     := 26
@@ -42,7 +42,7 @@ const VIEWER_LIST_W   := 226.0
 const VIEWER_LIST_PAD := 10.0
 const VIEWER_ROW_H    := 34.0
 const VIEWER_ROW_GAP  := 6
-## ISSUE #190: horizontal inset inside each contents row, so the card name and its
+## ISSUE #191: horizontal inset inside each contents row, so the card name and its
 ## count both clear the panel border.
 const VIEWER_ROW_PAD  := 8
 const STEPPER_NAME_W  := 520.0
@@ -69,13 +69,13 @@ const ENERGY_COUNT_OUTLINE := 7
 const COMP_PANEL_Y    := 368.0
 const COMP_PANEL_H    := 246.0
 
-## ISSUE #187: the "XX / 60" pill sits UNDER the composition box now, matching its
+## ISSUE #188: the "XX / 60" pill sits UNDER the composition box now, matching its
 ## width, rather than beside the deck name in the header.
 const COUNT_PILL_Y    := COMP_PANEL_Y + COMP_PANEL_H + 14.0
 const COUNT_PILL_H    := 44.0
 const COMP_ROW_H      := 40.0
 const COMP_METER_H    := 10.0
-## ISSUE #188: +20% on the sidebar headings and the composition category names
+## ISSUE #189: +20% on the sidebar headings and the composition category names
 ## (the 13.5px small_label role rounds to 14, so these are 17 and 16).
 const SIDE_HEADING_FONT := 17
 const COMP_ROW_FONT     := 16
@@ -137,7 +137,7 @@ const DECK_SIZE     := 60
 
 const ENERGY_TYPES := ["grass", "fire", "water", "lightning", "psychic", "fighting"]
 
-# ISSUE #155: the style table lives in Game_State_Script now (GameState.ENERGY_STYLES) so the
+# ISSUE #156: the style table lives in Game_State_Script now (GameState.ENERGY_STYLES) so the
 # CHT.All_Energy_Styles cheat grants exactly the styles this screen offers. Referenced through the
 # autoload rather than copied — two copies would drift the moment a style is added.
 
@@ -180,7 +180,7 @@ var deck_name_counts : Dictionary = {}
 
 # Reference to the load-deck popup so we can free it later
 var load_popup       : CanvasLayer = null
-# ISSUE #154: ONE styled Yes/No confirm, shared by every destructive action on this screen —
+# ISSUE #155: ONE styled Yes/No confirm, shared by every destructive action on this screen —
 # "Empty the entire deck?" and now "Delete <deck>?". It was a single-purpose popup for the empty
 # button; a second hand-rolled copy for delete would have been the third in the codebase (the main
 # menu's quit dialog is the same panel again), so it is a helper now. Layer 110 so it stacks ABOVE
@@ -189,7 +189,7 @@ var confirm_popup   : CanvasLayer = null
 var _confirm_action : Callable    = Callable()
 var _confirm_cancel : Callable    = Callable()
 
-# ISSUE #154 follow-up: the rename box. NOT the confirm popup above — that one is a Yes/No panel
+# ISSUE #155 follow-up: the rename box. NOT the confirm popup above — that one is a Yes/No panel
 # with no text field, and renaming needs typing. Also layer 110, opened from inside the load popup.
 var rename_popup    : CanvasLayer = null
 var _rename_edit    : LineEdit    = null
@@ -237,7 +237,7 @@ var energy_tweens  : Dictionary = {}
 # load if the player switches sets before the previous one finishes
 var _loading_set_id  : String = ""
 
-# ISSUE #32: input-blocking loading overlay shown while a set's card grid builds (every set load,
+# ISSUE #33: input-blocking loading overlay shown while a set's card grid builds (every set load,
 # including switching sets). show() auto-replaces any existing overlay, so rapid set switches never
 # stack two overlays.
 var _loading_overlay : MenuLoadingOverlay = MenuLoadingOverlay.new()
@@ -259,7 +259,7 @@ var is_zoomed : bool = false
 var zoom_held : bool = false
 # The card the overlay is currently showing, so _process only rebuilds it when the hover changes
 var zoomed_card : TextureRect = null
-# ISSUE #98: the CardDetailPanel inside the overlay. Kept so a hover change can re-point the live
+# ISSUE #102: the CardDetailPanel inside the overlay. Kept so a hover change can re-point the live
 # panel at the new card rather than freeing and rebuilding the whole CanvasLayer (which flashed the
 # bright UI underneath). The panel draws the card art AND every box of its data — see
 # Scripts/Global_Scripts/Card_Detail_Panel.gd.
@@ -298,7 +298,7 @@ var _search_grid_stale : bool = false
 # True once a search has been run and the grid is showing results instead of a single set.
 # While true the set name and the < > set-switch buttons stay hidden.
 var search_active : bool = false
-## ISSUE #392: "Clear filter", left of "Search & filter" - only shown while results are.
+## ISSUE #306: "Clear filter", left of "Search & filter" - only shown while results are.
 var _clear_filter_btn : Button = null
 const CLEAR_FILTER_BTN_W := 220.0   # TWEAKABLE
 
@@ -358,18 +358,18 @@ var _load_opp_btn : Button = null
 # still set when pressed while results are on display
 @onready var search_btn        : Button = $search_button
 
-# ISSUE #148: what the set-name label reads while a search is on screen. The label used to be
+# ISSUE #150: what the set-name label reads while a search is on screen. The label used to be
 # hidden outright alongside the < > set-switch buttons; it now stays up carrying this banner, so
 # the player can see at a glance why the grid is not showing a single set. The BUTTONS stay hidden
 # — there is no set to step through in results mode.
 const SEARCH_MODE_LABEL := "SEARCH MODE ACTIVE"
 
-# ISSUE #141: the deck screen and the search screen use DIFFERENT backdrops.
+# ISSUE #143: the deck screen and the search screen use DIFFERENT backdrops.
 #   browsing  -> background_scroller + top_and_right_border   (the ~300px right-hand card banner)
 #   filtering -> filter_background   + filter_border          (full width, no right banner)
 # The filter pair is authored hidden in the scene; _set_filter_chrome() is the ONLY thing that
 # swaps between them, so the two can never both be up. Losing the right banner is what frees the
-# ~460px the filter rows now spread into — see CardSearchOverlay's geometry block (ISSUE #142).
+# ~460px the filter rows now spread into — see CardSearchOverlay's geometry block (ISSUE #144).
 @onready var background_scroller  : TextureRect = $BACKGROUND/background_scroller
 @onready var top_and_right_border : TextureRect = $BACKGROUND/top_and_right_border
 @onready var filter_background    : TextureRect = $BACKGROUND/filter_background
@@ -536,7 +536,7 @@ func _build_chrome() -> void:
 	# -- Header left: deck name field, rename hint, then the count chip --
 	var name_holder: Control = bars["header"].left
 
-	# ISSUE #187: a "Name:" label to the LEFT of the field. The slot is an
+	# ISSUE #188: a "Name:" label to the LEFT of the field. The slot is an
 	# HBoxContainer, so adding the label first is what shifts the field right.
 	var name_tag := Label.new()
 	UIKit.set_label(name_tag, "small_label", "Name:", "chrome_fg")
@@ -559,41 +559,41 @@ func _build_chrome() -> void:
 	deck_name_edit.add_theme_font_size_override("font_size", DECK_NAME_FONT)
 	name_holder.add_child(deck_name_edit)
 
-	# ISSUE #187: the count pill is a SIDEBAR element now — see _build_count_pill,
+	# ISSUE #188: the count pill is a SIDEBAR element now — see _build_count_pill,
 	# called from _build_composition_panel so it lands under that box.
 	deck_count_label.visible = false
 
 	# -- Header centre: the set stepper --
-	UIKit.adopt_button(prev_btn, bars["header"].centre, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(prev_btn, bars["header"].centre, "neutral", false)   # ISSUE #292
 	UIKit.adopt_label(set_label, bars["header"].centre)
-	UIKit.adopt_button(next_btn, bars["header"].centre, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(next_btn, bars["header"].centre, "neutral", false)   # ISSUE #292
 	prev_btn.text = "<"
 	next_btn.text = ">"
 	for arrow in [prev_btn, next_btn]:
-		# ISSUE #183: bigger, bolder glyph in a slightly taller button.
+		# ISSUE #184: bigger, bolder glyph in a slightly taller button.
 		arrow.custom_minimum_size = Vector2(STEPPER_ARROW_W, STEPPER_ARROW_H)
 		arrow.add_theme_font_size_override("font_size", STEPPER_ARROW_FONT)
 		arrow.add_theme_font_override("font", UITheme.font_at(UITheme.FONT_UI_BOLD))
 	set_label.custom_minimum_size.x = STEPPER_NAME_W
 
 	# -- Header right: search & filter --
-	# ISSUE #392: a one-press way out of a search, sitting just left of the
+	# ISSUE #306: a one-press way out of a search, sitting just left of the
 	# button that opened it. Hidden whenever no search is showing.
 	_clear_filter_btn = Button.new()
 	_clear_filter_btn.text = "Clear filter"
-	UIKit.adopt_button(_clear_filter_btn, bars["header"].right, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(_clear_filter_btn, bars["header"].right, "neutral", false)   # ISSUE #292
 	_clear_filter_btn.custom_minimum_size.x = CLEAR_FILTER_BTN_W
 	_clear_filter_btn.pressed.connect(_on_clear_filter_pressed)
 	_clear_filter_btn.visible = false
-	UIKit.adopt_button(search_btn, bars["header"].right, "neutral", false)   # ISSUE #379
+	UIKit.adopt_button(search_btn, bars["header"].right, "neutral", false)   # ISSUE #292
 	search_btn.custom_minimum_size.x = SEARCH_BTN_W
 	# The scene bakes a literal newline into this label ("SEARCH &\nFILTER"), which
 	# is what made the button two lines tall and burst the header. Set it fresh.
 	search_btn.text = "Search & filter"
-	UIKit.style_button(search_btn, "neutral")   # ISSUE #379
+	UIKit.style_button(search_btn, "neutral")   # ISSUE #292
 
 	# -- Footer: Cancel then Save --
-	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #379: Cancel is the negative colour
+	UIKit.adopt_button(cancel_btn, bars["footer"].centre, "negative")   # ISSUE #292: Cancel is the negative colour
 	UIKit.adopt_button(save_btn, bars["footer"].centre, "primary")
 	if DebugMode.is_enabled():
 		_save_opp_btn = Button.new()
@@ -616,13 +616,13 @@ func _build_chrome() -> void:
 	for i in tools.size():
 		var b: Button = tools[i]
 		b.theme = null
-		# ISSUE #185: the scene left a font_size override on "View deck" only, so
+		# ISSUE #186: the scene left a font_size override on "View deck" only, so
 		# it drew larger than Load and Empty sitting under it. Drop every override
 		# here and let the button role decide.
 		b.remove_theme_font_size_override("font_size")
 		b.remove_theme_font_override("font")
 		# Emptying the deck throws work away - the only destructive act here.
-		UIKit.style_button(b, "danger" if b == empty_btn else "neutral")   # ISSUE #379
+		UIKit.style_button(b, "danger" if b == empty_btn else "neutral")   # ISSUE #292
 		var bottom: float = TOOL_STACK_BOT - float(tools.size() - 1 - i) * (TOOL_BTN_H + TOOL_BTN_GAP)
 		b.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		b.offset_left = SIDE_X
@@ -653,7 +653,7 @@ func _build_energy_panel() -> void:
 	add_child(panel)
 
 	var heading := Label.new()
-	# ISSUE #188: +20% on the panel headings. ISSUE #189: headings are centred.
+	# ISSUE #189: +20% on the panel headings. ISSUE #190: headings are centred.
 	UIKit.set_label(heading, "small_label", "Energies in deck", "field_mute",
 		SIDE_HEADING_FONT)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -712,7 +712,7 @@ func _build_composition_panel() -> void:
 	_comp_panel = panel
 
 	var heading := Label.new()
-	# ISSUE #188 / #189: +20% and centred, matching the energies panel above it.
+	# ISSUE #189 / #189: +20% and centred, matching the energies panel above it.
 	UIKit.set_label(heading, "small_label", "Composition", "field_mute",
 		SIDE_HEADING_FONT)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -725,7 +725,7 @@ func _build_composition_panel() -> void:
 	var y: float = COMP_PANEL_Y + SIDE_PAD + 28.0
 	for key in COMP_ORDER:
 		var name_lbl := Label.new()
-		# ISSUE #188: +20% on the category names too.
+		# ISSUE #189: +20% on the category names too.
 		UIKit.set_label(name_lbl, "small_label", String(COMP_LABEL[key]), "field_fg",
 			COMP_ROW_FONT)
 		name_lbl.position = Vector2(SIDE_X + SIDE_PAD, y)
@@ -753,7 +753,7 @@ func _build_composition_panel() -> void:
 	_build_count_pill()
 
 
-## ISSUE #187: the deck-total pill, directly under the composition box and the
+## ISSUE #188: the deck-total pill, directly under the composition box and the
 ## same width as it. It used to be a chip in the header beside the deck name,
 ## where it competed with the set stepper for the eye.
 ##
@@ -821,7 +821,7 @@ func _refresh_deck_count_chip() -> void:
 		_deck_count_chip.queue_free()
 	_deck_count_chip = UIKit.make_chip(
 		"%d / %d" % [total_deck_count, DECK_SIZE], "on_field")
-	# ISSUE #187: the pill spans the sidebar so it lines up with the composition
+	# ISSUE #188: the pill spans the sidebar so it lines up with the composition
 	# box above it rather than shrinking to its digits.
 	_deck_count_chip.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_deck_count_chip.offset_left = 0.0
@@ -891,7 +891,7 @@ func _update_set_nav_buttons() -> void:
 	prev_btn.disabled = !enabled
 	var grey_sb := StyleBoxFlat.new()
 	grey_sb.bg_color = Color(0.67, 0.67, 0.67, 1.0)
-	grey_sb.set_corner_radius_all(UITheme.mi("btn_radius"))   # ISSUE #184
+	grey_sb.set_corner_radius_all(UITheme.mi("btn_radius"))   # ISSUE #185
 	grey_sb.anti_aliasing = true
 	grey_sb.content_margin_left   = 8.0
 	grey_sb.content_margin_right  = 8.0
@@ -989,7 +989,7 @@ func _load_owned_cards_for_set(set_id: String) -> Array:
 
 	if data is Dictionary and data.has("owned_cards"):
 		var cards: Array = data["owned_cards"]
-		# ISSUE #476: the intro walkthrough draws the bonus pack's cards as not-yet-owned, then
+		# ISSUE #350: the intro walkthrough draws the bonus pack's cards as not-yet-owned, then
 		# flies them in. _owned_override holds how many of each to hold back.
 		if not _owned_override.is_empty():
 			for c in cards:
@@ -1024,7 +1024,7 @@ func _ensure_set_metadata_loaded(set_id: String) -> void:
 		for card in data:
 			var cid : String = card.get("id", "")
 			if cid != "":
-				# ISSUE #140: the ability list is boiled down to two booleans here rather than
+				# ISSUE #142: the ability list is boiled down to two booleans here rather than
 				# cached whole — the search only ever asks "does it have one", and keeping 3,340
 				# full ability arrays in memory for that would be wasteful. Matched on a lowercased
 				# SUBSTRING because the type strings carry an accent ("Poké-Body") and the older
@@ -1044,9 +1044,9 @@ func _ensure_set_metadata_loaded(set_id: String) -> void:
 					"types": card.get("types", []),
 					"evolvesFrom": card.get("evolvesFrom", ""),
 					"rarity": card.get("rarity", ""),
-					"artist": card.get("artist", ""),   # ISSUE #143
-					"has_power": has_power,             # ISSUE #140
-					"has_body": has_body,               # ISSUE #140
+					"artist": card.get("artist", ""),   # ISSUE #145
+					"has_power": has_power,             # ISSUE #142
+					"has_body": has_body,               # ISSUE #142
 				}
 
 	_card_metadata_cache[set_id + "-loaded"] = true
@@ -1205,13 +1205,13 @@ func _load_energy_style() -> void:
 		current_energy_style = data.get("energy_style", "Base1")
 
 
-## ISSUE #395: the SMALL image path for a card - what every standard grid view
+## ISSUE #309: the SMALL image path for a card - what every standard grid view
 ## (the card grid, the deck viewer) draws. The hold-Shift zoom loads the large one.
 func _small_card_image_path(card_id: String) -> String:
 	return SceneCache.small_card_path(card_id)
 
 
-## ISSUE #395: Small first, Large as the failsafe - the mirror of the function below.
+## ISSUE #309: Small first, Large as the failsafe - the mirror of the function below.
 ## Small images come out of SceneCache's card image cache, so a set seen before (or one
 ## preloaded in the background) draws without touching the disk.
 func _load_card_texture_small_first(path: String) -> Texture2D:
@@ -1224,7 +1224,7 @@ func _load_card_texture_small_first(path: String) -> Texture2D:
 	return null
 
 
-## ISSUE #274: Large first, Small as a failsafe. Every card should have a large
+## ISSUE #275: Large first, Small as a failsafe. Every card should have a large
 ## image; a missing one degrades to the shrunken copy rather than to a blank cell.
 ## Mirrors MapManager._load_card_image_with_fallback.
 func _load_card_texture_with_fallback(path: String) -> Texture2D:
@@ -1253,7 +1253,7 @@ func _update_energy_icons() -> void:
 		var energy_type : String = ENERGY_TYPES[i]
 		var card_id     : String = card_ids[i]
 		var card_set := card_id.split("-")[0]
-		# ISSUE #274: Large here too - these six icons are the same card images the
+		# ISSUE #275: Large here too - these six icons are the same card images the
 		# grid draws, and a mixed-resolution screen reads as an inconsistency.
 		var image_path := "res://Image_Assets/Card_Image_Library/" + card_set + "/Large/" + AssetLookup.card_image_name(card_id) + ".png"
 		var tex = _load_card_texture_with_fallback(image_path)
@@ -1484,7 +1484,7 @@ func _on_change_energy_style_pressed() -> void:
 	picker_cancel_btn.custom_minimum_size = Vector2(224, 63)
 	picker_cancel_btn.position = Vector2(SIDE_X, UIKit.screen_h() - 94.0)
 	picker_cancel_btn.z_index = 55
-	UIKit.style_button(picker_cancel_btn, "negative")   # ISSUE #379
+	UIKit.style_button(picker_cancel_btn, "negative")   # ISSUE #292
 	picker_cancel_btn.add_theme_font_size_override("font_size", 23)
 	picker_cancel_btn.pressed.connect(_on_energy_picker_cancel)
 	energy_picker_overlay.add_child(picker_cancel_btn)
@@ -1522,7 +1522,7 @@ func _on_change_energy_style_pressed() -> void:
 
 			var card_id : String = card_ids[col]
 			var card_set := card_id.split("-")[0]
-			# ISSUE #395: small copies here as well - a standard view, not a zoom.
+			# ISSUE #309: small copies here as well - a standard view, not a zoom.
 			var image_path := _small_card_image_path(card_id)
 			var tex = _load_card_texture_small_first(image_path)
 
@@ -1552,7 +1552,7 @@ func _on_change_energy_style_pressed() -> void:
 			picker_grid.add_child(card_rect)
 			cards_in_row.append(card_rect)
 
-			if not is_inside_tree():   # ISSUE #32 FIX: bail if freed mid-load
+			if not is_inside_tree():   # ISSUE #33 FIX: bail if freed mid-load
 				return
 			await SceneCache.yield_if_over_budget()
 
@@ -1566,7 +1566,7 @@ func _on_change_energy_style_pressed() -> void:
 
 
 ## The unlocked energy style names — this is what decides which rows appear in the picker.
-## ISSUE #155: reads GameState rather than re-opening player_progress.json. The old version parsed
+## ISSUE #156: reads GameState rather than re-opening player_progress.json. The old version parsed
 ## the file every time it was called, so a style granted in-session (by the cheat, or by an NPC
 ## gift) was invisible until the file happened to be rewritten. GameState.progress is the live copy.
 func _get_unlocked_energy_styles() -> Array:
@@ -1738,11 +1738,11 @@ func _build_viewer_chrome() -> void:
 	_header.centre.add_child(name_label)
 	_viewer_chrome.append(name_label)
 
-	# ISSUE #191: NO category chips. They repeated the Composition box the deck
+	# ISSUE #192: NO category chips. They repeated the Composition box the deck
 	# screen already shows one keypress away, and with seven of them the header's
 	# right slot was busier than the deck name it sat beside.
 
-	var close_btn := UIKit.make_footer_button("Close", "negative")   # ISSUE #379
+	var close_btn := UIKit.make_footer_button("Close", "negative")   # ISSUE #292
 	close_btn.pressed.connect(_close_deck_viewer)
 	_footer.centre.add_child(close_btn)
 	_viewer_chrome.append(close_btn)
@@ -1797,7 +1797,7 @@ func _build_viewer_contents(sorted_ids: Array) -> void:
 		UIKit.make_nav_tile(row)   # A / Space adds a copy, pad X / X / Delete removes one
 		col.add_child(row)
 
-		# ISSUE #190: the row text sat hard against the panel border on both
+		# ISSUE #191: the row text sat hard against the panel border on both
 		# sides. PanelContainer has no padding of its own, so the inset is a
 		# MarginContainer between the panel and the row.
 		var pad := MarginContainer.new()
@@ -1932,7 +1932,7 @@ func _make_viewer_card_rect(cid: String, card_texture: Texture2D) -> TextureRect
 	card_rect.stretch_mode              = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	card_rect.size_flags_horizontal     = Control.SIZE_SHRINK_BEGIN
 	card_rect.size_flags_vertical       = Control.SIZE_SHRINK_BEGIN
-	# ISSUE #151 FIX: hold-Shift preview works in here now. _get_hovered_card() finds a card
+	# ISSUE #153 FIX: hold-Shift preview works in here now. _get_hovered_card() finds a card
 	# by walking up from gui_get_hovered_control() looking for "card_id" metadata, so the
 	# rects need both the metadata and a mouse_filter that registers hover — exactly what
 	# the main deck grid's owned cards use (see _add_card_to_grid).
@@ -2002,7 +2002,7 @@ func _on_view_deck_pressed() -> void:
 	deck_viewer_overlay = Control.new()
 	deck_viewer_overlay.z_index = 10
 	deck_viewer_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	# ISSUE #186: THE CLOSE BUTTON WAS UNCLICKABLE, and this is why. Godot picks
+	# ISSUE #187: THE CLOSE BUTTON WAS UNCLICKABLE, and this is why. Godot picks
 	# GUI input by walking the root's children in REVERSE order and ignores
 	# z_index entirely, so this full-screen overlay — added after the chrome bars
 	# — was picked before the footer and ate every click on it. The overlay itself
@@ -2011,7 +2011,7 @@ func _on_view_deck_pressed() -> void:
 	deck_viewer_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(deck_viewer_overlay)
 
-	# ISSUE #151 FIX: this used to be 55% black and sat at z 55 — ABOVE the card grid — which is
+	# ISSUE #153 FIX: this used to be 55% black and sat at z 55 — ABOVE the card grid — which is
 	# what darkened the cards themselves rather than the screen behind them. It is fully transparent
 	# now and drops BELOW them, but it stays a real Control with the default MOUSE_FILTER_STOP so it
 	# still swallows clicks on everything that isn't the Close button.
@@ -2022,7 +2022,7 @@ func _on_view_deck_pressed() -> void:
 	# card_id metadata (fixed below), not this rect.
 	var backdrop := ColorRect.new()
 	backdrop.color          = Color(0, 0, 0, 0.0)
-	# ISSUE #186: the content band ONLY — 92..988 — so the header and footer stay
+	# ISSUE #187: the content band ONLY — 92..988 — so the header and footer stay
 	# clickable while everything behind the cards stays blocked.
 	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backdrop.offset_top     = UIKit.CONTENT_TOP
@@ -2037,7 +2037,7 @@ func _on_view_deck_pressed() -> void:
 	_build_viewer_chrome()
 
 	var viewer_scroll := ScrollContainer.new()
-	# ISSUE #194: the card container ran to y=1079, so the bottom rows were hidden
+	# ISSUE #195: the card container ran to y=1079, so the bottom rows were hidden
 	# behind the footer, and started 18px late, which left a black band above the
 	# first row. It matches the deck-mode grid exactly now: same x, same width,
 	# and the full 92..988 band between the bars.
@@ -2045,7 +2045,7 @@ func _on_view_deck_pressed() -> void:
 	viewer_scroll.size                  = Vector2(GRID_W, UIKit.content_h())
 	viewer_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	viewer_scroll.vertical_scroll_mode  = ScrollContainer.SCROLL_MODE_AUTO
-	viewer_scroll.z_index               = 5   # ISSUE #151: above the transparent click blocker
+	viewer_scroll.z_index               = 5   # ISSUE #153: above the transparent click blocker
 	viewer_scroll.clip_contents         = true
 	deck_viewer_overlay.add_child(viewer_scroll)
 
@@ -2053,7 +2053,7 @@ func _on_view_deck_pressed() -> void:
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left",   0)
 	margin.add_theme_constant_override("margin_right",  0)
-	# ISSUE #194: zero, matching the deck grid's GRID_INSET_Y — the 10px top inset
+	# ISSUE #195: zero, matching the deck grid's GRID_INSET_Y — the 10px top inset
 	# was the thin black band above the first row of cards.
 	margin.add_theme_constant_override("margin_top",    0)
 	margin.add_theme_constant_override("margin_bottom", 0)
@@ -2086,7 +2086,7 @@ func _on_view_deck_pressed() -> void:
 		var cid        : String = card_id
 		var count      : int    = deck_cards[cid]
 		var card_set   : String = cid.split("-")[0]
-		# ISSUE #395: the deck viewer draws the small copies too.
+		# ISSUE #309: the deck viewer draws the small copies too.
 		var image_path : String = _small_card_image_path(cid)
 		var card_texture        = _load_card_texture_small_first(image_path)
 
@@ -2094,7 +2094,7 @@ func _on_view_deck_pressed() -> void:
 			if not deck_viewer_active:
 				return
 			viewer_grid.add_child(_make_viewer_card_rect(cid, card_texture))
-			if not is_inside_tree():   # ISSUE #32 FIX: bail if freed mid-load
+			if not is_inside_tree():   # ISSUE #33 FIX: bail if freed mid-load
 				return
 			await SceneCache.yield_if_over_budget()
 
@@ -2102,7 +2102,7 @@ func _on_view_deck_pressed() -> void:
 	_viewer_building = false
 
 
-# ─── Deck viewer card list (ISSUE #152) ──────────────────────────────────────
+# ─── Deck viewer card list (ISSUE #154) ──────────────────────────────────────
 # The bar's geometry, its INDIVIDUAL / CATEGORIES sections and all three font fits moved to
 # CardViewerList (Scripts/Utilities/Card_Viewer_List.gd) — the Card Buyer's bulk-sell screen
 # shows the same list for the cards it is about to buy, and one copy is what keeps the two
@@ -2229,10 +2229,10 @@ func _display_current_set() -> void:
 	# Update the set name label
 	set_label.text = set_name
 
-	# ISSUE #32: block input behind a loading overlay while this set's grid builds (shown every set
+	# ISSUE #33: block input behind a loading overlay while this set's grid builds (shown every set
 	# load / set switch). Hidden once the grid finishes below; a set switch mid-load triggers a fresh
 	# _display_current_set whose show() replaces this overlay, so aborted loads don't leak it.
-	# ISSUE #32 (retest): the deck screen has a ~300px right-hand banner, so nudge the loading icon
+	# ISSUE #33 (retest): the deck screen has a ~300px right-hand banner, so nudge the loading icon
 	# 150px left to keep it centred over the visible card area. Shrink the input blocker 142px from the
 	# top / 134px from the bottom so the banner's Cancel button and set-switch controls stay clickable.
 	_loading_overlay.show_for_deck(self)
@@ -2263,7 +2263,7 @@ func _display_current_set() -> void:
 		# If the player switched sets while we were still loading, stop
 		if _loading_set_id != set_id:
 			return
-		# ISSUE #32 FIX: if the player pressed Escape and the scene is being freed, stop before
+		# ISSUE #33 FIX: if the player pressed Escape and the scene is being freed, stop before
 		# touching get_tree() (which is null once this node has left the tree) — this was the crash.
 		if not is_inside_tree():
 			return
@@ -2272,10 +2272,10 @@ func _display_current_set() -> void:
 		await SceneCache.yield_if_over_budget()
 
 	print("CARD CACHE: set ", set_id, " grid built in ", (Time.get_ticks_usec() - build_start_usec) / 1000, " ms")
-	# ISSUE #32: grid finished building for the current set — allow player input again.
+	# ISSUE #33: grid finished building for the current set — allow player input again.
 	_loading_overlay.hide()
 	_focus_first_grid_card()
-	grid_built.emit()   # ISSUE #476: the intro walkthrough waits for this
+	grid_built.emit()   # ISSUE #350: the intro walkthrough waits for this
 
 
 ## Set switched with the pad triggers / Page keys: the old set's cards (and the focus
@@ -2303,7 +2303,7 @@ func _clear_grid() -> void:
 		child.queue_free()
 
 	# queue_free is deferred, so wait a frame before adding new children
-	# ISSUE #32 FIX: guard against the scene having been freed (Escape mid-load) before get_tree().
+	# ISSUE #33 FIX: guard against the scene having been freed (Escape mid-load) before get_tree().
 	if not is_inside_tree():
 		return
 	await get_tree().process_frame
@@ -2327,7 +2327,7 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 	# would make the grid cell match the texture and cards would overlap.
 	var card_rect : Control
 	if owned == 0:
-		# ISSUE #193: an EMPTY SLOT, not a black rectangle. This is the same
+		# ISSUE #194: an EMPTY SLOT, not a black rectangle. This is the same
 		# UIKit.make_slot() the sleeves and coin walls use for a locked tile —
 		# translucent fill with an outline, so an unowned card reads as a place a
 		# card goes rather than as a hole in the grid.
@@ -2335,7 +2335,7 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 	else:
 		var tex_rect := TextureRect.new()
 		var card_set := card_id.split("-")[0]
-		# ISSUE #395: Small again (reverses #274). The large images made the grid
+		# ISSUE #309: Small again (reverses #274). The large images made the grid
 		# noticeably slower to load; the hold-Shift zoom (CardDetailPanel) loads the
 		# large art itself, so only the zoom pays for it. Large is the fallback.
 		var image_path := _small_card_image_path(card_id)
@@ -2570,7 +2570,7 @@ func _search_screen_open() -> bool:
 	return search_overlay != null and search_overlay.visible
 
 
-## ISSUE #141 FIX: swaps the scene's background layers between browsing and filtering.
+## ISSUE #143 FIX: swaps the scene's background layers between browsing and filtering.
 ## filtering = true  -> filter_background + filter_border, scroller and right banner hidden
 ## filtering = false -> back to the browsing pair
 ## Called from every entry to and exit from the search screen (open / cancel / confirm / clear),
@@ -2594,14 +2594,14 @@ func _open_search_overlay() -> void:
 	if energy_picker_active or deck_viewer_active or load_popup != null:
 		return
 
-	# ISSUE #393: a big search may still be building the grid. Let it carry on, but
+	# ISSUE #307: a big search may still be building the grid. Let it carry on, but
 	# put its input blocker aside so the filter screen is usable on top of it -
 	# change the search, clear it, or CANCEL to watch the old one finish.
 	_loading_overlay.set_suspended(true)
 
 	# Hide the deck UI behind the search screen, the same way the energy picker does
 	_set_ui_visibility(false)
-	_set_filter_chrome(true)   # ISSUE #141
+	_set_filter_chrome(true)   # ISSUE #143
 
 	# Reopening after a search: the overlay was only hidden, so showing it again brings back exactly
 	# the filters that produced the results currently on screen.
@@ -2636,9 +2636,9 @@ func _open_search_overlay() -> void:
 func _on_search_cancelled() -> void:
 	if search_overlay != null:
 		search_overlay.visible = false
-	_set_filter_chrome(false)   # ISSUE #141
+	_set_filter_chrome(false)   # ISSUE #143
 	_set_ui_visibility(true)
-	# ISSUE #393: back to the grid - if the old search is still loading, its blocker returns.
+	# ISSUE #307: back to the grid - if the old search is still loading, its blocker returns.
 	_loading_overlay.set_suspended(false)
 
 	if _search_grid_stale:
@@ -2663,7 +2663,7 @@ func _on_search_confirmed(criteria: Dictionary) -> void:
 	search_results = results
 	search_active  = true
 	_refresh_clear_filter_btn()
-	# ISSUE #392: these filters are now the ones the grid shows - CANCEL returns to them.
+	# ISSUE #306: these filters are now the ones the grid shows - CANCEL returns to them.
 	if search_overlay != null:
 		search_overlay.commit_applied()
 	# A fresh set of results replaces the grid outright, so any redraw a RESET left owing is moot.
@@ -2673,7 +2673,7 @@ func _on_search_confirmed(criteria: Dictionary) -> void:
 	if search_overlay != null:
 		search_overlay.visible = false
 
-	_set_filter_chrome(false)   # ISSUE #141: results are browsing, not filtering
+	_set_filter_chrome(false)   # ISSUE #143: results are browsing, not filtering
 	_set_ui_visibility(true)
 	await _display_search_results()
 
@@ -2682,7 +2682,7 @@ func _on_search_confirmed(criteria: Dictionary) -> void:
 ## filter screen — a cleared search keeps no filters, so the next SEARCH press opens blank.
 func _clear_search() -> void:
 	_close_search_overlay()
-	_set_filter_chrome(false)   # ISSUE #141
+	_set_filter_chrome(false)   # ISSUE #143
 	var had_results := _drop_search_results()
 	if not (had_results or _search_grid_stale):
 		return
@@ -2692,7 +2692,7 @@ func _clear_search() -> void:
 	_reset_scroll_position()
 
 
-## ISSUE #392: RESET no longer clears anything on its own. It only blanks the
+## ISSUE #306: RESET no longer clears anything on its own. It only blanks the
 ## filter screen; the search showing behind it stays until the player CONFIRMS
 ## the empty screen (the overlay's SEARCH button reads "CLEAR" then), which is
 ## what emits search_reset and lands here. RESET then CANCEL puts the old filters
@@ -2702,7 +2702,7 @@ func _on_search_reset() -> void:
 	_clear_search()
 
 
-## ISSUE #392: the header's "Clear filter" - drop the search and go back to the
+## ISSUE #306: the header's "Clear filter" - drop the search and go back to the
 ## set the player was browsing, exactly as a confirmed RESET does.
 func _on_clear_filter_pressed() -> void:
 	if not search_active:
@@ -2722,7 +2722,7 @@ func _drop_search_results() -> bool:
 	if not search_active:
 		return false
 	search_active = false
-	_refresh_clear_filter_btn()   # ISSUE #392
+	_refresh_clear_filter_btn()   # ISSUE #306
 	search_results.clear()
 	_search_load_token += 1        # abort any results build still in flight
 	return true
@@ -2733,15 +2733,15 @@ func _restore_set_browsing_chrome() -> void:
 	set_label.visible = true
 	next_btn.visible  = true
 	prev_btn.visible  = true
-	_set_collection_chip_visible(true)   # ISSUE #516
+	_set_collection_chip_visible(true)   # ISSUE #390
 
 
-# ISSUE #516: the "X / X" chip counts ONE set, so it means nothing over search results or the
+# ISSUE #390: the "X / X" chip counts ONE set, so it means nothing over search results or the
 # deck viewer. Hidden with the < > stepper, back when set browsing resumes.
 func _set_collection_chip_visible(on: bool) -> void:
 	if _collection_chip != null and is_instance_valid(_collection_chip):
 		_collection_chip.visible = on
-		print("ISSUE #516 FIX ACTIVE: collection chip visible = ", on)
+		print("ISSUE #390 FIX ACTIVE: collection chip visible = ", on)
 
 
 func _close_search_overlay() -> void:
@@ -2798,7 +2798,7 @@ func _run_search(criteria: Dictionary) -> Array:
 	return results
 
 
-## ISSUE #149: true when `haystack` contains ANY of the (already lower-cased) comma-separated
+## ISSUE #151: true when `haystack` contains ANY of the (already lower-cased) comma-separated
 ## terms, and also true when there are no terms — an empty list means the player left that box
 ## blank, which is not a filter. Shared by the name and illustrator boxes so they cannot drift.
 func _matches_any_term(haystack: String, terms: Array) -> bool:
@@ -2832,7 +2832,7 @@ func _card_matches_search(card_id: String, criteria: Dictionary) -> bool:
 	for st in subtypes:
 		subtypes_lower.append(str(st).to_lower())
 
-	# ── Name ── ISSUE #149: one or more COMMA-separated terms, parsed out of the box by
+	# ── Name ── ISSUE #151: one or more COMMA-separated terms, parsed out of the box by
 	# CardSearchOverlay.parse_search_terms(). The terms OR together and the result still ANDs with
 	# every other category, exactly as the single substring used to. An empty term list means the
 	# box was blank (or held only commas), i.e. no name filter at all.
@@ -2882,14 +2882,14 @@ func _card_matches_search(card_id: String, criteria: Dictionary) -> bool:
 		if not _card_matches_rarity(str(meta.get("rarity", "")), wanted_rarities):
 			return false
 
-	# ── Has Power / Body ── ISSUE #140. A whole-card property like rarity, so it is NOT restricted
+	# ── Has Power / Body ── ISSUE #142. A whole-card property like rarity, so it is NOT restricted
 	# to Pokemon: the Claw Fossil / Root Fossil Trainers carry a real Poké-Body and must match.
 	var wanted_powers : Array = criteria.get("powers", [])
 	if not wanted_powers.is_empty():
 		if not _card_matches_power(meta, wanted_powers):
 			return false
 
-	# ── Illustrator ── ISSUE #143, and ISSUE #149's comma terms, exactly like the name box above.
+	# ── Illustrator ── ISSUE #145, and ISSUE #151's comma terms, exactly like the name box above.
 	if not _matches_any_term(str(meta.get("artist", "")), criteria.get("illus_terms", [])):
 		return false
 
@@ -2937,7 +2937,7 @@ func _card_matches_pokemon_sub(card_name: String, subtypes_lower: Array, types: 
 	return false
 
 
-## ISSUE #140: does the card carry the kind of ability the player asked for? Both flags are
+## ISSUE #142: does the card carry the kind of ability the player asked for? Both flags are
 ## precomputed in _ensure_set_metadata_loaded, so this is two dictionary reads.
 ##
 ## OR within the row, matching every other filter category on the screen — ticking both POWER and
@@ -2993,7 +2993,7 @@ func _card_matches_effect(_card_id: String, _wanted_effects: Array) -> bool:
 	return true
 
 
-## ISSUE #225: the order the Pokemon energy types sort in when sort_mode is
+## ISSUE #226: the order the Pokemon energy types sort in when sort_mode is
 ## "type". Anything not in this list (a Trainer, an Energy card, an unrecognised
 ## type) sorts after every Pokemon — see _search_type_key.
 const TYPE_SORT_ORDER := ["Grass", "Fire", "Water", "Lightning", "Psychic",
@@ -3002,7 +3002,7 @@ const TYPE_SORT_ORDER := ["Grass", "Fire", "Water", "Lightning", "Psychic",
 
 ## "set"  — release order, then card number within each set (what browsing a set already looks like)
 ## "name" — grouped by card name, then release order and card number within each name
-## "type" — ISSUE #225: Pokemon first, bucketed by energy type in TYPE_SORT_ORDER,
+## "type" — ISSUE #226: Pokemon first, bucketed by energy type in TYPE_SORT_ORDER,
 ##          then Trainers, then Energy cards. Within a bucket it falls back to the
 ##          same release-order tiebreak as "set".
 ## `chain` is the player's sort picks, newest first: the first key sorts, each later key
@@ -3040,7 +3040,7 @@ func _sort_search_results(results: Array, chain: Array) -> void:
 	)
 
 
-## ISSUE #225: the sort bucket for "type". Pokemon take their first listed energy
+## ISSUE #226: the sort bucket for "type". Pokemon take their first listed energy
 ## type's index (0-8), Trainers 100 and Energy cards 200, so the three supertypes
 ## never interleave. A card with no metadata sorts last rather than crashing.
 ##
@@ -3090,7 +3090,7 @@ func _search_card_name(card_id: String) -> String:
 ## Fills the grid with the search results. Mirrors _display_current_set, but batches whole rows per
 ## frame because a broad search can return the player's entire collection.
 func _display_search_results() -> void:
-	_set_collection_chip_visible(false)   # ISSUE #516
+	_set_collection_chip_visible(false)   # ISSUE #390
 	_loading_overlay.show_for_deck(self)
 
 	_search_load_token += 1
@@ -3202,7 +3202,7 @@ func _show_confirm_popup(message: String, confirm_label: String, on_confirm: Cal
 	no_btn.text = cancel_label
 	no_btn.custom_minimum_size = Vector2(150, 48)
 	no_btn.add_theme_font_size_override("font_size", 22)
-	UIKit.style_button(no_btn, "negative")   # ISSUE #379
+	UIKit.style_button(no_btn, "negative")   # ISSUE #292
 	no_btn.pressed.connect(_cancel_confirm_popup)
 	btn_row.add_child(no_btn)
 
@@ -3277,7 +3277,7 @@ func _do_empty_deck() -> void:
 
 ## Saves the current deck to a JSON file and updates player_data.json.
 func _on_save_pressed() -> void:
-	# ISSUE #84 FIX: every reason a save can be refused now produces a visible floating message instead
+	# ISSUE #87 FIX: every reason a save can be refused now produces a visible floating message instead
 	# of the button silently doing nothing. The size checks used to be duplicated here (and hardcoded to
 	# != DECK_SIZE, ignoring the debug-mode relaxation) — they all live in _deck_save_blocker() now.
 	var blocker := _deck_save_blocker()
@@ -3295,7 +3295,7 @@ func _on_save_pressed() -> void:
 
 	_write_deck_save()
 
-	# ISSUE #394: the screen stays put after a save, so say that it worked.
+	# ISSUE #308: the screen stays put after a save, so say that it worked.
 	_show_deck_message(MSG_SAVED_TEXT, MSG_SAVED_COLOUR)
 
 
@@ -3406,7 +3406,7 @@ func _save_player_data(deck_file_name: String) -> void:
 
 # ─── Cancel ──────────────────────────────────────────────────────────────────
 
-## ISSUE #228: leaving with unsaved deck changes now asks first.
+## ISSUE #229: leaving with unsaved deck changes now asks first.
 ##
 ## _is_deck_dirty() already exists and drives the Save button's colour, so the
 ## screen has always known this — it just never used it on the way out. Both exits
@@ -3428,7 +3428,7 @@ Are you sure you want to leave?",
 func _do_leave_deck_builder() -> void:
 	_save_last_set_loaded()
 	SoundManagerScript.stop_bgm()
-	if GameState.close_sub_menu(): return   # ISSUE #52: map is still loaded behind us — just pop this overlay
+	if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 
 
@@ -3463,7 +3463,7 @@ func _save_last_set_loaded() -> void:
 ## - Shift release: closes the zoom overlay and restores UI
 func _input(event: InputEvent) -> void:
 	if walkthrough_active:
-		return   # ISSUE #476: Olly's intro is driving this screen
+		return   # ISSUE #350: Olly's intro is driving this screen
 	if event is InputEventMouseButton and event.pressed:
 		_update_composition_panel()
 
@@ -3511,7 +3511,7 @@ func _input(event: InputEvent) -> void:
 	# UIInput rather than a keycode test, so pad B backs out too (see UI_Input.gd).
 	if UIInput.is_cancel(event):
 		# Consumed up front: _on_cancel_pressed() at the bottom tears this screen
-		# down, after which get_viewport() is no longer safe to call (ISSUE #51).
+		# down, after which get_viewport() is no longer safe to call (ISSUE #52).
 		get_viewport().set_input_as_handled()
 		# Load-deck popup — same as pressing its Cancel button. Without this the
 		# press fell straight through to _on_cancel_pressed() and left the deck
@@ -3535,7 +3535,7 @@ func _input(event: InputEvent) -> void:
 			return
 		# Search screen open — same as pressing its CANCEL button
 		if _search_screen_open():
-			# ISSUE #392: through the overlay's own CANCEL, so a RESET is undone too.
+			# ISSUE #306: through the overlay's own CANCEL, so a RESET is undone too.
 			search_overlay._on_cancel_pressed()
 			return
 		# Showing search results — the first Escape drops back to normal set browsing,
@@ -3572,7 +3572,7 @@ func _input(event: InputEvent) -> void:
 			return
 		if energy_picker_active:
 			return
-		# ISSUE #151: the deck viewer used to block the preview outright. It is allowed now — the
+		# ISSUE #153: the deck viewer used to block the preview outright. It is allowed now — the
 		# viewer's cards carry card_id metadata and are hoverable, so the same hold-Shift preview
 		# the main grid uses works over them. Escape still closes the preview before the viewer
 		# (see the cancel chain above), so the two back out one layer at a time.
@@ -3604,7 +3604,7 @@ func _process(_delta: float) -> void:
 
 ## Shows the hovered card, swapping the image when the hover moves to a different card.
 ##
-## ISSUE #98: this used to hide the preview the instant the mouse was over nothing. Sliding between
+## ISSUE #102: this used to hide the preview the instant the mouse was over nothing. Sliding between
 ## two adjacent cards crosses the few pixels of grid separation, so the overlay was torn down and
 ## rebuilt on every crossing — one frame of the bright deck-builder UI showing through, read as a
 ## white flash. While the key is held the preview is now STICKY: it only ever changes to another
@@ -3652,7 +3652,7 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	var card_id : String = card_rect.get_meta("card_id")
 	zoomed_card = card_rect
 
-	# ISSUE #98 FIX ACTIVE: an overlay is already up (the player slid onto another card while holding
+	# ISSUE #102 FIX ACTIVE: an overlay is already up (the player slid onto another card while holding
 	# the zoom key) — hand the new card to the live panel. Freeing and rebuilding the CanvasLayer let
 	# the bright UI underneath show through for a frame, which is the white flash between cards.
 	if is_zoomed and detail_panel != null and is_instance_valid(detail_panel):
@@ -3713,13 +3713,13 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		prev_btn,
 		set_label,
 		deck_name_edit,
-		# ISSUE #182: deck_count_label is permanently hidden — the sidebar pill
+		# ISSUE #183: deck_count_label is permanently hidden — the sidebar pill
 		# replaced it. Leaving it in this list made every return from the deck
 		# viewer or the search screen show the old 61px "XX / XX" back in the
 		# middle of the screen.
 		view_deck_btn,
 		search_btn,
-		_collection_chip,   # ISSUE #516: the "X / X" set-progress chip hides with the set chrome
+		_collection_chip,   # ISSUE #390: the "X / X" set-progress chip hides with the set chrome
 	]
 	if _save_opp_btn != null:
 		nodes_to_toggle.append(_save_opp_btn)
@@ -3742,7 +3742,7 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 	if _comp_heading != null:
 		nodes_to_toggle.append(_comp_heading)
 	if _deck_count_chip_holder != null and is_instance_valid(_deck_count_chip_holder):
-		nodes_to_toggle.append(_deck_count_chip_holder)   # ISSUE #187
+		nodes_to_toggle.append(_deck_count_chip_holder)   # ISSUE #188
 
 	for node in nodes_to_toggle:
 		if node != null and is_instance_valid(node):
@@ -3750,7 +3750,7 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 
 	# In search-results mode the grid isn't showing a single set, so the < > switch buttons stay
 	# hidden even when the rest of the UI is being restored.
-	# ISSUE #148 FIX: the set NAME label no longer hides with them — it stays up and reads
+	# ISSUE #150 FIX: the set NAME label no longer hides with them — it stays up and reads
 	# SEARCH_MODE_LABEL instead, so the screen says why it isn't showing a set. _display_current_set()
 	# writes the real set name back over it the moment browsing resumes.
 	if visible_flag and search_active:
@@ -3758,9 +3758,9 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		set_label.text    = SEARCH_MODE_LABEL
 		next_btn.visible  = false
 		prev_btn.visible  = false
-		_set_collection_chip_visible(false)   # ISSUE #516
+		_set_collection_chip_visible(false)   # ISSUE #390
 
-	# ISSUE #392: "Clear filter" hides with the rest, and comes back only while a search shows.
+	# ISSUE #306: "Clear filter" hides with the rest, and comes back only while a search shows.
 	if _clear_filter_btn != null and is_instance_valid(_clear_filter_btn):
 		_clear_filter_btn.visible = visible_flag and search_active
 
@@ -3772,7 +3772,7 @@ func _on_deck_name_changed(_new_text: String) -> void:
 	_refresh_save_button()
 
 
-# ─── Floating message (ISSUE #84) ────────────────────────────────────────────
+# ─── Floating message (ISSUE #87) ────────────────────────────────────────────
 # TWEAKABLE VALUES for the floating message shown when a save is refused, or when a search matches
 # nothing ("No cards found").
 const MSG_ANCHOR_Y       := 0.82    # vertical screen position, as a fraction of screen height
@@ -3782,7 +3782,7 @@ const MSG_RISE_PIXELS    := 120.0   # how far it drifts upward
 const MSG_RISE_SECONDS   := 4.0     # drift duration
 const MSG_FADE_SECONDS   := 3.2     # fade duration (starts with the drift)
 const MSG_COLOUR         := Color(1.0, 0.45, 0.45)
-## ISSUE #394: the "DECK SAVED!" confirmation - same label, success green.
+## ISSUE #308: the "DECK SAVED!" confirmation - same label, success green.
 const MSG_SAVED_TEXT     := "DECK SAVED!"
 const MSG_SAVED_COLOUR   := Color(0.45, 1.0, 0.55)
 
@@ -3863,7 +3863,7 @@ func _show_deck_message(text: String, colour: Color = MSG_COLOUR) -> void:
 		_deck_message_label = null
 
 
-## ISSUE #84: the single source of truth for "can this deck be saved?".
+## ISSUE #87: the single source of truth for "can this deck be saved?".
 ## Returns "" when the deck is saveable, otherwise the reason to show the player.
 ## The save button's colour and _on_save_pressed()'s floating message both read this, so the button's
 ## appearance and the explanation can never disagree.
@@ -3891,7 +3891,7 @@ func _deck_save_blocker() -> String:
 	return ""
 
 
-## ISSUE #84: true when the deck contains at least one Basic Pokemon.
+## ISSUE #87: true when the deck contains at least one Basic Pokemon.
 ## A card counts as Basic when its metadata supertype is Pokemon and "Basic" is among its subtypes —
 ## this deliberately excludes Basic ENERGY, whose supertype is "Energy".
 func _deck_has_basic_pokemon() -> bool:
@@ -3910,7 +3910,7 @@ func _deck_has_basic_pokemon() -> bool:
 
 
 ## Colours the save button green when the deck is saveable and something has changed.
-## ISSUE #84: the button is never actually `disabled` any more — a disabled Button emits no `pressed`
+## ISSUE #87: the button is never actually `disabled` any more — a disabled Button emits no `pressed`
 ## signal, so the player got no feedback at all when they clicked it. It now always accepts the click
 ## and _on_save_pressed() explains why nothing was saved; the theme still shows at a glance whether
 ## saving will work.
@@ -3921,7 +3921,7 @@ func _refresh_save_button() -> void:
 
 
 # ─── Load deck popup ────────────────────────────────────────────────────────
-# TWEAKABLE VALUES for the load-deck popup (ISSUE #154).
+# TWEAKABLE VALUES for the load-deck popup (ISSUE #155).
 # The panel is wider and a little taller than it was, the title has real space above it, and the
 # dead band that used to sit under Load/Cancel is gone — the deck list carries SIZE_EXPAND_FILL now,
 # so leftover height goes into the list rather than pooling at the bottom of the panel.
@@ -4122,7 +4122,7 @@ func _on_rename_deck_pressed(deck_name: String) -> void:
 	cancel_btn.text = "Cancel"
 	cancel_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
 	cancel_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
-	UIKit.style_button(cancel_btn, "negative")   # ISSUE #379
+	UIKit.style_button(cancel_btn, "negative")   # ISSUE #292
 	cancel_btn.pressed.connect(_close_rename_popup)
 	btn_row.add_child(cancel_btn)
 
@@ -4274,7 +4274,7 @@ func _on_load_deck_pressed(from_opponents: bool = false) -> void:
 	overlay.anchor_bottom = 1.0
 	load_popup.add_child(overlay)
 
-	# Main panel — centered on screen. ISSUE #154: wider (500 -> LOAD_PANEL_W) and slightly taller
+	# Main panel — centered on screen. ISSUE #155: wider (500 -> LOAD_PANEL_W) and slightly taller
 	# (600 -> LOAD_PANEL_H).
 	var panel := UIKit.make_modal_panel()
 	panel.custom_minimum_size = Vector2(LOAD_PANEL_W, LOAD_PANEL_H)
@@ -4288,7 +4288,7 @@ func _on_load_deck_pressed(from_opponents: bool = false) -> void:
 	panel.offset_bottom = LOAD_PANEL_H * 0.5
 	load_popup.add_child(panel)
 
-	# ISSUE #154: the breathing room. Left/right margins are the black space either side of the
+	# ISSUE #155: the breathing room. Left/right margins are the black space either side of the
 	# buttons, the top margin is the space above the title, and the bottom margin is deliberately
 	# small — the old layout left a big dead band under Load/Cancel because nothing in the VBox
 	# expanded, so all the slack piled up at the bottom.
@@ -4311,7 +4311,7 @@ func _on_load_deck_pressed(from_opponents: bool = false) -> void:
 	title_label.add_theme_font_size_override("font_size", LOAD_TITLE_FONT)
 	vbox.add_child(title_label)
 
-	# Scrollable list of decks. ISSUE #154: EXPAND_FILL is what removes the dead space under the
+	# Scrollable list of decks. ISSUE #155: EXPAND_FILL is what removes the dead space under the
 	# Load/Cancel row — the list soaks up whatever height is left over instead of the panel doing it.
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical    = Control.SIZE_EXPAND_FILL
@@ -4333,7 +4333,7 @@ func _on_load_deck_pressed(from_opponents: bool = false) -> void:
 	# mutable container that both lambdas can read and write.
 	var selection := {"deck_name": "", "button": null}
 
-	# One row per deck: the name button, then a square delete button (ISSUE #154).
+	# One row per deck: the name button, then a square delete button (ISSUE #155).
 	for deck_name in deck_files:
 		var row := HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -4416,7 +4416,7 @@ func _on_load_deck_pressed(from_opponents: bool = false) -> void:
 	cancel_popup_btn.text = "Cancel"
 	cancel_popup_btn.custom_minimum_size = Vector2(LOAD_ACTION_W, LOAD_ACTION_H)
 	cancel_popup_btn.add_theme_font_size_override("font_size", LOAD_ACTION_FONT)
-	UIKit.style_button(cancel_popup_btn, "negative")   # ISSUE #379
+	UIKit.style_button(cancel_popup_btn, "negative")   # ISSUE #292
 	cancel_popup_btn.pressed.connect(_close_load_popup)
 	btn_row.add_child(cancel_popup_btn)
 
@@ -4429,7 +4429,7 @@ func _close_load_popup() -> void:
 
 
 # ============================================================
-# INTRO WALKTHROUGH — ISSUE #476
+# INTRO WALKTHROUGH — ISSUE #350
 # ============================================================
 # Olly's intro opens this screen on its own (OllyIntroCutscene._deck_walkthrough) and drives it:
 # the bonus pack's cards fly into their slots, then the deck is rebuilt into the better one card by

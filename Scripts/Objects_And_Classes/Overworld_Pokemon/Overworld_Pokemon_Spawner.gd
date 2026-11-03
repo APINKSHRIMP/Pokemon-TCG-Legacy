@@ -674,7 +674,7 @@ func _flock_offset(direction: float, placed: Array[Vector2]) -> Vector2:
 func _map_edge(direction: float) -> float:
 	if _player != null and is_instance_valid(_player) and "camera" in _player:
 		var camera: Camera2D = _player.camera
-		# ISSUE #477: only a camera whose limits are ON knows the map's edge. Outdoors they are off
+		# ISSUE #351: only a camera whose limits are ON knows the map's edge. Outdoors they are off
 		# and the scene's leftover numbers (-1000 .. 6500) were older than the map, so flocks vanished
 		# mid-screen on the expanded west side. Those maps measure their tiles instead.
 		if camera != null and camera.limit_enabled:
@@ -687,7 +687,7 @@ func _map_edge(direction: float) -> float:
 	return view.end.x + 2000.0 if direction > 0.0 else view.position.x - 2000.0
 
 
-## ISSUE #477: the world-px rect every TileMapLayer of the current map covers. Measured once per map.
+## ISSUE #351: the world-px rect every TileMapLayer of the current map covers. Measured once per map.
 var _bounds_cache: Rect2 = Rect2()
 var _bounds_scene: Node = null
 

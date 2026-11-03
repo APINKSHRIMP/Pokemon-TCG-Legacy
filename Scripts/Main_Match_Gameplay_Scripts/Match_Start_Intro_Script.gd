@@ -29,7 +29,7 @@ const PRIZE_ICON_GAP : float = 10.0
 # is the information, the movement is the decoration.
 # Halved with the rest of the intro (2026-10-21): 1.6 -> 0.8.
 const HOLD_AFTER     : float = 0.8
-## ISSUE #288: 0.5 -> 1.0. "Double the fade in time for all scene transitions."
+## ISSUE #289: 0.5 -> 1.0. "Double the fade in time for all scene transitions."
 ## The same doubling is applied on the match board, the intro, the outro and the
 ## best-of-three tracker, so every boundary in a match moves at one pace. It is
 ## still multiplied by the Animation speed preset via transition_time(), and

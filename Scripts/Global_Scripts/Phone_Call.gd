@@ -68,7 +68,7 @@ const PARTS: Array[Dictionary] = [
 	{ "folder": "Hair",    "name": "Hair_Front" },
 ]
 
-# ─── ISSUE #405: the caller is their IN-BATTLE sprite ─────────────────────────
+# ─── ISSUE #318: the caller is their IN-BATTLE sprite ─────────────────────────
 # The talking-head PARTS above are BLOCKED OUT, not deleted: with this switch on, the caller is the
 # head and shoulders of their in-battle sprite instead, and only the PARTS mouth frames are kept,
 # laid over that sprite's own mouth. Everything else - the phone, the tree background, connecting /
@@ -204,7 +204,7 @@ var _background_name: String = ""
 var _lines: Array = []
 var _auto_advance: bool = false
 var _screen_name: String = ""        # the pill over the picture; "" hides it
-# ISSUE #405 - the battle-sprite caller (USE_BATTLE_SPRITE)
+# ISSUE #318 - the battle-sprite caller (USE_BATTLE_SPRITE)
 var _battle_sprite: String = ""      # In_Battle_Sprites file name, no extension
 var _battle_flip: bool = true        # most sprites face LEFT; flipped, they face into the call
 var _mouth_point: Vector2 = Vector2(-1, -1)   # the mouth's centre in the sprite's own pixels
@@ -328,7 +328,7 @@ func configure(config: Dictionary) -> void:
 		var r: Array = config["screen_rect"]
 		if r.size() == 4:
 			_screen_rect = Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3]))
-	# ISSUE #405: battle_sprite defaults to the costume the character battles in - "1Ellie_Hoodie".
+	# ISSUE #318: battle_sprite defaults to the costume the character battles in - "1Ellie_Hoodie".
 	_battle_sprite = String(config.get("battle_sprite", "1%s_%s" % [_character, _clothes]))
 	_battle_flip   = bool(config.get("flip", true))
 	_mouth_width   = float(config.get("mouth_width", BATTLE_MOUTH_WIDTH))
@@ -403,7 +403,7 @@ func _build() -> void:
 
 	_build_background(hole.size)
 	if USE_BATTLE_SPRITE:
-		_build_battle_caller(hole.size)   # ISSUE #405
+		_build_battle_caller(hole.size)   # ISSUE #318
 	else:
 		_build_caller(hole.size)
 	_build_name_pill(hole.size)
@@ -1007,7 +1007,7 @@ func _is_emotion_tag(tag: String) -> bool:
 ## set, which is what a line with no tag gets.
 func _set_emotion(emotion: String) -> void:
 	if USE_BATTLE_SPRITE:
-		_set_battle_emotion(emotion)   # ISSUE #405: only the mouth has expressions now
+		_set_battle_emotion(emotion)   # ISSUE #318: only the mouth has expressions now
 		return
 	if _layers.is_empty():
 		return
@@ -1095,7 +1095,7 @@ func _ping_pong_order(count: int) -> PackedInt32Array:
 
 
 # ============================================================
-# THE BATTLE-SPRITE CALLER (ISSUE #405)
+# THE BATTLE-SPRITE CALLER (ISSUE #318)
 # ============================================================
 # One TextureRect of the in-battle sprite, cropped to the top BATTLE_SHOW_FRACTION of its visible
 # pixels, flipped to face into the call, and sized so that slice fills the screen's HEIGHT. Wider

@@ -30,7 +30,7 @@ func draw_n(is_opponent: bool, count: int) -> void:
 
 # ── Discard ───────────────────────────────────────────────────────────────────────────────
 
-# ISSUE #527: discard_energy_from_pokemon WITH the card flying from its Pokemon to the discard pile.
+# ISSUE #401: discard_energy_from_pokemon WITH the card flying from its Pokemon to the discard pile.
 # The data moves synchronously before the first await, so a caller that can't await (a sync helper)
 # may fire it and carry on - the flights queue behind each other. Recycle Energy / Ecogym (back to
 # hand) and [Keep] (stays attached) are routed by discard_energy_from_pokemon as before; only a card
@@ -54,14 +54,14 @@ func discard_energy_animated(energy: card_object, is_owner_opp: bool) -> void:
 	if energy.current_location != "discard":
 		return
 	var discard_node: Control = main.opponent_discard_icon if is_owner_opp else main.player_discard_icon
-	print("ISSUE #527 FIX ACTIVE: ", energy.metadata.get("name", ""), " flies to the discard pile")
+	print("ISSUE #401 FIX ACTIVE: ", energy.metadata.get("name", ""), " flies to the discard pile")
 	if from_node != null and is_instance_valid(from_node):
 		await main.animate_card_a_to_b(from_node, discard_node, ENERGY_DISCARD_FLIGHT, tex, main.card_scales[10])
 	else:
 		await main.animate_card_a_to_b(discard_node, discard_node, ENERGY_DISCARD_FLIGHT, tex, main.card_scales[10], Vector2.ZERO, main._ANIM_POS_SENTINEL, false, from_pos)
 	main.update_discard_pile_display(is_owner_opp)
 
-## ISSUE #527: seconds for an attack-cost Energy card to fly to the discard pile.
+## ISSUE #401: seconds for an attack-cost Energy card to fly to the discard pile.
 const ENERGY_DISCARD_FLIGHT := 0.2
 
 
@@ -69,14 +69,13 @@ const ENERGY_DISCARD_FLIGHT := 0.2
 # Recycle Energy and Ecogym (non-Colorless) return to owner's hand; others go to discard.
 # Pass is_ko_discard=true for KO sequences so Ecogym protection is skipped.
 func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_discard: bool = false) -> void:
-	# ISSUE #317: many callers only sent the card to the discard pile and left it attached as well (one card
+	# OLD ISSUE 317: many callers only sent the card to the discard pile and left it attached as well (one card
 	# in two places — Searing Flames, Dark Flame, Mega Flame, Twister, Lava Flow...). Detach it here.
 	for side in [false, true]:
 		for p in get_all_pokemon_in_play(side):
 			if energy in p.attached_energies:
-				# ISSUE #374: [Keep] (Unown [K]) — the opponent's effects can't discard Energy from your Unown.
+				# OLD ISSUE 374: [Keep] (Unown [K]) — the opponent's effects can't discard Energy from your Unown.
 				if not is_ko_discard and main.powers_and_bodies.keep_protects_energy(p):
-					print("ISSUE #374 FIX ACTIVE: [Keep] kept ", energy.metadata.get("name",""), " on ", p.metadata.get("name",""))
 					return
 				p.attached_energies.erase(energy)
 	var card_name = energy.metadata.get("name", "")
@@ -102,7 +101,7 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 	energy.current_location = "discard"
 	discard.append(energy)
 
-## ISSUE #388: A POKEMON THAT GOES BACK TO THE HAND IS A NEW CARD.
+## ISSUE #301: A POKEMON THAT GOES BACK TO THE HAND IS A NEW CARD.
 ##
 ## Once a card leaves play it forgets everything that happened to it - damage,
 ## Special Conditions, PlusPower/Defender, "until your next turn" effects, a
@@ -124,7 +123,7 @@ func reset_returned_pokemon(card: card_object, is_opponent: bool) -> void:
 
 # Move a single card to the given side's discard pile. Optionally animate it.
 func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false, anim_from: Control = null) -> void:
-	# ISSUE #375: a card discarded from the hand used to STAY in the hand as well (Team Aqua/Magma Schemer
+	# OLD ISSUE 375: a card discarded from the hand used to STAY in the hand as well (Team Aqua/Magma Schemer
 	# and every other "discard a card from your hand" caller that didn't erase it first) — found by the
 	# autotester as the same card in hand and discard pile at once. The move is now complete here.
 	var hand: Array = main.opponent_hand if is_opponent else main.player_hand
@@ -146,7 +145,6 @@ func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false
 			await main.animate_card_a_to_b(from_node, discard_node, 0.2, tex, main.card_scales[10])
 		if main._should_bail(): return
 	if hand.has(card):
-		print("ISSUE #375 FIX ACTIVE: ", card.metadata.get("name", ""), " taken out of the hand as it is discarded")
 		hand.erase(card)
 		main.refresh_hand_display(is_opponent)
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
@@ -154,7 +152,7 @@ func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false
 		discard.append(card)
 	card.current_location = "discard"
 	if card.metadata.get("supertype", "") == "Pokémon" and card.current_hp != card.get_max_hp():
-		card.current_hp = card.get_max_hp()   # ISSUE #530: a discarded Pokemon card carries no damage
+		card.current_hp = card.get_max_hp()   # ISSUE #404: a discarded Pokemon card carries no damage
 	main.update_discard_pile_display(is_opponent)
 
 # Move every card in an array to the given side's discard pile.
@@ -171,7 +169,7 @@ func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:
 	pokemon.attached_energies.clear()
 	for card in pokemon.attached_pre_evolutions.duplicate():
 		card.current_location = "discard"
-		card.current_hp = card.get_max_hp()   # ISSUE #530: leaves play as a fresh card
+		card.current_hp = card.get_max_hp()   # ISSUE #404: leaves play as a fresh card
 		discard.append(card)
 	pokemon.attached_pre_evolutions.clear()
 	for card in pokemon.attached_cards.duplicate():
@@ -181,14 +179,14 @@ func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:
 	main.update_discard_pile_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 
-# ISSUE #91: the animated twin of discard_all_attachments. Every attachment flies to the discard pile
+# ISSUE #94: the animated twin of discard_all_attachments. Every attachment flies to the discard pile
 # ONE AT A TIME, with the whole board refreshed after each one, so the Pokemon is visibly stripped
 # before it leaves play. Use this instead of discard_all_attachments in any player-visible effect that
 # empties a Pokemon (Scoop Up and friends); the synchronous version stays for internal cleanup where
 # no animation is wanted.
 #
 # Energies reuse main.animate_energies_to_discard (the shared retreat/KO path, one at a time since
-# ISSUE #79) but that only refreshes the ACTIVE's energy strip, so the board refresh is added here for
+# ISSUE #81) but that only refreshes the ACTIVE's energy strip, so the board refresh is added here for
 # the benched case. Tools/attached Trainers and pre-evolution cards are then animated the same way.
 func discard_all_attachments_animated(pokemon: card_object, is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
@@ -284,13 +282,12 @@ func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String,
 	var chosen: Array = []
 
 	if is_opponent:
-		# ISSUE #324: the CPU took the first N matches in (shuffled) deck order — i.e. a random pick for every
+		# OLD ISSUE 324: the CPU took the first N matches in (shuffled) deck order — i.e. a random pick for every
 		# CPU deck search in the game. It now takes the N cards it values most (cpu_rank_keep_value: Energy
 		# its attackers need, Evolutions whose base is in play, Basics while the Bench has room...).
 		candidates.sort_custom(func(x, y): return main.cpu_ai.cpu_rank_keep_value(x) > main.cpu_ai.cpu_rank_keep_value(y))
 		for i in range(min(count, candidates.size())):
 			chosen.append(candidates[i])
-		print("ISSUE #324 FIX ACTIVE: CPU deck search ranked ", candidates.size(), " candidates, took ", chosen.size())
 	else:
 		# Deck searches are "up to" (a search may always fail to find), so min 0. prompt_select_cards
 		# also hides/restores the attack-time opponent_blocker (ISSUE #21).
@@ -302,7 +299,7 @@ func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String,
 		deck.erase(card)
 		card.current_location = "hand"
 		hand.append(card)
-	# ISSUE #401: "show that card to your opponent" - the CPU's pick is shown.
+	# ISSUE #314: "show that card to your opponent" - the CPU's pick is shown.
 	await reveal_searched_cards(chosen, is_opponent)
 	if main._should_bail(): return chosen
 	deck.shuffle()
@@ -311,7 +308,7 @@ func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String,
 	return chosen
 
 
-## ISSUE #401: THE TEXT OF THE TRAINER OR ATTACK RESOLVING RIGHT NOW.
+## ISSUE #314: THE TEXT OF THE TRAINER OR ATTACK RESOLVING RIGHT NOW.
 ##
 ## Set by Trainer_Effects.resolve_standard_trainer (restored afterwards, so a
 ## Trainer played from inside an attack hands the attack's text back) and by
@@ -326,7 +323,7 @@ static func text_says_show(text: String) -> bool:
 	return ("show" in t or "reveal" in t) and "opponent" in t
 
 
-## ISSUE #401: call after the CPU's searched cards are in its hand. Reveals them
+## ISSUE #314: call after the CPU's searched cards are in its hand. Reveals them
 ## only when the resolving card's text says to; the player's own picks and
 ## hidden searches pass straight through.
 ## Powers do not pass through a dispatcher that records their text, so a Power
@@ -340,7 +337,7 @@ func reveal_searched_cards(cards: Array, is_opponent: bool, text_override: Strin
 	await cpu_reveal_added_to_hand(cards)
 
 
-## ISSUE #401: every Power / Body text printed on a card, joined - for
+## ISSUE #314: every Power / Body text printed on a card, joined - for
 ## reveal_searched_cards' text_override.
 func ability_text(card: card_object) -> String:
 	if card == null:
@@ -352,7 +349,7 @@ func ability_text(card: card_object) -> String:
 	return " ".join(parts)
 
 
-## ISSUE #401: SHOW THE PLAYER WHAT THE CPU JUST TOOK.
+## ISSUE #314: SHOW THE PLAYER WHAT THE CPU JUST TOOK.
 ##
 ## The CPU's searched cards used to slip into its hand with only a text line. Each
 ## one now goes up full-screen like a played Trainer, with the message, then flies
@@ -376,9 +373,8 @@ func cpu_reveal_added_to_hand(cards: Array) -> void:
 func recover_to_hand(card: card_object, is_opponent: bool, animate: bool = false) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var hand    = main.opponent_hand if is_opponent else main.player_hand
-	# ISSUE #374: Allergic Pollen (Parasect neo3-35) — discard-pile cards aren't affected by attacks or Powers.
+	# OLD ISSUE 374: Allergic Pollen (Parasect neo3-35) — discard-pile cards aren't affected by attacks or Powers.
 	if card in discard and main.powers_and_bodies.allergic_pollen_blocks_discard():
-		print("ISSUE #374 FIX ACTIVE: Allergic Pollen kept ", card.metadata.get("name",""), " in the discard pile")
 		await main.show_message("ALLERGIC POLLEN! CARDS IN THE DISCARD PILE CAN'T BE AFFECTED!")
 		return
 	discard.erase(card)
@@ -393,35 +389,70 @@ func recover_to_hand(card: card_object, is_opponent: bool, animate: bool = false
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 
-## ISSUE #533: move an Energy card from `is_opponent`'s discard pile onto `target`, flying it from the discard pile
+## ISSUE #407: move an Energy card from `is_opponent`'s discard pile onto `target`, flying it from the discard pile
 ## to the exact slot it ends up in (the Active's energy stack, or behind the Benched card). For Energy Absorption and
 ## any other "attach Energy from your discard pile" effect.
 func attach_energy_from_discard_animated(energy: card_object, target: card_object, is_opponent: bool) -> void:
-	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	var discard_icon: Control = main.opponent_discard_icon if is_opponent else main.player_discard_icon
+	await attach_energy_from_pile_animated(energy, target, is_opponent, false)
+
+
+## ISSUE #436: the same flight from the DECK (Recharge and other "search your deck for an Energy and
+## attach it" attacks). While the card is pulled out the deck glows in the Energy's type colour
+## (yellow for Lightning), so the eye goes to the deck and follows the card to its slot.
+const DECK_GLOW_IN := 0.18      # TWEAKABLE: seconds for the deck to take on the Energy's colour
+const DECK_GLOW_OUT := 0.3      # TWEAKABLE: seconds to fade back
+const DECK_GLOW_STRENGTH := 0.75  # TWEAKABLE: 0 = no tint, 1 = the full type colour
+
+func attach_energy_from_deck_animated(energy: card_object, target: card_object, is_opponent: bool) -> void:
+	await attach_energy_from_pile_animated(energy, target, is_opponent, true)
+
+
+func attach_energy_from_pile_animated(energy: card_object, target: card_object, is_opponent: bool, from_deck: bool) -> void:
+	var pile: Array
+	var icon: Control
+	if from_deck:
+		pile = main.opponent_deck if is_opponent else main.player_deck
+		icon = main.opponent_deck_icon if is_opponent else main.player_deck_icon
+	else:
+		pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+		icon = main.opponent_discard_icon if is_opponent else main.player_discard_icon
 	var tex = main.get_card_texture(energy)
-	discard.erase(energy)
+	var glow_from: Color = icon.modulate
+	if from_deck:
+		var types: Array = main.get_energy_provided_by_card(energy)
+		var col: Color = UITheme.ENERGY_COLOUR.get(types[0] if not types.is_empty() else "Colorless", Color.WHITE)
+		var tw_in := icon.create_tween()
+		tw_in.tween_property(icon, "modulate", glow_from.lerp(col.lightened(0.25), DECK_GLOW_STRENGTH), GameState.scaled_duration(DECK_GLOW_IN, GameState.card_match_animation_speed))
+		await tw_in.finished
+		print("ISSUE #436 FIX ACTIVE: ", energy.metadata.get("name", ""), " flies from the deck to ", target.metadata.get("name", ""))
+	pile.erase(energy)
 	energy.current_location = "attached"
 	target.attached_energies.append(energy)
-	main.update_discard_pile_display(is_opponent)
+	if from_deck:
+		main.update_deck_icon(is_opponent)
+	else:
+		main.update_discard_pile_display(is_opponent)
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	if target == active:
 		var energy_node = main.opponent_energy_container if is_opponent else main.player_energy_container
 		var slot_rect: Dictionary = main.measure_and_hide_new_active_energy_slot(is_opponent)
-		await main.animate_card_a_to_b(discard_icon, energy_node, 0.3, tex, main.PILE_SIZE,
+		await main.animate_card_a_to_b(icon, energy_node, 0.3, tex, main.PILE_SIZE,
 			slot_rect.get("size", main.ATTACH_CARD_SIZE), slot_rect.get("position", main._ANIM_POS_SENTINEL), true)
 	else:
 		var bench_node = main.opponent_bench_container if is_opponent else main.player_bench_container
 		var loc: Dictionary = main.get_pokemon_screen_location(target)
-		await main.animate_card_a_to_b(discard_icon, bench_node, 0.3, tex, main.PILE_SIZE,
+		await main.animate_card_a_to_b(icon, bench_node, 0.3, tex, main.PILE_SIZE,
 			loc.get("size", main.BENCH_CARD), loc.get("position", main._ANIM_POS_SENTINEL), true)
+	if from_deck and is_instance_valid(icon):
+		var tw_out := icon.create_tween()
+		tw_out.tween_property(icon, "modulate", glow_from, GameState.scaled_duration(DECK_GLOW_OUT, GameState.card_match_animation_speed))
 	if main._should_bail(): return
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 
 # ── Healing ───────────────────────────────────────────────────────────────────────────────
 
-const HEAL_BLOCK_STEP := 0.25   # ISSUE #490: seconds between restored HP blocks
+const HEAL_BLOCK_STEP := 0.25   # ISSUE #364: seconds between restored HP blocks
 
 # Heal `amount` HP from a pokemon (clamped to max HP).
 # Shows a green floating "+N HP" label above the pokemon's actual screen position,
@@ -441,15 +472,15 @@ func heal_pokemon(pokemon: card_object, amount: int, is_opponent: bool) -> void:
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
 	if main.attack_vfx != null:
-		main.attack_vfx.play_heal(pokemon)   # ISSUE #510 (fire and forget)
+		main.attack_vfx.play_heal(pokemon)   # ISSUE #384 (fire and forget)
 
 	# Show floating "+N HP" label over this pokemon's real screen position
-	# ISSUE #501: through float_label_over, which centres it (the old one sat off to the right).
+	# ISSUE #375: through float_label_over, which centres it (the old one sat off to the right).
 	if not main.get_pokemon_screen_location(pokemon).is_empty():
 		main.float_label_over(pokemon, "+" + str(actual_heal) + " HP", Color.GREEN, is_opponent)
 
 	# Animate HP blocks restoring one counter at a time.
-	# ISSUE #490: on the Pokémon that is healed -- the loop used to redraw the ACTIVE's row each step,
+	# ISSUE #364: on the Pokémon that is healed -- the loop used to redraw the ACTIVE's row each step,
 	# so a Benched Pokémon's blocks all came back at once on the final refresh. TWEAKABLE: HEAL_BLOCK_STEP.
 	var circles_to_restore = actual_heal / 10
 	var hp_before = pokemon.current_hp
@@ -472,18 +503,16 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 	# NEO4 Flash Touch (Light Ledian): immune to special conditions while Active
 	if pokemon != null and pokemon.neo4_immune_to_status and status != "":
 		return
-	# ISSUE #317: Pollen Shield ("can't become affected by a Special Condition"), and an attack's Special
+	# OLD ISSUE 317: Pollen Shield ("can't become affected by a Special Condition"), and an attack's Special
 	# Condition never lands on a Pokémon protected from that attack's effects (Agility, Transparency, Light Wave).
 	if pokemon != null and status != "":
 		if pokemon.has_effect("status_immune"):
-			print("ISSUE #317 FIX ACTIVE: ", status, " blocked by Pollen Shield on ", pokemon.metadata.get("name", ""))
 			return
 		var ae = main.attack_effects
 		if ae != null and ae.is_attack_in_progress() and pokemon != ae.current_attacker \
 				and pokemon.is_owner_opp(main) != ae.current_attacker_is_opponent and ae.is_protected_from_effects(pokemon):
-			print("ISSUE #317 FIX ACTIVE: ", status, " blocked — ", pokemon.metadata.get("name", ""), " is protected from the attack's effects")
 			return
-	# ISSUE #304: Clefairy Doll / Mysterious Fossil "can't be Asleep, Confused, Paralyzed, or Poisoned",
+	# OLD ISSUE 304: Clefairy Doll / Mysterious Fossil "can't be Asleep, Confused, Paralyzed, or Poisoned",
 	# and Snorlax's Thick Skinned ("can't become Asleep, Confused, Paralyzed, or Poisoned"). Both were
 	# only checked in Main.apply_status_effect, so every effect that goes through THIS function (Strange
 	# Powder, Long-Distance Hypnosis, Pollen Stench, Sleep!, Petal Whirlwind...) ignored them.
@@ -491,7 +520,6 @@ func apply_status(pokemon: card_object, status: String, is_opponent: bool) -> vo
 		return
 	if pokemon != null and status in ["Asleep", "Confused", "Paralyzed", "Poisoned", "Toxic"] and pokemon.has_ability("Thick Skinned"):
 		if not pokemon.is_status_blocked() and not main.powers_and_bodies.is_power_blocked(pokemon):
-			print("ISSUE #304 FIX ACTIVE: Thick Skinned blocked ", status, " on ", pokemon.metadata.get("name", ""))
 			return
 	# EX16 Sidney's Stadium (ex16-82): each player's Darkness Pokemon can't be Asleep, Confused, or Paralyzed.
 	if pokemon != null and status in ["Asleep", "Confused", "Paralyzed"] and main.is_stadium_in_play(StadiumIds.SIDNEYS_STADIUM):
@@ -584,21 +612,19 @@ func clear_statuses(pokemon: card_object, is_opponent: bool) -> void:
 # `picker_is_opponent` determines whose side is making the choice (the attacker/effect owner).
 # Pass `forced_card` to skip the selection UI and discard a specific energy directly.
 # Returns the removed card, or null if none were available.
-# ISSUE #297: GYM2 Brock's Protection (gym2-101) — "Energy cards attached to that Pokémon can't be removed
+# OLD ISSUE 297: GYM2 Brock's Protection (gym2-101) — "Energy cards attached to that Pokémon can't be removed
 # by your opponent's attacks or Trainer cards." True (with a message) when `remover_is_opponent`'s side is
 # not allowed to take Energy off `target`.
 func energy_removal_blocked(target: card_object, target_owner_is_opponent: bool, remover_is_opponent: bool) -> bool:
 	if target == null or target_owner_is_opponent == remover_is_opponent:
 		return false
-	# ISSUE #371: Legendary Body — a Trainer card (no attack / Power resolving) can't touch the Active's Energy.
+	# OLD ISSUE 371: Legendary Body — a Trainer card (no attack / Power resolving) can't touch the Active's Energy.
 	if not main.attack_effects.is_attack_in_progress() and not main.powers_and_bodies.neo3_power_resolving and main.powers_and_bodies.legendary_body_shields(target):
 		main.show_floating_label("LEGENDARY BODY", main.get_pokemon_screen_location(target).get("position", Vector2(800, 300)), Color.BLUE, true)
-		print("ISSUE #371 FIX ACTIVE: Legendary Body kept the Energy on ", target.metadata.get("name", ""))
 		return true
 	if not target.gym2_brocks_protection_attached:
 		return false
 	main.show_floating_label("BROCK'S PROTECTION", main.get_pokemon_screen_location(target).get("position", Vector2(800, 300)), Color.BLUE, true)
-	print("ISSUE #297 FIX ACTIVE: Brock's Protection kept the Energy on ", target.metadata.get("name", ""))
 	return true
 
 func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
@@ -613,7 +639,7 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 	if forced_card != null:
 		chosen = forced_card
 	elif picker_is_opponent:
-		# ISSUE #163: NOT attached_energies[0] any more — that was the attachment
+		# ISSUE #164: NOT attached_energies[0] any more — that was the attachment
 		# order, so which Energy the CPU gave up was pure luck.
 		#
 		# Which way to lean depends on WHOSE Pokemon this is. Stripping the player's
@@ -628,7 +654,7 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 			chosen = target.attached_energies[0]
 	else:
 		# Player chooses which energy to discard. When cancelable, the Cancel button aborts the
-		# whole effect (returns null so the caller can refund) — ISSUE #25.
+		# whole effect (returns null so the caller can refund) — ISSUE #26.
 		main.defender_energy_discard_active = true
 		main.show_enlarged_array_selection_mode(target.attached_energies)
 		main.header_label.text = "DISCARD AN ENERGY"
@@ -638,7 +664,7 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 		main.action_button.theme = main.theme_red
 		main.cancel_button.visible = cancelable
 		main.selected_card_for_action = null
-		# ISSUE #396: take the pick from the SIGNAL. hide_selection_mode_display_main()
+		# ISSUE #303: take the pick from the SIGNAL. hide_selection_mode_display_main()
 		# clears selected_card_for_action, and this used to read it AFTER that call -
 		# so every pick came back null and Super Potion (and every other caller)
 		# refunded the card instead of discarding. Cancel emits null, as before.
@@ -663,7 +689,7 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 	return chosen
 
 # ── Lt. Surge's Secret Plan (gym2-107) ─────────────────────────────────────────────────────
-# ISSUE #309: the card goes onto the Bench FACE DOWN as a stand-in Basic Pokémon (it used to be revealed and
+# OLD ISSUE 309: the card goes onto the Bench FACE DOWN as a stand-in Basic Pokémon (it used to be revealed and
 # discarded on the spot when it wasn't a Basic). It is flipped when it would be damaged or otherwise
 # affected by an attack, when it becomes the Active Pokémon, if damage counters land on it, or whenever
 # its owner chooses (the "Flip Face-Down Card" entry in the Power menu). On the flip a Basic Pokémon takes
@@ -710,7 +736,6 @@ func reveal_secret_plan(stand_in: card_object, is_opponent: bool) -> card_object
 			if i != -1: bench[i] = real
 		main.display_pokemon(is_opponent)
 		main.display_active_pokemon_energies(is_opponent)
-		print("ISSUE #309 FIX ACTIVE: Secret Plan revealed a Basic — ", real.metadata.get("name", ""))
 		return real
 	# Not a Basic Pokémon: discard it and everything attached
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
@@ -730,10 +755,9 @@ func reveal_secret_plan(stand_in: card_object, is_opponent: bool) -> card_object
 	main.display_pokemon(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message("IT ISN'T A BASIC POKEMON — DISCARDED!")
-	print("ISSUE #309 FIX ACTIVE: Secret Plan revealed a non-Basic — discarded")
 	return null
 
-# ISSUE #375: a face-down Secret Plan stand-in LEAVING play (shuffled into the deck, returned to hand, discarded) takes
+# OLD ISSUE 375: a face-down Secret Plan stand-in LEAVING play (shuffled into the deck, returned to hand, discarded) takes
 # the REAL card with it, not the stand-in. Mr. Fuji shuffled the stand-in into the deck and the real card vanished from
 # the game (autotester card-count check). Swaps the real card into the stand-in's slot (with its attachments) and
 # returns it, so the caller moves the real card. No reveal message — it isn't being flipped in play.
@@ -754,7 +778,6 @@ func unwrap_secret_plan(card: card_object, is_opponent: bool) -> card_object:
 		var bench: Array = main.opponent_bench if is_opponent else main.player_bench
 		var i := bench.find(card)
 		if i != -1: bench[i] = real
-	print("ISSUE #375 FIX ACTIVE: face-down Secret Plan card leaves play as the real ", real.metadata.get("name", ""))
 	return real
 
 
@@ -799,7 +822,7 @@ func place_on_bench(pokemon: card_object, is_opponent: bool) -> bool:
 # Returns the chosen card_object (or null if cancelled). Pass search_mode=true when searching
 # a deck (sets trainer_deck_search_active instead of trainer_pokemon_selection_active).
 func prompt_select_card(pool: Array, header: String, hint: String, btn_text: String, cancelable: bool, search_mode: bool = false) -> card_object:
-	# ISSUE #547: the Pokemon a Trainer was dragged onto answers the card's FIRST target question - only
+	# ISSUE #421: the Pokemon a Trainer was dragged onto answers the card's FIRST target question - only
 	# when that question is "which of your Pokemon in play" and the Pokemon is a legal answer. Spent
 	# either way, so a later prompt (Super Potion's Energy pick, a second step) always asks normally.
 	var dropped: card_object = main.trainer_drop_target
@@ -807,7 +830,7 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 		main.trainer_drop_target = null
 		var own_in_play := func(c): return c == main.player_active_pokemon or c in main.player_bench
 		if dropped in pool and pool.all(own_in_play):
-			print("ISSUE #547 FIX ACTIVE: ", header, " answered by the drop on ", dropped.metadata.get("name", ""))
+			print("ISSUE #421 FIX ACTIVE: ", header, " answered by the drop on ", dropped.metadata.get("name", ""))
 			main.selected_card_for_action = dropped
 			return dropped
 	# opponent_blocker is only meant to be visible during the opponent's turn (see
@@ -822,10 +845,10 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 		main.trainer_pokemon_selection_active = true
 	main.show_enlarged_array_selection_mode(pool)
 	main.cancel_button.visible = cancelable
-	# ISSUE #389: the shared bottom-bar layout (was a hand-copied block here - base1-2 Rain Dance bug).
+	# ISSUE #302: the shared bottom-bar layout (was a hand-copied block here - base1-2 Rain Dance bug).
 	main.queue_bottom_buttons_layout()
 	main.header_label.text = header
-	main.hint_label.text = main.fix_plurals(hint)   # ISSUE #515
+	main.hint_label.text = main.fix_plurals(hint)   # ISSUE #389
 	main.action_button.text = btn_text
 	main.action_button.disabled = true
 	main.action_button.theme = main.theme_disabled
@@ -889,13 +912,13 @@ func prompt_select_cards(pool: Array, min_n: int, max_n: int, header: String, hi
 	main.trainer_discard_cards_needed = max_n
 	main.trainer_discard_cards_min = min_n
 	main.trainer_discard_validator = validator
-	main.multi_select_hint_base = main.fix_plurals(hint)   # ISSUE #515
+	main.multi_select_hint_base = main.fix_plurals(hint)   # ISSUE #389
 	main.multi_select_btn_text = btn_text
 	main.trainer_discard_selection_active = true
 	main.show_enlarged_array_selection_mode(pool)
 	main.header_label.text = header
 	main.cancel_button.visible = cancelable
-	# ISSUE #389: the shared bottom-bar layout.
+	# ISSUE #302: the shared bottom-bar layout.
 	main.queue_bottom_buttons_layout()
 	main.refresh_multi_select_labels()
 	await main.trainer_discard_selection_done
@@ -943,7 +966,7 @@ func prompt_reorder_cards(cards: Array, header: String, hint: String = "Click th
 
 # MULTI-SELECT validator for "different types of basic Energy": refuses a card that provides a
 # (non-Colorless) type an already-picked card provides.
-# ISSUE #367: "Look at N cards (or your opponent's hand) and choose ..." — the player sees EVERY looked-at card, but only
+# OLD ISSUE 367: "Look at N cards (or your opponent's hand) and choose ..." — the player sees EVERY looked-at card, but only
 # the ones `eligible_fn` accepts can be picked. With nothing eligible the whole group is still shown (OK closes it).
 # Effects used to show only the eligible cards, so the player never saw what else was there.
 func pick_from_looked_at(all_cards: Array, eligible_fn: Callable, min_n: int, max_n: int, header: String, hint: String, btn_text: String = "SELECT") -> Array:
@@ -956,7 +979,7 @@ func pick_from_looked_at(all_cards: Array, eligible_fn: Callable, min_n: int, ma
 	return await prompt_select_cards(all_cards.duplicate(), mini(min_n, eligible.size()), mini(max_n, eligible.size()), header, hint, btn_text, false, false,
 		func(c, _picked): return bool(eligible_fn.call(c)))
 
-# ISSUE #367: show a group of cards face up so the player can read them (OK / Cancel closes it). Always a COPY of the
+# OLD ISSUE 367: show a group of cards face up so the player can read them (OK / Cancel closes it). Always a COPY of the
 # array, so an opponent's hand isn't drawn face down by the identity check in show_enlarged_array_selection_mode.
 func show_cards(cards: Array, header: String, hint: String) -> void:
 	if cards.is_empty():
@@ -1011,7 +1034,7 @@ func choose_cards(pool: Array, is_opponent: bool, min_n: int, max_n: int, header
 # Apply `damage` to a bench pokemon and show a floating damage label above its bench position.
 # Does not check KO — caller is responsible for running check_all_knockouts afterwards.
 #
-# ISSUE #294: THE one bench-damage path. There used to be three (this one, Attack_Effects.apply_bench_damage
+# OLD ISSUE 294: THE one bench-damage path. There used to be three (this one, Attack_Effects.apply_bench_damage
 # and the raw `current_hp -= n` in gym1_hit_raw), and each knew a different subset of the rules: this one
 # knew the prevention bodies but not Defender, Transparent Walls or Bench Guard; the generic one knew
 # those three but not the prevention bodies; the raw one knew none of them. Everything now comes here.
@@ -1024,7 +1047,7 @@ func choose_cards(pool: Array, is_opponent: bool, min_n: int, max_n: int, header
 func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool, from_attack: bool = true) -> void:
 	if damage <= 0 or pokemon == null:
 		return
-	if pokemon.secret_plan_face_down:   # ISSUE #309: flipped before it is damaged
+	if pokemon.secret_plan_face_down:   # OLD ISSUE 309: flipped before it is damaged
 		pokemon = await reveal_secret_plan(pokemon, is_opponent)
 		if pokemon == null or main._should_bail():
 			return
@@ -1066,17 +1089,15 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool, fr
 		# GYM2 Transparent Walls (gym2-125): the protected side's Bench takes no damage from attacks.
 		var walls_on = main.opponent_transparent_walls_active if is_opponent else main.player_transparent_walls_active
 		if walls_on:
-			print("ISSUE #294 FIX ACTIVE: Transparent Walls prevented ", damage, " bench damage to ", pokemon.metadata.get("name", ""))
 			return
 	# GYM1 Brock's Rhydon Bench Guard — its owner may take 10 of this damage on the Rhydon instead.
 	damage = await main.powers_and_bodies.check_bench_guard(pokemon, damage, is_opponent)
 	if from_attack and damage > 0:
-		# Defender (base1-80): -20 per Defender attached, bench damage included (ISSUE #60).
+		# Defender (base1-80): -20 per Defender attached, bench damage included (ISSUE #61).
 		damage = max(0, damage - main.get_defender_reduction(pokemon, damage))
 		# GYM2 Erika's Ivysaur Relaxing Scent: halves damage an attack does to ANY Pokemon (round up to 10).
 		damage = main.powers_and_bodies.apply_relaxing_scent(damage)
 	if damage <= 0:
-		print("ISSUE #294 FIX ACTIVE: bench damage to ", pokemon.metadata.get("name", ""), " fully prevented")
 		return
 	pokemon.current_hp = max(0, pokemon.current_hp - damage)
 	# Attack VFX: the benched card flashes and shakes under a small copy of the attack's effect. Each hit
@@ -1084,13 +1105,13 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool, fr
 	if main.attack_vfx != null:
 		await main.attack_vfx.bench_hit(pokemon, damage, from_attack)
 		if main._should_bail(): return
-	# ISSUE #501: the label used the card's centre as the LEFT edge of show_floating_label's 300px box,
+	# ISSUE #375: the label used the card's centre as the LEFT edge of show_floating_label's 300px box,
 	# so it sat ~150px right of the card. float_label_over centres it properly.
 	if not main.get_pokemon_screen_location(pokemon).is_empty():
 		main.float_label_over(pokemon, "-" + str(damage), Color.RED, is_opponent)
 	main.display_pokemon(is_opponent)
 
-# ISSUE #38: staggered multi-target bench damage. Applies `damage` to every valid Pokémon in
+# ISSUE #39: staggered multi-target bench damage. Applies `damage` to every valid Pokémon in
 # `targets` with a ~0.4s "Mexican wave" gap between each floating label — the same pacing
 # Attack_Effects.apply_bench_damage uses for both-bench attacks — so earthquake-family attacks that
 # hit a whole (single-side or both-side) bench read clearly instead of flashing every label at once.

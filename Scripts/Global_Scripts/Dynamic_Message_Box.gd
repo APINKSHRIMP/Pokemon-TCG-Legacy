@@ -427,10 +427,10 @@ func configure(box_height: float = 138.0,
 		add_child(_button_row)
 
 		yes_button = _make_button("Yes", "primary")
-		no_button  = _make_button("No",  "negative")   # ISSUE #379: was translucent, read as disabled
+		no_button  = _make_button("No",  "negative")   # ISSUE #292: was translucent, read as disabled
 		# The OK button is gone as a control but kept as a node, so the handful of
 		# callers that still connect to it do not have to guard. Never made visible.
-		ok_button  = _make_button("OK",  "primary")   # ISSUE #379: OK is a positive answer
+		ok_button  = _make_button("OK",  "primary")   # ISSUE #292: OK is a positive answer
 
 	# -- Pill / chip row --------------------------------------
 	# Added LAST so it draws over the panel's top edge, hiding the seam where the
@@ -644,7 +644,7 @@ func is_ok_mode() -> bool:
 	return _mode == "ok"
 
 
-## ISSUE #476: an OK box that can't be dismissed yet -- no caret (it would promise an input that does
+## ISSUE #350: an OK box that can't be dismissed yet -- no caret (it would promise an input that does
 ## nothing), and MapManager ignores the click / key while ok_armed is false. Release it with false.
 func hold_advance(held: bool) -> void:
 	ok_armed = not held

@@ -20,7 +20,7 @@ extends Node
 #             match, no stacking, no overrides. The option switches itself off when the
 #             match ends. (Board labels are their own Options row now - see labels_on().)
 #   The newby player's SECOND match (after Olly's scripted one) is "generic" too, with
-#             _newby_followup set (ISSUE #485 -- it used to be a "tips" mode with only the key
+#             _newby_followup set (ISSUE #359 -- it used to be a "tips" mode with only the key
 #             tips). Armed by GameState.TUTORIAL_TIPS_KEY, cleared when the match ends. Its
 #             first turn opens on the Shift tip, then Caps Lock on the next quiet turn (#475).
 #
@@ -34,7 +34,7 @@ extends Node
 
 var main: Node = null
 var mode: String = ""
-var _newby_followup: bool = false   # ISSUE #485: the newby's second match
+var _newby_followup: bool = false   # ISSUE #359: the newby's second match
 
 # Message keys already played this match ("once" messages).
 var _seen: Dictionary = {}
@@ -78,7 +78,7 @@ func setup(main_node: Node) -> void:
 		_newby_followup = true
 	if mode != "":
 		print("TUTORIAL: mode ", mode)
-	# ISSUE #470: Options shows the tutorial row locked On while a must-finish tutorial runs.
+	# ISSUE #344: Options shows the tutorial row locked On while a must-finish tutorial runs.
 	GameState.mandatory_tutorial_running = mode in ["newby", "rules"] or _newby_followup
 
 
@@ -100,7 +100,7 @@ func _stacked() -> bool:
 
 ## The match is over: a one-shot "next match" tutorial has been spent.
 func on_match_end() -> void:
-	GameState.mandatory_tutorial_running = false   # ISSUE #470
+	GameState.mandatory_tutorial_running = false   # ISSUE #344
 	if mode == "generic" and GameState.tutorial_next_match_setting == "on":
 		GameState.set_tutorial_next_match("off")
 	if _newby_followup:
@@ -636,7 +636,7 @@ const CAPS_HINT := "Press [CAPS LOCK] To read back any of these help messages"
 
 func on_setup_screen() -> void:
 	# First thing in any match with tutorial help.
-	# ISSUE #475: not the Caps Lock hint for the newby (it comes after "click your hand" now) nor
+	# ISSUE #349: not the Caps Lock hint for the newby (it comes after "click your hand" now) nor
 	# for their second match (Caps Lock is one of its turn tips).
 	if mode == "":
 		return
@@ -664,7 +664,7 @@ func on_player_turn_pre_draw() -> void:
 
 
 ## The player's turn, after the draw and every turn-start effect.
-## ISSUE #475: the newby's second match takes the tips in this order -- Shift on the very first
+## ISSUE #349: the newby's second match takes the tips in this order -- Shift on the very first
 ## turn (as the first card is drawn), then Caps Lock on the next turn nothing else is said.
 const FOLLOWUP_TIP_ORDER := [0, 2, 1, 3]
 const CAPS_REMINDER := ["Remember you can press [CAPS LOCK] to see the match log and all messages."]
@@ -698,7 +698,7 @@ func on_player_turn_start() -> void:
 		_tip_index += 1
 
 
-## ISSUE #475 / #485: the newby's second match -- the generic messages, the Shift tip first thing.
+## ISSUE #349 / #485: the newby's second match -- the generic messages, the Shift tip first thing.
 func _followup_turn_start() -> void:
 	if _player_turns == 1 and _tip_index == 0:
 		await _say(G_TURN_TIPS[FOLLOWUP_TIP_ORDER[0]])
@@ -1086,7 +1086,7 @@ func _newby_turn_start() -> void:
 			_step = "t1_hand"
 			await _once("n_t1_aim", NEWBY_T1_AIM, {"[POKEMON]": _name(main.player_active_pokemon)})
 			await _once("n_t1", NEWBY_T1_CLICK_HAND)
-			# ISSUE #475: the Caps Lock hint moved here from the very first screen.
+			# ISSUE #349: the Caps Lock hint moved here from the very first screen.
 			await _once("n_caps", [CAPS_HINT])
 		2:
 			_step = "t2_bill"
@@ -1193,11 +1193,11 @@ func _newby_trainer(card) -> void:
 			if n == "Professor Oak":
 				_step = "t3_ponyta"
 				await _once("n_t3_oak", NEWBY_T3_OAK)
-				await _once("n_caps_again", CAPS_REMINDER)   # ISSUE #475: Ponyta has just been drawn
+				await _once("n_caps_again", CAPS_REMINDER)   # ISSUE #349: Ponyta has just been drawn
 		"t6_pluspower":
 			if n == "PlusPower":
 				_step = "t6_energy"
-				await _once("n_shift", SHIFT_HINT)   # ISSUE #475
+				await _once("n_shift", SHIFT_HINT)   # ISSUE #349
 		"t8_bill":
 			if n == "Bill":
 				_step = "t8_potions"

@@ -67,13 +67,13 @@ const DIRECTIONS   = ["up", "down", "left", "right"]
 const DIR_VECTORS  = {"up": Vector2.UP, "down": Vector2.DOWN, "left": Vector2.LEFT, "right": Vector2.RIGHT}
 const SQUARE_ORDER = ["down", "right", "up", "left"]
 const WANDER_PROXIMITY_BUFFER: float = 30.0
-# ISSUE #81: patterns whose facing is dictated by the pattern itself, so a captured facing must never
+# ISSUE #82: patterns whose facing is dictated by the pattern itself, so a captured facing must never
 # override them on respawn.
 const FIXED_FACING_PATTERNS = ["idle_cycle", "idle_left", "idle_right", "idle_up", "idle_down"]
 
 func _ready():
 	animated_sprite.sprite_frames = SpriteSheetLoader.load_sprite_frames(sprite)
-	# ISSUE #100: a sprite name that doesn't match a file in Overworld_Sprites/ returns null here, and
+	# ISSUE #104: a sprite name that doesn't match a file in Overworld_Sprites/ returns null here, and
 	# the actor then spawns completely invisible with no other symptom — name it in the console so a
 	# renamed/missing sheet is obvious rather than looking like a spawn-condition bug.
 	animated_sprite.scale = Vector2(0.5, 0.5)
@@ -88,13 +88,13 @@ func _ready():
 	if has_meta("restore_movement"):
 		apply_movement_state(get_meta("restore_movement"))
 		remove_meta("restore_movement")
-	# ISSUE #56 (retest): if MapManager captured a facing from before a battle/menu, restore it now
+	# ISSUE #57 (retest): if MapManager captured a facing from before a battle/menu, restore it now
 	# (after _init_movement's pattern default) so the actor resumes facing the same way — e.g. an
 	# opponent that turned to face the player stays facing the player instead of snapping back.
 	if has_meta("restore_facing"):
 		var rf := str(get_meta("restore_facing"))
 		remove_meta("restore_facing")
-		# ISSUE #81 FIX: never let a captured facing override a pattern that fixes the facing by design.
+		# ISSUE #82 FIX: never let a captured facing override a pattern that fixes the facing by design.
 		# The locked idle_* patterns exist precisely to pin a direction, and idle_cycle must keep playing
 		# its walk animation (an idle_ animation would freeze it, since _physics_process never replays it).
 		# The one exception is walking back out of a battle: the actor was talking to
@@ -184,9 +184,9 @@ func _init_movement():
 		"idle_cycle":
 			current_facing = "down"
 			animated_sprite.play("walk_down")
-		# ISSUE #81 FIX: these four locked patterns played the right animation but never updated
+		# ISSUE #82 FIX: these four locked patterns played the right animation but never updated
 		# current_facing, so it stayed at its "down" default. MapManager.capture_actor_positions()
-		# then snapshotted "down" and restore_facing (ISSUE #56) forced them to face down on the next
+		# then snapshotted "down" and restore_facing (ISSUE #57) forced them to face down on the next
 		# spawn — which is why NPCs that should face left/right/up were looking downwards.
 		"idle_left":   current_facing = "left";  animated_sprite.play("idle_left")
 		"idle_right":  current_facing = "right"; animated_sprite.play("idle_right")
@@ -439,7 +439,7 @@ func pause_and_face(target_position: Vector2):
 		current_facing = "down" if diff.y > 0 else "up"
 	animated_sprite.play("idle_" + current_facing)
 
-# ISSUE #55: hard-stop this actor in place (no re-facing) so it can't keep wandering during the
+# ISSUE #56: hard-stop this actor in place (no re-facing) so it can't keep wandering during the
 # fade-out after a battle is accepted. Mirrors pause_and_face's freezing without turning the sprite.
 func freeze():
 	velocity = Vector2.ZERO

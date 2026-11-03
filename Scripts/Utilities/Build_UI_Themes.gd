@@ -69,7 +69,7 @@ var OUT_DIR := OUT_ROOT
 # button the game draws — a 9-patch whose top+bottom slices are taller than the
 # control squashes its own corners. Buttons are ~48px tall (btn_pad_v 13 x 2
 # plus a 17px line), so a 24px margin is the ceiling and it is derived from
-# btn_radius rather than hand-set. ISSUE #184.
+# btn_radius rather than hand-set. ISSUE #185.
 var TEX_MARGIN: int = 24
 var TEX_SIZE: int = 56
 
@@ -137,7 +137,7 @@ func _init() -> void:
 	# rather than per theme. A theme that changed a radius or a font size would
 	# change the shape of the game, which the theme contract forbids.
 	#
-	# ISSUE #184: buttons take btn_radius (the pill), not the chip radius.
+	# ISSUE #185: buttons take btn_radius (the pill), not the chip radius.
 	RADIUS         = float(MET["btn_radius"])
 	TEX_MARGIN     = int(ceil(RADIUS)) + 2
 	TEX_SIZE       = TEX_MARGIN * 2 + 8
@@ -181,7 +181,7 @@ func _build_theme(ui_theme, theme_id: String) -> bool:
 	# why they are not symmetric; the audit reads the same function.
 	var chrome_tint: Color = ui_theme.chrome_button_tint(theme_id)
 	VARIANTS = {
-		# ISSUE #379: primary is the POSITIVE action now - the theme's green, the
+		# ISSUE #292: primary is the POSITIVE action now - the theme's green, the
 		# same fill as "good" - so every Save / OK / Buy is one colour whether or
 		# not it has a pending change. btn_primary_top/bot stay in the token block
 		# (other art still reads them) but no button face is baked from them.
@@ -397,7 +397,7 @@ func _write_base_theme() -> bool:
 	t.set_color("font_color", "LineEdit", TOK["field_fg"])
 	t.set_color("font_placeholder_color", "LineEdit", TOK["field_mute"])
 	t.set_color("caret_color", "LineEdit", TOK["accent"])
-	# ISSUE #180: a LineEdit with no content margins puts the caret and the first
+	# ISSUE #181: a LineEdit with no content margins puts the caret and the first
 	# glyph hard against the border. _text_box() insets both, and the inset has to
 	# clear the corner radius or the text tucks into the curve.
 	t.set_stylebox("normal", "LineEdit", _text_box(TOK["chip_bg"], TOK["line"]))
@@ -476,7 +476,7 @@ func _apply_button(t: Theme, variant_name: String) -> void:
 
 
 
-## A LineEdit face. Same fill as _flat() plus the text inset — ISSUE #180.
+## A LineEdit face. Same fill as _flat() plus the text inset — ISSUE #181.
 ## TEXT_PAD_H is measured from the radius so the first glyph always clears the
 ## rounded corner however pill-like the boxes get.
 func _text_box(fill: Color, border: Color) -> StyleBoxFlat:

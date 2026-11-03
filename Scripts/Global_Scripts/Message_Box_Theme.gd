@@ -27,8 +27,9 @@ class_name MessageBoxTheme
 # directly; the constant-file value only fills in when it does not.
 #
 # RESERVED COLOURS
-# "white" is deliberately unused by every NPC and opponent in the data — it is
-# being held for the rival, who is not implemented yet. Do not hand it out.
+# Only "match" (the in-match box, below). "white" used to be held back for a
+# rival character; the rival became the three leads (Ellie, Olly, Alexander), so
+# white is an ordinary speaker colour now (doctor, scientist, waiting staff...).
 #
 # ── TWEAKABLE ────────────────────────────────────────────────
 #   SAT_DECAY      lower = chips wash out faster along the row
@@ -64,7 +65,7 @@ const THEMES := {
 	"yellow":     { "base": "#f9de54", "hue_step":   5.0 },
 	"purple":     { "base": "#8b63ec", "hue_step": -14.0 },
 	"lilac":      { "base": "#c4a5f5", "hue_step": -12.0 },
-	"white":      { "base": "#d2d2dc", "hue_step":  -8.0 },   # RESERVED — rival only, see header
+	"white":      { "base": "#d2d2dc", "hue_step":  -8.0 },
 	"grey":       { "base": "#666672", "hue_step":  -8.0 },
 	"black":      { "base": "#2e2e36", "hue_step":  -8.0 },
 	# The IN-MATCH box only. Every other box on this table belongs to a speaker and

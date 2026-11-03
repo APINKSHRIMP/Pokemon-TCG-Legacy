@@ -71,12 +71,12 @@ signal search_reset()
 
 # Header / footer bands and the vertical strip the filter rows flow down
 const HEADER_H      := 96.0
-# ISSUE #146 (retest): +4px so the NAME box does not sit hard against the bottom of the top border.
+# ISSUE #148 (retest): +4px so the NAME box does not sit hard against the bottom of the top border.
 const CONTENT_TOP   := 108.0
 const FOOTER_TOP_BASE := 996.0
 var FOOTER_TOP        := FOOTER_TOP_BASE   # live, see _compute_layout()
 
-# ISSUE #142: how much clear space is left at the right-hand edge of the screen.
+# ISSUE #144: how much clear space is left at the right-hand edge of the screen.
 const RIGHT_MARGIN := 40.0
 
 # Backdrop dim behind the header / footer bands. 1.0 = solid black; the deck background shows
@@ -93,26 +93,26 @@ const SHOW_FILTER_PANEL := false
 const PANEL_COLOR := Color(0.93, 0.93, 0.94, 1.0)
 
 # Left-hand label column, and the x the controls start at.
-# ISSUE #142: every row label is ONE line now (they used to break "POKEMON\nSUB TYPE" and friends
+# ISSUE #144: every row label is ONE line now (they used to break "POKEMON\nSUB TYPE" and friends
 # over two). LABEL_W is sized off the longest of them — "HAS POWER OR BODY", ~304px in the Kenney
 # font at 24pt — so none of them wrap or clip. Widening this pushes CTRL_X right; keep the two in
 # step or the labels will run under the controls.
-# ISSUE #178: the label column gives up 20px and the controls start 20px further
+# ISSUE #179: the label column gives up 20px and the controls start 20px further
 # left, which is where the extra room for the wrapped chip rows comes from.
 const LABEL_X     := 20.0
 const LABEL_W     := 300.0
 const LABEL_FONT  := 24
-# ISSUE #177: white, not black. The light filter panel these were authored against
+# ISSUE #178: white, not black. The light filter panel these were authored against
 # (SHOW_FILTER_PANEL) has been off since the overhaul, so a near-black label was
 # sitting on the dark field.
 const LABEL_COLOR := Color(0.957, 0.929, 0.980, 1.0)
 const CTRL_X      := 330.0
 
-# ISSUE #142: the width every row has to play with — CTRL_X across to the right margin. 1530px.
+# ISSUE #144: the width every row has to play with — CTRL_X across to the right margin. 1530px.
 var CTRL_W := 1920.0 - RIGHT_MARGIN - CTRL_X   # live: runs to the right edge
 
 # Vertical gap left between one filter row and the next.
-# ISSUE #145 (retest): back up to 16 (it had been cut to 8) — killing the power row's dead 94px
+# ISSUE #147 (retest): back up to 16 (it had been cut to 8) — killing the power row's dead 94px
 # paid for it. This is the value to raise first if more breathing room is ever wanted; every 1px
 # here costs 11px of screen.
 ## Cut from 16 when the icon rows became wrapping chips: the SET block alone grew
@@ -122,8 +122,8 @@ const ROW_GAP_BASE := 9.0
 ## Live: a taller screen shares its extra height out between the rows.
 var ROW_GAP := ROW_GAP_BASE
 
-# ISSUE #142 spreading, for the ICON rows only — the button rows use the fixed BTN_W/BTN_GAP pair
-# below (ISSUE #146 retest asked for consistent button sizing and spacing, which a fill-the-width
+# ISSUE #144 spreading, for the ICON rows only — the button rows use the fixed BTN_W/BTN_GAP pair
+# below (ISSUE #148 retest asked for consistent button sizing and spacing, which a fill-the-width
 # spread cannot give). An icon row fills CTRL_W when it has enough cells to, and otherwise falls
 # back to "cell + this much gap": a two-icon row flung to opposite ends of a 1530px strip is not
 # using the width, it is just broken. Raise this to spread the sparse icon rows further apart.
@@ -139,7 +139,7 @@ const CHIP_MIN_W  := 58.0
 const CHIP_GAP_X  := 10.0
 const CHIP_GAP_Y  := 10.0
 
-# ISSUE #178: THE ROWS OVERLAPPED BECAUSE A CHIP IS NOT CHIP_H TALL.
+# ISSUE #179: THE ROWS OVERLAPPED BECAUSE A CHIP IS NOT CHIP_H TALL.
 # Every chip and text button on this screen is a themed Button, and the shared
 # button face carries btn_pad_v (13px) top AND bottom as CONTENT MARGINS. That is
 # a MINIMUM size Godot enforces, so a "38px" chip actually drew at ~48px and every
@@ -149,45 +149,45 @@ const CHIP_GAP_Y  := 10.0
 const CHIP_PAD_Y  := 4.0
 const BTN_PAD_Y   := 5.0
 
-# Pokemon type icon row (single line, 9 icons). ISSUE #146: -10%.
+# Pokemon type icon row (single line, 9 icons). ISSUE #148: -10%.
 const TYPE_ICON  := 49.0
 
 # Set icon rows. Icons are drawn into a square cell with the aspect preserved, because the source
 # art ranges from 41x21 (Base) to 128x128 (Southern Islands).
-# ISSUE #146: -10%. ISSUE #147: the rows are the fixed generation groups in SET_ROW_GROUPS now,
+# ISSUE #148: -10%. ISSUE #149: the rows are the fixed generation groups in SET_ROW_GROUPS now,
 # not an automatic one-or-two-line split, so SET_SINGLE_LINE_MAX is gone.
 const SET_ICON      := 49.0
 const SET_LINE_GAP  := 6.0
 
 # Pokemon sub type icons (ex / shining-star / delta / dual type) — bigger, they read as glyphs
-# rather than badges. ISSUE #146: -10%.
-# ISSUE #146 (retest): this is now a RENDERED HEIGHT, not a square cell. The four source images
+# rather than badges. ISSUE #148: -10%.
+# ISSUE #148 (retest): this is now a RENDERED HEIGHT, not a square cell. The four source images
 # run from 0.96:1 (delta) to 1.42:1 (ex), so a square cell drew them at four different heights and
 # dual type looked taller than the rest. _make_icon_h() pins the height and lets the width follow
 # the art, so the row reads as one set of glyphs.
 const SUB_ICON  := 56.0
 
-# Has Power / Has Body icons (ISSUE #140).
-# ISSUE #145: DOUBLED — the two ability glyphs are the hardest icons on the screen to read at a
+# Has Power / Has Body icons (ISSUE #142).
+# ISSUE #147: DOUBLED — the two ability glyphs are the hardest icons on the screen to read at a
 # glance, and unlike the sub type row above them there are only two, so the width is free.
-# ISSUE #145 (retest): expressed as a RENDERED HEIGHT now. icon_power is 288x70 and icon_body
+# ISSUE #147 (retest): expressed as a RENDERED HEIGHT now. icon_power is 288x70 and icon_body
 # 302x72 — ~4.15:1 strips — so 30px tall works out at ~124px wide, exactly the doubled size, but
 # the row box is 30px instead of 124px. That removed ~94px of dead air above and below the icons.
 # Raising this grows the icons in BOTH directions; the width follows the art.
 const POWER_ICON  := 30.0
 
-# Illustrator free-text row (ISSUE #143). Height matches the NAME box so the screen's two text
-# fields read as a pair. ISSUE #146: height and font -25%. ISSUE #142: full width.
+# Illustrator free-text row (ISSUE #145). Height matches the NAME box so the screen's two text
+# fields read as a pair. ISSUE #148: height and font -25%. ISSUE #144: full width.
 const ILLUS_H    := 54.0
 var ILLUS_W      := CTRL_W
 const ILLUS_FONT := 22
 
-# Name free-text row. ISSUE #146: height and font -25%. ISSUE #142: full width.
+# Name free-text row. ISSUE #148: height and font -25%. ISSUE #144: full width.
 const NAME_H    := 54.0
 var NAME_W      := CTRL_W
 const NAME_FONT := 22
 
-# Rarity symbol icons. ISSUE #146: -40%, the biggest cut on the screen — they are pure symbols
+# Rarity symbol icons. ISSUE #148: -40%, the biggest cut on the screen — they are pure symbols
 # with no fine detail to lose.
 const RARITY_ICON  := 32.0
 
@@ -196,8 +196,8 @@ const EFFECT_ICON     := 49.0
 const EFFECT_LINE_GAP := 6.0
 const EFFECT_SINGLE_LINE_MAX := 12
 
-# Kenney text buttons. ISSUE #146: height and font -25%.
-# ISSUE #146 (retest): ONE width and ONE gap for all four button rows (card type / pokemon stage /
+# Kenney text buttons. ISSUE #148: height and font -25%.
+# ISSUE #148 (retest): ONE width and ONE gap for all four button rows (card type / pokemon stage /
 # trainer sub type / sort by) rather than four different widths. 250 is set by the longest label,
 # "TECHNICAL MACHINE" (~205px at 16pt plus ~21px of Kenney stylebox margin), which also means it
 # fits on one line at the same font size as everything else — the old BTN_FONT_SMALL special case
@@ -221,7 +221,7 @@ const FOOT_BTN_H := 56.0
 var SEARCH_X     := 600.0    # live: shifted by half the extra width
 var CANCEL_X     := 1100.0
 
-# ISSUE #141 (retest): z for everything the player interacts with. The deck scene's
+# ISSUE #143 (retest): z for everything the player interacts with. The deck scene's
 # `filter_border` — the patterned strip this screen now shows across the top — is an OPAQUE
 # TextureRect at z_index 200, and z accumulates down the tree, so the header's RESET button and
 # the "CARD SEARCH" title (overlay z 10 + their old z 55 = 60) were being painted over by it.
@@ -303,7 +303,7 @@ const POKEMON_SUBS : Array = [
 	{"key": "dualtype", "icon": "dualtype", "tip": "Dual Type",       "gate": "ex4"},
 ]
 
-# ISSUE #140: "does this card have an ability, and of which kind".
+# ISSUE #142: "does this card have an ability, and of which kind".
 #   power -> a "Poké-Power" OR the older "Pokémon Power". Base Set through Neo printed every
 #            ability as "Pokémon Power"; e-Card split it into the activated Poké-Power and the
 #            passive Poké-Body, so the old name belongs with Power, not Body. 463 cards.
@@ -316,10 +316,10 @@ const POKEMON_SUBS : Array = [
 # Card Type = Pokemon here would hide cards that genuinely match. It behaves like RARITY: a
 # whole-card property that simply ANDs with whatever else is selected.
 const POWER_FILTERS : Array = [
-	# ISSUE #179: the chip is labelled with its `tip`, so these are the button
+	# ISSUE #180: the chip is labelled with its `tip`, so these are the button
 	# labels now, not tooltips — "Has a Pokemon Power / Poke-Power" was a sentence
 	# sitting in a chip row.
-	# ISSUE #179 (retest): "there should be a SECOND button for Poke-Body". There
+	# ISSUE #180 (retest): "there should be a SECOND button for Poke-Body". There
 	# always was one - it was GATED on owning ecard1 (Expedition), the set that
 	# introduced Poke-Bodies, so on a save without that set the row drew a single
 	# chip and the two searches looked merged into one. The two are separate
@@ -349,7 +349,7 @@ const RARITIES : Array = [
 # The matching side lives in Deck_Build_And_Card_View_Script._card_matches_effect().
 const EFFECT_FILTERS : Array = []
 
-# ISSUE #147: which line of the SET row each set sits on, one entry per line, in the order the
+# ISSUE #149: which line of the SET row each set sits on, one entry per line, in the order the
 # player asked for. Only sets the player has UNLOCKED are drawn, and a line whose sets are all
 # still locked is skipped entirely — so a new save shows one short line and the rows below it
 # close the gap, exactly like a fully gated-off filter row.
@@ -367,7 +367,7 @@ const SET_ROW_GROUPS : Array = [
 	["pop1", "pop2", "pop3", "pop4", "pop5"],
 ]
 
-## ISSUE #225: "type" sorts Pokemon by energy type first (in the ENERGY_ORDER
+## ISSUE #226: "type" sorts Pokemon by energy type first (in the ENERGY_ORDER
 ## below), then Trainers, then Energy cards. The ordering itself lives in the deck
 ## builder's _sort_cards — this table only names the modes.
 ## "owned" sorts by how many copies the player owns, most first.
@@ -396,7 +396,7 @@ var _sel_stages       : Dictionary = {}
 var _sel_trainer_subs : Dictionary = {}
 var _sel_pokemon_subs : Dictionary = {}
 var _sel_rarities     : Dictionary = {}
-var _sel_powers       : Dictionary = {}   # ISSUE #140
+var _sel_powers       : Dictionary = {}   # ISSUE #142
 var _sel_effects      : Dictionary = {}
 var _sort_mode        : String     = "set"
 var _sort_chain       : Array      = ["set"]   # sort picks, newest first (see SORT_MODES)
@@ -410,7 +410,7 @@ var _type_icons    : Dictionary = {}
 var _set_icons     : Dictionary = {}
 var _sub_icons     : Dictionary = {}
 var _rarity_icons  : Dictionary = {}
-var _power_icons   : Dictionary = {}   # ISSUE #140
+var _power_icons   : Dictionary = {}   # ISSUE #142
 var _effect_icons  : Dictionary = {}
 var _card_type_btn : Dictionary = {}
 var _stage_btn     : Dictionary = {}
@@ -418,7 +418,7 @@ var _trainer_btn   : Dictionary = {}
 var _sort_btn      : Dictionary = {}
 
 var _name_edit    : LineEdit = null
-var _illus_edit   : LineEdit = null   # ISSUE #143
+var _illus_edit   : LineEdit = null   # ISSUE #145
 var _confirm_btn  : Button   = null
 
 var _theme_white : Theme = null
@@ -438,14 +438,14 @@ func setup(unlocked_set_ids: Array, set_list: Array) -> void:
 	_set_list = set_list
 
 	_theme_white = UIKit.button_theme("secondary")
-	# ISSUE #254: "green" and "blue" are STALE NAMES kept only so the call sites
+	# ISSUE #255: "green" and "blue" are STALE NAMES kept only so the call sites
 	# below read the way they always did — every one of them loads ui_selected,
 	# i.e. the same pink the Options buttons use. Nothing on this screen paints a
 	# selected state any other colour; green is save/confirm only.
 	_theme_green = UIKit.button_theme("selected")
 	_theme_blue  = UIKit.button_theme("selected")
 	# Reset and Cancel back out; they do not destroy anything.
-	# ISSUE #379: the negative face (softened red) - the translucent one read as disabled.
+	# ISSUE #292: the negative face (softened red) - the translucent one read as disabled.
 	_theme_red   = UIKit.button_theme("negative")
 
 	# A plain Control (not a CanvasLayer) so it sits in the normal z order: above the deck screen's
@@ -523,7 +523,7 @@ func _build_header() -> void:
 	reset.size     = Vector2(RESET_W, RESET_H)
 	reset.custom_minimum_size = Vector2(RESET_W, RESET_H)
 	reset.z_index  = CONTENT_Z
-	# ISSUE #226: fire on press like every other button in the game.
+	# ISSUE #227: fire on press like every other button in the game.
 	reset.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	reset.pressed.connect(_on_reset_pressed)
 	add_child(reset)
@@ -549,7 +549,7 @@ func _build_footer() -> void:
 	cancel.size     = Vector2(FOOT_BTN_W, FOOT_BTN_H)
 	cancel.custom_minimum_size = Vector2(FOOT_BTN_W, FOOT_BTN_H)
 	cancel.z_index  = CONTENT_Z
-	cancel.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS   # ISSUE #226
+	cancel.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS   # ISSUE #227
 	cancel.pressed.connect(_on_cancel_pressed)
 	add_child(cancel)
 
@@ -566,13 +566,13 @@ func _build_rows() -> void:
 	y = _build_stage_row(y)
 	y = _build_trainer_sub_row(y)
 	y = _build_pokemon_sub_row(y)
-	y = _build_power_row(y)          # ISSUE #140 — sits directly under the sub type row
+	y = _build_power_row(y)          # ISSUE #142 — sits directly under the sub type row
 	y = _build_rarity_row(y)
 	y = _build_effect_row(y)
-	y = _build_illustrator_row(y)    # ISSUE #143 — last filter before the sort buttons
+	y = _build_illustrator_row(y)    # ISSUE #145 — last filter before the sort buttons
 	y = _build_sort_row(y)
 
-	# ISSUE #147 asked for the layout to be re-checked once the five set rows went in. With every
+	# ISSUE #149 asked for the layout to be re-checked once the five set rows went in. With every
 	# set unlocked (the tallest the screen ever gets) the rows finish at y=984 against a FOOTER_TOP
 	# of 996 — about 12px of slack, so this screen is close to full. The guard below is the standing
 	# tripwire: if it ever fires, shrink ROW_GAP, SET_ICON or the SET block rather than letting the
@@ -591,10 +591,10 @@ func _build_name_row(y: float) -> float:
 	_name_edit.size     = Vector2(NAME_W, h)
 	_name_edit.custom_minimum_size = Vector2(NAME_W, h)
 	_name_edit.add_theme_font_size_override("font_size", NAME_FONT)
-	# ISSUE #181: pure white. Black was left over from the light filter panel.
+	# ISSUE #182: pure white. Black was left over from the light filter panel.
 	_name_edit.add_theme_color_override("font_color", UITheme.col("field_fg"))
 	_name_edit.placeholder_text = "Card name..... (comma-separate for several)"
-	# ISSUE #149: no length cap — a comma-separated list of card names runs well past 30 characters.
+	# ISSUE #151: no length cap — a comma-separated list of card names runs well past 30 characters.
 	_name_edit.z_index = CONTENT_Z
 	_name_edit.text_changed.connect(_on_name_changed)
 	# Enter in the name box runs the search, as long as something is actually filled in
@@ -624,7 +624,7 @@ func _build_type_row(y: float) -> float:
 	return end_y + ROW_GAP
 
 
-## ISSUE #147: one line per card-set generation instead of the old "split everything over one or
+## ISSUE #149: one line per card-set generation instead of the old "split everything over one or
 ## two balanced lines". Only unlocked sets are drawn and a line with nothing unlocked on it is not
 ## drawn at all, so the block grows with the player's collection: one short line on a new save,
 ## five once everything is open. See SET_ROW_GROUPS for the grouping and its ordering rules.
@@ -717,7 +717,7 @@ func _build_trainer_sub_row(y: float) -> float:
 
 	_add_row_label("TRAINER SUB TYPE", y, BTN_H)
 
-	# ISSUE #142: "TECHNICAL MACHINE" is ONE line. ISSUE #146 (retest): BTN_W is sized off it, so it
+	# ISSUE #144: "TECHNICAL MACHINE" is ONE line. ISSUE #148 (retest): BTN_W is sized off it, so it
 	# now fits at the same font as every other button and needs no special case at all.
 	var x := CTRL_X
 	for entry in shown:
@@ -739,7 +739,7 @@ func _build_pokemon_sub_row(y: float) -> float:
 	return _flow_chips(shown, y, "pokemon_sub", _sub_icons) + ROW_GAP
 
 
-## ISSUE #140: "HAS POWER / BODY". Built exactly like the sub type row above it — same _make_icon
+## ISSUE #142: "HAS POWER / BODY". Built exactly like the sub type row above it — same _make_icon
 ## call, so the greyed icon_ art, the color_icon_ swap and the grow-and-glow pulse all come for free.
 ## Like RARITY (and unlike the sub type row it sits under) it takes no part in the supertype lock;
 ## see POWER_FILTERS for why.
@@ -752,7 +752,7 @@ func _build_power_row(y: float) -> float:
 	return _flow_chips(shown, y, "power", _power_icons) + ROW_GAP
 
 
-## ISSUE #143: free-text illustrator box. Always an AND against every other filter, matched as a
+## ISSUE #145: free-text illustrator box. Always an AND against every other filter, matched as a
 ## case-insensitive substring, so "sugimori" finds every Ken Sugimori card and "ken" finds his plus
 ## Ken Ikuji-Hirayama. Deliberately free text rather than a picker: there are 89 distinct artists in
 ## the card data, far too many for an icon or button row.
@@ -765,10 +765,10 @@ func _build_illustrator_row(y: float) -> float:
 	_illus_edit.size     = Vector2(ILLUS_W, ILLUS_H)
 	_illus_edit.custom_minimum_size = Vector2(ILLUS_W, ILLUS_H)
 	_illus_edit.add_theme_font_size_override("font_size", ILLUS_FONT)
-	# ISSUE #181
+	# ISSUE #182
 	_illus_edit.add_theme_color_override("font_color", UITheme.col("field_fg"))
 	_illus_edit.placeholder_text = "Illustrator name..... (comma-separate for several)"
-	# ISSUE #149: no length cap, same as the name box.
+	# ISSUE #151: no length cap, same as the name box.
 	_illus_edit.z_index = CONTENT_Z
 	_illus_edit.text_changed.connect(_on_name_changed)
 	_illus_edit.text_submitted.connect(func(_t: String): _on_confirm_pressed())
@@ -835,7 +835,7 @@ func _build_sort_row(y: float) -> float:
 # Build helpers
 # ══════════════════════════════════════════════════════════════════════════════
 
-## ISSUE #142: pitch (cell-to-cell step) for a row of `count` equally sized cells laid out from
+## ISSUE #144: pitch (cell-to-cell step) for a row of `count` equally sized cells laid out from
 ## CTRL_X. Fills the full CTRL_W when the row has enough cells to; otherwise falls back to
 ## "cell + max_gap" so a two- or three-cell row isn't flung across the whole screen.
 func _row_pitch(count: int, cell: float, max_gap: float) -> float:
@@ -900,7 +900,7 @@ func _make_icon(folder: String, stem: String, cell: float, pos: Vector2, tip: St
 	return chip
 
 
-## ISSUE #178: style a chip AND put its real height back where the layout thinks
+## ISSUE #179: style a chip AND put its real height back where the layout thinks
 ## it is. UIKit.style_button() points the button at a variant theme whose face
 ## carries btn_pad_v as a content margin — 13px top and bottom, which forces a
 ## ~48px minimum on a 38px chip. Duplicating the four state boxes and re-margining
@@ -917,7 +917,7 @@ func _apply_chip_style(btn: Button, variant: String) -> void:
 
 ## Re-margins a themed button's normal/hover/pressed/disabled faces in place.
 ##
-## ISSUE #254 (retest 3): THIS IS WHY THE CHIPS NEVER TURNED PINK. It clears its
+## ISSUE #255 (retest 3): THIS IS WHY THE CHIPS NEVER TURNED PINK. It clears its
 ## own overrides before reading, and it MUST.
 ##
 ## get_theme_stylebox() checks local stylebox OVERRIDES before it looks at the
@@ -988,7 +988,7 @@ func _make_button(text: String, x: float, y: float, w: float, font_size: int) ->
 	var btn := Button.new()
 	btn.theme = _theme_white
 	btn.text  = text
-	# ISSUE #226: these are built by hand rather than through UIKit.style_button,
+	# ISSUE #227: these are built by hand rather than through UIKit.style_button,
 	# so they kept Godot's fire-on-RELEASE default while every other button in the
 	# game fires on press.
 	btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
@@ -997,7 +997,7 @@ func _make_button(text: String, x: float, y: float, w: float, font_size: int) ->
 	btn.size     = Vector2(w, BTN_H)
 	btn.custom_minimum_size = Vector2(w, BTN_H)
 	btn.z_index  = CONTENT_Z
-	_tighten(btn, 10.0, BTN_PAD_Y)   # ISSUE #178
+	_tighten(btn, 10.0, BTN_PAD_Y)   # ISSUE #179
 	add_child(btn)
 	return btn
 
@@ -1015,7 +1015,7 @@ func _make_button(text: String, x: float, y: float, w: float, font_size: int) ->
 ## Paints a type chip in its energy colour. The selected state keeps the colour
 ## and gains the accent border, so the row still reads as a colour key when a
 ## type is chosen.
-## ISSUE #254 (retest 3): the idle type chip, as a fraction of the real type
+## ISSUE #255 (retest 3): the idle type chip, as a fraction of the real type
 ## colour. Saturation 0.8 is "20% more desaturated than it was"; the alpha is
 ## unchanged at 0.45. A SELECTED chip is neither - it is the type colour at full
 ## saturation and full opacity. Both TWEAKABLE.
@@ -1026,7 +1026,7 @@ func _tint_type_chip(chip: Control, type_key: String, selected: bool) -> void:
 	if not (chip is Button):
 		return
 	var b := chip as Button
-	# ISSUE #254 (retest 3): THE TYPE CHIPS ARE THE ONE EXCEPTION AND STAY THEIR
+	# ISSUE #255 (retest 3): THE TYPE CHIPS ARE THE ONE EXCEPTION AND STAY THEIR
 	# OWN COLOUR. Retest 2 painted them pink along with everything else, which was
 	# wrong: this row is a colour KEY, and a key that turns every entry the same
 	# colour when picked has stopped being one. So the type is what changes state
@@ -1068,7 +1068,7 @@ func _set_icon_selected(icon: Control, selected: bool, force: bool = false) -> v
 		if _type_icons.has(type_key):
 			_tint_type_chip(icon, type_key, selected)
 		else:
-			# ISSUE #178: _apply_chip_style, not style_button — it re-tightens the
+			# ISSUE #179: _apply_chip_style, not style_button — it re-tightens the
 			# state boxes the theme swap just brought back at full padding.
 			_apply_chip_style(icon as Button, "selected" if selected else "secondary")
 		(icon as Button).add_theme_font_size_override("font_size", CHIP_FONT)
@@ -1081,7 +1081,7 @@ func _set_icon_selected(icon: Control, selected: bool, force: bool = false) -> v
 	icon.scale = Vector2.ONE
 	icon.modulate = Color.WHITE
 
-	# ISSUE #254: NO PULSE. A chip that grows and shrinks forever is the only
+	# ISSUE #255: NO PULSE. A chip that grows and shrinks forever is the only
 	# control in the game that does, and it fights the thing it is trying to say -
 	# a filter is either on or off, which is a STATE, and the rest of the game
 	# spells a state out with the "selected" button skin. The chips already switch
@@ -1116,7 +1116,7 @@ func _set_icon_blocked(icon: Control, blocked: bool, selected: bool) -> void:
 func _set_button_selected(btn: Button, selected: bool, selected_theme: Theme) -> void:
 	btn.disabled = false
 	btn.theme = selected_theme if selected else _theme_white
-	_tighten(btn, 10.0, BTN_PAD_Y)   # ISSUE #178 — the theme swap restores full padding
+	_tighten(btn, 10.0, BTN_PAD_Y)   # ISSUE #179 — the theme swap restores full padding
 
 
 ## A card type button that is forced on by another row's selection: it stays in the
@@ -1124,7 +1124,7 @@ func _set_button_selected(btn: Button, selected: bool, selected_theme: Theme) ->
 ## isn't the player's choice to make while the row that implied it still has
 ## something in it.
 ##
-## ISSUE #254 (retest): the fill was a hardcoded green, the one control on this
+## ISSUE #255 (retest): the fill was a hardcoded green, the one control on this
 ## screen that never went pink. It is UIKit.selection_colour() now — the same
 ## pink the Options buttons use, from the same token, so a colour-scheme change
 ## carries it.
@@ -1133,7 +1133,7 @@ func _set_button_locked_on(btn: Button) -> void:
 	btn.disabled = true
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = UIKit.selection_colour()
-	# ISSUE #184 / #178: match the pill radius and the tightened row height.
+	# ISSUE #185 / #178: match the pill radius and the tightened row height.
 	sb.set_corner_radius_all(UITheme.mi("btn_radius"))
 	sb.anti_aliasing = true
 	sb.content_margin_left   = 10.0
@@ -1151,7 +1151,7 @@ func _set_button_blocked(btn: Button) -> void:
 	btn.disabled = true
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.67, 0.67, 0.67, 1.0)
-	# ISSUE #184 / #178: match the pill radius and the tightened row height.
+	# ISSUE #185 / #178: match the pill radius and the tightened row height.
 	sb.set_corner_radius_all(UITheme.mi("btn_radius"))
 	sb.anti_aliasing = true
 	sb.content_margin_left   = 10.0
@@ -1172,7 +1172,7 @@ func _clear_button_overrides(btn: Button) -> void:
 # ══════════════════════════════════════════════════════════════════════════════
 
 ## Shared click handler for every filter icon (type / set / pokemon sub / effect).
-## ISSUE #98-style guard: a mouse WHEEL event is also an InputEventMouseButton, so the button index
+## ISSUE #102-style guard: a mouse WHEEL event is also an InputEventMouseButton, so the button index
 ## is checked explicitly rather than trusting `pressed` alone — scrolling over an icon must not
 ## toggle it.
 func _on_icon_input(event: InputEvent, icon: Control, category: String, key: String) -> void:
@@ -1296,14 +1296,14 @@ func _on_reset_pressed() -> void:
 	_apply_lock()
 	_refresh_confirm_button()
 
-	# ISSUE #392: RESET only blanks THIS screen now. The search behind it is cleared
+	# ISSUE #306: RESET only blanks THIS screen now. The search behind it is cleared
 	# when the player confirms the empty screen (the SEARCH button reads CLEAR then),
 	# and CANCEL brings the old filters straight back - see _on_cancel_pressed.
 
 
 func _on_confirm_pressed() -> void:
 	if not _has_any_filter():
-		# ISSUE #392: an empty screen over a live search = "clear the search".
+		# ISSUE #306: an empty screen over a live search = "clear the search".
 		if _applied.is_empty():
 			return
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
@@ -1317,7 +1317,7 @@ func _on_confirm_pressed() -> void:
 
 func _on_cancel_pressed() -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
-	# ISSUE #392: whatever was changed here since the search that is showing - a
+	# ISSUE #306: whatever was changed here since the search that is showing - a
 	# RESET included - is thrown away, so the screen reopens on the filters the
 	# grid is actually showing.
 	if not _applied.is_empty():
@@ -1325,7 +1325,7 @@ func _on_cancel_pressed() -> void:
 	search_cancelled.emit()
 
 
-## ISSUE #392: THE FILTERS THE GRID IS SHOWING.
+## ISSUE #306: THE FILTERS THE GRID IS SHOWING.
 ##
 ## _pending is snapshotted the moment SEARCH is pressed; the deck builder calls
 ## commit_applied() only once that search actually found cards (a search that
@@ -1550,7 +1550,7 @@ func _refresh_confirm_button() -> void:
 		return
 	var can_search := _has_any_filter()
 	_clear_button_overrides(_confirm_btn)
-	# ISSUE #392: an empty screen over a search that is showing confirms as CLEAR.
+	# ISSUE #306: an empty screen over a search that is showing confirms as CLEAR.
 	var can_clear := not can_search and not _applied.is_empty()
 	_confirm_btn.text = "CLEAR" if can_clear else "SEARCH"
 	if can_search or can_clear:
@@ -1585,7 +1585,7 @@ func build_criteria() -> Dictionary:
 	}
 
 
-## ISSUE #149: splits one free-text box into OR terms on a COMMA.
+## ISSUE #151: splits one free-text box into OR terms on a COMMA.
 ##
 ## The separator was " OR " originally, which needed a pile of failsafes: "or" is a substring of
 ## real card names (Voltorb, Porygon, Electrode), so the parser had to distinguish a separator from
