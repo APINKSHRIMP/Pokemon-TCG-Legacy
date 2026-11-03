@@ -600,6 +600,10 @@ func _build_name_row(y: float) -> float:
 	# Enter in the name box runs the search, as long as something is actually filled in
 	_name_edit.text_submitted.connect(func(_t: String): _on_confirm_pressed())
 	add_child(_name_edit)
+	# On-screen keyboard (any device). Done only closes it - SEARCH runs the search, so a
+	# pad player can type a name and then carry on setting other filters.
+	OnScreenKeyboard.attach(_name_edit, {"title": "Card name (comma-separate for several)",
+		"submit": false})
 
 	return y + h + ROW_GAP
 
@@ -769,6 +773,8 @@ func _build_illustrator_row(y: float) -> float:
 	_illus_edit.text_changed.connect(_on_name_changed)
 	_illus_edit.text_submitted.connect(func(_t: String): _on_confirm_pressed())
 	add_child(_illus_edit)
+	OnScreenKeyboard.attach(_illus_edit, {"title": "Illustrator (comma-separate for several)",
+		"submit": false})
 
 	return y + ILLUS_H + ROW_GAP
 
@@ -879,8 +885,10 @@ func _make_icon(folder: String, stem: String, cell: float, pos: Vector2, tip: St
 	chip.size = Vector2(_chip_width(tip), CHIP_H)
 	chip.z_index = CONTENT_Z
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
-	chip.focus_mode = Control.FOCUS_NONE
 	chip.tooltip_text = tip
+	# Toggled through gui_input (not `pressed`), so it is a nav tile: the D-pad lands on it
+	# and A / Space replays the click into _on_icon_input.
+	UIKit.make_nav_tile(chip, false)
 	# Centre pivot so the selected pulse grows from the middle.
 	chip.pivot_offset = chip.size / 2.0
 	chip.set_meta("folder", folder)

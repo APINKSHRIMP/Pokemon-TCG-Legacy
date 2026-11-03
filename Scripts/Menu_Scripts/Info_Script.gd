@@ -245,6 +245,9 @@ func _ready() -> void:
 	name_box.max_length = MAX_NAME_LENGTH
 	name_box.alignment  = HORIZONTAL_ALIGNMENT_CENTER
 	name_box.text_changed.connect(_on_name_changed)
+	# Renamed through the on-screen keyboard: click the name, or put the menu cursor on
+	# it and press Space / Enter / pad A. Done closes it; Save still saves.
+	OnScreenKeyboard.attach(name_box, {"title": "Trainer name", "submit": false})
 
 	save_btn.disabled = true
 	save_btn.pressed.connect(_on_save_pressed)

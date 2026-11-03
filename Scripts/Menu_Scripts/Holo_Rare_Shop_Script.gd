@@ -186,6 +186,7 @@ func _build_display() -> void:
 		# right way round — the mystery card sits on top of its own shadow.
 		UIKit.add_drop_shadow(rect)
 		rect.gui_input.connect(_on_card_clicked.bind(slot_idx))
+		UIKit.make_nav_tile(rect)   # D-pad / arrows land on it, A / Space picks it
 		_card_rects.append(rect)
 
 		slot_idx += 1

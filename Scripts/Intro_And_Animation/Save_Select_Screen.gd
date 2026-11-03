@@ -532,6 +532,13 @@ func _input(event: InputEvent) -> void:
 
 	# The confirm box owns the keyboard while it is up: Escape means "no".
 	if _confirm_box != null and is_instance_valid(_confirm_box):
+		# A keyboard / pad player whose cursor is on one of the box's buttons presses THAT
+		# button - otherwise A on "Keep" would delete the save.
+		var layer := get_node_or_null("confirm_layer")
+		var focus_owner: Control = get_viewport().gui_get_focus_owner()
+		if UIInput.is_accept(event) and UIKit.nav_active() and focus_owner is BaseButton \
+				and layer != null and layer.is_ancestor_of(focus_owner):
+			return
 		if UIInput.is_accept(event):
 			get_viewport().set_input_as_handled()
 			_on_delete_confirmed()

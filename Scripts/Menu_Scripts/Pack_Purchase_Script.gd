@@ -306,6 +306,7 @@ func _load_pack_images(pack_id: String) -> void:
 		rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		rect.mouse_filter = Control.MOUSE_FILTER_STOP
 		rect.gui_input.connect(_on_pack_clicked.bind(rect, letter))
+		UIKit.make_nav_tile(rect)   # D-pad / arrows land on it, A / Space picks it
 		pack_hbox.add_child(rect)
 		UIKit.add_drop_shadow(rect)
 	# TWEAKABLE — the four-pack row was 50..1682, an asymmetric 1632 wide that left 238px of

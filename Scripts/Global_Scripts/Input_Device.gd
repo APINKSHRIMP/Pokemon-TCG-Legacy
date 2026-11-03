@@ -62,6 +62,12 @@ func _ready() -> void:
 	_ring_layer = CanvasLayer.new()
 	_ring_layer.layer = RING_LAYER
 	add_child(_ring_layer)
+	get_viewport().gui_focus_changed.connect(_on_focus_changed)
+	# A popup is a new CanvasLayer: once its children are in (end of frame), pull the
+	# cursor into it - see _enter_trap().
+	get_tree().node_added.connect(func(n: Node) -> void:
+		if n is CanvasLayer and n != _ring_layer:
+			_enter_trap.call_deferred())
 	# The ring's gradient is the theme's, read when it is built - rebuild on a theme change.
 	UITheme.theme_changed.connect(func():
 		if _ring != null and is_instance_valid(_ring):
@@ -141,26 +147,50 @@ func _unhandled_input(event: InputEvent) -> void:
 	var vp := get_viewport()
 	if vp.gui_get_focus_owner() != null:
 		return
-	var btn := _first_menu_button()
+	# A popup just closed: back onto whatever the cursor was on before it opened.
+	var btn: Control = null
+	if _pre_trap_focus != null and is_instance_valid(_pre_trap_focus) \
+			and _pre_trap_focus.is_visible_in_tree() and _trap_root() == null:
+		btn = _pre_trap_focus
+	_pre_trap_focus = null
+	if btn == null:
+		btn = _first_menu_button()
 	if btn == null:
 		return
 	btn.grab_focus()
 	vp.set_input_as_handled()
 
 
-## The top-left focusable button of the top-most layer that has any. Returns null
-## when there is no menu up - the overworld's own controls are left alone unless its
-## pause menu overlay is open.
-func _first_menu_button() -> BaseButton:
+## The top-left focusable control (a button or a UIKit nav tile) of the top-most
+## layer that has any - or of the active focus scope, when a popup has pushed one.
+## Returns null when there is no menu up - the overworld's own controls are left
+## alone unless its pause menu overlay is open.
+func _first_menu_button() -> Control:
+	var root: Node = _search_root()
+	if root == null:
+		return null
+	var scope := _trap_root()
+	if scope != null:
+		root = scope
+	return first_focusable_in(root)
+
+
+## The node the menu-focus search starts from: the current scene when it is a menu
+## (a Control), or the map's pause-menu overlay when one is open.
+func _search_root() -> Node:
 	var scene := get_tree().current_scene
 	if scene == null:
 		return null
-	var root: Node = scene
-	if not (scene is Control):
-		var overlay = scene.get("_menu_canvas_layer")
-		if overlay == null or not is_instance_valid(overlay):
-			return null
-		root = overlay
+	if scene is Control:
+		return scene
+	var overlay = scene.get("_menu_canvas_layer")
+	if overlay == null or not is_instance_valid(overlay):
+		return null
+	return overlay
+
+
+## The top-left focusable control under `root`, on the highest layer that has one.
+func first_focusable_in(root: Node) -> Control:
 	var buttons: Array = []
 	_collect_buttons(root, buttons)
 	if buttons.is_empty():
@@ -168,7 +198,7 @@ func _first_menu_button() -> BaseButton:
 	var top_layer := -100000
 	for b in buttons:
 		top_layer = maxi(top_layer, _layer_of(b))
-	var best: BaseButton = null
+	var best: Control = null
 	for b in buttons:
 		if _layer_of(b) != top_layer:
 			continue
@@ -182,13 +212,168 @@ func _first_menu_button() -> BaseButton:
 	return best
 
 
+## Buttons and UIKit nav tiles - everything the menu cursor can land on.
 func _collect_buttons(node: Node, out: Array) -> void:
 	for child in node.get_children():
 		if child is BaseButton:
 			var b := child as BaseButton
 			if b.is_visible_in_tree() and not b.disabled and b.focus_mode != Control.FOCUS_NONE:
 				out.append(b)
+		elif child is Control and child.has_meta(UIKit.NAV_TILE_META):
+			var c := child as Control
+			if c.is_visible_in_tree() and c.focus_mode != Control.FOCUS_NONE:
+				out.append(c)
 		_collect_buttons(child, out)
+
+
+# ── Focus scopes (popups) ────────────────────────────────────────────────────
+# Godot's focus navigation is purely geometric: from a popup's bottom button the
+# next press down happily lands on a card in the grid BEHIND the dimmed popup, and
+# A then presses something the player can't see. Two things keep the cursor inside
+# whatever is on top:
+#   - AUTOMATIC: the top-most visible CanvasLayer that holds a focusable control.
+#     Every popup in the game (load deck, confirms, rename, shop reveals, the quit
+#     dialog) is its own CanvasLayer above the screen, so they are all covered with
+#     no per-popup code.
+#   - MANUAL: push_scope(node) / pop_scope(node) for an overlay that is NOT its own
+#     CanvasLayer. The newest valid, visible scope wins over the automatic one.
+# Focus that tries to leave the trap is put back where it was (so the cursor stops
+# at the popup's edge), or onto the popup's first control.
+var _scopes: Array = []
+var _last_in_trap: Control = null
+## The control focused (behind the popup) when the last popup opened - the cursor
+## goes back to it on the first direction press after the popup closes.
+var _pre_trap_focus: Control = null
+
+
+func push_scope(root: Node) -> void:
+	if root == null or root in _scopes:
+		return
+	_scopes.append(root)
+	_enter_trap.call_deferred()
+
+
+func pop_scope(root: Node) -> void:
+	_scopes.erase(root)
+
+
+func _active_scope() -> Node:
+	for i in range(_scopes.size() - 1, -1, -1):
+		var s = _scopes[i]
+		if not is_instance_valid(s) or not s.is_inside_tree():
+			_scopes.remove_at(i)
+			continue
+		if _node_visible(s):
+			return s
+	return null
+
+
+func _node_visible(n: Node) -> bool:
+	if n is CanvasItem:
+		return (n as CanvasItem).is_visible_in_tree()
+	if n is CanvasLayer:
+		return (n as CanvasLayer).visible
+	return true
+
+
+## Where focus must stay right now, or null when it may go anywhere.
+func _trap_root() -> Node:
+	var s := _active_scope()
+	if s != null:
+		return s
+	var root := _search_root()
+	if root == null or _is_match(root):
+		return null
+	var layers: Array = []
+	_collect_layers(root, layers)
+	var best: CanvasLayer = null
+	for l in layers:
+		var layer := l as CanvasLayer
+		if not layer.visible or (best != null and layer.layer <= best.layer):
+			continue
+		var found: Array = []
+		_collect_buttons(layer, found)
+		if not found.is_empty():
+			best = layer
+	if best == null:
+		return null
+	# A screen whose own controls all live on that one layer is not a popup - nothing to trap.
+	var outside: Array = []
+	_collect_buttons_outside(root, best, outside)
+	return best if not outside.is_empty() else null
+
+
+## The match board drives its own cursor (Board_Nav.gd) and adds CanvasLayers for
+## its card animations all the time - the automatic popup trap stays out of it.
+func _is_match(root: Node) -> bool:
+	var scr: Script = root.get_script()
+	return scr != null and scr.resource_path.ends_with("Main_Match_Core_Gameplay_Script.gd")
+
+
+func _collect_layers(node: Node, out: Array) -> void:
+	for child in node.get_children():
+		if child is CanvasLayer:
+			out.append(child)
+		_collect_layers(child, out)
+
+
+func _collect_buttons_outside(node: Node, skip: Node, out: Array) -> void:
+	for child in node.get_children():
+		if child == skip:
+			continue
+		if child is BaseButton:
+			var b := child as BaseButton
+			if b.is_visible_in_tree() and not b.disabled and b.focus_mode != Control.FOCUS_NONE:
+				out.append(b)
+				return
+		elif child is Control and child.has_meta(UIKit.NAV_TILE_META):
+			if (child as Control).is_visible_in_tree():
+				out.append(child)
+				return
+		_collect_buttons_outside(child, skip, out)
+		if not out.is_empty():
+			return
+
+
+## A popup just opened: a keyboard / pad player's cursor moves into it, and a mouse
+## player's stale focus behind it is dropped (or A / Space would press it unseen).
+func _enter_trap() -> void:
+	var trap := _trap_root()
+	if trap == null:
+		return
+	var f: Control = get_viewport().gui_get_focus_owner()
+	if f != null and trap.is_ancestor_of(f):
+		return
+	if f != null:
+		_pre_trap_focus = f
+	if using_nav():
+		var first := first_focusable_in(trap)
+		if first != null:
+			first.grab_focus()
+			return
+	if f != null:
+		f.release_focus()
+
+
+func _on_focus_changed(c: Control) -> void:
+	if c == null:
+		return
+	var trap := _trap_root()
+	if trap == null:
+		_last_in_trap = null
+		return
+	if trap.is_ancestor_of(c):
+		_last_in_trap = c
+		return
+	# Escaped the popup: back to where it was, or onto the popup's first control.
+	var back: Control = _last_in_trap
+	if back == null or not is_instance_valid(back) or not trap.is_ancestor_of(back) \
+			or not back.is_visible_in_tree():
+		back = first_focusable_in(trap)
+	if back != null:
+		back.grab_focus.call_deferred()
+	else:
+		c.release_focus.call_deferred()
 
 
 func _layer_of(c: CanvasItem) -> int:
@@ -198,7 +383,8 @@ func _layer_of(c: CanvasItem) -> int:
 
 func _process(_delta: float) -> void:
 	var focus: Control = get_viewport().gui_get_focus_owner()
-	var show := using_nav() and focus is BaseButton and focus.is_visible_in_tree()
+	var show := using_nav() and focus != null and focus.is_visible_in_tree() \
+		and (focus is BaseButton or focus.has_meta(UIKit.NAV_TILE_META))
 	if not show:
 		if _ring != null:
 			_ring.visible = false

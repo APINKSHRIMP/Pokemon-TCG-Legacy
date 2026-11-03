@@ -377,6 +377,7 @@ func _add_character_to_grid(file_name: String) -> void:
 		rect.modulate = Color(0.8, 0.8, 0.8)
 		cell.mouse_filter = Control.MOUSE_FILTER_STOP
 		cell.gui_input.connect(_on_character_clicked.bind(cell))
+		UIKit.make_nav_tile(cell)   # D-pad / arrows land on it, A / Space picks it
 	else:
 		# Keep the real texture but zero out all RGB channels - that turns the
 		# sprite into a solid silhouette with no texture swap needed. It is the
@@ -636,7 +637,7 @@ func _check_click_miss() -> void:
 # ─── Costume zoom ─────────────────────────────────────────────────────────────
 
 func _get_hovered_costume() -> Control:
-	var hovered = get_viewport().gui_get_hovered_control()
+	var hovered = UIKit.pointer_control(self)   # focused tile on keys / pad, else the mouse's
 	if hovered == null:
 		return null
 	var node = hovered

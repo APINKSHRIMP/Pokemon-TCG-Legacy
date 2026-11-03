@@ -388,6 +388,7 @@ func _add_coin_to_grid(file_name: String) -> void:
 	if is_owned:
 		rect.modulate = Color(0.8, 0.8, 0.8)
 		rect.gui_input.connect(_on_coin_clicked.bind(rect))
+		UIKit.make_nav_tile(rect)   # D-pad / arrows land on it, A / Space picks it
 	else:
 		# The empty ring is a CHILD of the TextureRect rather than replacing it,
 		# so every `child is TextureRect` walk over this grid still sees a full
@@ -661,7 +662,7 @@ func _check_click_miss() -> void:
 # ─── Coin zoom ───────────────────────────────────────────────────────────────
 
 func _get_hovered_coin() -> TextureRect:
-	var hovered = get_viewport().gui_get_hovered_control()
+	var hovered = UIKit.pointer_control(self)   # focused coin on keys / pad, else the mouse's
 	if hovered == null:
 		return null
 	var node = hovered

@@ -50,6 +50,12 @@ func _input(event: InputEvent) -> void:
 	# Desktop, cancel is Return. Without this, Escape/Enter closed the whole menu
 	# out from under the dialog instead of answering it.
 	if quit_dialog != null and is_instance_valid(quit_dialog):
+		# A keyboard / pad player whose cursor is on one of the dialog's buttons presses
+		# THAT button - otherwise A on "Return" would quit the game.
+		var focus_owner: Control = get_viewport().gui_get_focus_owner()
+		if UIInput.is_accept(event) and UIKit.nav_active() and focus_owner is BaseButton \
+				and quit_dialog.is_ancestor_of(focus_owner):
+			return
 		if UIInput.is_cancel(event):
 			get_viewport().set_input_as_handled()
 			_on_quit_cancelled()
@@ -60,7 +66,10 @@ func _input(event: InputEvent) -> void:
 
 	# Escape / Backspace / pad B / pad Start close the menu, as does Enter (it opened it).
 	var closes: bool = UIInput.is_cancel(event) or UIInput.is_pause(event)
-	if not closes and event is InputEventKey and event.pressed and not event.is_echo():
+	# Enter only closes the menu while the cursor is on nothing - with a tile focused it
+	# opens that tile (the tile's own gui_input takes it), the same as Space and pad A.
+	if not closes and event is InputEventKey and event.pressed and not event.is_echo() \
+			and get_viewport().gui_get_focus_owner() == null:
 		closes = event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER
 	if closes:
 		get_viewport().set_input_as_handled()
@@ -203,6 +212,8 @@ func _ready() -> void:
 			rect.mouse_entered.connect(_on_mode_hover.bind(container, true))
 			rect.mouse_exited.connect(_on_mode_hover.bind(container, false))
 			rect.gui_input.connect(_on_mode_clicked.bind(node_path))
+			# D-pad / arrows move between the tiles (the hover grow follows), A / Space opens.
+			UIKit.make_nav_tile(rect)
 
 	# Exit button: same pattern — hover on the icon rect, tween the container
 	var exit_rect = get_node_or_null("exit/exit_game_button") as TextureRect
@@ -212,6 +223,7 @@ func _ready() -> void:
 		exit_rect.mouse_entered.connect(_on_mode_hover.bind(exit_container, true))
 		exit_rect.mouse_exited.connect(_on_mode_hover.bind(exit_container, false))
 		exit_rect.gui_input.connect(_on_exit_clicked)
+		UIKit.make_nav_tile(exit_rect)
 
 	# Grey out labels for locked modes
 	for bg_path in locked_modes.keys():

@@ -160,6 +160,7 @@ func _build_coin_grid() -> void:
 		else:
 			rect.self_modulate = UNSELECTED_DIM
 			rect.gui_input.connect(_on_coin_clicked.bind(rect))
+			UIKit.make_nav_tile(rect)   # D-pad / arrows land on it, A / Space picks it
 
 		grid.add_child(rect)
 		UIKit.add_drop_shadow(rect)
@@ -395,6 +396,7 @@ func _show_purchase_display(coin_filename: String) -> void:
 		purchased_rect.self_modulate = OWNED_DIM
 		purchased_rect.scale         = Vector2(1.0, 1.0)
 		purchased_rect.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+		purchased_rect.focus_mode    = Control.FOCUS_NONE   # the menu cursor skips owned coins too
 
 	selected_coin_rect = null
 	ShopChrome.set_wallet_cash(wallet_chip, player_cash)

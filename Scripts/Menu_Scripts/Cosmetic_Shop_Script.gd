@@ -566,6 +566,7 @@ func _build_item_grid() -> void:
 			# into the price pill and would dim that along with the item.
 			rect.self_modulate = UNSELECTED_DIM
 			wrapper.gui_input.connect(_on_item_clicked.bind(wrapper))
+			UIKit.make_nav_tile(wrapper)   # D-pad / arrows land on it, A / Space picks it
 
 		grid.add_child(wrapper)
 		UIKit.add_drop_shadow(rect)
@@ -606,6 +607,7 @@ func _mark_cell_owned(wrapper: Control) -> void:
 	wrapper.modulate     = Color(1, 1, 1, 1)
 	wrapper.scale        = Vector2(1.0, 1.0)
 	wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrapper.focus_mode   = Control.FOCUS_NONE   # the menu cursor skips owned items too
 
 	var art := _art_rect(wrapper)
 	if art != null:

@@ -1324,5 +1324,106 @@ static func make_footer_button(text: String, variant: String = "secondary") -> B
 	return b
 
 
+# ─── Controller / keyboard navigation for menu tiles ─────────────────────────
+#
+# Godot's own focus navigation already walks between Buttons with the arrows,
+# D-pad and stick (see Input_Device.gd). What it can't reach are the TILES every
+# collection screen is made of — deck builder cards, coins, sleeves, costumes,
+# shop items — because those are plain TextureRects / Controls that take a mouse
+# click through a gui_input handler, and a plain Control is never focusable.
+#
+# make_nav_tile() fixes that WITHOUT touching each screen's click logic:
+#   - the tile becomes focusable, so the D-pad / arrows land on it and the menu
+#     focus ring draws round it;
+#   - Space / Enter / pad A while it has focus REPLAYS A LEFT CLICK into the
+#     tile's own gui_input signal, and pad X / X / Delete replays a RIGHT click,
+#     so the screen's existing "_on_X_clicked(event, ...)" handler runs exactly
+#     as it does for the mouse (deck builder: left adds a copy, right removes one);
+#   - focus arriving / leaving echoes mouse_entered / mouse_exited, so hover
+#     effects (the pause menu's tile grow) follow the cursor too;
+#   - the nearest ScrollContainer above it gets follow_focus, so moving onto a
+#     tile scrolled out of view brings it into view.
+# The hold-to-zoom previews find the tile through pointer_control() below.
+const NAV_TILE_META := "nav_tile"
+
+static func make_nav_tile(c: Control, hover_echo: bool = true) -> void:
+	if c == null or c.has_meta(NAV_TILE_META):
+		return
+	c.set_meta(NAV_TILE_META, true)
+	c.focus_mode = Control.FOCUS_ALL
+	# A Button keeps its own focus face otherwise (drawn ON TOP of normal - see the
+	# UI overhaul notes); the gradient ring is the focus cue for tiles.
+	if c is BaseButton:
+		c.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	c.gui_input.connect(func(event: InputEvent) -> void: _nav_tile_input(event, c))
+	if hover_echo:
+		c.focus_entered.connect(func() -> void:
+			if nav_active() and is_instance_valid(c):
+				c.mouse_entered.emit())
+		c.focus_exited.connect(func() -> void:
+			if nav_active() and is_instance_valid(c):
+				c.mouse_exited.emit())
+	if c.get_parent() != null:
+		_follow_focus_above(c)
+	else:
+		# Built before being added to its grid: catch the scroll box once it is.
+		c.tree_entered.connect(_follow_focus_above.bind(c), CONNECT_ONE_SHOT)
+
+
+static func _follow_focus_above(c: Control) -> void:
+	var p: Node = c.get_parent()
+	while p != null:
+		if p is ScrollContainer:
+			(p as ScrollContainer).follow_focus = true
+			return
+		p = p.get_parent()
+
+
+static func _nav_tile_input(event: InputEvent, c: Control) -> void:
+	if event is InputEventMouse:
+		return
+	if UIInput.is_accept(event):
+		c.accept_event()
+		synth_click(c, MOUSE_BUTTON_LEFT)
+	elif UIInput.is_secondary(event):
+		c.accept_event()
+		synth_click(c, MOUSE_BUTTON_RIGHT)
+
+
+## Sends a press + release of `button` into the Control's gui_input signal, as if the
+## mouse had clicked its centre. Stops after the press if the handler freed the node.
+static func synth_click(c: Control, button: int) -> void:
+	for down in [true, false]:
+		if not is_instance_valid(c) or not c.is_inside_tree():
+			return
+		var ev := InputEventMouseButton.new()
+		ev.button_index = button
+		ev.pressed = down
+		ev.position = c.size * 0.5
+		ev.global_position = c.get_global_rect().get_center()
+		c.gui_input.emit(ev)
+
+
+## True while the player is on the keyboard or a pad (the menu focus ring shows).
+static func nav_active() -> bool:
+	var dev: Node = Engine.get_main_loop().get_root().get_node_or_null("/root/InputDevice")
+	return dev != null and dev.using_nav()
+
+
+## The Control the "pointer" is on: the focused tile while the player is on the
+## keyboard / pad, otherwise whatever the mouse is over. Every hold-to-zoom preview
+## asks this instead of gui_get_hovered_control(), so the zoom key previews the
+## tile under the focus ring as well as the one under the mouse.
+static func pointer_control(node: Node) -> Control:
+	var vp := node.get_viewport()
+	if vp == null:
+		return null
+	if nav_active():
+		var f: Control = vp.gui_get_focus_owner()
+		if f != null and f.has_meta(NAV_TILE_META):
+			return f
+	return vp.gui_get_hovered_control()
+
+
 static func _ui() -> Node:
 	return Engine.get_main_loop().get_root().get_node("/root/UITheme")

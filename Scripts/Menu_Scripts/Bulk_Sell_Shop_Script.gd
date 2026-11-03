@@ -866,6 +866,9 @@ func _fill_sell_grid(sorted_ids: Array) -> void:
 			card_rect.set_meta("card_id", cid)
 			card_rect.set_meta("sell_value", value)
 			card_rect.mouse_filter          = Control.MOUSE_FILTER_STOP
+			# Focusable so a pad / keyboard player can step through the cards being sold and
+			# hold the zoom button (L1 / Shift) to preview them. Pressing A does nothing here.
+			UIKit.make_nav_tile(card_rect, false)
 			_list_grid.add_child(card_rect)
 
 			since_yield += 1
@@ -1156,7 +1159,7 @@ func _refresh_hover_preview() -> void:
 ## rather than the card itself, so walk up looking for the "card_id" metadata every card
 ## in the grid carries.
 func _get_hovered_card() -> TextureRect:
-	var hovered = get_viewport().gui_get_hovered_control()
+	var hovered = UIKit.pointer_control(self)   # focused tile on keys / pad, else the mouse's
 	if hovered == null:
 		return null
 	var node = hovered

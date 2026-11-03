@@ -292,6 +292,9 @@ func _add_entry_to_grid(species: String) -> void:
 
 	if is_met:
 		cell.mouse_filter = Control.MOUSE_FILTER_STOP
+		# Focusable so a pad / keyboard player can step through the guide and hold the
+		# zoom button (L1 / Shift) to look at an entry, as the mouse does by hovering.
+		UIKit.make_nav_tile(cell, false)
 	else:
 		# Keep the real texture but zero out all RGB channels — that turns the
 		# sprite into a solid silhouette with no texture swap. It is each SPRITE
@@ -423,7 +426,7 @@ func _refresh_hover_preview() -> void:
 
 
 func _get_hovered_entry() -> Control:
-	var hovered = get_viewport().gui_get_hovered_control()
+	var hovered = UIKit.pointer_control(self)   # focused tile on keys / pad, else the mouse's
 	if hovered == null:
 		return null
 	var node = hovered

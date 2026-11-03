@@ -224,6 +224,59 @@ static func is_end_turn_jump(event: InputEvent) -> bool:
 	return false
 
 
+# ── Menu secondary action ────────────────────────────────────────────────────
+# The pad / keyboard stand-in for a RIGHT click on a menu tile (the deck builder's
+# "remove one copy"). Pad X, or X / Delete on the keyboard. Only tiles made with
+# UIKit.make_nav_tile() listen for it, and only while they hold focus, so it never
+# fights the match's X = "jump to hand" (the board has its own cursor).
+const SECONDARY_KEYS: Array[int] = [KEY_X, KEY_DELETE]
+
+static func is_secondary(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return _key_pressed(event) and event.keycode in SECONDARY_KEYS
+	if event is InputEventJoypadButton:
+		return event.pressed and event.button_index == JOY_BUTTON_X
+	return false
+
+
+# ── Page step ────────────────────────────────────────────────────────────────
+# "Previous / next page" on screens that page through something (the deck builder's
+# card sets). Page Up / Page Down, or the pad's triggers (LT / RT, L2 / R2). The
+# triggers are AXES in Godot, so they are edge-detected like the stick: one step per
+# squeeze, re-armed once the trigger is let back out.
+# Returns -1 (previous), +1 (next) or 0.
+const TRIGGER_PRESS := 0.6
+const TRIGGER_RELEASE := 0.3
+static var _trigger_down := {JOY_AXIS_TRIGGER_LEFT: false, JOY_AXIS_TRIGGER_RIGHT: false}
+static var _last_trigger_event: InputEvent = null
+static var _last_trigger_result := 0
+
+static func page_step(event: InputEvent) -> int:
+	if event is InputEventKey:
+		if not _key_pressed(event):
+			return 0
+		if event.keycode == KEY_PAGEUP:
+			return -1
+		if event.keycode == KEY_PAGEDOWN:
+			return 1
+		return 0
+	if event is InputEventJoypadMotion:
+		var m := event as InputEventJoypadMotion
+		if m.axis != JOY_AXIS_TRIGGER_LEFT and m.axis != JOY_AXIS_TRIGGER_RIGHT:
+			return 0
+		if event == _last_trigger_event:
+			return _last_trigger_result
+		_last_trigger_event = event
+		_last_trigger_result = 0
+		if m.axis_value < TRIGGER_RELEASE:
+			_trigger_down[m.axis] = false
+		elif m.axis_value >= TRIGGER_PRESS and not _trigger_down[m.axis]:
+			_trigger_down[m.axis] = true
+			_last_trigger_result = -1 if m.axis == JOY_AXIS_TRIGGER_LEFT else 1
+		return _last_trigger_result
+	return 0
+
+
 # ── Alt + click: the old "open the hand large" click ─────────────────────────
 # A plain click on a hand card picks it straight off the bar now (and a drag plays
 # it). Holding Alt gives back the large hand view that click used to open.

@@ -26,8 +26,8 @@ const ControllerDiagram := preload("res://Scripts/Menu_Scripts/Controller_Diagra
 
 const DEVICES := ["keyboard", "controller"]
 const DEVICE_NAMES := {"keyboard": "Keyboard & Mouse", "controller": "Controller"}
-const CONTEXTS := ["overworld", "match"]
-const CONTEXT_NAMES := {"overworld": "Overworld", "match": "In match"}
+const CONTEXTS := ["overworld", "match", "menus"]
+const CONTEXT_NAMES := {"overworld": "Overworld", "match": "In match", "menus": "Menus"}
 
 ## Keyboard rows: [keys, action]. In `keys`, "|" separates alternatives (shown with a
 ## slash between them) and "+" joins keys pressed together.
@@ -59,6 +59,16 @@ const KEYBOARD_ROWS := {
 		["Q", "Jump the cursor to End Turn"],
 		["Wheel", "Scroll a long hand or the log"],
 	],
+	"menus": [
+		["Arrows", "Move the cursor"],
+		["Space|Enter", "Press, pick, add a card to the deck"],
+		["X|Delete", "Remove a card from the deck"],
+		["Esc|Backspace", "Back, close"],
+		["Shift", "Enlarge a card, coin or sleeve (hold)"],
+		["PgUp|PgDn", "Deck builder: previous / next set"],
+		["Space|Enter", "Text box: open the on-screen keyboard"],
+		["Type", "Keyboard: type straight in, Enter done, Esc close"],
+	],
 }
 
 ## Controller rows: [button id, action]. Ids are ControllerDiagram's.
@@ -82,6 +92,18 @@ const PAD_ROWS := {
 		["x", "Jump to your hand"],
 		["b", "Back, cancel"],
 		["a", "Confirm, play, open"],
+	],
+	"menus": [
+		["lstick", "Move the cursor"],
+		["dpad", "Move the cursor"],
+		["lb", "Enlarge a card, coin or sleeve (hold)"],
+		["lt", "Deck builder: previous set"],
+		["rt", "Deck builder: next set"],
+		["a", "Press, pick, add a card / type a key"],
+		["x", "Remove a card / keyboard: space"],
+		["b", "Back / keyboard: delete a letter"],
+		["y", "Keyboard: capitals"],
+		["menu", "Keyboard: done"],
 	],
 }
 

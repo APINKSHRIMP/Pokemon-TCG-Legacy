@@ -338,6 +338,7 @@ func _add_sleeve_to_grid(file_name: String) -> void:
 	if is_owned:
 		wrapper.modulate = Color(0.8, 0.8, 0.8)
 		wrapper.gui_input.connect(_on_sleeve_clicked.bind(wrapper))
+		UIKit.make_nav_tile(wrapper)   # D-pad / arrows land on it, A / Space picks it
 	else:
 		# An unowned sleeve used to be a solid black tile. It is an EMPTY SLOT
 		# outline now — the art is hidden outright rather than blacked out, and
@@ -589,7 +590,7 @@ func _check_click_miss() -> void:
 # ─── Sleeve zoom ─────────────────────────────────────────────────────────────
 
 func _get_hovered_sleeve() -> Control:
-	var hovered = get_viewport().gui_get_hovered_control()
+	var hovered = UIKit.pointer_control(self)   # focused tile on keys / pad, else the mouse's
 	if hovered == null:
 		return null
 	var node = hovered

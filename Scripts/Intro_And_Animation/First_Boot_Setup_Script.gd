@@ -118,7 +118,14 @@ func _build_ui() -> void:
 	_name_box = _make_field("Enter your name...", 15, FIELD_W, NAME_Y, FIELD_FONT)
 
 	# ── DoB box ──────────────────────────────────────────────
-	_dob_box = _make_field("Birthday (DD/MM)", 5, DOB_W, DOB_Y, FIELD_FONT - 2)
+	_dob_box = _make_field("Birthday  DD / MM", 5, DOB_W, DOB_Y, FIELD_FONT - 2)
+
+	# Both boxes are typed through the on-screen keyboard (keyboard, mouse, touch or
+	# pad). The birthday uses its digit pad: the player enters four digits and the
+	# "/" is put in for them. Done on the name moves straight on to the birthday,
+	# and Done on the birthday puts the cursor on the sprite grid.
+	OnScreenKeyboard.attach(_name_box, _name_kb_opts())
+	OnScreenKeyboard.attach(_dob_box, _dob_kb_opts())
 
 	# ── Sprite grid ──────────────────────────────────────────
 	# Width = 6 x 260 + 5 x 15 = 1635 -> start x = (1920 - 1635) / 2 = 142 at 1920x1080.
@@ -231,6 +238,7 @@ func _add_sprite_to_grid(file_name: String) -> void:
 	cell.custom_minimum_size = CELL_SIZE
 	cell.set_meta("sprite_name", file_name)
 	cell.gui_input.connect(_on_sprite_clicked.bind(cell))
+	UIKit.make_nav_tile(cell)   # D-pad / arrows move onto it, A / Space picks it
 
 	# TextureRect is explicitly sized and centred — no anchors, no expand mode tricks.
 	# STRETCH_SCALE fills exactly rect.size (which we already set to the correct proportion).
@@ -310,6 +318,9 @@ func _on_input_changed(_text: String) -> void:
 	_refresh_save_btn()
 
 
+## Days in each month; February allows the 29th so a leap-day birthday is accepted.
+const MONTH_DAYS := [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
 func _is_valid_dob(text: String) -> bool:
 	if text.length() != 5 or text[2] != "/":
 		return false
@@ -319,7 +330,39 @@ func _is_valid_dob(text: String) -> bool:
 		return false
 	var day   := int(day_str)
 	var month := int(month_str)
-	return day >= 1 and day <= 31 and month >= 1 and month <= 12
+	if month < 1 or month > 12:
+		return false
+	return day >= 1 and day <= int(MONTH_DAYS[month - 1])
+
+
+# ─── On-screen keyboard hand-offs ─────────────────────────────────────────────
+
+func _name_kb_opts() -> Dictionary:
+	return {"title": "Your trainer name", "submit": false, "on_done": _after_name_done}
+
+
+func _dob_kb_opts() -> Dictionary:
+	return {"title": "Your birthday (day / month)", "mode": "date", "submit": false,
+		"on_done": _after_dob_done}
+
+
+## Name entered: go straight on to the birthday if it still needs filling in.
+func _after_name_done() -> void:
+	if _page != 0 or _switching or _leaving:
+		return
+	if not _is_valid_dob(_dob_box.text):
+		OnScreenKeyboard.open(_dob_box, _dob_kb_opts())
+
+
+## Birthday entered: a keyboard / pad player's cursor moves onto the sprite grid.
+func _after_dob_done() -> void:
+	if _page != 0 or not UIKit.nav_active():
+		return
+	var target: Control = _selected_cell
+	if target == null and _grid.get_child_count() > 0:
+		target = _grid.get_child(0) as Control
+	if target != null:
+		target.grab_focus()
 
 
 func _refresh_save_btn() -> void:

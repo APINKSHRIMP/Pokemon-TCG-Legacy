@@ -411,6 +411,9 @@ func _ready() -> void:
 	
 	# Re-evaluate save button whenever the name is typed or cleared
 	deck_name_edit.text_changed.connect(_on_deck_name_changed)
+	# Typed through the on-screen keyboard: click it, or put the menu cursor on it and
+	# press Space / Enter / pad A. Done just closes it - Save is still its own button.
+	OnScreenKeyboard.attach(deck_name_edit, {"title": "Deck name", "submit": false})
 
 	# Wrap the grid in a scroll container so large sets can scroll
 	# -- Energy icon setup --
@@ -453,6 +456,7 @@ func _ready() -> void:
 		var icon : TextureRect = energy_icons[energy_type]
 		icon.mouse_filter = Control.MOUSE_FILTER_STOP
 		icon.gui_input.connect(_on_energy_icon_gui_input.bind(energy_type))
+		UIKit.make_nav_tile(icon)   # A / Space adds one, pad X / X / Delete removes one
 
 	# Refresh energy icon labels and animations from deck state
 	_refresh_energy_icons_from_deck()
@@ -1543,6 +1547,8 @@ func _on_change_energy_style_pressed() -> void:
 					_on_picker_card_clicked.bind(style_name, picker_selection, row_cards, row_tweens)
 				)
 
+			if is_unlocked:
+				UIKit.make_nav_tile(card_rect)
 			picker_grid.add_child(card_rect)
 			cards_in_row.append(card_rect)
 
@@ -1788,6 +1794,7 @@ func _build_viewer_contents(sorted_ids: Array) -> void:
 		row.mouse_filter = Control.MOUSE_FILTER_STOP
 		row.set_meta("card_id", card_id)
 		row.gui_input.connect(_on_viewer_card_gui_input.bind(String(card_id)))
+		UIKit.make_nav_tile(row)   # A / Space adds a copy, pad X / X / Delete removes one
 		col.add_child(row)
 
 		# ISSUE #190: the row text sat hard against the panel border on both
@@ -1932,6 +1939,7 @@ func _make_viewer_card_rect(cid: String, card_texture: Texture2D) -> TextureRect
 	card_rect.set_meta("card_id", cid)
 	card_rect.mouse_filter              = Control.MOUSE_FILTER_STOP
 	card_rect.gui_input.connect(_on_viewer_card_gui_input.bind(cid))
+	UIKit.make_nav_tile(card_rect)
 	return card_rect
 
 
@@ -2266,7 +2274,22 @@ func _display_current_set() -> void:
 	print("CARD CACHE: set ", set_id, " grid built in ", (Time.get_ticks_usec() - build_start_usec) / 1000, " ms")
 	# ISSUE #32: grid finished building for the current set — allow player input again.
 	_loading_overlay.hide()
+	_focus_first_grid_card()
 	grid_built.emit()   # ISSUE #476: the intro walkthrough waits for this
+
+
+## Set switched with the pad triggers / Page keys: the old set's cards (and the focus
+## with them) are gone, so put the cursor on the new set's first card.
+var _focus_grid_after_build: bool = false
+
+func _focus_first_grid_card() -> void:
+	if not _focus_grid_after_build:
+		return
+	_focus_grid_after_build = false
+	for child in grid.get_children():
+		if child is Control and child.has_meta(UIKit.NAV_TILE_META) and not child.is_queued_for_deletion():
+			(child as Control).grab_focus()
+			return
 
 
 ## Removes all card entries from the grid, killing tweens to avoid
@@ -2371,6 +2394,8 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 		card_rect.modulate     = Color.WHITE
 		card_rect.mouse_filter = Control.MOUSE_FILTER_STOP
 		card_rect.gui_input.connect(_on_card_gui_input.bind(card_rect))
+		# Pad / keyboard: A / Space = left click (add a copy), X / Delete = right click (remove).
+		UIKit.make_nav_tile(card_rect)
 
 		if in_deck > 0:
 			_apply_selected_animation(card_rect as TextureRect)
@@ -2592,6 +2617,8 @@ func _open_search_overlay() -> void:
 
 	search_overlay = CardSearchOverlay.new()
 	add_child(search_overlay)
+	# Keeps the menu cursor on the filter screen while it shows (ignored while hidden).
+	InputDevice.push_scope(search_overlay)
 	search_overlay.setup(unlocked_set_ids, set_list)
 	search_overlay.search_confirmed.connect(_on_search_confirmed)
 	search_overlay.search_cancelled.connect(_on_search_cancelled)
@@ -3461,6 +3488,12 @@ func _input(event: InputEvent) -> void:
 	# to _on_cancel_pressed() and left the deck builder with the popup still open,
 	# and Space started a card preview behind it.
 	if confirm_popup != null and is_instance_valid(confirm_popup):
+		# A keyboard / pad player whose cursor is on one of the popup's buttons presses THAT
+		# button - otherwise A on "Cancel" would empty / delete the deck.
+		var focus_owner: Control = get_viewport().gui_get_focus_owner()
+		if UIInput.is_accept(event) and UIKit.nav_active() and focus_owner is BaseButton \
+				and confirm_popup.is_ancestor_of(focus_owner):
+			return
 		if UIInput.is_accept(event):
 			get_viewport().set_input_as_handled()
 			_run_confirm_action()
@@ -3511,6 +3544,20 @@ func _input(event: InputEvent) -> void:
 			_clear_search()
 			return
 		_on_cancel_pressed()
+		return
+
+	# ── Page Up / Page Down, pad LT / RT: previous / next card set ──
+	# Only while plainly browsing a set (no overlay, popup or search results up).
+	var step := UIInput.page_step(event)
+	if step != 0:
+		if load_popup == null and not deck_viewer_active and not energy_picker_active \
+				and not _search_screen_open() and not search_active and not is_zoomed:
+			get_viewport().set_input_as_handled()
+			_focus_grid_after_build = UIKit.nav_active()
+			if step > 0:
+				_on_next_set()
+			else:
+				_on_prev_set()
 		return
 
 	# ── Hold-to-preview ──
@@ -3580,7 +3627,8 @@ func _refresh_hover_preview() -> void:
 ## than the card TextureRect itself, we walk up the node tree looking for
 ## a node that carries our "card_id" metadata — that's the actual card.
 func _get_hovered_card() -> TextureRect:
-	var hovered = get_viewport().gui_get_hovered_control()
+	# The focused card while on the keyboard / pad, else the one under the mouse.
+	var hovered = UIKit.pointer_control(self)
 	if hovered == null:
 		return null
 	# Walk up to 5 parents looking for our card_id metadata
@@ -4078,11 +4126,14 @@ func _on_rename_deck_pressed(deck_name: String) -> void:
 	cancel_btn.pressed.connect(_close_rename_popup)
 	btn_row.add_child(cancel_btn)
 
-	# Focus and select-all, so typing replaces the old name straight away.
+	# Typed through the on-screen keyboard, which opens straight away. "replace" keeps the
+	# old select-all behaviour: the first key typed replaces the old name. Done renames (it
+	# emits text_submitted, the same as Enter did); Escape closes the keyboard, a second
+	# Escape the box. Clicking the field (or A on it) reopens the keyboard to edit.
+	OnScreenKeyboard.attach(_rename_edit, {"title": "New deck name"})
 	await get_tree().process_frame
 	if _rename_edit != null and is_instance_valid(_rename_edit):
-		_rename_edit.grab_focus()
-		_rename_edit.select_all()
+		OnScreenKeyboard.open(_rename_edit, {"title": "New deck name", "replace": true})
 
 
 func _close_rename_popup() -> void:
@@ -4267,6 +4318,7 @@ func _on_load_deck_pressed(from_opponents: bool = false) -> void:
 	scroll.size_flags_horizontal  = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.follow_focus = true   # the D-pad scrolls a long deck list along with the cursor
 	vbox.add_child(scroll)
 
 	var list_vbox := VBoxContainer.new()
