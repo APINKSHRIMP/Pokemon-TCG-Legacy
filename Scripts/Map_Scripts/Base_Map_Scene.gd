@@ -531,6 +531,9 @@ func _close_menu_overlay() -> void:
 		GameState.clear_menu_return_state()
 	MapManager.set_overworld_paused(false)
 	_player.unlock_movement()
+	# ISSUE #446: the escape menu's shared track is on the global player now -- drop it so
+	# a map with no music of its own does not carry the menu theme out into the world.
+	SoundManagerScript.stop_bgm()
 	_start_map_bgm(false)   # ISSUE #417
 
 # ============================================================

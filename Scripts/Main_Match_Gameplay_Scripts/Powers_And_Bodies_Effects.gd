@@ -1752,19 +1752,10 @@ func update_ditto_transform(is_opponent: bool) -> void:
 	if active == null or opposing_active == null:
 		return
 	
-	# Check if active is a Ditto with Transform
-	var is_ditto = false
-	var real_name = active.ditto_original_metadata.get("name", "") if active.is_ditto_transformed else active.metadata.get("name", "")
-	if real_name == "Ditto":
-		is_ditto = true
-	if not active.is_ditto_transformed:
-		# Check abilities on the current (untransformed) card
-		for ability in active.metadata.get("abilities", []):
-			if ability.get("name", "") == "Transform":
-				is_ditto = true
-				break
-	
-	if not is_ditto:
+	# ISSUE #440: only a Pokémon with the "Transform" Pokémon Power (Fossil Ditto). It used to
+	# match on the NAME "Ditto", so ex11/pop3 "Duplicate", ecard3 "Prismatic Body", ex6 "Form
+	# Variation" Dittos were all wrongly turned into copies of the Defending Pokémon too.
+	if not is_transform_ditto(active):
 		return
 	
 	# Ditto is blocked by status (Asleep, Confused, Paralyzed)
@@ -1799,6 +1790,62 @@ func update_ditto_transform(is_opponent: bool) -> void:
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	print("TRANSFORM: Ditto copied ", opposing_active.metadata.get("name", ""))
+
+## ISSUE #440: does `p` have the Transform Pokémon Power (Fossil Ditto)? Ditto keeps its own
+## abilities while it is a copy, so this reads the same transformed or not.
+func is_transform_ditto(p: card_object) -> bool:
+	if p == null:
+		return false
+	var abilities: Array = p.ditto_original_metadata.get("abilities", []) if p.is_ditto_transformed 			else p.metadata.get("abilities", [])
+	for ability in abilities:
+		if ability is Dictionary and ability.get("name", "") == "Transform":
+			return true
+	return false
+
+
+## ISSUE #440: could `p` use Transform right now if it were the Active (no Asleep / Confused /
+## Paralyzed, no Toxic Gas)? The same tests update_ditto_transform() applies.
+func ditto_can_transform(p: card_object) -> bool:
+	if not is_transform_ditto(p):
+		return false
+	if p.special_condition in ["Asleep", "Confused", "Paralyzed"]:
+		return false
+	return not is_toxic_gas_active()
+
+
+## ISSUE #440: for the CPU's planning -- a throwaway copy of the Transform Ditto `ditto` as it
+## WOULD be once `onto` became the Pokémon across from it (same damage, Energy, Tools and
+## condition). Returns `ditto` itself when it can't Transform or already copies `onto`.
+## The board is never touched. Cached, as the CPU asks for the same pair many times a turn.
+var _ditto_projection_cache: Dictionary = {}
+
+func project_ditto(ditto: card_object, onto: card_object) -> card_object:
+	if ditto == null or onto == null or ditto == onto or not ditto_can_transform(ditto):
+		return ditto
+	if ditto.is_ditto_transformed and ditto.ditto_transform_uid == onto.uid:
+		return ditto
+	var key: String = "%d:%d" % [ditto.get_instance_id(), onto.get_instance_id()]
+	var sig: String = "%s|%s|%d|%d|%d|%s" % [ditto.uid, onto.uid, ditto.current_hp,
+			ditto.attached_energies.size(), ditto.attached_cards.size(), ditto.special_condition]
+	var hit = _ditto_projection_cache.get(key, null)
+	if hit != null and hit[0] == sig:
+		return hit[1]
+	var base_uid: String = ditto.ditto_original_uid if ditto.is_ditto_transformed else ditto.uid
+	var base_meta: Dictionary = ditto.ditto_original_metadata if ditto.is_ditto_transformed else ditto.metadata
+	var clone := card_object.new(base_uid, base_meta)
+	var damage: int = int(ditto.metadata.get("hp", "0")) - ditto.current_hp
+	clone.current_hp = maxi(1, int(base_meta.get("hp", "0")) - damage)
+	clone.attached_energies = ditto.attached_energies   # shared on purpose: read-only, and an
+	clone.attached_cards = ditto.attached_cards         # Energy the CPU test-attaches shows up
+	clone.attached_pre_evolutions = ditto.attached_pre_evolutions
+	clone.special_condition = ditto.special_condition
+	clone.current_location = ditto.current_location
+	clone.apply_ditto_transform(onto.metadata, onto.uid)
+	if _ditto_projection_cache.size() > 64:
+		_ditto_projection_cache.clear()
+	_ditto_projection_cache[key] = [sig, clone]
+	print("ISSUE #440 FIX ACTIVE: CPU projects Ditto as a copy of ", onto.metadata.get("name", ""))
+	return clone
 
 # Called when Ditto leaves play (KO, Scoop Up, Mr. Fuji, etc.) to ensure clean revert
 func revert_ditto_if_needed(pokemon: card_object) -> void:

@@ -167,7 +167,8 @@ func _ready() -> void:
 		audio_player.bus = SoundManagerScript.MUSIC_BUS
 		if audio_stream != null:
 			audio_stream.loop = true
-			audio_player.play()
+			if not SoundManagerScript.play_menu_family_bgm():   # ISSUE #446
+				audio_player.play()
 
 	theme = UIKit.base_theme()
 

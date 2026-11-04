@@ -92,7 +92,8 @@ func _ready() -> void:
 		audio_player.stream = audio_stream
 		audio_player.bus = SoundManagerScript.MUSIC_BUS
 		audio_player.stream.loop = true
-		audio_player.play()
+		if not SoundManagerScript.play_menu_family_bgm():   # ISSUE #446
+			audio_player.play()
 
 	_met = GameState.get_met_pokemon()
 
@@ -399,6 +400,7 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if UIInput.is_cancel(event):   # Escape, Backspace or pad B
+		get_viewport().set_input_as_handled()   # the map underneath must not see the same B / Esc
 		if is_zoomed:
 			zoom_held = false   # drop the hold too, or _process re-opens the preview
 			_hide_zoom()

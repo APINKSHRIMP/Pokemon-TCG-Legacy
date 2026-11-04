@@ -1104,6 +1104,11 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 	if "Pokémon Tool" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex2_primal_lock_blocking(is_opponent):
 		return "Primal Lock: you can't play Pokémon Tool cards!"
 
+	# Team Aqua / Team Magma Belt: "Attach ... to 1 of your Pokémon with Team X in its name".
+	var team_ok := tool_team_filter(card)
+	if team_ok.is_valid() and not build_field_pokemon_array(is_opponent).any(func(p): return team_ok.call(p)):
+		return "You have no Pokémon this Tool can be attached to!"
+
 	# ex5 Block Dust (Vileplume ex ex5-100): opponent can't play non-Supporter Trainer cards
 	if "Supporter" not in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex5_block_dust_blocking(is_opponent):
 		return "Block Dust: you can't play Trainer cards (except Supporters)!"
@@ -1675,7 +1680,7 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 	# Any Pokémon Tool card not otherwise handled above (ecard2 Healing Berry/Memory Berry/Time
 	# Shard, and any future ones): standard one-tool-per-Pokemon attach
 	elif "Pokémon Tool" in card.metadata.get("subtypes", []):
-		await neo1_attach_tool(card, is_opponent)
+		await neo1_attach_tool(card, is_opponent, tool_team_filter(card))
 		return
 
 	# Any Technical Machine card: attach to a Pokemon in play (own subtype, no tool-slot restriction).
@@ -3192,6 +3197,17 @@ func effect_potion(is_opponent: bool) -> void:
 		if target != null:
 			await main.card_ops.heal_pokemon(target, 20, false)
 			if main._should_bail(): return
+
+## A Pokémon Tool whose attach rule names a team ("... Pokémon with Team Magma in its name") -> a filter
+## for the Pokémon it may go on; an invalid Callable when the Tool has no such rule. Team Magma Belt was
+## going onto any Pokémon (autotester: Diglett).
+func tool_team_filter(card: card_object) -> Callable:
+	var rules: String = " ".join(card.metadata.get("rules", []))
+	for team in ["Team Aqua", "Team Magma"]:
+		if ("with " + team + " in its name") in rules:
+			return func(p): return team in str(p.metadata.get("name", ""))
+	return Callable()
+
 
 ## ISSUE #426: can Technical Machine `card` be attached to Pokémon `p`? Read from the card's own
 ## attach rule, so a new TM with a printed restriction needs no code:
@@ -10001,36 +10017,24 @@ func effect_ex2_lanettes_net_search(is_opponent: bool) -> void:
 	if main._should_bail(): return
 	print("TRAINER: Lanette's Net Search — found ", found.size())
 
-# Shared evolution: put evo_card (from source_array) onto target, carrying damage/energy/pre-evolution
-# chain. Mirrors Main.perform_evolution's core so it works from hand (Rare Candy) or deck (Wally's).
+# Shared evolution: put evo_card (from source_array: hand for Rare Candy, deck for Wally's) onto target.
 func _ex2_do_evolution(evo_card: card_object, target: card_object, is_opponent: bool, source_array: Array) -> void:
-	var max_hp_old = int(target.metadata.get("hp", "0"))
-	var damage_taken = max_hp_old - target.current_hp
-	var max_hp_new = int(evo_card.metadata.get("hp", "0"))
-	evo_card.current_hp = max(1, max_hp_new - damage_taken)
-	evo_card.attached_energies = target.attached_energies.duplicate()
-	target.attached_energies.clear()
-	evo_card.attached_pre_evolutions = target.attached_pre_evolutions.duplicate()
-	target.attached_pre_evolutions.clear()
-	evo_card.attached_pre_evolutions.append(target)
-	evo_card.placed_on_field_this_turn = true
+	# Through the real evolution path (main.perform_evolution), like Attack_Effects.r3_evolve_with: this
+	# used to copy only Energy and pre-evolutions across, so an attached Tool (Lum Berry, PlusPower...)
+	# vanished from the game (autotester CARD MISSING after Wally's Training), damage was measured from
+	# the printed HP and the "when you evolve" Powers never fired.
 	source_array.erase(evo_card)
-	evo_card.current_location = target.current_location
-	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-	var bench = main.opponent_bench if is_opponent else main.player_bench
-	if target == active:
-		if is_opponent:
-			main.opponent_active_pokemon = evo_card
-		else:
-			main.player_active_pokemon = evo_card
-	else:
-		var idx = bench.find(target)
-		if idx != -1:
-			bench[idx] = evo_card
-	main.clear_all_statuses(target, is_opponent)
+	var prev_evo = main.evolution_card_awaiting_target
+	var prev_sel = main.selected_card_for_action
+	main.evolution_card_awaiting_target = evo_card
+	main.selected_card_for_action = target
+	await main.perform_evolution(is_opponent)
+	main.evolution_card_awaiting_target = prev_evo if prev_evo != evo_card else null
+	main.selected_card_for_action = prev_sel if prev_sel != target else null
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
 
 # RARE CANDY (ex2-88, Item): choose 1 of your Basic Pokemon in play; if you have a card that
 # evolves from it in hand, evolve it (counts as evolving that Pokemon).
@@ -10441,7 +10445,9 @@ func ex4_belt_check() -> void:
 			if main._should_bail(): return
 			if evo_card == null: continue
 		await _ex2_do_evolution(evo_card, active, side, deck)
+		# The evolution carried the Belt across (perform_evolution moves Tools), so it comes off the new card.
 		active.attached_cards.erase(belt)
+		evo_card.attached_cards.erase(belt)
 		var discard = main.opponent_discard_pile if side else main.player_discard_pile
 		belt.current_location = "discard"
 		discard.append(belt)

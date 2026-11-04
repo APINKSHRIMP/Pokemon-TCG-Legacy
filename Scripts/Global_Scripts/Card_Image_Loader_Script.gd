@@ -27,6 +27,16 @@ static var zoom_active: bool = false
 # board while the log is still on screen.
 static var input_blocked: bool = false
 
+# ISSUE #439: a transformed Pokémon (Fossil Ditto's Transform) periodically shows the card
+# it REALLY is, fading in over the card it is copying. Phase-locked to the clock rather
+# than a tween, because the board rebuilds its card nodes constantly and a tween would
+# restart (and flash) on every rebuild. TWEAKABLE: the three timings and the peak alpha.
+const UNDER_FLASH_IN   := 0.5   # fade in
+const UNDER_FLASH_OUT  := 0.5   # fade straight back out
+const UNDER_FLASH_GAP  := 5.0   # hidden this long before the next flash
+const UNDER_FLASH_PEAK := 1.0
+var _under_flash: TextureRect = null
+
 # Animation and selection variables
 var tween: Tween
 var is_selected: bool = false
@@ -111,6 +121,61 @@ func load_card_image(card_passed_uid: String, card_target_size, card_object_ref:
 		
 	else:
 		print("Error: Could not load card image at path: ", card_image_path)
+
+	# ISSUE #439: only when this node is showing the COPIED face of a transformed card.
+	var under_uid: String = ""
+	if card_object_ref != null and not face_down and card_object_ref.is_ditto_transformed 			and card_passed_uid == card_object_ref.uid:
+		under_uid = card_object_ref.ditto_original_uid
+	_set_underlying_flash(under_uid, card_target_size)
+
+
+## ISSUE #439: shows (or, with "", removes) the periodic fade-in of the card underneath.
+func _set_underlying_flash(original_uid: String, card_target_size) -> void:
+	if original_uid == "":
+		if _under_flash != null and is_instance_valid(_under_flash):
+			remove_child(_under_flash)
+			_under_flash.queue_free()
+		_under_flash = null
+		set_process(false)
+		return
+	var split_uid := original_uid.split("-")
+	if split_uid.size() != 2:
+		return
+	var size_dir: String = "Small" if (card_target_size.x < 250 or card_target_size.y < 350) else "Large"
+	var path: String = "res://Image_Assets/Card_Image_Library/" + split_uid[0] + "/" + size_dir + "/" 			+ AssetLookup.card_image_name(original_uid) + ".png"
+	var tex: Texture2D = SceneCache.card_texture(path) if size_dir == "Small" else load(path)
+	if tex == null:
+		return
+	if _under_flash == null or not is_instance_valid(_under_flash):
+		_under_flash = TextureRect.new()
+		_under_flash.name = "UnderlyingFlash"
+		_under_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_under_flash.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_under_flash.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_under_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(_under_flash)
+		print("ISSUE #439 FIX ACTIVE: underlying-card flash on ", card_uid, " (really ", original_uid, ")")
+	_under_flash.texture = tex
+	_under_flash.modulate.a = _under_flash_alpha()
+	set_process(true)
+
+
+func _under_flash_alpha() -> float:
+	var cycle: float = UNDER_FLASH_IN + UNDER_FLASH_OUT + UNDER_FLASH_GAP
+	var t: float = fmod(Time.get_ticks_msec() / 1000.0, cycle)
+	if t < UNDER_FLASH_IN:
+		return UNDER_FLASH_PEAK * (t / UNDER_FLASH_IN)
+	t -= UNDER_FLASH_IN
+	if t < UNDER_FLASH_OUT:
+		return UNDER_FLASH_PEAK * (1.0 - t / UNDER_FLASH_OUT)
+	return 0.0
+
+
+func _process(_delta: float) -> void:
+	if _under_flash == null or not is_instance_valid(_under_flash):
+		set_process(false)
+		return
+	_under_flash.modulate.a = _under_flash_alpha()
 
 # Apply animation and colour effects to show selected card
 # Apply visual effect when card is selected

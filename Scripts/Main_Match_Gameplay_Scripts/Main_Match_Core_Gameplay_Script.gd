@@ -643,9 +643,14 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 	else:
 		cancel_button.visible = true
 	
-	var is_view_only_array = card_array in [opponent_hand, opponent_bench, player_discard_pile, opponent_discard_pile]
+	# The SAME array, not one with the same contents: `in` compares Arrays by value, so a one-card picker
+	# built for Misty's Wish matched a one-card prize pile and lost its OK button (autotester soft-lock),
+	# and any picker that happened to hold the whole opponent Bench / hand did the same.
+	var _same_as := func(zones: Array) -> bool:
+		return zones.any(func(z): return is_same(card_array, z))
+	var is_view_only_array: bool = _same_as.call([opponent_hand, opponent_bench, player_discard_pile, opponent_discard_pile])
 	if not prize_card_selection_active:
-		is_view_only_array = is_view_only_array or card_array in [player_prize_cards, opponent_prize_cards]
+		is_view_only_array = is_view_only_array or _same_as.call([player_prize_cards, opponent_prize_cards])
 		
 	if is_view_only_array:
 		action_button.visible = false		
@@ -3023,7 +3028,25 @@ func refresh_hand_display(is_opponent: bool) -> void:
 		display_hand_cards_array(player_hand, player_hand_container, card_scales[11])
 
 # Display active and bench pokemon for either player or opponent. is_opponent: true for opponent, false for player
+# ISSUE #440: Fossil Ditto is ALWAYS a copy of the current Defending Pokémon. It was only
+# re-synced at turn changes, KOs and retreats, so after a Switch / Gust of Wind / forced
+# switch / evolving the Defending Pokémon it kept the OLD card's Weakness, Resistance and
+# attacks until the next turn. Every one of those redraws the board through here, so the
+# sync rides along (guarded: update_ditto_transform redraws through here itself).
+var _ditto_sync_running: bool = false
+
 func display_pokemon(is_opponent: bool) -> void:
+	if not _ditto_sync_running and powers_and_bodies != null:
+		_ditto_sync_running = true
+		var before_p: String = player_active_pokemon.uid if player_active_pokemon != null else ""
+		var before_o: String = opponent_active_pokemon.uid if opponent_active_pokemon != null else ""
+		powers_and_bodies.update_ditto_transform(false)
+		powers_and_bodies.update_ditto_transform(true)
+		_ditto_sync_running = false
+		var after_p: String = player_active_pokemon.uid if player_active_pokemon != null else ""
+		var after_o: String = opponent_active_pokemon.uid if opponent_active_pokemon != null else ""
+		if before_p != after_p or before_o != after_o:
+			print("ISSUE #440 FIX ACTIVE: Ditto re-synced on board redraw")
 	var active_pokemon = opponent_active_pokemon if is_opponent else player_active_pokemon
 	var bench_pokemon_array = opponent_bench if is_opponent else player_bench
 	var active_container = opponent_active_container if is_opponent else player_active_container
@@ -11867,6 +11890,111 @@ func show_pokemon_preview(pokemon: card_object) -> void:
 	cancel_button.theme = theme_green
 	cancel_button.offset_left = -219.0
 	cancel_button.offset_right = 219.0
+	_add_preview_under_row(pokemon)   # ISSUE #440
+
+
+# ISSUE #440: what a Pokémon in play is sitting on / really is, all public information:
+# its evolution chain (oldest first -- Pichu, Pikachu under a Raichu), the real Ditto under
+# a Transform copy, and the card a Brock's Ninetales has Shapeshifted into. Lt. Surge's
+# Secret Plan stays hidden (it is not listed here on purpose).
+func _preview_under_cards(pokemon: card_object) -> Array:
+	var under: Array = []
+	if pokemon.is_ditto_transformed and pokemon.ditto_original_uid != "":
+		under.append(card_object.new(pokemon.ditto_original_uid, pokemon.ditto_original_metadata))
+	for pre in pokemon.attached_pre_evolutions:
+		if pre is card_object:
+			under.append(pre)
+	if pokemon.shapeshift_form_card != null:
+		under.append(pokemon.shapeshift_form_card)
+	return under
+
+
+func _preview_under_caption(pokemon: card_object) -> String:
+	if pokemon.is_ditto_transformed:
+		return "Transformed from"
+	if pokemon.shapeshift_form_card != null and pokemon.attached_pre_evolutions.is_empty():
+		return "Shapeshift form"
+	if pokemon.shapeshift_form_card != null:
+		return "Evolved from / Shapeshift form"
+	return "Evolved from"
+
+
+## ISSUE #440: the single-card preview's left side becomes a column -- the attached
+## energies/tools on top (lifted, they lose their raise pad) and the cards underneath
+## below them, smaller, under a caption. Nothing changes when there is nothing underneath.
+const PREVIEW_UNDER_SCALE: float = 0.6   # TWEAKABLE: under-cards vs the energy cards' size
+
+func _add_preview_under_row(pokemon: card_object) -> void:
+	var under: Array = _preview_under_cards(pokemon)
+	if under.is_empty() or not small_selection_container.visible:
+		return
+	var row: Control = small_selection_container
+	var kids: Array = row.get_children()
+	if kids.size() < 2:
+		return
+	var focus: Node = kids[kids.size() - 1]
+	var lead: Array = kids.slice(0, kids.size() - 2)   # energy/tool wraps (kids[-2] is the spacer)
+	# The energy cards' size, or the focus card's (it is drawn 1.5x) when there are none.
+	var base: Vector2 = Vector2.ZERO
+	for w in lead:
+		if w.get_child_count() > 0 and w.get_child(0) is Control:
+			base = (w.get_child(0) as Control).custom_minimum_size
+			break
+	if base == Vector2.ZERO:
+		var fd: Control = _first_card_display_in(focus)
+		if fd != null:
+			base = fd.custom_minimum_size / 1.5
+	if base == Vector2.ZERO:
+		return
+	print("ISSUE #440 FIX ACTIVE: preview shows ", under.size(), " card(s) underneath ", pokemon.uid)
+
+	var column := VBoxContainer.new()
+	column.size_flags_vertical = Control.SIZE_SHRINK_END
+	column.mouse_filter = MOUSE_FILTER_IGNORE
+	column.alignment = BoxContainer.ALIGNMENT_END
+	column.add_theme_constant_override("separation", 8)
+	if not lead.is_empty():
+		var energy_row := HBoxContainer.new()
+		energy_row.mouse_filter = MOUSE_FILTER_IGNORE
+		energy_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		energy_row.add_theme_constant_override("separation", HAND_SEPARATION)
+		for w in lead:
+			var card_node: Node = w.get_child(0) if (w is VBoxContainer and w.get_child_count() > 0) else w
+			if card_node != w:
+				w.remove_child(card_node)
+				row.remove_child(w)
+				w.queue_free()
+			else:
+				row.remove_child(w)
+			energy_row.add_child(card_node)
+		column.add_child(energy_row)
+	var caption := Label.new()
+	UIKit.set_label(caption, "subtitle", _preview_under_caption(pokemon))
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(caption)
+	var under_row := HBoxContainer.new()
+	under_row.mouse_filter = MOUSE_FILTER_IGNORE
+	under_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	under_row.add_theme_constant_override("separation", HAND_SEPARATION)
+	for c in under:
+		var cd := TextureRect.new()
+		cd.set_script(card_display_script)
+		under_row.add_child(cd)
+		# View-only: plain cards (no in-play HP slot), no click handler; hold-to-enlarge still works.
+		cd.load_card_image(c.uid, base * PREVIEW_UNDER_SCALE, c)
+	column.add_child(under_row)
+	row.add_child(column)
+	row.move_child(column, 0)
+
+
+func _first_card_display_in(node: Node) -> Control:
+	if node is CardDisplay:
+		return node as Control
+	for child in node.get_children():
+		var found: Control = _first_card_display_in(child)
+		if found != null:
+			return found
+	return null
 
 # Called when a card in selection mode is clicked
 func this_card_clicked(clicked_card: card_object) -> void:

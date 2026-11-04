@@ -80,7 +80,8 @@ func _ready() -> void:
 	audio_player.stream = audio_stream
 	audio_player.bus = SoundManagerScript.MUSIC_BUS
 	audio_player.stream.loop = true
-	audio_player.play()
+	if not SoundManagerScript.play_menu_family_bgm():   # ISSUE #446
+		audio_player.play()
 
 	_load_owned_sleeves_list()
 	_load_player_data()

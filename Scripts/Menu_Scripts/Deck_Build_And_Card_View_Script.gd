@@ -3427,7 +3427,10 @@ Are you sure you want to leave?",
 ## The actual exit, once the unsaved-changes question (if any) has been answered.
 func _do_leave_deck_builder() -> void:
 	_save_last_set_loaded()
-	SoundManagerScript.stop_bgm()
+	# ISSUE #446: back to the escape menu keeps the shared menu track running.
+	var into_menu: bool = GameState.menu_overlay_host != null and is_instance_valid(GameState.menu_overlay_host)
+	if not into_menu:
+		SoundManagerScript.stop_bgm()
 	if GameState.close_sub_menu(): return   # ISSUE #53: map is still loaded behind us — just pop this overlay
 	SceneCache.change_scene("res://Scenes/Main_Menu_Scenes/Main_Menu_Scene.tscn")
 

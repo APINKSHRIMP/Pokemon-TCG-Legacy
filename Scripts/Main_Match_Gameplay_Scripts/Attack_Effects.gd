@@ -28022,7 +28022,13 @@ func _ex10_return_pokemon_to_hand(pokemon: card_object, owner_is_opp: bool) -> v
 	for c in pokemon.attached_cards.duplicate():
 		c.current_location = "hand"; hand.append(c)
 	pokemon.attached_cards.clear()
-	# Reset runtime state and move the Pokemon (and its evolution stack) to hand.
+	# "...and all cards attached to it": the Pokémon it evolved from go back too (an Evolved Pokémon used to
+	# leave its Basic in no zone at all - autotester CARD MISSING, Erika's Dratini under Dragonair).
+	for pre in pokemon.attached_pre_evolutions:
+		pre.current_location = "hand"; pre.current_hp = int(pre.metadata.get("hp","0")); hand.append(pre)
+	pokemon.attached_pre_evolutions.clear()
+	# Reset runtime state and move the Pokemon to hand.
+	main.clear_all_statuses(pokemon, owner_is_opp)
 	pokemon.current_hp = int(pokemon.metadata.get("hp","0"))
 	pokemon.special_condition = ""; pokemon.is_poisoned = false; pokemon.is_burned = false
 	var active = main.opponent_active_pokemon if owner_is_opp else main.player_active_pokemon

@@ -347,7 +347,9 @@ func _make_label(text: String, font_path: String, font_size: int, colour: Color)
 func _select(slot: int, with_sound: bool = true) -> void:
 	_selected = slot
 	if with_sound:
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+		# ISSUE #437: picking a save slot uses the press-any-button sound.
+		print("ISSUE #437 FIX ACTIVE: save slot pick plays SFX_plus_select")
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 
 	if _ring != null and is_instance_valid(_ring):
 		_ring_layer.remove_child(_ring)

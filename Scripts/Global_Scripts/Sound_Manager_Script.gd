@@ -339,6 +339,20 @@ func play_bgm(path: String, loop: bool = true) -> void:
 	bgm_player.play()
 
 
+## ISSUE #446: the escape menu and every sub-menu opened from it share ONE track on the
+## global player, so the music runs on unbroken from menu to sub-menu and back (play_bgm
+## is a no-op when the same track is already on). Returns false when the screen was NOT
+## opened from the escape menu overlay -- the caller then plays its own local player as
+## before. The map's _close_menu_overlay() brings the map music back.
+func play_menu_family_bgm() -> bool:
+	var host: Node = GameState.menu_overlay_host
+	if host == null or not is_instance_valid(host):
+		return false
+	print("ISSUE #446 FIX ACTIVE: shared menu BGM (", _current_bgm_path == BGM_COIN_MODE, " already on)")
+	play_bgm(BGM_COIN_MODE)
+	return true
+
+
 ## Fades the current track out, starts `path`, and fades that in. Awaitable; returns once
 ## the new track is at full volume. TWEAKABLE: the two halves' lengths.
 func crossfade_bgm(path: String, out_seconds: float = 0.6, in_seconds: float = 0.8) -> void:

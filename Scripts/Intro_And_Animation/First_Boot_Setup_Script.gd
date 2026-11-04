@@ -32,7 +32,7 @@ var _dob_box    : LineEdit
 var _save_btn   : Button          # the forward button: "Next" or "Start New Game"
 var _back_btn   : Button
 var _grid       : GridContainer
-var _chip_slot  : Control
+var _header_label : Label
 var _fam_holders: Array[Control] = []
 var _fam_ring_layer: Control
 var _fam_ring   : Control = null
@@ -103,13 +103,10 @@ func _build_ui() -> void:
 	# 40x40 scene root to full-rect, which everything below is positioned against.
 	var bars := UIKit.convert_legacy_screen(self, "New trainer")
 
-	# A CHIP, not a bare label. The header's right slot sits over the warm end of
-	# the chrome gradient, which on the brighter themes does not carry plain white
-	# text at this size — and this was the only bare non-title label on a chrome
-	# bar anywhere in the game; every other side slot already uses a chip. The
-	# chip brings its own background, so it reads on any theme's bar.
-	_chip_slot = bars["header"].right
-	_set_header_chip(CHIP_TEXT[0])
+	# ISSUE #438: the per-page prompt IS the centre header now; the old corner
+	# chip ("Choose your name, birthday and look") was redundant and is gone.
+	_header_label = bars["header"].centre.get_child(0) as Label
+	_set_header_text(HEADER_TEXT[0])
 
 	# Page 0 — everything below lives in one Control so the page fades as one.
 	_pages.append(_new_page("setup"))
@@ -460,8 +457,8 @@ func _start_game() -> void:
 # Keys on the question pages: Left / Right pick, Enter / Space / pad A go forward,
 # Escape / pad B go back. Double-click an answer to pick it and go forward.
 
-const CHIP_TEXT := [
-	"Choose your name, birthday and look",
+const HEADER_TEXT := [
+	"Enter your Name, Birthday and choose your look",
 	"Choose your experience",
 	"Choose your challenge",
 ]
@@ -541,12 +538,10 @@ func _new_page(page_name: String) -> Control:
 	return page
 
 
-func _set_header_chip(text: String) -> void:
-	for child in _chip_slot.get_children():
-		_chip_slot.remove_child(child)
-		child.queue_free()
-	# A CHIP, not a bare label — see the note in _build_ui().
-	_chip_slot.add_child(UIKit.make_chip(text, "on_chrome"))
+func _set_header_text(text: String) -> void:
+	print("ISSUE #438 FIX ACTIVE: new-game header -> ", text)
+	if _header_label != null:
+		_header_label.text = text
 
 
 ## Page 1: "How familiar are you…" — four answers, easiest on the left.
@@ -772,7 +767,9 @@ func _ring(layer: Control, old_ring: Control, target: Control) -> Control:
 func _select_familiarity(index: int, with_sound: bool = true) -> void:
 	_familiarity = index
 	if with_sound:
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+		# ISSUE #437: picking an answer uses the press-any-button sound.
+		print("ISSUE #437 FIX ACTIVE: familiarity pick plays SFX_plus_select")
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 	for i in _fam_holders.size():
 		_fam_holders[i].modulate = Color.WHITE if i == index else Color(DIM, DIM, DIM)
 	_fam_ring = _ring(_fam_ring_layer, _fam_ring, _fam_holders[index])
@@ -783,7 +780,9 @@ func _select_familiarity(index: int, with_sound: bool = true) -> void:
 func _select_mode(hard: bool, with_sound: bool = true) -> void:
 	_hard_mode = hard
 	if with_sound:
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+		# ISSUE #437: same press-any-button sound as the familiarity pick.
+		print("ISSUE #437 FIX ACTIVE: mode pick plays SFX_plus_select")
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 	var index: int = 1 if hard else 0
 	for i in _mode_holders.size():
 		_mode_holders[i].modulate = Color.WHITE if i == index else Color(DIM, DIM, DIM)
@@ -820,11 +819,13 @@ func _on_next_pressed() -> void:
 		return
 	match _page:
 		0:
-			SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+			# ISSUE #437: Next uses the click the save-slot select used to make.
+			print("ISSUE #437 FIX ACTIVE: Next plays SFX_select_button")
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
 			_show_page(1)
 		1:
 			if _offers_hard_mode():
-				SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+				SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)  # ISSUE #437
 				_show_page(2)
 			else:
 				_start_game()
@@ -851,7 +852,7 @@ func _show_page(index: int) -> void:
 	from.visible = false
 
 	_page = index
-	_set_header_chip(CHIP_TEXT[index])
+	_set_header_text(HEADER_TEXT[index])
 	if index == 2:
 		_refresh_mode_context()
 	_refresh_footer()

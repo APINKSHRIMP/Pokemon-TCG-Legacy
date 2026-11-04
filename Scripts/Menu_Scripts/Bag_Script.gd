@@ -43,7 +43,8 @@ func _ready() -> void:
 		audio_player.stream = audio_stream
 		audio_player.bus = SoundManagerScript.MUSIC_BUS
 		audio_player.stream.loop = true
-		audio_player.play()
+		if not SoundManagerScript.play_menu_family_bgm():   # ISSUE #446
+			audio_player.play()
 
 	cancel_btn.pressed.connect(_on_cancel_pressed)
 	var bars := UIKit.convert_legacy_screen(self, "Bag")

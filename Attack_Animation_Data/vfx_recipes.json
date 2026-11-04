@@ -415,9 +415,7 @@
       -0.05
      ],
      "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
+     "count": 1,
      "loops": 2,
      "sfx": "Stat Fall Down"
     }
@@ -1341,22 +1339,6 @@
      "at": "target",
      "size": 1.1,
      "hue": -30
-    },
-    {
-     "fx": "StatDown",
-     "at": "target",
-     "delay": 0.15,
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Fall Down"
     }
    ],
    "element": "sound",
@@ -1411,9 +1393,7 @@
       -0.05
      ],
      "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
+     "count": 1,
      "loops": 2,
      "sfx": "Stat Fall Down"
     }
@@ -1572,22 +1552,6 @@
      "at": "target",
      "size": 0.9,
      "par": true
-    },
-    {
-     "fx": "StatDown",
-     "at": "target",
-     "delay": 0.2,
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Fall Down"
     }
    ],
    "element": "fairy",
@@ -1995,21 +1959,6 @@
      "at": "self",
      "size": 1.0,
      "par": true
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "normal",
@@ -2035,9 +1984,7 @@
       -0.05
      ],
      "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
+     "count": 1,
      "loops": 2,
      "sfx": "Stat Rise Up"
     }
@@ -2052,21 +1999,6 @@
      "fx": "PoweringUp",
      "at": "self",
      "size": 1.0
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "normal",
@@ -2079,21 +2011,6 @@
      "fx": "PowerUpRings",
      "at": "self",
      "size": 1.0
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "normal",
@@ -2106,21 +2023,6 @@
      "fx": "PowerUpLights",
      "at": "self",
      "size": 1.0
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "normal",
@@ -2140,21 +2042,6 @@
      "size": 0.6,
      "par": true,
      "delay": 0.2
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "fighting",
@@ -2183,9 +2070,7 @@
       -0.05
      ],
      "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
+     "count": 1,
      "loops": 2,
      "sfx": "Stat Rise Up"
     }
@@ -2207,21 +2092,6 @@
      "size": 0.8,
      "par": true,
      "tint": "#d0e0ff"
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "metal",
@@ -2234,21 +2104,6 @@
      "fx": "ShellArmour",
      "at": "self",
      "size": 0.9
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "metal",
@@ -2274,21 +2129,6 @@
      "at": "self",
      "size": 1.1,
      "hue": 150
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "psychic",
@@ -2333,21 +2173,6 @@
      "size": 0.7,
      "par": true,
      "delay": 0.15
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "normal",
@@ -2466,22 +2291,6 @@
      "fx": "ScaryFace",
      "at": "target",
      "size": 0.9
-    },
-    {
-     "fx": "StatDown",
-     "at": "target",
-     "delay": 0.3,
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Fall Down"
     }
    ],
    "element": "dark",
@@ -6474,21 +6283,6 @@
      "count": 3,
      "stagger": 0.1,
      "jitter": 0.3
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "grass",
@@ -7464,21 +7258,6 @@
      "fx": "Amnesia",
      "at": "self",
      "size": 1.0
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "psychic",
@@ -8254,22 +8033,6 @@
      "size": 1.0,
      "par": true,
      "hue": 180
-    },
-    {
-     "fx": "StatDown",
-     "at": "target",
-     "delay": 0.2,
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Fall Down"
     }
    ],
    "element": "metal",
@@ -8477,21 +8240,6 @@
      "at": "self",
      "size": 0.9,
      "par": true
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "dragon",
@@ -8633,21 +8381,6 @@
      "size": 0.5,
      "par": true,
      "delay": 0.4
-    },
-    {
-     "fx": "StatUp",
-     "at": "self",
-     "size": 0.4,
-     "off": [
-      0.0,
-      -0.05
-     ],
-     "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
-     "loops": 2,
-     "sfx": "Stat Rise Up"
     }
    ],
    "element": "normal",
@@ -8798,9 +8531,7 @@
       -0.05
      ],
      "mirror": false,
-     "count": 2,
-     "stagger": 0.15,
-     "jitter": 0.18,
+     "count": 1,
      "loops": 2,
      "sfx": "Stat Fall Down"
     }

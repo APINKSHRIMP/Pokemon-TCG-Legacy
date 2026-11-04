@@ -193,20 +193,22 @@ const GIFT_FLIP_TOTAL_DURATION := 1.5
 const GIFT_COSTUME_TOTAL_DURATION := 1.5
 # "card_fly" gifts (Olly's energy cards): each card flies up from below and fades in,
 # left to right, CARD_FLY_STAGGER apart, settling with UIKit.fly_in's little fall-back.
-const CARD_FLY_TIME := 1.4
-const CARD_FLY_STAGGER := 0.4
+# ISSUE #444: twice as fast (1.4 / 0.4 / 0.12 before).
+const CARD_FLY_TIME := 0.7
+const CARD_FLY_STAGGER := 0.2
 const CARD_FLY_FROM_Y := 260.0
 # Behind each flying card a trail of CARD_FLY_TRAIL copies follows it in, CARD_FLY_TRAIL_GAP
 # apart, each doing the same up-and-settle and landing in a pile under the front card.
 # CARD_FLY_TRAIL_STEP is how far each copy in the pile sits from the one above it (0 = hidden).
 const CARD_FLY_TRAIL := 20
-const CARD_FLY_TRAIL_GAP := 0.12
-const CARD_FLY_TRAIL_STEP := Vector2(0.8, -0.8)
-# Each trail copy, on reaching its pile spot, carries on up into a small loop -- off to a
-# random side, over the top, down and round -- before tucking in behind the front card.
-const CARD_FLY_LOOP_RADIUS_MIN := 12.0
-const CARD_FLY_LOOP_RADIUS_MAX := 22.0
-const CARD_FLY_LOOP_SHARE := 0.6    # of the flight spent on the loop (the rest is the rise)
+const CARD_FLY_TRAIL_GAP := 0.06
+const CARD_FLY_TRAIL_STEP := Vector2(1.2, -0.6)
+# ISSUE #444: each trail copy rises straight up, pops CARD_FLY_POP_PX above its pile spot
+# (just peeking over the card in front) and drops back in -- a neat stack stepping right,
+# no more random left/right loops.
+const CARD_FLY_POP_PX := 8.0
+# ISSUE #444: the energy stack rests lower than other card gifts (GIFT_DISPLAY_CENTER_Y_CARD).
+const GIFT_DISPLAY_CENTER_Y_CARD_FLY := 540.0
 
 # Set IDs that are promo sets — these use "<set_name> <card_name>"
 # instead of the usual "<set_name> set <card_name>"
@@ -2120,7 +2122,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	else:   # "card" and "card_fly"
 		var n_clamp: int = clamp(image_paths.size(), 1, GIFT_CARD_SIZES.size())
 		target_box = GIFT_CARD_SIZES.get(n_clamp, GIFT_CARD_SIZES[GIFT_CARD_SIZES.size()])
-		center_y = GIFT_DISPLAY_CENTER_Y_CARD
+		center_y = GIFT_DISPLAY_CENTER_Y_CARD_FLY if kind == "card_fly" else GIFT_DISPLAY_CENTER_Y_CARD
 
 	# ── PASS 1: Load each texture and compute the actual rendered size ──
 	# (mirrors Pack_Purchase_Script lines 526-532)
@@ -2248,6 +2250,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 				var i: int = spawned_rects.find(sr)
 				var rest: Vector2 = rect_ref.position
 				var column_delay: float = CARD_FLY_STAGGER * i
+				print("ISSUE #444 FIX ACTIVE: stacked energy fly-in, column ", i)
 				# The trail: copies under the front card, the last to arrive at the bottom of the pile.
 				for k in range(1, CARD_FLY_TRAIL + 1):
 					var copy := rect_ref.duplicate() as TextureRect
@@ -2256,7 +2259,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 					var pile: Vector2 = rest + CARD_FLY_TRAIL_STEP * k
 					_gift_reveal_finals.append({"rect": copy, "texture": copy.texture,
 							"modulate": Color(1, 1, 1, 1), "position": pile})
-					_gift_reveal_tweens.append(_fly_in_with_loop(copy, pile + Vector2(0.0, CARD_FLY_FROM_Y),
+					_gift_reveal_tweens.append(_fly_in_stacked(copy, pile + Vector2(0.0, CARD_FLY_FROM_Y),
 							pile, GameState.item_time(CARD_FLY_TIME),
 							GameState.item_time(column_delay + CARD_FLY_TRAIL_GAP * k)))
 				_gift_reveal_finals.append({"rect": rect_ref, "texture": rect_ref.texture,
@@ -2401,29 +2404,18 @@ func _play_card_flip_with_holo(rect: TextureRect, back_tex: Texture2D, card_tex:
 
 # Fades a costume in: starts fully blacked-out for 0.5s, then over 1s
 # tweens modulate back to white.
-## A trail energy's flight: straight up to `to`, then one loop of a small circle that
-## starts and ends there -- up and off to a random side, over the top, down and back
-## round underneath -- settling on `to`. Fades in on the way up. Returns the move tween.
-func _fly_in_with_loop(node: Control, from: Vector2, to: Vector2, duration: float,
+## ISSUE #444: a trail energy's flight: straight up past `to` by CARD_FLY_POP_PX (so it
+## peeks over the card in front), then settles back down onto `to`. Fades in on the way
+## up. Returns the move tween.
+func _fly_in_stacked(node: Control, from: Vector2, to: Vector2, duration: float,
 		delay: float) -> Tween:
 	node.position = from
 	node.modulate.a = 0.0
-	var side: float = 1.0 if randf() < 0.5 else -1.0
-	var radius: float = randf_range(CARD_FLY_LOOP_RADIUS_MIN, CARD_FLY_LOOP_RADIUS_MAX)
-	# The circle's centre sits beside `to`, so the loop leaves it heading straight up.
-	var centre: Vector2 = to + Vector2(side * radius, 0.0)
-	var start_angle: float = PI if side > 0.0 else 0.0
 	var move := node.create_tween()
 	if delay > 0.0:
 		move.tween_interval(delay)
-	move.tween_property(node, "position", to, duration * (1.0 - CARD_FLY_LOOP_SHARE)) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	# Clockwise from the left of the centre, anticlockwise from the right: both go up first.
-	move.tween_method(func(t: float) -> void:
-			var a: float = start_angle + side * TAU * t
-			node.position = centre + Vector2(cos(a), sin(a)) * radius,
-		0.0, 1.0, duration * CARD_FLY_LOOP_SHARE) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	move.tween_property(node, "position", to + Vector2(0.0, -CARD_FLY_POP_PX), duration * 0.75) 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	move.tween_property(node, "position", to, duration * 0.25) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	var fade := node.create_tween()
 	if delay > 0.0:
 		fade.tween_interval(delay)
@@ -3402,6 +3394,7 @@ func _debug_set_date_time(new_date: int, new_time: String) -> void:
 		GameState.progress["time"] = new_time
 		print("DEBUG: time set to ", new_time)
 	GameState.progress["opponents_beaten_count_current"] = 0
+	GameState.progress["fish_caught_current_slot"] = 0   # ISSUE #441
 	GameState.save_progress()
 	if current != null:
 		_debug_reload_map_in_place(current)
@@ -3644,6 +3637,8 @@ func _debug_flash_defeated_count() -> void:
 		_ui_layer.add_child(_debug_defeated_label)
 
 	_debug_defeated_label.text = "Opponents defeated: " + str(GameState.get_current_defeated())
+	if GameState.get_slot_fish() > 0:   # ISSUE #441
+		_debug_defeated_label.text += "  (+%d fish = %.1f)" % [GameState.get_slot_fish(), GameState.get_time_progress()]
 	_debug_flash_defeated_label_finish()
 
 # Flashes arbitrary text using the same big centred label as the defeated counter.

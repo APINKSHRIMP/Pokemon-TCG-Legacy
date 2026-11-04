@@ -1722,6 +1722,20 @@ func matches_to_advance_time(date: int = -1, time: String = "") -> int:
 	return MATCHES_PER_SLOT
 
 
+## ISSUE #441: from day 3 every fish caught is worth FISH_PER_MATCH-th of a match toward
+## the slot. Fish alone never move the clock: the outro still only checks at the end of a
+## match, so 2 wins + 900 fish waits for one more battle. Reset with the match counter.
+const FISH_PER_MATCH := 10
+
+func get_slot_fish() -> int:
+	return int(progress.get("fish_caught_current_slot", 0))
+
+
+## Matches + fish credit this slot -- what the outro compares against matches_to_advance_time().
+func get_time_progress() -> float:
+	return float(get_current_defeated()) + float(get_slot_fish()) / float(FISH_PER_MATCH)
+
+
 func every_match_advances_time(date: int = -1) -> bool:
 	if date < 0:
 		date = get_date()
@@ -2061,6 +2075,7 @@ func advance_time(new_time: String = "") -> void:
 
 	progress["time"] = new_time
 	progress["opponents_beaten_count_current"] = 0
+	progress["fish_caught_current_slot"] = 0   # ISSUE #441
 	_unlock_card_mart_packs()
 	save_progress()
 	print("Time advanced to: ", new_time, " | Date: ", get_date())
@@ -2266,6 +2281,11 @@ func add_fish_caught(amount: int = 1) -> void:
 	_load_nature_guide()
 	_nature_guide["fish_caught"] = get_fish_caught() + amount
 	save_nature_guide()
+	# ISSUE #441: from day 3 a fish counts as a tenth of a match toward the time slot.
+	if every_match_advances_time():
+		progress["fish_caught_current_slot"] = get_slot_fish() + amount
+		save_progress()
+		print("ISSUE #441 FIX ACTIVE: slot fish = ", get_slot_fish(), " time progress = ", get_time_progress())
 
 
 # ============================================================

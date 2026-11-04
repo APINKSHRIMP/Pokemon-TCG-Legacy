@@ -54,8 +54,8 @@ const DIM_FADE_TIME   := 0.4    # the dim and the prompt fade up FIRST; the deck
 const DECK_FLY_TIME   := 1.0    # one deck's flight + fade
 const DECK_FLY_STAGGER := 0.5   # from one deck setting off to the next
 const DECK_FLY_FROM_Y := 520.0  # how far below its resting place a deck starts
-# Once the third deck has landed, each fan's cards fade in sliding out from behind the
-# box to their spots, left to right, CARD_DEAL_STAGGER apart (all three decks together).
+# ISSUE #443: as soon as EACH deck lands its own fan deals out right (while the next
+# deck is still flying in), rather than every fan waiting for the last deck to land.
 const CARD_DEAL_TIME    := 0.45
 const CARD_DEAL_STAGGER := 0.12
 
@@ -118,16 +118,20 @@ func _play_entrance() -> void:
 		UIKit.fly_in(g, Vector2(g.position.x, _rest_y[i] + DECK_FLY_FROM_Y),
 				Vector2(g.position.x, _rest_y[i]), DECK_FLY_TIME, start)
 	# Then the cards: out from behind each box, left to right, fading in as they go.
-	var deal_start: float = DIM_FADE_TIME + DECK_FLY_STAGGER * (_groups.size() - 1) + DECK_FLY_TIME
-	var most_cards: int = 0
-	for fan in _cards:
-		most_cards = maxi(most_cards, fan.size())
+	# ISSUE #443: each fan deals the moment ITS deck lands, overlapping the next
+	# deck's flight, so there is no pause after the last deck.
+	print("ISSUE #443 FIX ACTIVE: per-deck card deal, decks=", _groups.size())
+	var armed_at: float = DIM_FADE_TIME
+	for f in _cards.size():
+		var fan: Array = _cards[f]
+		var deal_start: float = DIM_FADE_TIME + DECK_FLY_STAGGER * f + DECK_FLY_TIME
 		for c in fan.size():
 			var card: Control = fan[c]
 			var spot: Vector2 = FAN_STEP * (c + 1)
 			UIKit.fly_in(card, Vector2(0.0, spot.y), spot, CARD_DEAL_TIME,
 					deal_start + CARD_DEAL_STAGGER * c)
-	_entrance.tween_interval(deal_start + CARD_DEAL_STAGGER * maxi(0, most_cards - 1) + CARD_DEAL_TIME)
+		armed_at = maxf(armed_at, deal_start + CARD_DEAL_STAGGER * maxi(0, fan.size() - 1) + CARD_DEAL_TIME)
+	_entrance.tween_interval(armed_at)
 	_entrance.chain().tween_callback(func() -> void: _armed = true)
 
 

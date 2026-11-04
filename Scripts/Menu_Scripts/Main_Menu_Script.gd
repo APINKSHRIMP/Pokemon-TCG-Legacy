@@ -106,11 +106,9 @@ func resume_music() -> void:
 		audio_player.stream_paused = false
 
 
-## ANY SCREEN SHAPE: the tile mosaic is authored at 1920x1080 and fills it. On another
-## canvas each tile BACKGROUND stretches to the same fraction of the screen, so the
-## mosaic still fills it edge to edge; the icons and labels on the tiles keep their
-## place on the tile (centre scaled) and only grow when both directions grew, so they
-## never distort. The dim behind it covers the whole canvas.
+## ANY SCREEN SHAPE: the tile mosaic is authored at 1920x1080. ISSUE #445: on another
+## canvas the tiles keep their AUTHORED size and the whole mosaic is simply centred
+## (shifted by half the extra space); only the dim behind it stretches to cover the canvas.
 func _fit_tiles_to_screen() -> void:
 	var bg := get_node_or_null("black_background") as Control
 	if bg != null:
@@ -119,40 +117,12 @@ func _fit_tiles_to_screen() -> void:
 	var extra: Vector2 = UIKit.screen_extra()
 	if extra == Vector2.ZERO:
 		return
-	var spread := UIKit.screen_size() / Vector2(UIKit.SCREEN_W, UIKit.SCREEN_H)
-	var grow: float = minf(spread.x, spread.y)
+	var shift: Vector2 = (extra * 0.5).floor()
 	for group in get_children():
 		if not (group is Control) or group == bg:
 			continue
-		var origin: Vector2 = (group as Control).position
-		# The small Close / Exit buttons (icon + label, no big tile) move as ONE unit,
-		# unstretched, so the label stays beside its icon.
-		var bbox := Rect2()
-		var first := true
-		for child in group.get_children():
-			if child is Control:
-				var r := Rect2((child as Control).position, (child as Control).size)
-				bbox = r if first else bbox.merge(r)
-				first = false
-		if not first and bbox.size.y < 100.0:
-			var centre_g: Vector2 = origin + bbox.get_center()
-			var shift: Vector2 = centre_g * spread - centre_g
-			for child in group.get_children():
-				if child is Control:
-					(child as Control).position += shift
-			continue
-		for child in group.get_children():
-			if not (child is Control):
-				continue
-			var c := child as Control
-			var centre: Vector2 = origin + c.position + c.size * 0.5
-			var is_tile: bool = String(c.name).ends_with("_background") or c.name == "exit_game_button"
-			var new_size: Vector2 = c.size * (spread if is_tile else Vector2(grow, grow))
-			if is_tile and c is TextureRect:
-				(c as TextureRect).stretch_mode = TextureRect.STRETCH_SCALE
-			c.size = new_size
-			c.position = centre * spread - new_size * 0.5 - origin
-	print("SCREEN LAYOUT: pause menu tiles spread ", spread, ", grown ", snappedf(grow, 0.01))
+		(group as Control).position += shift
+	print("ISSUE #445 FIX ACTIVE: pause menu tiles kept at authored size, centred by ", shift)
 
 
 func _ready() -> void:
@@ -170,12 +140,19 @@ func _ready() -> void:
 	SceneCache.predict_menu_screens.call_deferred()
 
 	add_child(audio_player)
-	var audio_stream = load(SoundManagerScript.BGM_MAIN_MENU)
-	audio_player.stream = audio_stream
-	audio_player.bus = SoundManagerScript.MUSIC_BUS
-	if audio_stream != null:
-		audio_stream.loop = true
-		audio_player.play()
+	if is_overlay:
+		# ISSUE #446: the escape menu plays the same track as all its sub-menus, on the
+		# global player, so the music never changes between them (host is set after _ready,
+		# hence is_overlay rather than play_menu_family_bgm()).
+		print("ISSUE #446 FIX ACTIVE: escape menu plays the shared sub-menu track")
+		SoundManagerScript.play_bgm(SoundManagerScript.BGM_COIN_MODE)
+	else:
+		var audio_stream = load(SoundManagerScript.BGM_MAIN_MENU)
+		audio_player.stream = audio_stream
+		audio_player.bus = SoundManagerScript.MUSIC_BUS
+		if audio_stream != null:
+			audio_stream.loop = true
+			audio_player.play()
 
 	_fit_tiles_to_screen()
 

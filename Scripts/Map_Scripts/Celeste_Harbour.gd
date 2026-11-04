@@ -283,6 +283,8 @@ func _set_taxi_lights(time: String) -> void:
 	for child in $Taxi.get_children():
 		if child is PointLight2D:
 			child.visible = dark
+	# ISSUE #442: headlight energy doubled in Celeste_Harbour.tscn (1.33 -> 2.8).
+	print("ISSUE #442 FIX ACTIVE: taxi headlights on=", dark)
 
 
 func _drive_taxi_off() -> void:

@@ -833,18 +833,48 @@ func check_viable_bench_attacker() -> bool:
 
 	return false
 
+# ISSUE #440: TRANSFORM IS A MOVING TARGET. A Fossil Ditto is always a copy of whatever is
+# across from it, so the player's Ditto the CPU sees NOW (a copy of the CPU's current
+# Active) is not the Ditto a Benched Pokemon would meet -- that one copies the newcomer:
+# its HP, types, Weakness, Resistance and attacks. Every "how would X do as my Active"
+# question asks these two instead of reading the board as it stands.
+func _is_cpu_side(p: card_object) -> bool:
+	return p != null and (p == main.opponent_active_pokemon or p in main.opponent_bench)
+
+
+## The player's Pokemon `foe` (default: the Defending Pokemon) as the CPU's `candidate` would face it.
+func _foe_vs(candidate: card_object, foe: card_object = null) -> card_object:
+	if foe == null:
+		foe = main.player_active_pokemon
+	if foe == null or candidate == null or not _is_cpu_side(candidate) or _is_cpu_side(foe):
+		return foe
+	return main.powers_and_bodies.project_ditto(foe, candidate)
+
+
+## The CPU's own `p` as it would be against `foe` -- a Benched Fossil Ditto is a 50 HP card with
+## no attacks until it comes in and copies the Defending Pokemon.
+func _self_vs(p: card_object, foe: card_object = null) -> card_object:
+	if foe == null:
+		foe = main.player_active_pokemon
+	if p == null or foe == null or not _is_cpu_side(p) or _is_cpu_side(foe):
+		return p
+	return main.powers_and_bodies.project_ditto(p, foe)
+
+
 # R.2, R.4: Evaluates whether the energy cost of retreating is worth paying
 func _any_bench_survives_player_attack() -> bool:
 	if main.player_active_pokemon == null:
 		return true
-	var player_types = main.player_active_pokemon.metadata.get("types", ["Colorless"])
-	for bench_pokemon in main.opponent_bench:
+	for real_bench in main.opponent_bench:
+		var foe: card_object = _foe_vs(real_bench)   # ISSUE #440
+		var bench_pokemon: card_object = _self_vs(real_bench)
+		var player_types = foe.metadata.get("types", ["Colorless"])
 		var bench_hp = bench_pokemon.current_hp
 		var bench_would_die = false
-		for p_attack in main.player_active_pokemon.metadata.get("attacks", []):
-			if get_unmet_energy_count(p_attack, main.player_active_pokemon) > 0:
+		for p_attack in foe.metadata.get("attacks", []):
+			if get_unmet_energy_count(p_attack, foe) > 0:
 				continue
-			var p_range = main.attack_effects.estimate_attack_damage_range(p_attack, main.player_active_pokemon, bench_pokemon)
+			var p_range = main.attack_effects.estimate_attack_damage_range(p_attack, foe, bench_pokemon)
 			var p_result = main.calculate_final_damage(p_range["min"], player_types, bench_pokemon)
 			if p_result["damage"] >= bench_hp:
 				bench_would_die = true
@@ -858,6 +888,9 @@ func _any_bench_survives_player_attack() -> bool:
 func _best_usable_damage_against(pokemon: card_object, target: card_object) -> int:
 	if pokemon == null or target == null:
 		return 0
+	var real_target: card_object = target
+	target = _foe_vs(pokemon, target)   # ISSUE #440
+	pokemon = _self_vs(pokemon, real_target)
 	var types = pokemon.metadata.get("types", ["Colorless"])
 	var best = 0
 	for attack in pokemon.metadata.get("attacks", []):
@@ -874,12 +907,14 @@ func _best_usable_damage_against(pokemon: card_object, target: card_object) -> i
 func _player_effective_damage_against(target: card_object, use_max: bool) -> int:
 	if main.player_active_pokemon == null or target == null:
 		return 0
-	var ptypes = main.player_active_pokemon.metadata.get("types", ["Colorless"])
+	var foe: card_object = _foe_vs(target)   # ISSUE #440
+	target = _self_vs(target)
+	var ptypes = foe.metadata.get("types", ["Colorless"])
 	var best = 0
-	for attack in main.player_active_pokemon.metadata.get("attacks", []):
-		if get_unmet_energy_count(attack, main.player_active_pokemon) > 0:
+	for attack in foe.metadata.get("attacks", []):
+		if get_unmet_energy_count(attack, foe) > 0:
 			continue
-		var rng = main.attack_effects.estimate_attack_damage_range(attack, main.player_active_pokemon, target)
+		var rng = main.attack_effects.estimate_attack_damage_range(attack, foe, target)
 		var roll = rng["max"] if use_max else rng["min"]
 		var result = main.calculate_final_damage(roll, ptypes, target)
 		best = max(best, result["damage"])
@@ -974,11 +1009,15 @@ func _type_matchup_worse(current: card_object, incoming: card_object, foe: card_
 	if current == null or incoming == null or foe == null:
 		return false
 	var foe_types: Array = foe.get_effective_types()
+	# ISSUE #440: a Transform Ditto across the table changes type with whoever comes in.
+	var foe_in: card_object = _foe_vs(incoming, foe)
+	var in_types: Array = foe_in.get_effective_types()
+	var me_in: card_object = _self_vs(incoming, foe)
 	var weak_cur := _has_type_entry(current, "weaknesses", foe_types)
-	var weak_in := _has_type_entry(incoming, "weaknesses", foe_types)
+	var weak_in := _has_type_entry(me_in, "weaknesses", in_types)
 	if weak_in and not weak_cur:
 		return true
-	return _has_type_entry(current, "resistances", foe_types) and not _has_type_entry(incoming, "resistances", foe_types)
+	return _has_type_entry(current, "resistances", foe_types) and not _has_type_entry(me_in, "resistances", in_types)
 
 func _has_type_entry(p: card_object, key: String, types: Array) -> bool:
 	for e in p.metadata.get(key, []):
@@ -1011,7 +1050,10 @@ func _cpu_bench_ko_retreat_target() -> card_object:
 	var best: card_object = null
 	var best_hp := -1
 	for bp in main.opponent_bench:
-		if _best_usable_damage_against(bp, foe) >= foe_hp and bp.current_hp > best_hp:
+		# ISSUE #440: a Transform Ditto has the newcomer's HP once it comes in.
+		var pf: card_object = _foe_vs(bp, foe)
+		var need: int = foe_hp if pf == foe else maxi(0, pf.current_hp - status_damage_before_next_attack(pf, false))
+		if _best_usable_damage_against(bp, foe) >= need and bp.current_hp > best_hp:
 			best = bp
 			best_hp = bp.current_hp
 	return best
@@ -1595,22 +1637,8 @@ func evaluate_retreat_reasons(cpu_eval: Dictionary) -> bool:
 		else:
 			# Before retreating, check if any bench pokemon would actually survive
 			# If all bench options would ALSO be guaranteed KO'd, retreating is pointless
-			var any_bench_survives = false
-			var player_types = main.player_active_pokemon.metadata.get("types", ["Colorless"])
-			for bench_pokemon in main.opponent_bench:
-				var bench_hp = bench_pokemon.current_hp
-				var bench_would_die = false
-				for p_attack in main.player_active_pokemon.metadata.get("attacks", []):
-					if get_unmet_energy_count(p_attack, main.player_active_pokemon) > 0:
-						continue
-					var p_range = main.attack_effects.estimate_attack_damage_range(p_attack, main.player_active_pokemon, bench_pokemon)
-					var p_result = main.calculate_final_damage(p_range["min"], player_types, bench_pokemon)
-					if p_result["damage"] >= bench_hp:
-						bench_would_die = true
-						break
-				if not bench_would_die:
-					any_bench_survives = true
-					break
+			# ISSUE #440: same test as _any_bench_survives_player_attack (Transform-aware).
+			var any_bench_survives = _any_bench_survives_player_attack()
 			
 			if not any_bench_survives:
 				print("CPU NOT retreating: all bench pokemon also face guaranteed KO")
@@ -2049,7 +2077,8 @@ func pick_best_bench_replacement(bench: Array, against_pokemon: card_object, cpu
 	var best_score: float = -999.0
 
 	for bench_pokemon in candidates:
-		var score = score_bench_as_replacement(bench_pokemon, against_pokemon, cpu_eval)
+		# ISSUE #440: scored against the Defending Pokemon as THIS newcomer would face it.
+		var score = score_bench_as_replacement(bench_pokemon, _foe_vs(bench_pokemon, against_pokemon), cpu_eval)
 		if score > best_score:
 			best_score = score
 			best_replacement = bench_pokemon
@@ -2064,6 +2093,9 @@ func pick_best_bench_replacement(bench: Array, against_pokemon: card_object, cpu
 # True if against_pokemon has a currently-usable attack whose MINIMUM damage would knock out
 # target_pokemon outright (i.e. the KO is guaranteed, not just possible on a good roll).
 func _is_guaranteed_ko_by(target_pokemon: card_object, against_pokemon: card_object) -> bool:
+	var real_against: card_object = against_pokemon
+	against_pokemon = _foe_vs(target_pokemon, against_pokemon)   # ISSUE #440
+	target_pokemon = _self_vs(target_pokemon, real_against)
 	var enemy_types = against_pokemon.metadata.get("types", ["Colorless"])
 	for attack in against_pokemon.metadata.get("attacks", []):
 		if get_unmet_energy_count(attack, against_pokemon) > 0:
@@ -2077,6 +2109,7 @@ func _is_guaranteed_ko_by(target_pokemon: card_object, against_pokemon: card_obj
 # Scores a single bench pokemon as a potential active replacement considering attacks, survivability, and type matchups
 func score_bench_as_replacement(bench_pokemon: card_object, against_pokemon: card_object, cpu_eval: Dictionary) -> float:
 	var score = 0.0
+	bench_pokemon = _self_vs(bench_pokemon, against_pokemon)   # ISSUE #440: a Benched Ditto as its copy
 	var bench_key = bench_pokemon.get_instance_id()
 	var bench_data = cpu_eval["pokemon_data"].get(bench_key, {})
 	if bench_data.is_empty():

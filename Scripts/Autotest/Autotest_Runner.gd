@@ -934,6 +934,9 @@ func _oracle_clean(attacker, defender) -> bool:
 		return false
 	if attacker.special_condition != "" or attacker.is_blind:
 		return false
+	# Side-wide next-turn buffs (Dragon Dance +30/+40) live on main, not on the Pokémon.
+	if int(m.player_dragon_dance_active) > 0 or int(m.opponent_dragon_dance_active) > 0:
+		return false
 	for p in [attacker, defender]:
 		if not p.attached_cards.is_empty() or not p.active_effects.is_empty() or p.is_invincible \
 				or p.shielded_damage_threshold > 0 or p.defender_count > 0 or p.pluspower_count > 0 or p.damage_reduction_next_turn > 0:

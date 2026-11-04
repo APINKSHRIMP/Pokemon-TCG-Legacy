@@ -88,7 +88,9 @@ func _input(event: InputEvent) -> void:
 	if _dismissable and (UIInput.is_click(event) or UIInput.is_advance(event)):
 		_dismissable = false
 		_hide()
-	if event is InputEventKey or event is InputEventMouseButton:
+	# Pad presses too: pad A closing the note must not also reach the player and re-open it.
+	if event is InputEventKey or event is InputEventMouseButton \
+			or event is InputEventJoypadButton or event is InputEventJoypadMotion:
 		get_viewport().set_input_as_handled()
 
 

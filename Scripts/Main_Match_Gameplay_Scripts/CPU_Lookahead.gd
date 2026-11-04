@@ -215,6 +215,10 @@ func active_value(cand, foe, is_current: bool) -> float:
 func exchange(cand, foe, is_current: bool, extra: int) -> float:
 	if cand == null or foe == null:
 		return 0.0
+	# ISSUE #440: a Transform Ditto on either side copies whoever it ends up facing.
+	var real_foe = foe
+	foe = ai._foe_vs(cand, foe)
+	cand = ai._self_vs(cand, real_foe)
 	var pv := CpuWeights.g("look.prize", 200.0)
 	var dnow := dmg(cand, foe, extra)
 	var pk := p_ko(dnow, foe.current_hp)

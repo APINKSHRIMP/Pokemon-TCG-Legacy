@@ -378,6 +378,18 @@ func _apply_hits(recipe: Dictionary, hits: int) -> Dictionary:
 	return r
 
 
+## Less is more: the stat up/down arrows only belong on a pure stat move. A damaging attack that borrows
+## a stat recipe (Tail Shake -> TailWhip, Sharpen -> SwordsDance) plays it without them.
+func _without_stat_arrows(recipe: Dictionary) -> Dictionary:
+	var steps: Array = recipe.get("steps", [])
+	var kept: Array = steps.filter(func(st): return str(st.get("fx", "")) not in ["StatUp", "StatDown"])
+	if kept.size() == steps.size() or kept.is_empty():
+		return recipe
+	var r := recipe.duplicate()
+	r["steps"] = kept
+	return r
+
+
 ## The pending attack for this hit, if it belongs to `attacker` and this turn -- and it is used up.
 func take_pending(attacker: card_object, defender: card_object) -> Dictionary:
 	if _pending.is_empty() or attacker == null or defender == null or attacker == defender:
@@ -414,6 +426,7 @@ func play_hit(attacker: card_object, defender: card_object, pend: Dictionary, da
 	var recipe := recipe_for(attacker, pend["attack"])
 	if pend.has("hits"):
 		recipe = _apply_hits(recipe, int(pend["hits"]))   # ISSUE #385
+	recipe = _without_stat_arrows(recipe)
 	if not recipe.is_empty():
 		_last_play = {"recipe": recipe, "attacker": attacker, "turn": main.turn_number}
 	if bool(pend.get("played", false)) or recipe.is_empty():

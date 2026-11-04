@@ -985,8 +985,8 @@
       ]
     },
     "Psychic Brienne": {
-      "at": [-830, 1270],
-      "move": "idle_left",
+      "at": [-956, 1185],
+      "move": "idle_up",
       "says": {
         "meet": "The SS Anne has ruined my daily meditation so I've had to try a new spot today.",
         "repeat": "It's not quite as good of a spot as the dock is but here but it's still peaceful enough."

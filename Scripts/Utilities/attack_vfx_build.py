@@ -540,8 +540,12 @@ VARIANTS = {
 def BM(fx, **kw): return _st('beam', fx, **kw)
 DASH, LEAP, SPIN, VSTRIKE, DIVE = 'dash', 'leap', 'spin', 'vanish_strike', 'dive'
 CHARGE, GROW, SHRINK, RISE, VANISH = 'charge', 'grow', 'shrink', 'rise', 'vanish'
-STAT_DOWN = dict(size=0.4, off=[0.0, -0.05], mirror=False, count=2, stagger=0.15, jitter=0.18, loops=2)
-STAT_UP = dict(size=0.4, off=[0.0, -0.05], mirror=False, count=2, stagger=0.15, jitter=0.18, loops=2)
+STAT_DOWN = dict(size=0.4, off=[0.0, -0.05], mirror=False, count=1, loops=2)
+STAT_UP = dict(size=0.4, off=[0.0, -0.05], mirror=False, count=1, loops=2)
+# Less is more (2026-11-03): the stat up/down arrows stay ONLY on these classic stat moves; every other
+# recipe has its StatUp/StatDown steps stripped in strip_stat_arrows(). Attack_VFX.gd also drops them
+# from any attack that does damage.
+STAT_ARROW_KEEP = {'Growl', 'Leer', 'TailWhip', 'SwordsDance', 'Harden'}
 
 RECIPES.update({
     # ---- normal ----
@@ -1621,8 +1625,16 @@ def tier(cost):
     return 0 if cost <= 1 else (1 if cost == 2 else 2)
 
 
+def strip_stat_arrows():
+    for rid, r in RECIPES.items():
+        if rid in STAT_ARROW_KEEP or not isinstance(r, dict):
+            continue
+        r['steps'] = [st for st in r.get('steps', []) if st.get('fx') not in ('StatUp', 'StatDown')]
+
+
 def build():
     apply_pass2()
+    strip_stat_arrows()
     man = scan_manifest()
     attacks = load_attacks()
     exact_ci = {k.strip().lower(): v for k, v in EXACT.items()}
