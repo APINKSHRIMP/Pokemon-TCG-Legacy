@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://d0234pw2a24oo" path="res://Scripts/Map_Scripts/Player_House_Upstairs.gd" id="1_whmvp"]
 [ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="2_g1bce"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_xhodw"]
+[ext_resource type="PackedScene" uid="uid://drt5x7u3dyhk1" path="res://Image_Assets/Map_Objects/Indoor_Lamp.tscn" id="5_g1bce"]
 [ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
@@ -110,11 +111,11 @@ tile_map_data = PackedByteArray("AAAUAAgAAQArAAsAAAAUAAkAAQArAAwAAAAUAAoAAQArAA0
 tile_set = ExtResource("2_g1bce")
 
 [node name="Moving In" type="TileMapLayer" parent="UPSTAIRS" unique_id=1934996203]
+visible = false
 tile_map_data = PackedByteArray("AAAGAAsAAQAAAA4AAAAHAA0AAQAAAA4AAAAIAAsAAQABAA4AAAAIAAwAAQABAA8AAAAJAAsAAQACAA4AAAAJAAwAAQACAA8AAAAJAA0AAQA5ABwAAAAKAAwAAQA5ABwAAAAEAAwAAQAxABcAAAAFAA0AAQAxABcAAAACAAwAAQA0AAQAAAASAAIAAQAAAA4AAAATAAIAAQABAA4AAAATAAMAAQABAA8AAAAUAAIAAQACAA4AAAAUAAMAAQACAA8AAAALAAwAAQADABEAAAALAA0AAQADABIAAAAMAAwAAQAEABEAAAAMAA0AAQAEABIAAAACAAgAAQADABEAAAACAAkAAQADABIAAAADAAgAAQAEABEAAAADAAkAAQAEABIAAAAPAAEAAQA4AAUAAAAPAAIAAQA4AAYAAAAXAAEAAQA0AAQAAAAXAAMAAQADABEAAAAXAAQAAQADABIAAAAYAAMAAQAEABEAAAAYAAQAAQAEABIAAAAOAA0AAQAxABcAAAAQAAwAAQA4AAUAAAAQAA0AAQA4AAYAAAANAAsAAQABAA4AAAANAAwAAQABAA8AAAAOAAsAAQACAA4AAAAOAAwAAQACAA8AAAASAA0AAQAAAA4AAAAMAAUAAQAEABEAAAAMAAYAAQAEABIAAAALAAUAAQADABEAAAALAAYAAQADABIAAAADAAYAAQA5ABwAAAA=")
 tile_set = ExtResource("2_g1bce")
 
 [node name="Post Move In" type="Control" parent="UPSTAIRS" unique_id=976481650]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
@@ -138,6 +139,11 @@ tile_set = ExtResource("2_g1bce")
 [node name="Chair" type="TileMapLayer" parent="UPSTAIRS/Post Move In" unique_id=12486184]
 position = Vector2(-5, -14)
 tile_map_data = PackedByteArray("AAAPAAIAAQAuAAQAAAAPAAMAAQAuAAUAAAA=")
+tile_set = ExtResource("2_g1bce")
+
+[node name="CURTAINS" type="TileMapLayer" parent="UPSTAIRS" unique_id=1978320673]
+position = Vector2(-13, -5)
+tile_map_data = PackedByteArray("AAAEAP//AQAcABIAAAAEAAAAAQAcABMAAAAFAP//AQAdABIAAAAFAAAAAQAdABMAAAANAP//AQAcABIAAAANAAAAAQAcABMAAAAOAP//AQAdABIAAAAOAAAAAQAdABMAAAAVAP//AQAcABIAAAAVAAAAAQAcABMAAAAWAP//AQAdABIAAAAWAAAAAQAdABMAAAA=")
 tile_set = ExtResource("2_g1bce")
 
 [node name="EMPTY LAYER10" type="TileMapLayer" parent="." unique_id=2120510950]
@@ -173,6 +179,7 @@ offset_right = 247.0
 offset_bottom = 141.0
 
 [node name="Moving In" type="StaticBody2D" parent="Collision Objects" unique_id=1281565521]
+visible = false
 position = Vector2(-5, 4)
 collision_mask = 0
 
@@ -324,3 +331,9 @@ shape = SubResource("RectangleShape2D_bunv0")
 [node name="Stairs front wall" type="CollisionShape2D" parent="Collision Objects/Walls" unique_id=243514062]
 position = Vector2(-204, -76)
 shape = SubResource("RectangleShape2D_wcnu6")
+
+[node name="IndoorLamp" parent="." unique_id=368895387 instance=ExtResource("5_g1bce")]
+position = Vector2(387, 125)
+
+[node name="IndoorLamp2" parent="." unique_id=35402378 instance=ExtResource("5_g1bce")]
+position = Vector2(33, 173)

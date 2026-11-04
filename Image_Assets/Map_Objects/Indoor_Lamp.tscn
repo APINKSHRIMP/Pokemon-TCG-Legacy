@@ -1,0 +1,47 @@
+[gd_scene format=3 uid="uid://drt5x7u3dyhk1"]
+
+[ext_resource type="TileSet" uid="uid://yus3igcnpw1m" path="res://Image_Assets/Map_Sheets/Tile_Sets/Player_Home_Tileset.tres" id="1_qd8g1"]
+
+[sub_resource type="Gradient" id="Gradient_bf13f"]
+offsets = PackedFloat32Array(0, 0.5943396)
+colors = PackedColorArray(1, 1, 1, 0.49019608, 1.1540799, 1.1540799, 1.1540799, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_yg3vm"]
+gradient = SubResource("Gradient_bf13f")
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1.2119, 0.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_yg3vm"]
+size = Vector2(10, 4)
+
+[node name="IndoorLamp" type="Node2D" unique_id=368895387]
+
+[node name="LampsBottom" type="TileMapLayer" parent="." unique_id=202041408]
+position = Vector2(1, 5)
+tile_map_data = PackedByteArray(0, 0, 0, 0, 1, 0, 1, 0, 7, 0, 15, 0, 0, 0)
+tile_set = ExtResource("1_qd8g1")
+
+[node name="LampsTop" type="TileMapLayer" parent="." unique_id=360011117]
+z_index = 10
+position = Vector2(1, 5)
+tile_map_data = PackedByteArray(0, 0, 0, 0, 255, 255, 1, 0, 7, 0, 13, 0, 0, 0, 0, 0, 0, 0, 1, 0, 7, 0, 14, 0, 0, 0)
+tile_set = ExtResource("1_qd8g1")
+
+[node name="PointLight2D2" type="PointLight2D" parent="." unique_id=1175959164]
+position = Vector2(13.999992, 12)
+scale = Vector2(6.0566406, 6.106972)
+color = Color(0.3883725, 0.34562916, 0.26624864, 0.56078434)
+energy = 10.6
+blend_mode = 2
+range_z_min = -999
+range_z_max = 999
+shadow_enabled = true
+shadow_color = Color(0, 0, 0, 0.79607844)
+texture = SubResource("GradientTexture2D_yg3vm")
+
+[node name="Lamp_Body" type="StaticBody2D" parent="." unique_id=1263029496]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Lamp_Body" unique_id=524986156]
+position = Vector2(9, 24)
+shape = SubResource("RectangleShape2D_yg3vm")

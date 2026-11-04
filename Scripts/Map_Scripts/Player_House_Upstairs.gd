@@ -8,6 +8,10 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 
 var _player_in_bed_area: bool = true  # starts true to suppress any load-time trigger
 const SLEEP_FADE_DURATION := 2.5
+## TWEAKABLE -- seconds between the room's lamps switching off and the fade to black starting.
+const LIGHTS_OFF_PAUSE := 0.5
+## TWEAKABLE -- the sound that plays as the bedroom fades to black. A missing file is skipped.
+const BEDTIME_SFX_PATH := "res://Audio/SFX/Goodnight.ogg"
 # ISSUE #331: what the bed says before Night, by time slot (Evening is also the fallback).
 const BED_TOO_EARLY_TEXT := {
 	"Morning":   "I've only just woken up, I'm not getting back in bed now!",
@@ -89,8 +93,18 @@ func _do_sleep() -> void:
 	GameState.save_menu_return_state(scene_path, _player.position, "left")
 	GameState.sleep_until_next_day()
 	GameState.sleep_wakeup_fade = true
+	# The music fades out with the screen while the bedtime sound plays; the new day's track
+	# starts once "The next morning..." has gone (BaseMapScene._ready, WAKE_BGM_FADE_IN).
+	SoundManagerScript.fade_bgm(0.0, SLEEP_FADE_DURATION)
+	if ResourceLoader.exists(BEDTIME_SFX_PATH):
+		SoundManagerScript.play_sfx_from_path(BEDTIME_SFX_PATH)
+	# Lights out first: every lamp in the room goes off, a short beat, then the fade.
+	for light in find_children("*", "PointLight2D", true, false):
+		(light as PointLight2D).visible = false
 	var tween := create_tween()
+	tween.tween_interval(LIGHTS_OFF_PAUSE)
 	tween.tween_property(self, "modulate", Color.BLACK, SLEEP_FADE_DURATION)
+	tween.tween_callback(SoundManagerScript.stop_bgm)
 	tween.tween_callback(_show_next_morning_label.bind(scene_path))
 
 func _show_next_morning_label(scene_path: String) -> void:

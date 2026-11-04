@@ -4,7 +4,8 @@ extends RefCounted
 ## Outdoor maps are drawn once, in Afternoon colours. Morning / Evening / Night / Bedtime are a colour
 ## grade (World_Time_Grade.gdshader) worn by every world CanvasItem, driven by four shader
 ## globals this script writes. BaseMapScene wires it up: maps that return true from
-## uses_time_of_day() are graded, everything else (interiors, menus, battles) is left alone.
+## uses_time_of_day() get the full grade; interiors (uses_interior_grade()) get the much
+## softer INTERIOR_* version; menus and battles are left alone.
 ##
 ## Lights: a sheet "X.png" may have "X_Open_Lights.png" beside it -- same
 ## size and layout, transparent except lit windows / lamps. Every TileMapLayer drawing from
@@ -88,6 +89,23 @@ const OPEN_LIGHTS_SUFFIX := "_Open_Lights.png"
 const CLOSED_LIGHTS_SUFFIX := "_Closed_Lights.png"
 const CLOSED_LIGHTS_TIMES := ["Bedtime"]
 
+## ---- INTERIORS ------------------------------------------------------------------
+## Indoors wears a much softer version of the same grade: a room has its own lighting, so
+## dusk and night only take the edge off it instead of plunging it into blue. Interiors
+## use the same lights sheets ("<sheet>_Open_Lights.png", "_Closed_Lights.png" at Bedtime)
+## for curtains drawn / windows gone dark / lamps lit, at INTERIOR_LIGHTS strength.
+##
+## TWEAKABLE -- how much of the OUTDOOR colour tint reaches indoors (0 = none, 1 = the full
+## outdoor tint). Only the hue shift; the darkening is INTERIOR_BRIGHTNESS below.
+const INTERIOR_TINT := {"Morning": 0.25, "Afternoon": 0.0, "Evening": 0.3, "Night": 0.3, "Bedtime": 0.35}
+## TWEAKABLE -- indoor brightness multiplier (outdoors is 0.95 / 1.0 / 0.85 / 0.459 / 0.25).
+const INTERIOR_BRIGHTNESS := {"Morning": 0.97, "Afternoon": 1.0, "Evening": 0.92, "Night": 0.82, "Bedtime": 0.72}
+## TWEAKABLE -- indoor lights-sheet strength (same meaning as LIGHTS).
+const INTERIOR_LIGHTS := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.5, "Night": 1.0, "Bedtime": 1.1}
+## TWEAKABLE -- indoor lamp (PointLight2D) strength per time (same meaning as LIGHT_ENERGY).
+## Lamps are hidden while this is 0, so a room's lamps only exist in the evening and later.
+const INTERIOR_LIGHT_ENERGY := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.45, "Night": 1.0, "Bedtime": 1.1}
+
 ## TWEAKABLE -- atlas cell size in px, used to undo Godot's tile-atlas padding.
 const TILE_PX := 16.0
 
@@ -122,12 +140,18 @@ static var _sheet_materials := {}   # sheet path + lights suffix -> ShaderMateri
 static var _lights_suffix := OPEN_LIGHTS_SUFFIX   # set by apply_time, read when a tilemap is graded
 
 
-## Writes the four globals. Unknown / empty time (interiors) = identity, lights off.
-static func apply_time(time: String) -> void:
+## Writes the four globals. Unknown / empty time = identity, lights off. `interior` uses
+## the softer INTERIOR_* tables instead of the outdoor ones.
+static func apply_time(time: String, interior: bool = false) -> void:
 	var g: Dictionary = GRADES.get(time, GRADES["Afternoon"])
 	var id: Dictionary = GRADES["Afternoon"]
 	var k: float = STRENGTH.get(time, 1.0)
 	var b: float = BRIGHTNESS.get(time, 1.0)
+	var lights: float = LIGHTS.get(time, 0.0)
+	if interior:
+		k *= INTERIOR_TINT.get(time, 0.0)
+		b = INTERIOR_BRIGHTNESS.get(time, 1.0)
+		lights = INTERIOR_LIGHTS.get(time, 0.0)
 	# Push away from identity by STRENGTH, then scale the whole output by BRIGHTNESS.
 	var rows := {}
 	for key in ["red", "green", "blue"]:
@@ -137,7 +161,7 @@ static func apply_time(time: String) -> void:
 	RenderingServer.global_shader_parameter_set("tod_red", rows["red"])
 	RenderingServer.global_shader_parameter_set("tod_green", rows["green"])
 	RenderingServer.global_shader_parameter_set("tod_blue", rows["blue"])
-	RenderingServer.global_shader_parameter_set("tod_curve", Vector4(c.x, c.y, c.z, LIGHTS.get(time, 0.0)))
+	RenderingServer.global_shader_parameter_set("tod_curve", Vector4(c.x, c.y, c.z, lights))
 
 
 ## Grades `root` and everything under it.
@@ -227,10 +251,15 @@ static func _sheet_path(tile_set: TileSet) -> String:
 
 
 ## Restyles and scales every PointLight2D under `root` for `time`. Called once per map load.
-static func style_lights(root: Node, time: String) -> void:
-	var k: float = LIGHT_ENERGY.get(time, 0.0)
+## Lights are hidden outright while their energy is 0 (daytime). `interior` reads
+## INTERIOR_LIGHT_ENERGY instead of LIGHT_ENERGY.
+static func style_lights(root: Node, time: String, interior: bool = false) -> void:
+	var k: float = (INTERIOR_LIGHT_ENERGY if interior else LIGHT_ENERGY).get(time, 0.0)
 	for node in root.find_children("*", "PointLight2D", true, false):
 		var light := node as PointLight2D
+		if k <= 0.0:
+			light.visible = false
+			continue
 		if _is_round_glow(light):
 			var old := light.color
 			var strength := maxf(old.r, maxf(old.g, old.b)) * old.a * light.energy

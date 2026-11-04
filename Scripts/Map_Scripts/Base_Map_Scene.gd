@@ -42,8 +42,14 @@ func get_default_spawn() -> Vector2:
 			return to_local(_spawn_beside_door(child)[0])
 	return Vector2.ZERO
 
-# BGM .ogg path for this scene. Return "" to skip BGM play.
+# BGM .ogg path for this scene in the Morning and Afternoon. Return "" to skip BGM play.
 func get_bgm_path() -> String:
+	return ""
+
+# BGM .ogg path for this scene in the Evening and at Night. "" (the default) keeps playing
+# the daytime track, so a map only needs this once it has an evening track assigned.
+# Nothing plays at Bedtime either way (see _bgm_now).
+func get_evening_bgm_path() -> String:
 	return ""
 
 # Which character file in NPC_and_Opponent_Data/Characters/ describes this map's
@@ -57,6 +63,12 @@ func get_map_data_name() -> String:
 # grade (Time_Of_Day_Grade.gd). Maps are drawn once, in Afternoon colours.
 func uses_time_of_day() -> bool:
 	return false
+
+# Interiors wear a much softer version of the grade (Time_Of_Day_Grade INTERIOR_* tables),
+# use their sheet's lights sheets, and switch their PointLight2D lamps on at Evening and
+# later. Override to return false for a room that should never change with the time.
+func uses_interior_grade() -> bool:
+	return not uses_time_of_day()
 
 # Called after spawn resolution and before MapManager.initialise.
 # Override for time-of-day tiles, date events, one-way unlocks, or
@@ -115,13 +127,25 @@ func _locked_door_text(target_map: String) -> String:
 # LIFECYCLE
 # ============================================================
 
-## ISSUE #417: the BGM this map should play RIGHT NOW. Outdoor maps (Celeste Harbour, Verdant Forest, Gym Plaza...)
-## go quiet at Bedtime - nobody is out that late - so the world is left to its ambient sounds. Interiors keep theirs.
+## TWEAKABLE -- true: every map (indoors too) is silent at Bedtime. false: only outdoor
+## maps go quiet at Bedtime and interiors keep their evening track (the ISSUE #417 rule).
+const BEDTIME_SILENT_INDOORS := false
+
+## The BGM this map should play RIGHT NOW: the daytime track in the Morning / Afternoon, the
+## evening track (falling back to the daytime one) in the Evening / at Night, and nothing at
+## Bedtime - nobody is out that late (ISSUE #417), so the world is left to its ambient sounds.
 func _bgm_now() -> String:
-	# The open sea's "BGM" is its ambience (waves), not music - it carries on.
-	if uses_time_of_day() and GameState.get_time() == "Bedtime" and get_bgm_path() != SoundManagerScript.BGM_SEA_SOUNDS:
-		print("ISSUE #417 FIX ACTIVE: no outdoor BGM at Bedtime on ", name)
-		return ""
+	var time := GameState.get_time()
+	if time == "Bedtime":
+		# The open sea's "BGM" is its ambience (waves), not music - it carries on.
+		if get_bgm_path() == SoundManagerScript.BGM_SEA_SOUNDS:
+			return get_bgm_path()
+		if uses_time_of_day() or BEDTIME_SILENT_INDOORS:
+			return ""
+	if time == "Evening" or GameState.is_night_time(time):
+		var evening := get_evening_bgm_path()
+		if evening != "":
+			return evening
 	return get_bgm_path()
 
 ## Starts this map's music, or stops whatever is still playing (a battle's, the last map's) when it has none now.
@@ -129,14 +153,35 @@ func _start_map_bgm(restart: bool) -> void:
 	var bgm := _bgm_now()
 	if bgm != "":
 		SoundManagerScript.play_bgm(bgm, restart)
-	elif get_bgm_path() != "":
-		SoundManagerScript.stop_bgm()   # ISSUE #417: an outdoor map at Bedtime
+	elif get_bgm_path() != "" or get_evening_bgm_path() != "":
+		SoundManagerScript.stop_bgm()   # ISSUE #417: Bedtime
+
+## TWEAKABLE -- time slots in which an interior's curtains are drawn. Any node whose name
+## starts with "CURTAINS" (any case, e.g. "CURTAINS", "Curtains2") is shown in these slots
+## and hidden in all others.
+const CURTAINS_DRAWN_TIMES := ["Evening", "Night", "Bedtime"]
+
+## Interiors only: shows every CURTAINS node at Evening / Night / Bedtime, hides it in the
+## Morning and Afternoon.
+func _apply_curtains(time: String) -> void:
+	var drawn := time in CURTAINS_DRAWN_TIMES
+	for node in find_children("*", "CanvasItem", true, false):
+		if node.name.to_upper().begins_with("CURTAINS"):
+			(node as CanvasItem).visible = drawn
+
+## TWEAKABLE -- seconds the new day's music takes to fade up after "The next morning...".
+const WAKE_BGM_FADE_IN := 2.0
 
 func _ready():
-	_start_map_bgm(true)
-
 	var is_sleep_wakeup := GameState.sleep_wakeup_fade
 	GameState.sleep_wakeup_fade = false
+	if is_sleep_wakeup:
+		# The bed faded the night's music out; the new day's track starts silent and fades up.
+		SoundManagerScript.fade_bgm(0.0, 0.0)
+		_start_map_bgm(true)
+		SoundManagerScript.fade_bgm(1.0, WAKE_BGM_FADE_IN)
+	else:
+		_start_map_bgm(true)
 	# Read now: MapManager.initialise() below consumes the battle-return flag.
 	var from_battle: bool = GameState.returning_from_battle
 	var came_outside: bool = uses_time_of_day() and GameState.last_map_was_interior
@@ -157,8 +202,10 @@ func _ready():
 	_setup_doors()
 	_setup_time_of_day_grade()
 	_scene_setup()
-	if uses_time_of_day():
-		TimeOfDayGrade.style_lights(self, GameState.get_time())
+	if uses_time_of_day() or uses_interior_grade():
+		TimeOfDayGrade.style_lights(self, GameState.get_time(), not uses_time_of_day())
+	if not uses_time_of_day():
+		_apply_curtains(GameState.get_time())
 
 	var scene_path := get_scene_path()
 	var arrival_door := _find_arrival_door(GameState.entering_from)
@@ -604,13 +651,15 @@ func close_submenu_overlay(restore_menu: bool = true) -> void:
 # TIME-OF-DAY GRADE — see Time_Of_Day_Grade.gd
 # ============================================================
 
-# Sets the grade globals for this map (identity indoors), grades everything already in the
-# scene, then catches anything spawned later -- NPCs, Pokemon, cutscene actors -- as it enters.
+# Sets the grade globals for this map (the softer interior grade indoors, identity for a room
+# that opts out), grades everything already in the scene, then catches anything spawned
+# later -- NPCs, Pokemon, cutscene actors -- as it enters.
 func _setup_time_of_day_grade() -> void:
-	if not uses_time_of_day():
+	var interior := not uses_time_of_day()
+	if interior and not uses_interior_grade():
 		TimeOfDayGrade.apply_time("")
 		return
-	TimeOfDayGrade.apply_time(GameState.get_time())
+	TimeOfDayGrade.apply_time(GameState.get_time(), interior)
 	TimeOfDayGrade.grade_tree(self, self)
 	get_tree().node_added.connect(_on_node_added_grade)
 
