@@ -736,7 +736,7 @@
     {
       "id": "surfacing_5",
       "template": "surfacing",
-      "at": [3253, 1702],
+      "at": [3259, 1709],
       "group": "surfacing_1",
       "tables": {
         "Morning": {
@@ -857,16 +857,16 @@
         }
       },
       "region": [
-        3061,
-        1600,
-        3445,
-        1803
+        3067,
+        1607,
+        3451,
+        1810
       ]
     },
     {
       "id": "surfacing_6",
       "template": "surfacing",
-      "at": [3494, 1515],
+      "at": [3513, 1498],
       "group": "surfacing_1",
       "tables": {
         "Morning": {
@@ -987,16 +987,16 @@
         }
       },
       "region": [
-        3439,
-        1408,
-        3548,
-        1622
+        3458,
+        1391,
+        3567,
+        1605
       ]
     },
     {
       "id": "surfacing_7",
       "template": "surfacing",
-      "at": [3096, 1951],
+      "at": [3185, 1960],
       "group": "surfacing_1",
       "tables": {
         "Morning": {
@@ -1117,16 +1117,16 @@
         }
       },
       "region": [
-        2999,
-        1818,
-        3192,
-        2084
+        3088,
+        1827,
+        3281,
+        2093
       ]
     },
     {
       "id": "surfacing_8",
       "template": "surfacing",
-      "at": [3175, 2289],
+      "at": [3183, 2430],
       "group": "surfacing_1",
       "tables": {
         "Morning": {
@@ -1247,10 +1247,10 @@
         }
       },
       "region": [
-        3078,
-        2156,
-        3271,
-        2422
+        3086,
+        2297,
+        3279,
+        2563
       ]
     },
     {

@@ -146,6 +146,7 @@ const BGM_LAID_BACK_BATTLE               := BGM_DIR + "Laid Back Battle (Pinball
 const BGM_MEDIUM_BATTLE                  := BGM_DIR + "Medium Battle (PMD Mt Freeze)" + BGM_EXT
 const BGM_MEDIUM_BATTLE_2                := BGM_DIR + "Medium_battle 2 (PMD Amp_Plains)" + BGM_EXT
 const BGM_MEDIUM_BATTLE_3                := BGM_DIR + "Medium_Battle 3 (PMD Thunderwave_Cave)" + BGM_EXT
+const BGM_MEDIUM_BATTLE_4                := BGM_DIR + "Medium Battle (PMD Mt. Bristle)" + BGM_EXT
 const BGM_NICE_BATTLE                    := BGM_DIR + "Nice_battle (PTCG2 - GRs Grass Water Forts)" + BGM_EXT
 const BGM_OUTLAW_BATTLE                  := BGM_DIR + "Outlaw_battle (PMD Outlaw)" + BGM_EXT
 const BGM_SERIOUS_BATTLE                 := BGM_DIR + "Serious Battle (PTCG2 GR Rises to Power)" + BGM_EXT

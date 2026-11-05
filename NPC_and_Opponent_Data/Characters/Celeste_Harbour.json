@@ -2357,7 +2357,9 @@
           "days": "3-4,6-8",
           "times": "M"
         }
-      ]
+      ],
+      "sleeve": "Tyranitar",
+      "sleeve_reward": "Tyranitar"
     },
     "Jogger Daniel": {
       "at": [-131, 1965],
