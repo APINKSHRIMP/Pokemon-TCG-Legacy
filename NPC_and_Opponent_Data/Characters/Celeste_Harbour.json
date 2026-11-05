@@ -2083,7 +2083,9 @@
             "repeat": "Sorry you caught me at a bad time I had a mouthful of fire fluid there."
           }
         }
-      ]
+      ],
+      "sleeve": "Rapidash_2",
+      "sleeve_reward": "Rapidash_2"
     },
     "Firebreather Kenneth": {
       "at": [1000, 2475],
@@ -2124,7 +2126,9 @@
             "repeat": "It's very hard work this!"
           }
         }
-      ]
+      ],
+      "sleeve": "Rapidash",
+      "sleeve_reward": "Rapidash"
     },
     "Fisherman Dave": {
       "at": [-600, 2735],

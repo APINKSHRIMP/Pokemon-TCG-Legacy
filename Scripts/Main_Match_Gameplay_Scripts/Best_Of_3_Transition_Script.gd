@@ -302,4 +302,8 @@ func _do_transition() -> void:
 		GameState.clear_match_series()
 		SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_End_Outro_Scene.tscn")
 	else:
-		SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Main_Match_Core_GamePlay_Scene.tscn")
+		# OLD: straight back into the match with the hand already showing.
+		# SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Main_Match_Core_GamePlay_Scene.tscn")
+		# The second half of the match intro instead: the two decks fly in, shuffle,
+		# and the new opening hand is dealt (MatchTransition.start_decks).
+		MatchTransition.start_decks()

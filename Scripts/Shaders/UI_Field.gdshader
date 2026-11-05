@@ -53,6 +53,15 @@ uniform float scroll_speed = -5.833;  // px/s along +X; negative scrolls LEFT
 
 uniform vec2 rect_size = vec2(1920.0, 1080.0);
 
+// MATCH BACKDROP MODE (MatchBackdrop.add_field): draw ONLY the chevrons, on a
+// transparent ground, so the blurred overworld screenshot behind shows through.
+// stripe_boost multiplies the chevron alpha - the theme's 2-3% ink disappears on a
+// brighter photographic backdrop. The scroll uses the global shader TIME, so every
+// field on every scene shows the stripes at the same place at the same moment -
+// nothing jumps when one scene hands over to the next.
+uniform bool  stripes_only = false;
+uniform float stripe_boost = 1.0;
+
 // Falloff of a radial in UV space. 1.0 at the centre, 0.0 once `stop` of the way
 // across the ellipse.
 //
@@ -98,7 +107,11 @@ void fragment() {
 	float d = mod(dot(p - vec2(TIME * scroll_speed, 0.0), n), period);
 	float edge = 1.0;
 	float ink = smoothstep(-edge, edge, d) - smoothstep(stripe_width - edge, stripe_width + edge, d);
-	col = mix(col, stripe_color.rgb, ink * stripe_color.a);
-
-	COLOR = vec4(col, 1.0);
+	if (stripes_only) {
+		// x COLOR.a: the rect's modulate, so fading the stripes in or out actually works.
+		COLOR = vec4(stripe_color.rgb, clamp(ink * stripe_color.a * stripe_boost, 0.0, 1.0) * COLOR.a);
+	} else {
+		col = mix(col, stripe_color.rgb, ink * stripe_color.a);
+		COLOR = vec4(col, 1.0);
+	}
 }

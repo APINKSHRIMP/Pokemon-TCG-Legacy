@@ -1236,16 +1236,20 @@ func _restart_match() -> void:
 
 	_stop_outcome_jingle()
 
-	var tween := create_tween()
-	tween.tween_property(self, "modulate:a", 0.0, FADE_TIME)
-	await tween.finished
+	# OLD: faded to black and loaded the separate intro scene.
+	# var tween := create_tween()
+	# tween.tween_property(self, "modulate:a", 0.0, FADE_TIME)
+	# await tween.finished
 
 	# The map is never reached, so nothing downstream reads the result. Clearing both
 	# keeps the intro from opening as though it were resuming a finished battle.
 	GameState.battle_result = ""
 	GameState.returning_from_battle = false
 
-	SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
+	# OLD: SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn")
+	# No overworld to zoom from: the backdrop covers the outro and the intro starts at
+	# the white dot.
+	MatchTransition.start_vs()
 
 
 ## Kills the win/loss jingle. Split out of transition_back_to_map() so the retry path
@@ -1297,11 +1301,12 @@ func transition_back_to_map() -> void:
 
 	_stop_outcome_jingle()
 
-	var tween = create_tween()
-	# ISSUE #289: the "outro to overworld" half, doubled with the rest. It was the
-	# one boundary still carrying a hardcoded number instead of FADE_TIME.
-	tween.tween_property(self, "modulate:a", 0.0, FADE_TIME)
-	await tween.finished
+	# OLD: the outro faded to black, then the map appeared.
+	# var tween = create_tween()
+	# # ISSUE #289: the "outro to overworld" half, doubled with the rest. It was the
+	# # one boundary still carrying a hardcoded number instead of FADE_TIME.
+	# tween.tween_property(self, "modulate:a", 0.0, FADE_TIME)
+	# await tween.finished
 
 	# Clear battle_result so MapManager knows the outro already handled the dialogue
 	GameState.battle_result = ""
@@ -1310,4 +1315,8 @@ func transition_back_to_map() -> void:
 	if map_path == "":
 		map_path = "res://Scenes/Map_Scenes/World_Maps/World_Map_Base_Scene.tscn"
 
-	SceneCache.change_scene(map_path)
+	# OLD: SceneCache.change_scene(map_path)
+	# The outro's content fades away leaving only the blurred backdrop, the map loads
+	# under it, and the backdrop un-zooms and cross-fades into the overworld (with its
+	# new time-of-day colours if the clock moved on). See MatchTransition.return_to_scene.
+	MatchTransition.return_to_scene(map_path)

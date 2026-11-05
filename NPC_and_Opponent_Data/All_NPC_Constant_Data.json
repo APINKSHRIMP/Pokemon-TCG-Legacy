@@ -1086,7 +1086,7 @@
       "prize_cards": 4,
       "coin_reward": "Magmar Red",
       "sprite": "FireBreather",
-      "music": "REPLACEMUSIC",
+      "music": "Medium_Battle 3 (PMD Thunderwave_Cave)",
       "cash_reward": "90",
       "deck": "Hot Air",
       "message_colour": "dark_red"
@@ -1095,7 +1095,7 @@
       "prize_cards": 4,
       "coin_reward": "Ponyta Red",
       "sprite": "FireBreather",
-      "music": "REPLACEMUSIC",
+      "music": "Medium Battle (PMD Mt. Bristle)",
       "cash_reward": "90",
       "deck": "Quadrapedal Firestarters",
       "message_colour": "dark_red"

@@ -1520,7 +1520,12 @@ func _build_board_layout() -> void:
 		remove_child(bg)
 		bg.free()
 
-	UIKit.add_field(self)
+	# OLD: the theme's own opaque field.
+	# UIKit.add_field(self)
+	# The blurred overworld screenshot with the theme stripes over it - the exact
+	# picture the match transition overlay is showing when it hands over, so the
+	# swap is invisible. Falls back to the theme field when there is no screenshot.
+	MatchBackdrop.add_field(self)
 	_board_header = UIKit.add_header(self)
 	_board_footer = UIKit.add_footer(self, true)
 	# ISSUE #271: the footer's three layout slots must be un-pickable, or the two
@@ -6279,7 +6284,117 @@ func start_bench_setup_phase() -> void:
 	cancel_button.theme = theme_green
 	
 	# Show the hand again for bench pokemon selection
-	show_enlarged_array_selection_mode(player_hand)	
+	show_enlarged_array_selection_mode(player_hand)
+
+
+# ============================================================
+# MATCH TRANSITION HAND-OVER (Match_Transition.gd)
+# ============================================================
+# The overlay deals the opening hand onto exactly the cards this screen is already
+# showing underneath it, flips them, then calls intro_reveal() and frees itself in
+# the same frame. These are the only calls it makes into the match.
+
+## The setup screen's words and buttons - everything the overlay keeps hidden while
+## it deals, and fades in once the hand is down.
+func _intro_setup_ui_nodes() -> Array:
+	var out: Array = [header_label, hint_label, action_button, cancel_button]
+	for n in [_board_header, _board_footer]:
+		if n != null and is_instance_valid(n):
+			out.append(n)
+	return out
+
+
+func _intro_hide_setup_ui() -> void:
+	for n in _intro_setup_ui_nodes():
+		(n as CanvasItem).modulate.a = 0.0
+
+
+## Fades the setup screen's header, hint and buttons in, then runs the tutorial's
+## setup-screen step that _ready() held back.
+func intro_reveal(fade_time: float) -> void:
+	for n in _intro_setup_ui_nodes():
+		var ci := n as CanvasItem
+		if fade_time <= 0.0:
+			ci.modulate.a = 1.0
+		else:
+			create_tween().tween_property(ci, "modulate:a", 1.0, fade_time)
+	tutorial.on_setup_screen()
+
+
+## The opening hand's card nodes as the setup screen is showing them, left to right.
+## The overlay reads their rects (where to land) and textures (what to flip to).
+func intro_hand_card_nodes() -> Array:
+	var box: Control = small_selection_container if small_selection_container.visible else large_selection_container
+	return box.get_children().filter(func(c): return c is TextureRect and c.texture != null)
+
+
+# ── PRIZE DRAW ───────────────────────────────────────────────
+# After the Active and Bench are set and the board is up: a message, then each
+# side's prizes fly off the top of its deck into the prize row, one at a time
+# (both sides together), then a short pause before the coin is called.
+# TWEAKABLE - seconds, before the Animation speed preset scales them.
+const PRIZE_DRAW_FLIGHT  := 0.34   # one card, deck -> slot (0.38 before the 10% pace-up)
+const PRIZE_DRAW_STAGGER := 0.2    # gap between one card leaving and the next (was 0.22)
+const PRIZE_DRAW_PAUSE   := 1.0    # after the last lands, before the coin call (never scaled)
+
+func _play_prize_draw() -> void:
+	var n: int = amount_of_prize_cards
+	if n <= 0:
+		return
+	await show_message(("%d prize card will be drawn" if n == 1 else "%d prize cards will be drawn") % n)
+
+	draw_prize_cards(false)
+	draw_prize_cards(true)
+
+	var flight: float = GameState.transition_time(PRIZE_DRAW_FLIGHT)
+	if flight > 0.0:
+		var mine: Array = player_prize_container.get_children().filter(func(c): return c is CardDisplay)
+		var theirs: Array = opponent_prize_container.get_children().filter(func(c): return c is CardDisplay)
+		for c in mine + theirs:
+			(c as Control).modulate.a = 0.0
+		# The grids lay the new cards out on the next frame; their rects are wrong until then.
+		await get_tree().process_frame
+		await get_tree().process_frame
+
+		var was_blocking: bool = animation_blocker.visible
+		animation_blocker.visible = true
+		var stagger: float = GameState.transition_time(PRIZE_DRAW_STAGGER)
+		for i in range(maxi(mine.size(), theirs.size())):
+			if i < mine.size():
+				_fly_prize_card(mine[i], player_deck_icon, card_back_texture, flight)
+			if i < theirs.size():
+				_fly_prize_card(theirs[i], opponent_deck_icon, opponent_card_back_texture, flight)
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
+			await get_tree().create_timer(stagger).timeout
+		await get_tree().create_timer(flight).timeout
+		animation_blocker.visible = was_blocking
+
+	await get_tree().create_timer(PRIZE_DRAW_PAUSE).timeout
+
+
+func _fly_prize_card(target: Control, from: Control, tex: Texture2D, dur: float) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	var to_rect: Rect2 = target.get_global_rect()
+	var from_rect: Rect2 = from.get_global_rect() if from != null and is_instance_valid(from) else to_rect
+	var fly := TextureRect.new()
+	fly.texture = tex
+	fly.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fly.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	fly.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fly.top_level = true
+	fly.z_index = 200
+	add_child(fly)
+	# Starts at prize size, centred on the deck pile, and lands on the slot exactly.
+	fly.size = to_rect.size
+	fly.position = from_rect.get_center() - to_rect.size * 0.5
+	var tw := fly.create_tween().set_parallel(true)
+	tw.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(fly, "position", to_rect.position, dur)
+	tw.chain().tween_callback(func() -> void:
+		if is_instance_valid(target):
+			target.modulate.a = 1.0
+		fly.queue_free())
 
 ############################################################### END GAME LOAD FUNCTIONS ##############################################################
 ######################################################################################################################################################
@@ -11822,7 +11937,8 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 		bench_setup_phase_active = false
 		cancel_button.text = "Cancel"
 		cancel_button.theme = theme_negative   # ISSUE #292
-		draw_prize_cards(true)
+		# OLD: the opponent's prizes were drawn here, the player's back in _ready().
+		# draw_prize_cards(true)
 		hide_selection_mode_display_main()
 
 		# MATCH EFFECTS: announce this opponent's special rules at the start of each game
@@ -11830,6 +11946,9 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 			await show_message("SPECIAL MATCH RULES ARE IN EFFECT!")
 			for rule_line in match_effects.get_announcement_lines():
 				await show_message(rule_line)
+
+		# Both sides' prizes, announced, then dealt off the decks one at a time.
+		await _play_prize_draw()
 
 		# The player calls the coin first. It changes nothing about the odds - it is
 		# the same 50/50 - but it feels like their call.
@@ -12953,10 +13072,16 @@ func _ready() -> void:
 		
 	# ISSUE #289: 0.5 -> 1.0, the same doubling the intro, the outro and the
 	# best-of-three tracker got. This is the "intro to main match" half of it.
-	modulate.a = 0.0
-	var tween = create_tween()
-	tween.tween_property(self, "modulate:a", 1.0, MATCH_FADE_IN_TIME)
-	
+	# MATCH TRANSITION: the overlay is already showing this board's exact background
+	# on top of it, and removes itself the moment the dealt hand lines up with the real
+	# one - so the board must be fully visible from its first frame, never fading.
+	if MatchTransition.is_active():
+		modulate.a = 1.0
+	else:
+		modulate.a = 0.0
+		var tween = create_tween()
+		tween.tween_property(self, "modulate:a", 1.0, MATCH_FADE_IN_TIME)
+
 	# Connect all the signals so that when parts of the UI are clicked by mouse they can perform actions
 	player_bench_container.gui_input.connect(array_container_clicked.bind(player_bench))
 	opponent_bench_container.gui_input.connect(array_container_clicked.bind(opponent_bench))
@@ -13063,15 +13188,24 @@ func _ready() -> void:
 	add_child(board_nav)
 
 	cpu_ai.opponent_setup_pokemon_from_hand()
-	draw_prize_cards(false)
+	# OLD: the player's prizes were set aside before the setup screen. They are now
+	# drawn (and animated in) once the Active and Bench are chosen - see
+	# _play_prize_draw(), called where the bench setup phase ends.
+	# draw_prize_cards(false)
 	update_action_button()
-	
+
 	update_deck_icon(false)
 	update_deck_icon(true)
-	
+
 	show_enlarged_array_selection_mode(player_hand)
 	display_pokemon(false)
-	tutorial.on_setup_screen()
+	# MATCH TRANSITION: the overlay is still dealing this hand. The header, hint and
+	# buttons stay invisible until it hands over (intro_reveal), and the tutorial's
+	# setup-screen message waits for that too - it must not open under the overlay.
+	if MatchTransition.is_active():
+		_intro_hide_setup_ui()
+	else:
+		tutorial.on_setup_screen()
 	
 ######################################################## END OF MAIN GAME RUNNING FUNCTIONS ##########################################################
 ######################################################################################################################################################

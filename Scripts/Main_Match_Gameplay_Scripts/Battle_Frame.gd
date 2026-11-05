@@ -169,6 +169,11 @@ var _kind: String = "intro"
 ## from black, fades the trainers and the badge in themselves (fade_foreground).
 var entrance_scale: float = 1.0
 var fade_foreground: bool = false
+## Set BEFORE setup(). False = the plain theme field (which the caller hides) rather
+## than the match backdrop - Match_Transition.gd draws the ground itself.
+var own_ground: bool = true
+## Set BEFORE setup(). The two slanted header/footer bands; hidden by default.
+var show_bands: bool = false
 var _band_mats: Array = []
 
 
@@ -190,8 +195,18 @@ func setup(kind: String) -> void:
 	offset_bottom = 0.0
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	field = UIKit.add_field(self)
+	# OLD: field = UIKit.add_field(self)
+	# The blurred overworld screenshot + stripes (MatchBackdrop), so the outro and
+	# best-of-three screens stand on the same ground as the match. The transition
+	# overlay draws its own ground and sets own_ground = false.
+	field = MatchBackdrop.add_field(self) if own_ground else UIKit.add_field(self)
 	_build_bands()
+	# 2026-11-05: the slanted bands are HIDDEN on every screen (outro, best-of-three,
+	# the transition overlay) so the blurred overworld backdrop reads uninterrupted.
+	# Still built, coloured and animated as before - set show_bands = true before
+	# setup() to bring them back.
+	top_band_fast.visible = show_bands
+	bottom_band_fast.visible = show_bands
 	player = _build_fighter(_col_x(COL_PLAYER_X), true)
 	opponent = _build_fighter(_col_x(COL_OPPONENT_X), false)
 	_build_badge_column()

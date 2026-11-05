@@ -381,9 +381,83 @@ func initialise(
 
 	if GameState.returning_from_battle:
 		_face_battled_opponent()   # ISSUE #378
-		if GameState.get_time() == "Bedtime" and not GameState.test_match_mode:
-			_bedtime_dismiss_battled_opponent()   # ISSUE #381 (runs on; not awaited)
+		# OLD (ISSUE #381): Bedtime only, a quick fade to black and back with the opponent gone.
+		# if GameState.get_time() == "Bedtime" and not GameState.test_match_mode:
+		# 	_bedtime_dismiss_battled_opponent()   # ISSUE #381 (runs on; not awaited)
+		# Any time slot change: the opponent says it's late and leaves on the next click.
+		if not GameState.test_match_mode:
+			_dismiss_late_opponent()   # runs on; not awaited
 		_handle_battle_return()
+
+
+## 2026-11-05: replaces the Bedtime-only fade below. When the clock moved on during a match and the
+## opponent just fought is not in the new time slot (respawned only because they were just fought, so
+## flagged "leaving_late"), they speak once -- in their own colours and name pill -- a random "it's late"
+## line plus a random "I have to go" line, and are gone on the click that closes it.
+## Waits for the return-from-match overlay to clear first. TWEAKABLE: the delay and both line lists.
+const LATE_DISMISS_DELAY := 0.3
+const LATE_LINES_A := [
+	"Is that really the time!", "Oh no I didn't see the time!", "Wow, it's late!",
+	"We've played so late...", "I can't believe how late it is!",
+	"Oops, didn't mean to stay out this late...", "I really lost track of time...",
+]
+const LATE_LINES_B := [
+	"I've got places to be!", "I gotta head home!", "I really have to go!",
+	"I should have been back ages ago.", "Gotta go!", "I need to head off.",
+	"Sorry, gotta go!", "I best be going.",
+]
+
+func _dismiss_late_opponent() -> void:
+	var opp: Node = null
+	for child in _opponents_container.get_children():
+		if child.is_in_group("opponents") and child.has_meta("leaving_late"):
+			opp = child
+			break
+	if opp == null:
+		return
+	cutscene_active = true
+	if _player != null and is_instance_valid(_player):
+		_player.lock_movement()
+	while MatchTransition.is_returning():
+		await get_tree().process_frame
+	await get_tree().create_timer(LATE_DISMISS_DELAY).timeout
+	# Anything already on screen (an after-battle line) is read first.
+	while message_panel != null and is_instance_valid(message_panel) and message_panel.visible:
+		await get_tree().process_frame
+	if not is_instance_valid(opp):
+		cutscene_active = false
+		return
+	current_opponent = opp
+	await _show_message_with_ok(str(LATE_LINES_A.pick_random()) + " " + str(LATE_LINES_B.pick_random()))
+	while message_panel != null and is_instance_valid(message_panel) and message_panel.visible:
+		await get_tree().process_frame
+	if _player != null and is_instance_valid(_player):
+		_player.lock_movement()   # closing the box hands movement back
+	# They leave under a quick fade to black and back (the same beat Bedtime used).
+	var layer := CanvasLayer.new()
+	layer.layer = 90
+	var sheet := ColorRect.new()
+	sheet.color = Color(0, 0, 0, 0)
+	sheet.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(sheet)
+	get_tree().current_scene.add_child(layer)
+	var tw := sheet.create_tween()
+	tw.tween_property(sheet, "color:a", 1.0, BEDTIME_DISMISS_FADE)
+	await tw.finished
+	if is_instance_valid(opp):
+		opp.queue_free()
+	await get_tree().create_timer(BEDTIME_DISMISS_HOLD).timeout
+	if is_instance_valid(sheet):
+		var tw2 := sheet.create_tween()
+		tw2.tween_property(sheet, "color:a", 0.0, BEDTIME_DISMISS_FADE)
+		await tw2.finished
+	if is_instance_valid(layer):
+		layer.queue_free()
+	cutscene_active = false
+	if _player != null and is_instance_valid(_player):
+		_player.unlock_movement()
+		_player.can_move = true
 
 
 ## ISSUE #381: nobody is out at Bedtime, so the opponent the player has just fought must not stay to be
@@ -677,6 +751,12 @@ func _load_and_spawn_opponents(entries: Array):
 			# captured off the live node when the battle started, not read from JSON.
 			_assign_actor_position(opp, lbe.get("name", ""), lbe["position"])
 			_opponents_container.add_child(opp)
+			# They are only here because they were just fought - they are not in this
+			# time slot's cast. If the clock moved on during the match, they say so and
+			# leave once the player is back (_dismiss_late_opponent).
+			var started_in: String = str(lbe.get("time_at_start", ""))
+			if started_in != "" and started_in != GameState.get_time():
+				opp.set_meta("leaving_late", true)
 
 
 ## Copy one opponent entry's fields onto a freshly instantiated node.
@@ -1360,6 +1440,10 @@ func start_forced_battle(entry: Dictionary, overrides: Dictionary = {}) -> void:
 		"retry_on_loss":    bool(entry.get("retry_on_loss", false)),
 		# The match's tutorial mode ("newby" / "rules"); see Tutorial_Director.gd.
 		"tutorial":         str(entry.get("tutorial", "")),
+		# Item 11 (2026-11-05): the time slot the fight began in. If the clock moves on
+		# during the match and this opponent is not in the new slot, they say goodbye
+		# and leave when the player is back (_dismiss_late_opponent).
+		"time_at_start":    GameState.get_time(),
 	}
 
 	var match_format: String = str(entry.get("match_format", ""))
@@ -1373,7 +1457,10 @@ func start_forced_battle(entry: Dictionary, overrides: Dictionary = {}) -> void:
 	_freeze_overworld_actors()
 
 	# The overworld breaks into pixels and dissolves away (PixelDissolve).
-	await PixelDissolve.out_to_scene(MATCH_INTRO_SCENE)
+	# OLD: the overworld broke into pixels, then the separate intro scene loaded.
+	# await PixelDissolve.out_to_scene(MATCH_INTRO_SCENE)
+	# One unbroken flow instead: zoom-blur, VS, decks, shuffle, deal (Match_Transition.gd).
+	await MatchTransition.start_from_overworld(_player)
 
 
 # Shows a Yes/No dialog. on_yes is called (after the dialog closes)
@@ -1616,6 +1703,7 @@ func _on_yes_pressed():
 			"match_effects":  current_opponent.match_effects,
 			"match_format":   current_opponent.match_format,
 			"sleeve":         current_opponent.sleeve,
+			"time_at_start":  GameState.get_time(),   # see _dismiss_late_opponent
 		}
 
 		# Best-of-N opponents: kick off a fresh series. Single-match opponents
@@ -1633,7 +1721,10 @@ func _on_yes_pressed():
 		_freeze_overworld_actors()
 
 		# The overworld breaks into pixels and dissolves away (PixelDissolve).
-		await PixelDissolve.out_to_scene(MATCH_INTRO_SCENE)
+		# OLD: the overworld broke into pixels, then the separate intro scene loaded.
+		# await PixelDissolve.out_to_scene(MATCH_INTRO_SCENE)
+		# One unbroken flow instead: zoom-blur, VS, decks, shuffle, deal (Match_Transition.gd).
+		await MatchTransition.start_from_overworld(_player)
 
 func _on_no_pressed():
 	await _flush_after_emote()
@@ -3533,7 +3624,10 @@ func _start_test_match(current: Node) -> void:
 	_hide_message()
 	SoundManagerScript.stop_bgm()
 
-	await PixelDissolve.out_to_scene(MATCH_INTRO_SCENE)
+	# OLD: the overworld broke into pixels, then the separate intro scene loaded.
+	# await PixelDissolve.out_to_scene(MATCH_INTRO_SCENE)
+	# One unbroken flow instead: zoom-blur, VS, decks, shuffle, deal (Match_Transition.gd).
+	await MatchTransition.start_from_overworld(_player)
 
 # Reloads the supplied map scene, restoring the player to their current
 # spot/direction via the same menu-return path every map scene honours

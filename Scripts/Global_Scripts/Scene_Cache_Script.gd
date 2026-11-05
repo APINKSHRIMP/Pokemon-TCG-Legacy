@@ -63,7 +63,8 @@ const SCENES_TO_PRELOAD: Array = [
 	"res://Scenes/Main_Menu_Scenes/Bag_Scene.tscn",
 	# Battle scenes
 	"res://Scenes/Main_Match_Gameplay_Scenes/Main_Match_Core_GamePlay_Scene.tscn",
-	"res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn",
+	# OLD: retired by Match_Transition.gd - the intro now plays as an overlay.
+	# "res://Scenes/Main_Match_Gameplay_Scenes/Match_Start_Intro_Scene.tscn",
 	"res://Scenes/Main_Match_Gameplay_Scenes/Match_End_Outro_Scene.tscn",
 	"res://Scenes/Main_Match_Gameplay_Scenes/Best_Of_3_Transition.tscn",
 ]
