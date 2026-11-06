@@ -308,10 +308,10 @@
       }
     },
     "Ex Gym Leader Brock": {
-      "at": [1540, 1595],
+      "at": [1839, 1661],
       "days": "6-7",
       "times": "M,A,E,N",
-      "move": "idle_left",
+      "move": "idle_up",
       "requires": "met: Brock",
       "says": {
         "meet": "I'm Brock, the Ex Gym Leader of Pewter City and expert on Rock-type Pokemon. I'm practicing hard before the challenge begins. Did you know about the ruleset? Some trainer cards are banned for the challenge so you can't use them in your deck. Show me your best.",

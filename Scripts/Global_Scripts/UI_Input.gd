@@ -206,8 +206,50 @@ static func is_world_map(event: InputEvent) -> bool:
 # Pad X / Tab jumps the board cursor to your hand; pad Y / Q jumps it to End Turn
 # (A then presses it - one button never ends a turn on its own). Neither key has
 # another job in a match.
-const HAND_JUMP_KEYS: Array[int] = [KEY_TAB]
+const HAND_JUMP_KEYS: Array[int] = [KEY_TAB, KEY_H]   # H added 2026-11-05 (H for Hand)
 const END_TURN_JUMP_KEYS: Array[int] = [KEY_Q]
+
+# 2026-11-05: three more match shortcuts on the pad's spare buttons.
+#   F / pad RB       - jump the cursor to your Active's first action row (its attacks, Power,
+#                      Retreat); A then opens / uses it. Falls back to your Active.
+#   V / pad R3       - open YOUR Active's viewer (its Energy, tools, what it evolved from).
+#   C                - open the OPPONENT's Active's viewer (keyboard only; on the pad the
+#                      cursor + A already reaches it, and L3 is not worth the stretch).
+const ATTACK_JUMP_KEYS: Array[int] = [KEY_F]
+const VIEW_ACTIVE_KEYS: Array[int] = [KEY_V]
+const VIEW_OPP_ACTIVE_KEYS: Array[int] = [KEY_C]
+
+static func is_attack_jump(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return _key_pressed(event) and event.keycode in ATTACK_JUMP_KEYS
+	if event is InputEventJoypadButton:
+		return event.pressed and event.button_index == JOY_BUTTON_RIGHT_SHOULDER
+	return false
+
+static func is_view_active(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return _key_pressed(event) and event.keycode in VIEW_ACTIVE_KEYS
+	if event is InputEventJoypadButton:
+		return event.pressed and event.button_index == JOY_BUTTON_RIGHT_STICK
+	return false
+
+static func is_view_opp_active(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return _key_pressed(event) and event.keycode in VIEW_OPP_ACTIVE_KEYS
+	return false
+
+
+# ── Menu button shortcuts ────────────────────────────────────────────────────
+# A menu button tagged with UIKit.set_shortcut(button, pad, keys) is pressed by that pad
+# button or any of those keys while its screen is up (InputDevice does the pressing). The pad
+# buttons mean the same thing on every screen:
+#   MENU_PAD_ALT  (Back / View / Create) - the screen's other view: Show all / owned, Search,
+#                                          Controls, Field Guide
+#   MENU_PAD_VIEW (RB / R1)              - "view": View Deck, View Bag
+#   MENU_PAD_LOAD (R3)                   - "load": Load Deck, View Medals
+const MENU_PAD_ALT := JOY_BUTTON_BACK
+const MENU_PAD_VIEW := JOY_BUTTON_RIGHT_SHOULDER
+const MENU_PAD_LOAD := JOY_BUTTON_RIGHT_STICK
 
 static func is_hand_jump(event: InputEvent) -> bool:
 	if event is InputEventKey:

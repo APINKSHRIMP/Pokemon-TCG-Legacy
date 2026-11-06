@@ -1284,7 +1284,6 @@ func transition_back_to_map() -> void:
 		GameState.count_match_toward_time(_was_first_win)
 	# ISSUE #441: fish caught this slot (day 3+) count a tenth of a match each, but only
 	# ever get checked here -- at the end of a real match -- so fish alone never move time.
-	print("ISSUE #441 FIX ACTIVE: time progress ", GameState.get_time_progress(), " / ", GameState.matches_to_advance_time())
 	if not holds_clock and GameState.get_time_progress() >= float(GameState.matches_to_advance_time()):
 		match GameState.get_time():
 			"Morning":

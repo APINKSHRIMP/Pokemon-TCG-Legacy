@@ -2395,7 +2395,11 @@ func parse_card_text_effects(attack_text: String, attacker_name: String) -> Arra
 			# Otherwise attacker picks (Lure)
 			if "he or she chooses" not in text and "they choose" not in text:
 				chooser = "attacker"
-			effects.append({"type": "force_switch", "target": "defender", "chooser": chooser, "flip": flip})
+			# ISSUE #455: "you may ... switch" - the attacker can decline (the CPU does when it gains nothing).
+			var sw_at: int = text.find("switch")
+			var may_at: int = text.rfind("you may", sw_at)
+			var optional: bool = may_at != -1 and text.rfind(".", sw_at) < may_at
+			effects.append({"type": "force_switch", "target": "defender", "chooser": chooser, "flip": flip, "optional": optional})
 			print("EFFECT PARSED: Force Switch -> Defender | Chooser: ", chooser, " | Flip: ", flip)
 	# OLD ISSUE 322: "Your opponent switches the Defending Pokémon with 1 of his or her Benched Pokémon" (Shake,
 	# Sudden Charge) and "choose 1 of your opponent's Benched Pokémon and switch the Defending Pokémon with
@@ -3034,6 +3038,11 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 	else:
 		# Target is the player
 		if chooser == "attacker":
+			# ISSUE #455: a "you may switch" the CPU declines when no Benched Pokemon is a better
+			# Defending Pokemon for it than the current one.
+			if effect.get("optional", false) and main.cpu_ai.cpu_gust_gain(main.opponent_active_pokemon) <= main.cpu_ai.GUST_MIN_GAIN:
+				print("ISSUE #455 FIX ACTIVE: CPU declines the optional switch - nothing better on the Bench")
+				return
 			# OLD ISSUE 300: Lure — strand the player's worst-placed Pokémon (see cpu_pick_gust_target)
 			new_active = main.cpu_ai.cpu_pick_gust_target(main.player_bench, 0, main.opponent_active_pokemon)
 			if new_active == null:

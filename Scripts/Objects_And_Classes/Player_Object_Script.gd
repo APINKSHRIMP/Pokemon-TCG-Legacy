@@ -16,7 +16,7 @@ const INTERACT_GROUPS := ["opponents", "npcs", "pokemon"]
 # debug mode is on (Debug_Mode.gd) — 10x is a testing convenience for crossing the map
 # quickly, not a play speed, so a release build gets the 2x the code has always described.
 @export var run_multiplier: float = 2.0
-@export var debug_run_multiplier: float = 10.0
+@export var debug_run_multiplier: float = 2.0   # was 10.0 (2026-11-05: back to the normal run speed)
 
 var current_direction: String = "down"
 var is_moving: bool = false
@@ -175,6 +175,7 @@ func _physics_process(_delta):
 		return
 
 	var input_direction = Vector2.ZERO
+	_touch_update()
 
 	if Input.is_action_pressed("ui_up") or Input.is_key_pressed(KEY_W):
 		input_direction.y -= 1
@@ -186,9 +187,14 @@ func _physics_process(_delta):
 		input_direction.x += 1
 
 	input_direction = input_direction.normalized()
+	# TOUCH / MOUSE DRAG: the finger's direction wins over nothing pressed.
+	if input_direction == Vector2.ZERO and _touch_dir != Vector2.ZERO:
+		input_direction = _touch_dir
 
-	# Hold Shift to run: doubles movement speed and the walk animation cycle (10x in debug mode)
+	# Hold Shift to run: doubles movement speed and the walk animation cycle (debug mode used to be 10x; it is 2x too now)
 	var is_running: bool = UIInput.is_run_held()   # Shift or pad L1 - the zoom button everywhere else
+	# ...or a double tap and drag.
+	is_running = is_running or (_touch_dir != Vector2.ZERO and _touch_run)
 	var active_run_multiplier: float = debug_run_multiplier if DebugMode.is_enabled() else run_multiplier
 	var speed_scale: float = active_run_multiplier if is_running else 1.0
 	# ISSUE #35: the global overworld walking-speed multiplier scales both walk and run (Options: slow
@@ -212,6 +218,99 @@ func _physics_process(_delta):
 
 	# Recompute closest candidate each frame so priority follows player movement
 	_update_active_candidate()
+
+# ============================================================
+# TOUCH / MOUSE DRAG MOVEMENT
+# ============================================================
+# For playing by finger (a phone streaming the game) - works with a mouse too.
+#   PRESS AND DRAG on the map: walk toward where the finger has moved from where it landed,
+#     like a floating thumbstick. Keep holding to keep walking; slide round to change
+#     direction (past TOUCH_RADIUS the anchor follows the finger, so reversing is quick).
+#     Lift to stop.
+#   DOUBLE TAP, THEN DRAG: run.
+#   SINGLE TAP: Space - talk / interact. Sent TOUCH_DOUBLE_TAP seconds after the tap, so a tap
+#     that turns out to be the first half of a double tap never starts a conversation.
+# Release is POLLED (Input.is_mouse_button_pressed), not waited for as an event: a release
+# over a menu or swallowed by a gesture would otherwise leave the player walking forever.
+# TWEAKABLE:
+const TOUCH_DEADZONE := 22.0       # px the finger must move before walking starts
+const TOUCH_RADIUS := 110.0        # px the anchor trails behind the finger at most
+const TOUCH_TAP_TIME := 0.25       # a press shorter than this that didn't move is a tap
+const TOUCH_DOUBLE_TAP := 0.28     # seconds between taps that make a double tap
+const TOUCH_DOUBLE_TAP_PX := 70.0  # ...and how close together they must land
+
+var _touch_on := false
+var _touch_origin := Vector2.ZERO
+var _touch_press_ms := 0
+var _touch_moved := false
+var _touch_run := false
+var _touch_dir := Vector2.ZERO
+var _touch_last_tap_ms := -100000
+var _touch_last_tap_pos := Vector2.ZERO
+var _touch_pending_tap_ms := -1
+var _touch_pos := Vector2.ZERO     # the finger, from the input events (see _input)
+
+
+func _touch_begin(pos: Vector2) -> void:
+	var now := Time.get_ticks_msec()
+	_touch_on = true
+	_touch_origin = pos
+	_touch_pos = pos
+	_touch_press_ms = now
+	_touch_moved = false
+	_touch_dir = Vector2.ZERO
+	# The second press of a double tap: this drag runs, and the first tap was not an interact.
+	_touch_run = now - _touch_last_tap_ms <= int(TOUCH_DOUBLE_TAP * 1000.0) \
+		and pos.distance_to(_touch_last_tap_pos) <= TOUCH_DOUBLE_TAP_PX
+	_touch_pending_tap_ms = -1
+
+
+func _touch_update() -> void:
+	var now := Time.get_ticks_msec()
+	# A tap that was not followed by a second one: interact (Space).
+	if _touch_pending_tap_ms >= 0 and now - _touch_pending_tap_ms > int(TOUCH_DOUBLE_TAP * 1000.0):
+		_touch_pending_tap_ms = -1
+		if can_move:
+			var down := InputEventAction.new()
+			down.action = "ui_accept"
+			down.pressed = true
+			Input.parse_input_event(down)
+			var up := InputEventAction.new()
+			up.action = "ui_accept"
+			up.pressed = false
+			Input.parse_input_event(up)
+	if not _touch_on:
+		return
+	if not can_move:
+		_touch_on = false
+		_touch_dir = Vector2.ZERO
+		return
+	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		# Lifted. A short press that never moved is a tap.
+		if not _touch_moved and now - _touch_press_ms <= int(TOUCH_TAP_TIME * 1000.0):
+			_touch_last_tap_ms = now
+			_touch_last_tap_pos = _touch_origin
+			_touch_pending_tap_ms = now
+		_touch_on = false
+		_touch_dir = Vector2.ZERO
+		return
+	var v: Vector2 = _touch_pos - _touch_origin
+	if v.length() < TOUCH_DEADZONE:
+		_touch_dir = Vector2.ZERO
+		return
+	_touch_moved = true
+	_touch_dir = v.normalized()
+	if v.length() > TOUCH_RADIUS:
+		_touch_origin = _touch_pos - _touch_dir * TOUCH_RADIUS
+
+
+## The finger is followed through the input events themselves (not the OS cursor, which a
+## stream or touch screen need not move). _input, not _unhandled_input, so a HUD control the
+## finger slides over cannot hide the motion.
+func _input(event: InputEvent) -> void:
+	if _touch_on and event is InputEventMouseMotion:
+		_touch_pos = (event as InputEventMouseMotion).position
+
 
 func _update_direction(direction: Vector2):
 	if abs(direction.x) > abs(direction.y):
@@ -254,6 +353,12 @@ func _unhandled_input(event):
 				pokemon_interact_pressed.emit(_active_candidate)
 
 	if event is InputEventMouseButton:
+		# TOUCH / MOUSE DRAG: a left press on the open map (nothing on screen took it) starts the
+		# drag-to-walk / tap-to-interact gesture - see _touch_update().
+		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT and can_move \
+				and not MapManager.overworld_paused \
+				and not (MapManager.message_panel != null and MapManager.message_panel.visible):
+			_touch_begin(event.position)
 		if event.pressed:
 			if MapManager.message_panel != null and MapManager.message_panel.visible:
 				# ISSUE #137 FIX: a wheel notch is an InputEventMouseButton with pressed == true, so

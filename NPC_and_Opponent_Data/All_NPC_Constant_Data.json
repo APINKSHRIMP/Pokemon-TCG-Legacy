@@ -785,6 +785,11 @@
       "sprite": "1Alexander",
       "message_colour": "yellow",
       "friendly_name": "Alexander"
+    },
+    "Town Hall Receptionist": {
+      "sprite": "NPC295",
+      "message_colour": "orange",
+      "friendly_name": "Town Hall Receptionist"
     }
   },
   "opponents": {

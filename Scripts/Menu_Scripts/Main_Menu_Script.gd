@@ -39,6 +39,7 @@ var quit_dialog: CanvasLayer = null
 var is_overlay: bool = false
 var close_overlay_callback: Callable = Callable()
 var _quitting: bool = false     # Quit to Main Menu is fading out; ignore everything
+var _tile_base_pos: Dictionary = {}   # ISSUE #445: each group's authored position
 
 
 func _input(event: InputEvent) -> void:
@@ -115,13 +116,17 @@ func _fit_tiles_to_screen() -> void:
 		bg.offset_right = UIKit.screen_w() + 1.0
 		bg.offset_bottom = UIKit.screen_h()
 	var extra: Vector2 = UIKit.screen_extra()
-	if extra == Vector2.ZERO:
-		return
 	var shift: Vector2 = (extra * 0.5).floor()
+	# ISSUE #445 (retest): shifted from each group's AUTHORED position, remembered on the first
+	# run, so re-running on a resolution change re-centres instead of shifting again - and a
+	# change back to 1920x1080 puts everything back where it was.
 	for group in get_children():
 		if not (group is Control) or group == bg:
 			continue
-		(group as Control).position += shift
+		var c := group as Control
+		if not _tile_base_pos.has(c):
+			_tile_base_pos[c] = c.position
+		c.position = _tile_base_pos[c] + shift
 	print("ISSUE #445 FIX ACTIVE: pause menu tiles kept at authored size, centred by ", shift)
 
 
@@ -155,6 +160,11 @@ func _ready() -> void:
 			audio_player.play()
 
 	_fit_tiles_to_screen()
+	# ISSUE #445 (retest): a resolution change (Options, or the window resized) re-centres the
+	# tiles. Deferred one frame so UIKit's screen size has caught up with the new window.
+	get_viewport().size_changed.connect(func() -> void:
+		if is_inside_tree():
+			_fit_tiles_to_screen.call_deferred())
 
 	# Deck, coin case and sleeves open up once Olly's intro match is over.
 	var locked_modes := {}
@@ -191,6 +201,7 @@ func _ready() -> void:
 			rect.gui_input.connect(_on_mode_clicked.bind(node_path))
 			# D-pad / arrows move between the tiles (the hover grow follows), A / Space opens.
 			UIKit.make_nav_tile(rect)
+			_hook_tile_ring(rect, float(TILE_RING_RADIUS.get(node_path, 0.135)))   # ISSUE #447
 
 	# Exit button: same pattern — hover on the icon rect, tween the container
 	var exit_rect = get_node_or_null("exit/exit_game_button") as TextureRect
@@ -201,6 +212,9 @@ func _ready() -> void:
 		exit_rect.mouse_exited.connect(_on_mode_hover.bind(exit_container, false))
 		exit_rect.gui_input.connect(_on_exit_clicked)
 		UIKit.make_nav_tile(exit_rect)
+		_hook_tile_ring(exit_rect, float(TILE_RING_RADIUS["exit/exit_game_button"]))   # ISSUE #447
+
+	_wire_menu_navigation()
 
 	# Grey out labels for locked modes
 	for bg_path in locked_modes.keys():
@@ -223,6 +237,128 @@ func _ready() -> void:
 		var lbl = get_node_or_null(lp) as Label
 		if lbl:
 			lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+## ISSUE #448: the arrows / D-pad follow the menu's two columns instead of Godot's geometric
+## guess. LEFT column, top to bottom: Cards & Deck, Options, Close Menu. RIGHT column: Player
+## Info, Costumes, Coin Case, Sleeves, Exit Game. Up / down stay inside a column; left from
+## Info / Costumes / Coin Case goes to Cards & Deck, from Sleeves to Options, from Exit to Close.
+## Right goes back across the same way (Cards -> Info, Options -> Sleeves, Close -> Exit).
+## A locked tile (before Olly's intro) is skipped over.
+## ISSUE #447 (retest): each tile draws its OWN cursor ring, inside the tile, between the box
+## art and the icon - so the ring shows round the box's edge, and the icons that stick out past
+## their box (costumes, coins, sleeves) sit in front of it. The global InputDevice ring (which
+## draws over everything) stands down for these tiles (meta "own_ring").
+## Corner rounding as a share of the art's SHORTER side, measured off each image. TWEAKABLE.
+const TILE_RING_RADIUS := {
+	"deck/deck_mode_background":       0.135,   # tall boxes
+	"options/options_mode_background": 0.135,
+	"info/info_mode_background":       0.31,    # wide pill boxes
+	"costume/costume_mode_background": 0.31,
+	"coin/coin_case_mode_background":  0.31,
+	"sleeves/sleeves_mode_background": 0.31,
+	"close/map_mode_background":       0.115,   # small square icons
+	"exit/exit_game_button":           0.115,
+}
+## px between the box's edge and the ring's centreline. TWEAKABLE.
+const TILE_RING_GAP := 3.0
+var _tile_ring: Control = null
+var _tile_ring_for: Control = null
+
+
+func _hook_tile_ring(rect: TextureRect, radius_frac: float) -> void:
+	rect.set_meta("own_ring", true)
+	rect.focus_entered.connect(func() -> void: _show_tile_ring(rect, radius_frac))
+	rect.focus_exited.connect(func() -> void:
+		if _tile_ring_for == rect:
+			_clear_tile_ring())
+
+
+func _clear_tile_ring() -> void:
+	if _tile_ring != null and is_instance_valid(_tile_ring):
+		_tile_ring.queue_free()
+	_tile_ring = null
+	_tile_ring_for = null
+
+
+func _show_tile_ring(rect: TextureRect, radius_frac: float) -> void:
+	_clear_tile_ring()
+	var container := rect.get_parent() as Control
+	if container == null or rect.texture == null:
+		return
+	# Where the box art is actually drawn inside its rect (keep-aspect centred, or stretched).
+	var drawn: Vector2 = rect.size
+	var pos: Vector2 = rect.position
+	if rect.stretch_mode in [TextureRect.STRETCH_KEEP_ASPECT, TextureRect.STRETCH_KEEP_ASPECT_CENTERED]:
+		var ts: Vector2 = rect.texture.get_size()
+		var s: float = minf(rect.size.x / ts.x, rect.size.y / ts.y)
+		drawn = ts * s
+		if rect.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
+			pos += (rect.size - drawn) * 0.5
+	var art := Rect2(pos, drawn).grow(TILE_RING_GAP)
+	var inset: float = UITheme.SEL_RING_PX + 2.0
+	var ring := UIKit.add_selection_ring_rect(container, Rect2())
+	ring.z_index = 0          # draw order decides: just above the box, below the icon and label
+	ring.position = art.position - Vector2(inset, inset)
+	ring.size = art.size + Vector2(inset, inset) * 2.0
+	container.move_child(ring, rect.get_index() + 1)
+	UIKit.strengthen_ring(ring)
+	UIKit.set_ring_radius(ring, minf(drawn.x, drawn.y) * radius_frac + TILE_RING_GAP)
+	ring.visible = InputDevice.using_nav()
+	_tile_ring = ring
+	_tile_ring_for = rect
+	print("ISSUE #447 FIX ACTIVE: pause menu ring drawn under ", rect.name, "'s icon")
+
+
+func _process(_delta: float) -> void:
+	# The ring is the keyboard / pad cursor: hidden while the player is on the mouse.
+	if _tile_ring != null and is_instance_valid(_tile_ring):
+		_tile_ring.visible = InputDevice.using_nav()
+
+const NAV_LEFT_COLUMN := ["deck/deck_mode_background", "options/options_mode_background",
+		"close/map_mode_background"]
+const NAV_RIGHT_COLUMN := ["info/info_mode_background", "costume/costume_mode_background",
+		"coin/coin_case_mode_background", "sleeves/sleeves_mode_background", "exit/exit_game_button"]
+const NAV_ACROSS := {
+	"info/info_mode_background": "deck/deck_mode_background",
+	"costume/costume_mode_background": "deck/deck_mode_background",
+	"coin/coin_case_mode_background": "deck/deck_mode_background",
+	"sleeves/sleeves_mode_background": "options/options_mode_background",
+	"exit/exit_game_button": "close/map_mode_background",
+	"deck/deck_mode_background": "info/info_mode_background",
+	"options/options_mode_background": "sleeves/sleeves_mode_background",
+	"close/map_mode_background": "exit/exit_game_button",
+}
+
+func _wire_menu_navigation() -> void:
+	var tile := func(path: String) -> Control:
+		var c := get_node_or_null(path) as Control
+		return c if c != null and c.has_meta(UIKit.NAV_TILE_META) else null
+	for column in [NAV_LEFT_COLUMN, NAV_RIGHT_COLUMN]:
+		var live: Array = []
+		for p in column:
+			var c: Control = tile.call(p)
+			if c != null:
+				live.append(c)
+		for i in range(live.size()):
+			var c: Control = live[i]
+			# Top and bottom of a column stop there (their own path = no move).
+			c.focus_neighbor_top = c.get_path_to(live[i - 1] if i > 0 else c)
+			c.focus_neighbor_bottom = c.get_path_to(live[i + 1] if i < live.size() - 1 else c)
+	for from_path in NAV_ACROSS.keys():
+		var a: Control = tile.call(from_path)
+		var b: Control = tile.call(NAV_ACROSS[from_path])
+		if a == null:
+			continue
+		if b == null:
+			b = a   # target locked: stay put rather than guess
+		if from_path in NAV_RIGHT_COLUMN:
+			a.focus_neighbor_left = a.get_path_to(b)
+			a.focus_neighbor_right = a.get_path_to(a)
+		else:
+			a.focus_neighbor_right = a.get_path_to(b)
+			a.focus_neighbor_left = a.get_path_to(a)
+	print("ISSUE #448 FIX ACTIVE: pause menu focus wired as two columns")
 
 
 func _on_mode_hover(container: Control, hovered: bool) -> void:

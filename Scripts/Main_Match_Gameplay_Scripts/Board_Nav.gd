@@ -188,6 +188,18 @@ func _selection_targets() -> Array:
 	for root in [main.large_selection_container, main.small_selection_container]:
 		if root != null and root.is_visible_in_tree():
 			_collect_cards(root, cards)
+	# 2026-11-05: only the cards the screen is OFFERING (main.shown_selection_pool) are
+	# cursor stops. On a target pick (attach / evolve / Potion...) the pool is the
+	# Pokémon; the Energies and tools drawn with them are decoration, and landing on one
+	# selected it as the target. Pools that really offer Energies (retreat cost, Energy
+	# Removal, Super Potion) still list them. If nothing on screen matches the pool
+	# (a screen redrawn from another array) the old list stands, so the cursor never strands.
+	var pool: Array = main.shown_selection_pool
+	var offered: Array = cards.filter(func(cd): return cd.card_ref in pool)
+	if not offered.is_empty():
+		if offered.size() < cards.size():
+			print("BOARD NAV: skipped ", cards.size() - offered.size(), " card(s) not in the selection pool")
+		cards = offered
 	for cd in cards:
 		out.append({"key": cd.card_ref, "rect": _rect_of(cd), "node": cd,
 			"card": cd.card_ref, "activate": _activate_selection_card.bind(cd.card_ref)})
@@ -529,14 +541,28 @@ func handle_input(event: InputEvent) -> bool:
 	# "Your Hand" from the start of the turn - Space / Enter pressed to get through a message then
 	# OPENED the hand as if it had been Alt-clicked. The first accept or jump only brings the ring
 	# back, the same as the first arrow press. Yes / No keeps its own Space = YES answer.
+	# 2026-11-05: V / pad R3 opens your Active's viewer, C the opponent's - straight away, with or
+	# without the cursor showing (it opens a screen, it does not move or press anything).
+	if UIInput.is_view_active(event) or UIInput.is_view_opp_active(event):
+		if mode == "board":
+			var mon: card_object = main.player_active_pokemon if UIInput.is_view_active(event) \
+				else main.opponent_active_pokemon
+			if mon != null:
+				main.show_pokemon_preview(mon)
+		return true
+
 	if mode != "yes_no" and not _ring_showing() \
-			and (UIInput.is_accept(event) or UIInput.is_hand_jump(event) or UIInput.is_end_turn_jump(event)):
+			and (UIInput.is_accept(event) or UIInput.is_hand_jump(event) or UIInput.is_end_turn_jump(event) \
+				or UIInput.is_attack_jump(event)):
 		print("ISSUE #419 FIX ACTIVE: first key press only shows the cursor (nothing activated)")
 		if UIInput.is_hand_jump(event) and mode == "board":
 			_focus_key = "hand"
 			_mode = mode
 		elif UIInput.is_end_turn_jump(event) and mode == "board":
 			_focus_key = "end_turn"
+			_mode = mode
+		elif UIInput.is_attack_jump(event) and mode == "board":
+			_focus_key = _attack_jump_key()
 			_mode = mode
 		_current(mode, _targets(mode))
 		_place_ring()
@@ -554,12 +580,34 @@ func handle_input(event: InputEvent) -> bool:
 			_mode = mode
 			_place_ring()
 		return true
+	# F / pad RB: the cursor to your Active's first action row (attacks, Power, Retreat).
+	if UIInput.is_attack_jump(event):
+		if mode == "board":
+			_focus_key = _attack_jump_key()
+			_mode = mode
+			_place_ring()
+		return true
 
 	if UIInput.is_accept(event):
 		return _on_accept(mode)
 	if UIInput.is_cancel(event):
 		return _on_cancel(event, mode)
 	return false
+
+
+## Where F / pad RB puts the cursor: your Active's first usable action row (top to bottom -
+## a Power, then the attacks, then Retreat), else its first row at all (A on a dead row says
+## why it can't be used), else the Active itself.
+func _attack_jump_key() -> Variant:
+	var rows: Array = []
+	if main._player_action_panel != null and is_instance_valid(main._player_action_panel):
+		_collect_buttons(main._player_action_panel, rows, false)
+		if rows.is_empty():
+			_collect_buttons(main._player_action_panel, rows, true)
+	if not rows.is_empty():
+		rows.sort_custom(func(a, b): return (a as Control).global_position.y < (b as Control).global_position.y)
+		return rows[0]
+	return "active"
 
 
 func _on_accept(mode: String) -> bool:

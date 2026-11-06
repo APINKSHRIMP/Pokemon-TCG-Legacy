@@ -31,9 +31,9 @@ static var input_blocked: bool = false
 # it REALLY is, fading in over the card it is copying. Phase-locked to the clock rather
 # than a tween, because the board rebuilds its card nodes constantly and a tween would
 # restart (and flash) on every rebuild. TWEAKABLE: the three timings and the peak alpha.
-const UNDER_FLASH_IN   := 0.5   # fade in
-const UNDER_FLASH_OUT  := 0.5   # fade straight back out
-const UNDER_FLASH_GAP  := 5.0   # hidden this long before the next flash
+const UNDER_FLASH_IN   := 1.0   # fade in (ISSUE #439 retest: 0.5 -> 1.0)
+const UNDER_FLASH_OUT  := 1.0   # fade straight back out (0.5 -> 1.0)
+const UNDER_FLASH_GAP  := 2.5   # hidden this long before the next flash (5.0 -> 2.5)
 const UNDER_FLASH_PEAK := 1.0
 var _under_flash: TextureRect = null
 

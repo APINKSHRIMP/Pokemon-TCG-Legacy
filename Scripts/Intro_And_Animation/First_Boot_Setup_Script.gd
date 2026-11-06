@@ -539,7 +539,6 @@ func _new_page(page_name: String) -> Control:
 
 
 func _set_header_text(text: String) -> void:
-	print("ISSUE #438 FIX ACTIVE: new-game header -> ", text)
 	if _header_label != null:
 		_header_label.text = text
 
@@ -768,7 +767,6 @@ func _select_familiarity(index: int, with_sound: bool = true) -> void:
 	_familiarity = index
 	if with_sound:
 		# ISSUE #437: picking an answer uses the press-any-button sound.
-		print("ISSUE #437 FIX ACTIVE: familiarity pick plays SFX_plus_select")
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 	for i in _fam_holders.size():
 		_fam_holders[i].modulate = Color.WHITE if i == index else Color(DIM, DIM, DIM)
@@ -781,7 +779,6 @@ func _select_mode(hard: bool, with_sound: bool = true) -> void:
 	_hard_mode = hard
 	if with_sound:
 		# ISSUE #437: same press-any-button sound as the familiarity pick.
-		print("ISSUE #437 FIX ACTIVE: mode pick plays SFX_plus_select")
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 	var index: int = 1 if hard else 0
 	for i in _mode_holders.size():
@@ -820,7 +817,6 @@ func _on_next_pressed() -> void:
 	match _page:
 		0:
 			# ISSUE #437: Next uses the click the save-slot select used to make.
-			print("ISSUE #437 FIX ACTIVE: Next plays SFX_select_button")
 			SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
 			_show_page(1)
 		1:

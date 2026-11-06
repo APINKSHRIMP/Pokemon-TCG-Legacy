@@ -229,7 +229,11 @@ func _build_header(header_w: float) -> void:
 
 	# Right-aligned hint. Grey rather than themed — it is instruction, not content.
 	var hint := Label.new()
+	# The pad's own name for its log button (View / Create) when the player is on a pad.
 	hint.text = "CAPS LOCK to close"
+	if InputDevice.using_pad():
+		var diagram: GDScript = load("res://Scripts/Menu_Scripts/Controller_Diagram.gd")
+		hint.text = "%s to close" % String(diagram.button_name("view", InputDevice.pad_family())).to_upper()
 	hint.add_theme_font_override("font", _font)
 	hint.add_theme_font_size_override("font_size", HEADER_HINT_SIZE)
 	hint.add_theme_color_override("font_color", Color(0.42, 0.42, 0.46, 1.0))

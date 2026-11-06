@@ -2285,7 +2285,6 @@ func add_fish_caught(amount: int = 1) -> void:
 	if every_match_advances_time():
 		progress["fish_caught_current_slot"] = get_slot_fish() + amount
 		save_progress()
-		print("ISSUE #441 FIX ACTIVE: slot fish = ", get_slot_fish(), " time progress = ", get_time_progress())
 
 
 # ============================================================

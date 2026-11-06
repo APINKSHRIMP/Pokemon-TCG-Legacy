@@ -74,6 +74,8 @@ const SFX_coin_flip_sound = preload("res://Audio/SFX/coin_flip_sound.ogg")
 const SFX_coin_land_sound = preload("res://Audio/SFX/coin_land_sound.ogg")
 const SFX_knockout_sound = preload("res://Audio/SFX/knockout_sound.ogg")
 const SFX_select_button = preload("res://Audio/SFX/select_button.ogg")
+## ISSUE #447 / #454: the quiet blip - a menu cursor moving, a hand card pressed.
+const SFX_select_change = preload("res://Audio/SFX/Select_Change.ogg")
 const SFX_evolve_sound = preload("res://Audio/SFX/evolve_sound.ogg")
 const SFX_trainer_sound = preload("res://Audio/SFX/trainer_sound.ogg")
 const SFX_damage_sound = preload("res://Audio/SFX/damage_sound.ogg")
@@ -88,6 +90,11 @@ const SFX_minus_select = preload("res://Audio/SFX/minus_select.ogg")
 const SFX_gamemode_select = preload("res://Audio/SFX/gamemode_select_sound.ogg")
 
 const SFX_battle_start = preload("res://Audio/SFX/battle_start.ogg")
+## The match intro's sting at DOUBLE SPEED, same pitch (time-stretched offline, 7.0s -> 3.5s),
+## so it has died away by the time the decks arrive. Match_Transition.gd.
+const SFX_battle_start_fast = preload("res://Audio/SFX/battle_start_fast.ogg")
+## One riffle of a deck shuffle (0.17s, synthesised) - played per cut of the intro shuffle.
+const SFX_card_shuffle = preload("res://Audio/SFX/card_shuffle_riffle.ogg")
 const SFX_battle_win = preload("res://Audio/SFX/battle_win_sound.ogg")
 const SFX_battle_loss = preload("res://Audio/SFX/battle_loss_sound.ogg")
 

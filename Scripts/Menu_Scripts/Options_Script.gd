@@ -235,6 +235,7 @@ func _build_chrome() -> void:
 	_controls_btn.text = "Controls"
 	UIKit.adopt_button(_controls_btn, right_row, "neutral")
 	_controls_btn.pressed.connect(_open_controls)
+	UIKit.set_shortcut(_controls_btn, UIInput.MENU_PAD_ALT, [KEY_C])   # C / pad Back opens Controls
 
 	var footer := UIKit.add_footer(self)
 	cancel_btn = UIKit.make_footer_button("Cancel", "negative")   # ISSUE #292

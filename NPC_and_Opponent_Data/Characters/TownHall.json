@@ -164,6 +164,15 @@
         "meet": "WOW! Such cool cards!!!",
         "repeat": "I wish I had cards as cool as these!"
       }
+    },
+    "Town Hall Receptionist": {
+      "says": {
+        "meet": "Good [TIME]! I think I know what you're here for, I've been so busy running non stop registrations and you look like you know how to play! That is what you're here for right, are you looking to officially register with the Pokemon TCG Championships? it's only a one off registration fee of $50 and all proceeds go right back into making the town better!",
+        "repeat": "Are you here to register with the Pokemon TCG Championships? Registration is a one off payment of $50."
+      },
+      "move": "idle_down",
+      "times": "M,A,E,N",
+      "at": [115, 41]
     }
   },
   "opponents": {

@@ -279,6 +279,10 @@ func _build_chrome() -> void:
 	UIKit.adopt_button(bag_btn, bars["header"].right, "neutral", false)   # ISSUE #292
 	bag_btn.custom_minimum_size.x = BAG_BTN_W
 	bag_btn.pressed.connect(_on_bag_pressed)
+	# Shortcuts: B / pad RB = View Bag, G / pad Back = Field Guide, M / pad R3 = Medals.
+	UIKit.set_shortcut(bag_btn, UIInput.MENU_PAD_VIEW, [KEY_B])
+	UIKit.set_shortcut(guide_btn, UIInput.MENU_PAD_ALT, [KEY_G])
+	UIKit.set_shortcut(medals_btn, UIInput.MENU_PAD_LOAD, [KEY_M])
 
 	# The Field Guide sits beside Medals in the same header slot. Unlike Medals it
 	# HAS a screen behind it, so it is wired up.

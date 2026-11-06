@@ -378,6 +378,11 @@ const SEARCH_MODE_LABEL := "SEARCH MODE ACTIVE"
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	# Shortcuts (UIKit.set_shortcut): F / pad Back = Search & Filter, V / pad RB = View Deck,
+	# L / pad R3 = Load Deck. Save stays on Start / Y / Q, sets on LT / RT / PgUp / PgDn.
+	UIKit.set_shortcut(search_btn, UIInput.MENU_PAD_ALT, [KEY_F])
+	UIKit.set_shortcut(view_deck_btn, UIInput.MENU_PAD_VIEW, [KEY_V])
+	UIKit.set_shortcut(load_btn, UIInput.MENU_PAD_LOAD, [KEY_L])
 	# Start background music — loops until scene changes. Hard Mode's draft build uses the
 	# normal track too; the draft music is only for its pack opening.
 	SoundManagerScript.play_bgm(SoundManagerScript.BGM_COIN_MODE, true)
@@ -2280,15 +2285,19 @@ func _display_current_set() -> void:
 
 ## Set switched with the pad triggers / Page keys: the old set's cards (and the focus
 ## with them) are gone, so put the cursor on the new set's first card.
-var _focus_grid_after_build: bool = false
+## ISSUE #453: true from the start, so the screen OPENS with the cursor on the first card too.
+var _focus_grid_after_build: bool = true
 
 func _focus_first_grid_card() -> void:
 	if not _focus_grid_after_build:
 		return
 	_focus_grid_after_build = false
+	# ISSUE #453: the first card the player OWNS (empty slots are cursor stops now, #452).
 	for child in grid.get_children():
-		if child is Control and child.has_meta(UIKit.NAV_TILE_META) and not child.is_queued_for_deletion():
+		if child is Control and child.has_meta(UIKit.NAV_TILE_META) and not child.is_queued_for_deletion() \
+				and int(child.get_meta("owned", 1)) > 0:
 			(child as Control).grab_focus()
+			print("ISSUE #453 FIX ACTIVE: deck builder opened on its first owned card")
 			return
 
 
@@ -2390,6 +2399,10 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 	if owned == 0:
 		# The placeholder ColorRect is already black — just make it inert.
 		card_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# ISSUE #452: the pad / keyboard cursor still lands on it, so the arrows move one slot
+		# at a time across the whole grid. Nothing is connected to it, so A / X do nothing here,
+		# and _get_hovered_card() refuses it (no zoom of a card the player does not own).
+		UIKit.make_nav_tile(card_rect, false)
 	else:
 		card_rect.modulate     = Color.WHITE
 		card_rect.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -2412,7 +2425,15 @@ func _add_card_to_grid(card_data: Dictionary) -> void:
 ## Left click  = add one copy to deck
 ## Right click = remove one copy from deck
 func _on_card_gui_input(event: InputEvent, card_node: Control) -> void:
-	if not event is InputEventMouseButton or not event.pressed:
+	if not event is InputEventMouseButton:
+		return
+	# TOUCH: a LEFT click adds on RELEASE, not on press - so a long press (touch preview,
+	# Touch_Gestures.gd) can show the card without adding a copy: that gesture swallows the
+	# release. The right click (remove a copy) still acts on press.
+	if (event.button_index == MOUSE_BUTTON_LEFT) == event.pressed:
+		return
+	# A left release only counts over the card (a gesture moves its release off-screen).
+	if event.button_index == MOUSE_BUTTON_LEFT and not Rect2(Vector2.ZERO, card_node.size).has_point(event.position):
 		return
 
 	var card_id   : String     = card_node.get_meta("card_id")
@@ -3640,6 +3661,9 @@ func _get_hovered_card() -> TextureRect:
 		if node == null:
 			return null
 		if node.has_meta("card_id"):
+			# ISSUE #452: an unowned slot can hold the cursor now, but never opens the zoom.
+			if int(node.get_meta("owned", 1)) <= 0:
+				return null
 			return node as TextureRect
 		node = node.get_parent()
 	return null

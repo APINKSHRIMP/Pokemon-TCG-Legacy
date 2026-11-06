@@ -926,6 +926,34 @@ static func add_selection_ring_rect(layer: Node, r: Rect2,
 	return ring
 
 
+## ISSUE #451: the menu cursor / selection ring, made easy to see - thicker, spinning
+## faster, and slowly breathing brighter and darker. TWEAKABLE: the four NAV_RING_* values.
+const NAV_RING_PX        := 7.0    # was the theme's 4px
+const NAV_RING_PERIOD    := 1.4    # seconds per revolution (theme: 3.0)
+const NAV_RING_BRIGHT    := 1.6    # modulate at the bright end of the breath
+const NAV_RING_DIM       := 0.65   # ...and at the dark end
+const NAV_RING_BREATH    := 1.2    # seconds each way
+
+static func strengthen_ring(ring: ShaderRect) -> void:
+	if ring == null or not (ring.material is ShaderMaterial):
+		return
+	var mat := ring.material as ShaderMaterial
+	mat.set_shader_parameter("ring_width", NAV_RING_PX)
+	var reduced: bool = _ui().motion_reduced()
+	mat.set_shader_parameter("spin_speed", 0.0 if reduced else TAU / NAV_RING_PERIOD)
+	if reduced:
+		return
+	var tw := ring.create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(ring, "modulate", Color(NAV_RING_BRIGHT, NAV_RING_BRIGHT, NAV_RING_BRIGHT, 1.0), NAV_RING_BREATH)
+	tw.tween_property(ring, "modulate", Color(NAV_RING_DIM, NAV_RING_DIM, NAV_RING_DIM, 1.0), NAV_RING_BREATH)
+
+
+## Changes a ring's corner radius (the radius of its CENTRELINE, i.e. of the item's edge).
+static func set_ring_radius(ring: Control, radius: float) -> void:
+	if ring != null and ring.material is ShaderMaterial:
+		(ring.material as ShaderMaterial).set_shader_parameter("corner_radius", radius)
+
+
 ## Moves a ring made by add_selection_ring_rect() onto another screen rect.
 static func place_selection_ring(ring: Control, r: Rect2) -> void:
 	var inset: float = _ui().SEL_RING_PX + 2.0
@@ -1368,6 +1396,44 @@ static func make_nav_tile(c: Control, hover_echo: bool = true) -> void:
 	else:
 		# Built before being added to its grid: catch the scroll box once it is.
 		c.tree_entered.connect(_follow_focus_above.bind(c), CONNECT_ONE_SHOT)
+
+
+## A one-press shortcut for a menu button: `pad` (a JOY_BUTTON_*, or -1) and `keys` (KEY_*s)
+## press it while its screen is up - InputDevice._menu_shortcut() does the pressing, and only
+## while the button is visible and enabled. See UIInput's MENU_PAD_* for what each pad button
+## means across screens. Letter keys stand down while a text box or the on-screen keyboard is
+## taking typing.
+static func set_shortcut(btn: BaseButton, pad: int, keys: Array = []) -> void:
+	if btn == null:
+		return
+	btn.set_meta("sc_pad", pad)
+	btn.set_meta("sc_keys", keys)
+
+
+## ISSUE #453: a screen opening on the player's current pick (their coin, sleeve, costume)
+## puts the cursor ON it and scrolls it into view, so a pad player starts from there.
+## Waits a frame for the grid to lay out first - before that every rect is at 0,0.
+static func focus_and_reveal(c: Control) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	await tree.process_frame
+	if c == null or not is_instance_valid(c) or not c.is_inside_tree():
+		return
+	var tile: Control = c if c.has_meta(NAV_TILE_META) else null
+	if tile == null:
+		for ch in c.find_children("*", "Control", true, false):
+			if ch.has_meta(NAV_TILE_META):
+				tile = ch
+				break
+	if tile == null:
+		return
+	tile.grab_focus()
+	var p: Node = c.get_parent()
+	while p != null:
+		if p is ScrollContainer:
+			(p as ScrollContainer).ensure_control_visible(c)
+			break
+		p = p.get_parent()
+	print("ISSUE #453 FIX ACTIVE: opened on the current pick ", c.name)
 
 
 static func _follow_focus_above(c: Control) -> void:

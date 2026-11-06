@@ -645,7 +645,10 @@ func _cpu_close_turn() -> void:
 	var cpu_won: bool = match_done and match_result == "loss"
 	if not _cpu_ko_attacks.is_empty() and used_attack not in _cpu_ko_attacks and not cpu_won and not (used_attack == "(no attack)" and _cpu_attempted):
 		_problem("CPU DECISION: MISSED KO", "used %s when %s was a guaranteed Knock Out" % [used_attack, ", ".join(_cpu_ko_attacks)], "mko" + str(match_index) + str(_cpu_ko_attacks))
-	elif not offered_attacks.is_empty() and used_attack == "(no attack)" and not _cpu_attempted and is_instance_valid(current_main) and not current_main.game_is_over:
+	# ISSUE #455: a CPU that ends its turn rather than use a switch attack that helps nobody (Lure with
+	# no better target) is deliberate - CPU_AI sets cpu_skip_reason for exactly that.
+	elif not offered_attacks.is_empty() and used_attack == "(no attack)" and not _cpu_attempted and is_instance_valid(current_main) and not current_main.game_is_over \
+			and String(current_main.cpu_ai.cpu_skip_reason) == "":
 		_problem("CPU DECISION: SKIPPED ATTACK", "could use %s but ended the turn without attacking" % ", ".join(offered_attacks.map(func(k): return k.get_slice("|", 2))), "skip" + str(match_index) + str(offered_attacks))
 
 	for k in keys:

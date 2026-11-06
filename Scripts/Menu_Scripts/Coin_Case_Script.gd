@@ -92,6 +92,8 @@ var zoom_image       : TextureRect = null
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	# Shortcut: H / pad Back toggles Show all / Show owned only (UIKit.set_shortcut).
+	UIKit.set_shortcut(hide_btn, UIInput.MENU_PAD_ALT, [KEY_H])
 	add_child(audio_player)
 
 	var audio_stream = load(SoundManagerScript.BGM_COIN_MODE)
@@ -413,6 +415,7 @@ func _select_coin_by_name(coin_name: String) -> void:
 	for child in grid.get_children():
 		if child is TextureRect and child.get_meta("coin_name", "") == coin_name:
 			_select_coin(child)
+			UIKit.focus_and_reveal(child)   # ISSUE #453
 			return
 
 

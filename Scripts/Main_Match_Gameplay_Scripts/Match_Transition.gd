@@ -303,12 +303,13 @@ func _run() -> void:
 
 	get_tree().create_timer(SKIP_GUARD).timeout.connect(func() -> void: _accept_skip = true)
 
-	# OLD: the battle-start sting.
-	# if _mode != Mode.DECKS:
-	# 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_start)
-	# The opponent's battle music starts the moment the intro does. The match core
-	# asks for the same track in _ready(), which is a no-op while it is already on.
-	_start_battle_music()
+	# THE SOUND TIMELINE: the battle-start sting (double speed - SFX_battle_start_fast) plays over
+	# the zoom and the VS screen and has died away by the time the decks arrive (anything left is
+	# faded out in _decks_in). The shuffle and the deal are quiet apart from their own card sounds,
+	# and the opponent's music starts as the first card flips (_deal). A skip cuts the sting and
+	# starts the music at once. The match core holds its own music back while this overlay runs.
+	if _mode != Mode.DECKS:
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_start_fast)
 
 	# Steps 1-2, or the cover fade for the other two entry points.
 	if _mode == Mode.OVERWORLD:
@@ -372,6 +373,7 @@ func _run_skipped() -> void:
 		await get_tree().create_timer(fade).timeout
 	else:
 		_stage.modulate.a = 1.0
+	_start_battle_music()
 	_hide_foreground()
 	await _ensure_match()
 	_handing_over = true
@@ -387,15 +389,30 @@ func _skip() -> void:
 	_aborting = true
 	_accept_skip = false
 	_stop_intro_sfx()
+	_start_battle_music()
 	await _ensure_match()
 	_handing_over = true
 	_main.intro_reveal(_t(UI_FADE))
 	await _fade_out_and_free(_t(SKIP_FADE))
 
 
+## Fades the battle-start sting out over `secs` (if it is still playing), then frees it.
+func _fade_intro_sfx(secs: float) -> void:
+	for child in SoundManagerScript.get_children():
+		if child is AudioStreamPlayer and (child as AudioStreamPlayer).stream == SoundManagerScript.SFX_battle_start_fast:
+			var p := child as AudioStreamPlayer
+			if secs <= 0.0:
+				p.stop()
+				p.queue_free()
+				continue
+			var tw := p.create_tween()
+			tw.tween_property(p, "volume_db", -40.0, secs)
+			tw.tween_callback(p.queue_free)
+
+
 func _stop_intro_sfx() -> void:
 	for child in SoundManagerScript.get_children():
-		if child is AudioStreamPlayer and (child as AudioStreamPlayer).stream == SoundManagerScript.SFX_battle_start:
+		if child is AudioStreamPlayer and (child as AudioStreamPlayer).stream in [SoundManagerScript.SFX_battle_start, SoundManagerScript.SFX_battle_start_fast]:
 			(child as AudioStreamPlayer).stop()
 			child.queue_free()
 
@@ -661,6 +678,9 @@ func _start_battle_music() -> void:
 
 
 func _decks_in(with_labels: bool) -> void:
+	# Whatever is left of the battle-start sting fades away as the decks arrive: the shuffle
+	# and the deal happen in quiet, with only their own card sounds.
+	_fade_intro_sfx(_t(DECK_IN))
 	_player_deck = _make_deck(_player_back)
 	_opp_deck = _make_deck(_opp_back)
 	_decks_root.add_child(_player_deck)
@@ -721,6 +741,8 @@ func _shuffle(deck: Node2D, total: float) -> void:
 		var middle: Array = layers.slice(cut_a, cut_b)
 		var top: Array = layers.slice(cut_b, n)
 		var side: float = 1.0 if c % 2 == 0 else -1.0
+		# One riffle per cut, a touch higher or lower each time so the cuts don't sound identical.
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_shuffle, randf_range(0.92, 1.1))
 
 		var out := deck.create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		for l in top:
@@ -768,6 +790,8 @@ func _deal() -> bool:
 	# Every card turns over, left to right.
 	var by_x: Array = _dealt.duplicate()
 	by_x.sort_custom(func(a, b): return a["x"] < b["x"])
+	# The opponent's music starts with the first flip - the reveal is the start of the match.
+	_start_battle_music()
 	for d in by_x:
 		_flip(d)
 		if not await _wait(_t(FLIP_STAGGER)): return false
@@ -866,6 +890,7 @@ func _ensure_match() -> void:
 
 func _hand_over() -> void:
 	_handing_over = true
+	_start_battle_music()   # no-op if the first flip already started it
 	# The dealt cards are sitting exactly on the real ones and the two backgrounds
 	# are the same picture, so removing the overlay changes nothing on screen.
 	_main.intro_reveal(_t(UI_FADE))

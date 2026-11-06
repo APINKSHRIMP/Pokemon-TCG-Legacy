@@ -6335,7 +6335,7 @@ func intro_hand_card_nodes() -> Array:
 # TWEAKABLE - seconds, before the Animation speed preset scales them.
 const PRIZE_DRAW_FLIGHT  := 0.34   # one card, deck -> slot (0.38 before the 10% pace-up)
 const PRIZE_DRAW_STAGGER := 0.2    # gap between one card leaving and the next (was 0.22)
-const PRIZE_DRAW_PAUSE   := 1.0    # after the last lands, before the coin call (never scaled)
+const PRIZE_DRAW_PAUSE   := 0.5    # after the last lands, before the coin call (never scaled; was 1.0)
 
 func _play_prize_draw() -> void:
 	var n: int = amount_of_prize_cards
@@ -12189,6 +12189,15 @@ func _handle_card_click(clicked_card: card_object) -> void:
 	if bench_view_active:
 		show_pokemon_preview(clicked_card)
 		return
+	# ISSUE #440 (retest 2): a plain click on EITHER Active, with no picking screen up, opens its
+	# viewer (Energy, tools, what it evolved / transformed from). Your own Active's click is first
+	# claimed by Hand_Drag on your free turn (it can become a retreat drag) and opens the same
+	# viewer on release; this covers the opponent's Active, and yours whenever Hand_Drag stands down.
+	if not card_selection_mode_enabled and clicked_card != null \
+			and (clicked_card == player_active_pokemon or clicked_card == opponent_active_pokemon):
+		print("ISSUE #440 FIX ACTIVE: Active clicked -> viewer (", clicked_card.metadata.get("name", ""), ")")
+		show_pokemon_preview(clicked_card)
+		return
 	if not action_button.visible: return
 
 	if card_selection_mode_enabled == true:
@@ -12821,7 +12830,7 @@ func _input(event: InputEvent) -> void:
 		return
 
 	# Dev cheat keys — 9 = instant win, 0 = instant lose, D = both draw, S = both shuffle,
-	# E = both attach energy, H = heal actives, B = heal bench.
+	# E = both attach energy, J = heal actives (was H - H is "jump to hand" now), B = heal bench.
 	# Gated on DebugMode (Debug_Mode.gd) so a release build can't throw or steal a match with
 	# a single keypress. In the editor debug mode is always on, so this changes nothing day to day.
 	if DebugMode.is_enabled() and event is InputEventKey and event.pressed and not game_is_over:
@@ -12835,7 +12844,7 @@ func _input(event: InputEvent) -> void:
 			debug_key_both_shuffle_hand()
 		elif event.keycode == KEY_E:
 			debug_key_both_attach_energy()
-		elif event.keycode == KEY_H:
+		elif event.keycode == KEY_J:
 			debug_key_heal_actives()
 		elif event.keycode == KEY_B:
 			debug_key_heal_bench()
@@ -13130,8 +13139,11 @@ func _ready() -> void:
 
 	# Read prize card count from opponent JSON (default 6 if not specified)
 	amount_of_prize_cards = int(opponent_data.get("prize_cards", 6))
-	
-	play_opponent_music()
+
+	# The match intro overlay starts this same track itself, as the dealt hand flips over
+	# (or at once on a skip) - the deal happens in quiet. Without the overlay, start it now.
+	if not MatchTransition.is_active():
+		play_opponent_music()
 
 	# Load the player's deck name from their save data
 	var pfile = FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)

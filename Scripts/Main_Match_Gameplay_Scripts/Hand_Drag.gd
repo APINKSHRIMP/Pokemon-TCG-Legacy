@@ -154,6 +154,19 @@ func _input(event: InputEvent) -> void:
 		_on_release(mb)
 
 
+## TOUCH (Touch_Gestures.gd): a long-press preview or a two-finger tap swallows the finger's
+## release, so the press recorded here never completes - drop it, or the next movement would
+## start a drag out of nowhere.
+func cancel_press() -> void:
+	_press = {}
+	if _dragging:
+		_dragging = false
+		_clear_hover()
+		if _floater != null and is_instance_valid(_floater):
+			_floater.queue_free()
+		_floater = null
+
+
 func _on_press(mb: InputEventMouseButton) -> void:
 	# ISSUE #419: Alt is read off THIS click, not polled - Input.is_key_pressed(KEY_ALT) can stay
 	# "down" after an Alt-Tab eats the release, and every click then opened the large hand.
@@ -163,6 +176,9 @@ func _on_press(mb: InputEventMouseButton) -> void:
 	var hand_hit := _hand_card_at(pos)
 	if not hand_hit.is_empty():
 		_press = {"kind": "hand", "card": hand_hit["card"], "node": hand_hit["node"], "start": pos}
+		# ISSUE #454: the quiet blip, on the PRESS - a click and the start of a drag sound the same.
+		print("ISSUE #454 FIX ACTIVE: hand card press blip")
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_change)
 		get_viewport().set_input_as_handled()
 		return
 	# ISSUE #419: a click on the hand bar that misses every card (the gaps, the bar's edge) used to
@@ -218,6 +234,12 @@ func _on_release(mb: InputEventMouseButton) -> void:
 		fake.button_index = MOUSE_BUTTON_LEFT
 		fake.pressed = true
 		main.array_container_clicked(fake, main.player_bench)
+	elif press["card"] == main.player_active_pokemon:
+		# ISSUE #440 (retest): a plain click on your Active opens the same viewer the pad's A does
+		# (its energies and tools, and what it evolved / transformed from). The press is claimed
+		# above so it can become a retreat drag, which is why the card node never saw the click.
+		print("ISSUE #440 FIX ACTIVE: Active clicked -> Pokemon viewer")
+		main.show_pokemon_preview(press["card"])
 
 
 # ── Hit tests ────────────────────────────────────────────────────────────────
@@ -340,7 +362,8 @@ func select_in_bar(card: card_object) -> void:
 	if node == null:
 		return
 	bar_selected = card
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+	# ISSUE #454: no click sound here any more - the press already blipped (_on_press).
+	# SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
 	node.set_selected(true)
 	_bar_lifted_node = node
 	_bar_ring = UIKit.add_focus_frame(_layer)
@@ -451,7 +474,8 @@ func _begin_drag() -> void:
 
 	if node != null and is_instance_valid(node):
 		node.modulate.a = 0.3
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+	# ISSUE #454: the drag starts silently - the press already blipped.
+	# SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
 
 
 ## The ring sits on whatever the dragged card would land on, if that is allowed.

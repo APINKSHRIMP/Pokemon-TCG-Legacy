@@ -95,6 +95,8 @@ var zoom_image          : TextureRect = null
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	# Shortcut: H / pad Back toggles Show all / Show owned only (UIKit.set_shortcut).
+	UIKit.set_shortcut(hide_btn, UIInput.MENU_PAD_ALT, [KEY_H])
 	add_child(audio_player)
 
 	var audio_stream = load(SoundManagerScript.BGM_COIN_MODE)
@@ -394,6 +396,7 @@ func _select_character_by_name(sprite_name: String) -> void:
 	for child in grid.get_children():
 		if child.has_meta("sprite_name") and String(child.get_meta("sprite_name", "")).to_lower() == sprite_name.to_lower():
 			_select_character(child)
+			UIKit.focus_and_reveal(child)   # ISSUE #453
 			return
 
 
@@ -488,6 +491,15 @@ func _deselect_character(rect: Control) -> void:
 	_costume_art(rect).modulate = Color(0.8, 0.8, 0.8)
 	rect.scale        = Vector2(1.0, 1.0)
 	rect.pivot_offset = rect.size / 2.0
+	_remove_select_ring(rect)
+
+
+## ISSUE #450: the picked costume's ring (see _apply_selected_animation).
+func _remove_select_ring(rect: Control) -> void:
+	var ring = rect.get_meta("select_ring", null)
+	if ring != null and is_instance_valid(ring):
+		ring.queue_free()
+	rect.remove_meta("select_ring")
 
 
 ## The TextureRect inside a costume cell. Falls back to the cell so a caller can
@@ -508,6 +520,18 @@ func _apply_selected_animation(rect: Control) -> void:
 	var tween := create_tween()
 	tween.set_loops()
 	_active_tween = tween
+
+	# ISSUE #450: the gradient ring goes round the picked costume's BOX (the slot outline), as a
+	# child of the cell so it rides the cell's pulse. Removed in _deselect_character.
+	_remove_select_ring(rect)
+	rect.scale = Vector2.ONE
+	var ring := UIKit.add_selection_ring_rect(rect, rect.get_global_rect())
+	var inset: float = UITheme.SEL_RING_PX + 2.0
+	ring.position = -Vector2(inset, inset)
+	ring.size = rect.size + Vector2(inset, inset) * 2.0
+	UIKit.strengthen_ring(ring)   # ISSUE #451
+	rect.set_meta("select_ring", ring)
+	print("ISSUE #450 FIX ACTIVE: ring round the picked costume's box")
 
 	tween.tween_property(art, "modulate", Color.WHITE * 1.1, 0.2)
 	# ISSUE #163: grows to SELECT_PULSE, up from 1.1 - a 10% pulse was too subtle

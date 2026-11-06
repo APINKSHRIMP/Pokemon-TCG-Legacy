@@ -71,6 +71,7 @@ func invalidate_cpu_evaluation() -> void:
 func opponent_start_turn_checks() -> void:
 	if main._should_bail():
 		return
+	cpu_skip_reason = ""   # ISSUE #455: set again only if this turn deliberately skips its attack
 	# OLD ISSUE 309: Trainer locks now lift at the END of the locked side's turn (Trainer_Effects.tick_trainer_lock)
 	main.turn_number += 1
 	await main.turn_label_gap()   # ISSUE #369
@@ -3042,6 +3043,12 @@ func _defender_prevents_poison(defender: card_object) -> bool:
 			return true
 	return false
 
+## ISSUE #455: a CPU-chosen switch of the Defending Pokemon must gain more than this
+## (cpu_gust_gain, same units as cpu_pick_gust_target) to be worth an attack. TWEAKABLE.
+const GUST_MIN_GAIN := 0.0
+## ...and an attack whose switch gains nothing loses this much score (per flip chance).
+const GUST_POINTLESS_PENALTY := 60.0
+
 func score_parsed_effects(effects: Array, defender: card_object) -> float:
 	var score = 0.0
 
@@ -3149,11 +3156,25 @@ func score_parsed_effects(effects: Array, defender: card_object) -> float:
 			score += 25.0 * flip_mult
 
 		if effect["type"] == "force_switch":
-			# Forcing a switch is useful if the defender has built up energy/status
-			if defender.attached_energies.size() >= 2:
-				score += 25.0 * flip_mult
+			if effect.get("chooser", "defender") == "attacker":
+				# ISSUE #455: the CPU picks who comes up (Lure, Drag Off, Attract...). It is only worth
+				# anything when one of the player's Benched Pokemon is a BETTER Defending Pokemon for us
+				# than the one already there - otherwise the attack is a wasted turn (no damage) or at
+				# best plain damage, and a real attack / ending the turn beats it.
+				var gain: float = cpu_gust_gain(main.opponent_active_pokemon)
+				if gain == -INF:
+					pass   # nobody to switch to: the effect does nothing either way
+				elif gain <= GUST_MIN_GAIN:
+					score -= GUST_POINTLESS_PENALTY * flip_mult
+					print("ISSUE #455 FIX ACTIVE: switch-the-Defending attack - switching the Defending Pokemon gains nothing (", int(gain), "), scored down")
+				else:
+					score += clampf(gain * 0.1, 10.0, 60.0) * flip_mult
 			else:
-				score += 10.0 * flip_mult
+				# The player picks (Whirlwind): useful if the defender has built up energy/status
+				if defender.attached_energies.size() >= 2:
+					score += 25.0 * flip_mult
+				else:
+					score += 10.0 * flip_mult
 
 
 		if effect["type"] == "self_switch":
@@ -4715,7 +4736,13 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		# flagged as doing nothing here, or its recoil would knock out our own Active too.
 		var sure_ko: bool = effective_min_damage >= player_hp and score > -9000.0 \
 			and not (has_self_damage and int(self_damage_amount) >= main.opponent_active_pokemon.current_hp)
-		attack_score_log.append({"name": attack.get("name", ""), "score": score, "exp": effective_exp_damage, "index": i, "ko": sure_ko})
+		# ISSUE #455: an attack whose ONLY effect is the CPU choosing a Benched Pokemon to switch in
+		# (Lure) and that does no damage is a wasted turn when no Benched Pokemon is a better
+		# Defending Pokemon than the current one. Flagged so that, chosen or not, it is never used.
+		var pointless_switch: bool = effective_exp_damage <= 0 and not parsed_effects.is_empty() \
+			and parsed_effects.all(func(e): return e.get("type", "") == "force_switch" and e.get("chooser", "") == "attacker") \
+			and cpu_gust_gain(main.opponent_active_pokemon) <= GUST_MIN_GAIN
+		attack_score_log.append({"name": attack.get("name", ""), "score": score, "exp": effective_exp_damage, "index": i, "ko": sure_ko, "pointless": pointless_switch})
 		if score > best_attack_score:
 			best_attack_score = score
 			best_attack_index = i
@@ -4754,10 +4781,18 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	cpu_no_damage_streak = (cpu_no_damage_streak + 1) if (chosen_exp <= 0 and any_damaging) else 0
 
 	# A scripted tutorial turn uses the attack it names.
-	if main.tutorial.cpu_scripted():
+	var _scripted_attack: bool = main.tutorial.cpu_scripted()
+	if _scripted_attack:
 		for _ti in attacks.size():
 			if String(attacks[_ti].get("name", "")) == main.tutorial.cpu_attack_choice():
 				best_attack_index = _ti
+	# ISSUE #455: the best on offer is a switch that helps nobody - a person just ends the turn.
+	if not _scripted_attack:
+		for entry in attack_score_log:
+			if int(entry["index"]) == best_attack_index and bool(entry.get("pointless", false)):
+				print("ISSUE #455 FIX ACTIVE: CPU skips ", entry["name"], " - no Benched Pokemon is a better target than the Active; ending the turn")
+				cpu_skip_reason = "pointless_switch"
+				return
 	# Execute the chosen attack
 	var chosen_attack = attacks[best_attack_index]
 	var chosen_name = chosen_attack.get("name", "")
@@ -8196,42 +8231,67 @@ func cpu_pick_gust_target(pool: Array, damage: int = 0, attacker: card_object = 
 	for p in pool:
 		if p == null or p.current_hp <= 0:
 			continue
-		var s := 0.0
-		if damage > 0:
-			var dmg := damage
-			if attacker != null:
-				dmg = int(main.calculate_final_damage(damage, attacker.get_effective_types(), p, attacker)["damage"])
-			if dmg >= p.current_hp:
-				s += 1000.0 + (500.0 if main.is_ex_pokemon(p) else 0.0)
-			else:
-				s += float(dmg) * 2.0
-		var can_attack := false
-		for atk in p.metadata.get("attacks", []):
-			if get_unmet_energy_count(atk, p) == 0:
-				can_attack = true
-				break
-		if not can_attack:
-			s += 120.0
-			s += float(main.get_retreat_cost(p)) * 30.0          # harder to escape = longer stranded
-		else:
-			s -= _cpu_threat_score(p)                            # don't hand the player its best attacker
-		s += cpu_decision_override(p, "gust")
-		# OLD ISSUE 375 PLANNER: the planned Gust target.
-		var _pl_t: Dictionary = cpu_plan("trainer")
-		if not _pl_t.is_empty() and _pl_t["desc"].get("gust_card") == p:
-			s += 5000.0
-		# OLD ISSUE 375 LOOKAHEAD: the exchange our Active would have against this target.
-		if CpuWeights.on("rule.lookahead") and CpuWeights.g("look.gust", 1.0) > 0.0 and p in main.player_bench:
-			var gme = attacker if attacker != null else main.opponent_active_pokemon
-			s += _la().exchange(gme, p, true, 0) * CpuWeights.g("look.gust_pick", 1.0)
-		# OLD ISSUE 375: learned matchup — drag up what OUR Active fares best against.
-		var gust_me = attacker if attacker != null else main.opponent_active_pokemon
-		if gust_me != null and p in main.player_bench:
-			s += CpuWeights.g("learn.gust", 100.0) * cpu_learned_matchup(gust_me, p)
+		var s := _gust_target_score(p, damage, attacker, false)
 		if s > best_s:
 			best_s = s
 			best = p
 	return best
+
+
+## ISSUE #455: how much better for the CPU the best Benched target is than the Defending Pokemon
+## it already faces (> 0 = switching helps). Same scoring as cpu_pick_gust_target, with the current
+## Active scored as if it were a candidate - so "leave it where it is" competes on equal terms.
+## -INF when there is nothing to switch to.
+func cpu_gust_gain(attacker: card_object = null, damage: int = 0) -> float:
+	var cur: card_object = main.player_active_pokemon
+	if cur == null or main.player_bench.is_empty():
+		return -INF
+	var best := -INF
+	for p in main.player_bench:
+		if p != null and p.current_hp > 0:
+			best = maxf(best, _gust_target_score(p, damage, attacker, false))
+	if best == -INF:
+		return -INF
+	return best - _gust_target_score(cur, damage, attacker, true)
+
+
+## One candidate's worth as the new Defending Pokemon (see cpu_pick_gust_target). `is_current`
+## scores the Pokemon that is ALREADY Active: the Bench-only bonuses (planner pick, lookahead
+## exchange, learned matchup) are computed for it too, so the comparison is like for like.
+func _gust_target_score(p: card_object, damage: int, attacker: card_object, is_current: bool) -> float:
+	var s := 0.0
+	if damage > 0:
+		var dmg := damage
+		if attacker != null:
+			dmg = int(main.calculate_final_damage(damage, attacker.get_effective_types(), p, attacker)["damage"])
+		if dmg >= p.current_hp:
+			s += 1000.0 + (500.0 if main.is_ex_pokemon(p) else 0.0)
+		else:
+			s += float(dmg) * 2.0
+	var can_attack := false
+	for atk in p.metadata.get("attacks", []):
+		if get_unmet_energy_count(atk, p) == 0:
+			can_attack = true
+			break
+	if not can_attack:
+		s += 120.0
+		s += float(main.get_retreat_cost(p)) * 30.0          # harder to escape = longer stranded
+	else:
+		s -= _cpu_threat_score(p)                            # don't hand the player its best attacker
+	s += cpu_decision_override(p, "gust")
+	# OLD ISSUE 375 PLANNER: the planned Gust target.
+	var _pl_t: Dictionary = cpu_plan("trainer")
+	if not _pl_t.is_empty() and _pl_t["desc"].get("gust_card") == p:
+		s += 5000.0
+	# OLD ISSUE 375 LOOKAHEAD: the exchange our Active would have against this target.
+	if CpuWeights.on("rule.lookahead") and CpuWeights.g("look.gust", 1.0) > 0.0 and (is_current or p in main.player_bench):
+		var gme = attacker if attacker != null else main.opponent_active_pokemon
+		s += _la().exchange(gme, p, true, 0) * CpuWeights.g("look.gust_pick", 1.0)
+	# OLD ISSUE 375: learned matchup — drag up what OUR Active fares best against.
+	var gust_me = attacker if attacker != null else main.opponent_active_pokemon
+	if gust_me != null and (is_current or p in main.player_bench):
+		s += CpuWeights.g("learn.gust", 100.0) * cpu_learned_matchup(gust_me, p)
+	return s
 
 # OWN-POKEMON BENEFIT RECIPIENT — rank one of the CPU's own Pokemon (active or bench) as the target for
 # a beneficial effect: attaching/moving Energy onto it, healing it, evolving it, or switching it in.
@@ -8355,6 +8415,9 @@ var CPU_TRAINER_PLAY_THRESHOLD: float:
 # Energy attachment) or "late" (after Energy and retreat).
 var cpu_trainer_phase := "late"
 var cpu_no_damage_streak := 0        # consecutive CPU attacks that did no damage while a damaging one was available
+## ISSUE #455: why the CPU chose not to attack this turn ("" = it did not choose to skip). The
+## autotester reads it so a deliberate skip is not flagged as a missed attack.
+var cpu_skip_reason: String = ""
 var cpu_last_retreat_turn := -99     # main.turn_number of the CPU's last voluntary retreat
 var _turn_start_active: card_object = null   # ISSUE #366: the CPU's Active when its turn began
 var cpu_final_power_check := false   # true only for the last power pass before the attack (turn-ending powers)

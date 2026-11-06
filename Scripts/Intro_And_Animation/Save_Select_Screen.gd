@@ -348,7 +348,6 @@ func _select(slot: int, with_sound: bool = true) -> void:
 	_selected = slot
 	if with_sound:
 		# ISSUE #437: picking a save slot uses the press-any-button sound.
-		print("ISSUE #437 FIX ACTIVE: save slot pick plays SFX_plus_select")
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 
 	if _ring != null and is_instance_valid(_ring):

@@ -86,6 +86,8 @@ var zoom_caption         : Label = null
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	# Shortcut: H / pad Back toggles Show all / Show owned only (UIKit.set_shortcut).
+	UIKit.set_shortcut(hide_btn, UIInput.MENU_PAD_ALT, [KEY_H])
 	add_child(audio_player)
 	var audio_stream = load(SoundManagerScript.BGM_COIN_MODE)
 	if audio_stream != null:
