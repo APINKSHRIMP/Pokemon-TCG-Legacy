@@ -97,9 +97,11 @@ const CLOSED_LIGHTS_TIMES := ["Bedtime"]
 ##
 ## TWEAKABLE -- how much of the OUTDOOR colour tint reaches indoors (0 = none, 1 = the full
 ## outdoor tint). Only the hue shift; the darkening is INTERIOR_BRIGHTNESS below.
-const INTERIOR_TINT := {"Morning": 0.25, "Afternoon": 0.0, "Evening": 0.3, "Night": 0.3, "Bedtime": 0.35}
+## ISSUE #488: tint and darkening both pushed ~25% stronger (tint was 0.25 / 0 / 0.3 / 0.3 / 0.35;
+## brightness was 0.97 / 1.0 / 0.92 / 0.82 / 0.72 - the DARKENING, 1 - brightness, is what grew 25%).
+const INTERIOR_TINT := {"Morning": 0.3125, "Afternoon": 0.0, "Evening": 0.375, "Night": 0.375, "Bedtime": 0.4375}
 ## TWEAKABLE -- indoor brightness multiplier (outdoors is 0.95 / 1.0 / 0.85 / 0.459 / 0.25).
-const INTERIOR_BRIGHTNESS := {"Morning": 0.97, "Afternoon": 1.0, "Evening": 0.92, "Night": 0.82, "Bedtime": 0.72}
+const INTERIOR_BRIGHTNESS := {"Morning": 0.9625, "Afternoon": 1.0, "Evening": 0.9, "Night": 0.775, "Bedtime": 0.65}
 ## TWEAKABLE -- indoor lights-sheet strength (same meaning as LIGHTS).
 const INTERIOR_LIGHTS := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.5, "Night": 1.0, "Bedtime": 1.1}
 ## TWEAKABLE -- indoor lamp (PointLight2D) strength per time (same meaning as LIGHT_ENERGY).
@@ -149,6 +151,7 @@ static func apply_time(time: String, interior: bool = false) -> void:
 	var b: float = BRIGHTNESS.get(time, 1.0)
 	var lights: float = LIGHTS.get(time, 0.0)
 	if interior:
+		print("ISSUE #488 FIX ACTIVE: interior grade ", time, " tint ", INTERIOR_TINT.get(time, 0.0), " brightness ", INTERIOR_BRIGHTNESS.get(time, 1.0))
 		k *= INTERIOR_TINT.get(time, 0.0)
 		b = INTERIOR_BRIGHTNESS.get(time, 1.0)
 		lights = INTERIOR_LIGHTS.get(time, 0.0)

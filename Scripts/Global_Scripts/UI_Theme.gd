@@ -449,6 +449,9 @@ const THEMES := {
 
 # sunset_dark is the look the game shipped in, under its old name spectrum_night.
 const DEFAULT_THEME := "gengar"   # ISSUE #392: was sunset_dark (renamed)
+## ISSUE #482: the theme picker is hidden and every save is held on DEFAULT_THEME. The other themes and
+## all the switching code are still here - set this false to offer them again.
+const THEME_PICKER_HIDDEN := true
 
 # ─── Display names ───────────────────────────────────────────────────────────
 # DELIBERATELY EMPTY. theme_display_name() title-cases an id, so every current

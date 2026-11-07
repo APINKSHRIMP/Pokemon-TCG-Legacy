@@ -57,6 +57,8 @@ func build_test_opponent_data() -> Dictionary:
 
 var current_opponent_map: String = ""   # character-file basename for the map the battle started on
 var returning_from_battle: bool = false
+## ISSUE #470: coin files the coin case builds invisible (Olly's walkthrough flies them in). Not saved.
+var coin_walk_hide: Array = []
 var battle_result: String = ""  # "win" or "loss"
 
 # ── The finished match's summary line ─────────────────────────────────────────
@@ -307,9 +309,11 @@ func set_window_size(choice: String, save: bool = true) -> void:
 		_save_setting_field("window_size", window_size_setting)
 	apply_display()
 
-## The windowed sizes that fit inside the current monitor's usable area.
+## The windowed sizes that fit on the current monitor.
+## ISSUE #456: measured against the WHOLE screen, not the usable rect - the taskbar made a 1080p
+## monitor's usable area ~1920x1040, so 1920x1080 windowed was never offered on a 1080p screen.
 func window_size_options_fitting() -> Array:
-	var usable := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen()).size
+	var usable := DisplayServer.screen_get_size(DisplayServer.window_get_current_screen())
 	var out: Array = []
 	for opt in WINDOW_SIZE_OPTIONS:
 		var s := _parse_window_size(opt)
@@ -341,9 +345,21 @@ func apply_display() -> void:
 			var want := _parse_window_size(window_size_setting)
 			var screen := DisplayServer.window_get_current_screen()
 			var usable := DisplayServer.screen_get_usable_rect(screen)
-			want = Vector2i(mini(want.x, usable.size.x), mini(want.y, usable.size.y))
+			var whole := Rect2i(DisplayServer.screen_get_position(screen), DisplayServer.screen_get_size(screen))
+			var fits_usable: bool = want.x <= usable.size.x and want.y <= usable.size.y
+			want = Vector2i(mini(want.x, whole.size.x), mini(want.y, whole.size.y))
 			DisplayServer.window_set_size(want)
-			DisplayServer.window_set_position(usable.position + (usable.size - want) / 2)
+			if fits_usable:
+				DisplayServer.window_set_position(usable.position + (usable.size - want) / 2)
+			else:
+				# ISSUE #456: a window the size of the monitor (1920x1080 on a 1080p screen). The game area
+				# is pinned to the screen's top-left, nudged down just enough to keep the title bar on screen;
+				# the bottom edge runs under the taskbar, which is what a full-size window means.
+				DisplayServer.window_set_position(whole.position)
+				var deco: Vector2i = DisplayServer.window_get_position() - DisplayServer.window_get_position_with_decorations()
+				var pos := whole.position + Vector2i((whole.size.x - want.x) / 2, maxi(0, deco.y))
+				DisplayServer.window_set_position(pos)
+				print("ISSUE #456 FIX ACTIVE: full-screen-sized window ", want, " placed at ", pos, " (title bar ", deco.y, "px)")
 	print("DISPLAY: ", window_mode_setting, " ", window_size_setting,
 		" -> canvas ", get_tree().root.get_visible_rect().size if is_inside_tree() else Vector2.ZERO)
 
@@ -468,6 +484,10 @@ func set_ui_theme(theme_name: String, save: bool = true) -> void:
 	if ui == null:
 		return
 	var name := theme_name
+	# ISSUE #482: themes are hidden - a save that picked another one is put back on the default.
+	if ui.THEME_PICKER_HIDDEN and name != ui.DEFAULT_THEME:
+		print("ISSUE #482 FIX ACTIVE: theme '", name, "' ignored, picker hidden -> ", ui.DEFAULT_THEME)
+		name = ui.DEFAULT_THEME
 	if name == "" or not ui.THEMES.has(name):
 		if name != "":
 			push_warning("GameState: unknown UI theme '" + name + "'")

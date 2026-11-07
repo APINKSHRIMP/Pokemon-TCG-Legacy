@@ -123,6 +123,8 @@ func board_free() -> bool:
 		return false
 	if CardDisplay.zoom_active or CardDisplay.input_blocked:
 		return false
+	if main.nav_input_settling():   # ISSUE #465
+		return false
 	return true
 
 

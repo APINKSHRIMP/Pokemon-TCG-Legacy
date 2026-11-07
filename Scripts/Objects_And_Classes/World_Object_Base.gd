@@ -108,6 +108,51 @@ func _ready():
 		elif rf != "" and animated_sprite.sprite_frames != null and animated_sprite.sprite_frames.has_animation("idle_" + rf):
 			current_facing = rf
 			animated_sprite.play("idle_" + rf)
+	set_process(false)
+	# ISSUE #474 / #483: the opponent just battled comes back held on the spot it was fought on, facing
+	# the player (MapManager._face_battled_opponent turns it), and only goes back to its wander / patrol
+	# once the player has stepped out of its interaction range - and never sooner than BATTLE_HOLD_MIN.
+	if has_meta("battle_hold"):
+		remove_meta("battle_hold")
+		_start_battle_hold()
+
+
+# ── ISSUE #474 / #483: held after a battle ───────────────────────────────────
+## TWEAKABLE: the shortest time (s) a just-battled opponent stays put facing the player.
+const BATTLE_HOLD_MIN := 0.5
+var _battle_hold: bool = false
+var _battle_hold_t: float = 0.0
+
+func _start_battle_hold() -> void:
+	_battle_hold = true
+	_battle_hold_t = 0.0
+	velocity = Vector2.ZERO
+	_is_wandering = false
+	set_physics_process(false)
+	if direction_timer != null:
+		direction_timer.stop()
+	set_process(true)
+	print("ISSUE #474 FIX ACTIVE: ", name, " held facing the player after the battle")
+
+
+func _process(delta: float) -> void:
+	if not _battle_hold:
+		set_process(false)
+		return
+	_battle_hold_t += delta
+	if _battle_hold_t < BATTLE_HOLD_MIN:
+		return
+	# Still in the player's interaction range (their InteractionArea lists us) = keep holding.
+	var players := get_tree().get_nodes_in_group("player")
+	if not players.is_empty() and "_nearby_candidates" in players[0] and self in players[0]._nearby_candidates:
+		return
+	# Talking to us again (a message is up) = keep holding; resume_movement() runs when it closes.
+	if MapManager.message_panel != null and MapManager.message_panel.visible:
+		return
+	_battle_hold = false
+	set_process(false)
+	print("ISSUE #483 FIX ACTIVE: ", name, " released from the post-battle hold after ", snappedf(_battle_hold_t, 0.1), "s")
+	resume_movement()
 
 # ============================================================
 # MOVEMENT HELPERS
@@ -458,6 +503,9 @@ func freeze():
 	animated_sprite.play("idle_" + current_facing)
 
 func resume_movement():
+	# ISSUE #474 / #483: a post-battle hold outlives a conversation closing - _process releases it.
+	if _battle_hold:
+		return
 	set_physics_process(true)
 	match movement_pattern:
 		"idle_random":

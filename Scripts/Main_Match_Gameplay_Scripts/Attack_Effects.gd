@@ -478,6 +478,21 @@ func dispatch_attack(attack: Dictionary, attacker: card_object, defender: card_o
 	return false
 
 
+## ISSUE #492: "was it Knocked Out?" after `await main.check_all_knockouts()`. HP alone can't
+## answer that any more: a Knocked Out Pokémon goes to the discard pile with its HP reset to full
+## (#404), so `current_hp > 0` read TRUE for it and the rest of the attack ran on a card in the
+## discard pile - Belly Drum attached 2 Energy from the deck to a Poliwhirl that had just knocked
+## itself out (the autotester found the Energy "in no zone"). Alive = still in play AND HP left.
+func _ko_alive(p) -> bool:
+	if p == null or not (p is card_object) or p.current_hp <= 0:
+		return false
+	if p == main.player_active_pokemon or p == main.opponent_active_pokemon \
+			or p in main.player_bench or p in main.opponent_bench:
+		return true
+	print("ISSUE #492 FIX ACTIVE: ", p.metadata.get("name", "?"), " left play during the attack - its follow-up effect is skipped")
+	return false
+
+
 # Post-attack cleanup shared by both player and CPU. Handles:
 #   - Recording last_attack / attacked_this_turn (when is_damage is true)
 #   - check_all_knockouts
@@ -1341,8 +1356,8 @@ func _expected_damage_for(attack: Dictionary, range_result: Dictionary) -> int:
 		if "flip a coin until" in text:
 			return base_damage   # expected heads before the first tails is exactly 1
 
-	# Single coin gating the whole attack.
-	if "if tails, this attack does nothing" in text:
+	# Single coin gating the whole attack. ISSUE #499: "...does no damage" (Risky Attack, Random ESP) is the same gate.
+	if "if tails, this attack does nothing" in text or "if tails, this attack does no damage" in text:
 		return int(round(base_damage / 2.0))
 
 	# Everything else variable (heads bonuses, per-energy scaling with unknowns): midpoint.
@@ -1371,7 +1386,11 @@ func _estimate_attack_damage_range_raw(attack: Dictionary, attacker: card_object
 		return {"min": 0, "max": base_damage * 2}
 
 	# --- "IF TAILS, DOES NOTHING" ---
-	if "if tails, this attack does nothing" in text:
+	# ISSUE #499: "If tails, this attack does no damage (to the Defending Pokemon) and <it> does N damage to itself"
+	# (Giovanni's Machoke Risky Attack, Sabrina's Abra Random ESP) read as a sure hit - min was the full damage.
+	if "if tails, this attack does nothing" in text or "if tails, this attack does no damage" in text:
+		if "does no damage" in text:
+			print("ISSUE #499 FIX ACTIVE: coin-gated damage range 0-", base_damage)
 		return {"min": 0, "max": base_damage}
 	
 	# --- HALF HP (Raticate Super Fang) ---
@@ -5856,7 +5875,7 @@ func execute_magic_pollen(attacker: card_object, defender: card_object, is_oppon
 		if main._should_bail(): return
 		await main.check_all_knockouts()
 		return
-	if defender == null or defender.current_hp <= 0:
+	if not _ko_alive(defender):
 		await main.check_all_knockouts()
 		return
 	var statuses = ["Asleep", "Confused", "Paralyzed", "Poisoned"]
@@ -9483,7 +9502,7 @@ func execute_neo1_jaw_clamp(attacker: card_object, defender: card_object, is_opp
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		defender.jaw_clamp_locked = true
 		if is_opponent:
 			main.player_retreat_disabled = true
@@ -9674,7 +9693,7 @@ func execute_neo1_spider_web(attacker: card_object, defender: card_object, is_op
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		var coin = await main.flip_coin(false, is_opponent)
 		if main._should_bail(): return
 		if coin and not is_protected_from_effects(defender):
@@ -9918,7 +9937,7 @@ func execute_neo1_raging_charge(attacker: card_object, defender: card_object, is
 	await main.check_all_knockouts()
 	if main._should_bail(): return
 	# 20 recoil damage to self
-	if attacker.current_hp > 0:
+	if _ko_alive(attacker):
 		await gym2_self_damage(attacker, is_opponent, 20)
 		if main._should_bail(): return
 		await main.show_message("RAGING CHARGE RECOIL: GRANBULL TOOK 20 DAMAGE!")
@@ -9953,7 +9972,7 @@ func execute_neo1_sticky_nectar(attacker: card_object, defender: card_object, is
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if coin and defender != null and defender.current_hp > 0:
+	if coin and _ko_alive(defender):
 		defender.jaw_clamp_locked = true
 		if is_opponent: main.player_retreat_disabled = true
 		else: main.opponent_retreat_disabled = true
@@ -9995,7 +10014,7 @@ func execute_neo1_screech(attacker: card_object, defender: card_object, is_oppon
 		if main._should_bail(): return
 		await main.check_all_knockouts()
 		if main._should_bail(): return
-	if defender != null and defender.current_hp > 0 and not is_protected_from_effects(defender):
+	if _ko_alive(defender) and not is_protected_from_effects(defender):
 		defender.screech_damage_bonus = 20
 		defender.screech_set_turn = main.turn_number   # OLD ISSUE 316: lasts until the end of the attacker's next turn
 		await main.show_message("SCREECH! NEXT ATTACK AGAINST " + defender.metadata.get("name","").to_upper() + " DOES 20 MORE DAMAGE!")
@@ -10036,7 +10055,7 @@ func execute_neo1_freeze(attacker: card_object, defender: card_object, is_oppone
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		var coin = await main.flip_coin(false, is_opponent)
 		if main._should_bail(): return
 		if coin and not is_protected_from_effects(defender):
@@ -10059,7 +10078,7 @@ func execute_neo1_strange_powder(attacker: card_object, defender: card_object, i
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		var coin = await main.flip_coin(false, is_opponent)
 		if main._should_bail(): return
 		# OLD ISSUE 312: via apply_status_effect (Agility, Transparency, Thick Skinned, Mirror Move record)
@@ -10227,7 +10246,7 @@ func execute_neo1_floodlight(attacker: card_object, defender: card_object, is_op
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		var coin = await main.flip_coin(false, is_opponent)
 		if main._should_bail(): return
 		if coin:
@@ -10543,7 +10562,7 @@ func execute_neo2_electric_bolt(attacker: card_object, defender: card_object, is
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		main.card_ops.apply_status(defender, "Paralyzed", not is_opponent)
 		await main.show_message("BOTH HEADS! " + defender.metadata.get("name","").to_upper() + " IS PARALYZED!")
 		if main._should_bail(): return
@@ -10626,7 +10645,7 @@ func execute_neo2_crunch(attacker: card_object, defender: card_object, is_oppone
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0 and not is_protected_from_effects(defender):
+	if _ko_alive(defender) and not is_protected_from_effects(defender):
 		defender.screech_damage_bonus = 20
 		defender.screech_set_turn = main.turn_number   # OLD ISSUE 316: until the end of the attacker's next turn
 		await main.show_message("CRUNCH! NEXT ATTACK ON " + defender.metadata.get("name","").to_upper() + " DEALS +20!")
@@ -10672,7 +10691,7 @@ func execute_neo2_triple_poison(attacker: card_object, defender: card_object, is
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		var coin = await main.flip_coin(false, is_opponent)
 		if main._should_bail(): return
 		if coin:
@@ -10696,7 +10715,7 @@ func execute_neo2_magic_dust(attacker: card_object, defender: card_object, is_op
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender == null or defender.current_hp <= 0:
+	if not _ko_alive(defender):
 		return
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
@@ -10898,7 +10917,7 @@ func execute_neo2_squeeze(attacker: card_object, defender: card_object, is_oppon
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if coin and defender != null and defender.current_hp > 0:
+	if coin and _ko_alive(defender):
 		main.card_ops.apply_status(defender, "Paralyzed", not is_opponent)
 		await main.show_message("HEADS! SQUEEZE! +" + str(bonus_damage) + " DAMAGE AND PARALYZED!")
 		if main._should_bail(): return
@@ -10944,7 +10963,7 @@ func execute_neo2_belly_drum(attacker: card_object, is_opponent: bool) -> void:
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if attacker.current_hp <= 0:
+	if not _ko_alive(attacker):
 		return
 	await main.show_message("SEARCHING FOR 2 BASIC ENERGY CARDS...")
 	if main._should_bail(): return
@@ -11215,7 +11234,7 @@ func execute_neo2_headpress(attacker: card_object, defender: card_object, is_opp
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		main.card_ops.apply_status(defender, "Paralyzed", not is_opponent)
 		await main.show_message("HEADS! HEADPRESS! " + defender.metadata.get("name","").to_upper() + " IS PARALYZED!")
 		if main._should_bail(): return
@@ -11233,7 +11252,7 @@ func execute_neo2_pursuit(attacker: card_object, defender: card_object, is_oppon
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		defender.pursuit_active = true
 		await main.show_message("PURSUIT! IF " + defender.metadata.get("name","").to_upper() + " RETREATS, TAKE 10 DAMAGE!")
 		if main._should_bail(): return
@@ -11534,7 +11553,7 @@ func execute_neo3_triggered_poison(attacker: card_object, defender: card_object,
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		defender.triggered_poison_active = true
 		await main.show_message("TRIGGERED POISON! IF " + defender.metadata.get("name","").to_upper() + " IS GIVEN ENERGY NEXT TURN, IT BECOMES POISONED!")
 		if main._should_bail(): return
@@ -11561,7 +11580,7 @@ func execute_neo3_cross_attack(attacker: card_object, defender: card_object, is_
 			if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if heads >= 2 and defender != null and defender.current_hp > 0:
+	if heads >= 2 and _ko_alive(defender):
 		main.card_ops.apply_status(defender, "Confused", not is_opponent)
 		await main.show_message(str(heads) + " HEADS! " + defender.metadata.get("name","").to_upper() + " IS CONFUSED!")
 		if main._should_bail(): return
@@ -11858,7 +11877,7 @@ func execute_neo3_delta_beam(attacker: card_object, defender: card_object, is_op
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender == null or defender.current_hp <= 0: return
+	if not _ko_alive(defender): return
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
 	if not coin:
@@ -11912,7 +11931,7 @@ func execute_neo3_aurora_wave(attacker: card_object, defender: card_object, is_o
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender == null or defender.current_hp <= 0: return
+	if not _ko_alive(defender): return
 	var coin1 = await main.flip_coin(true, is_opponent)
 	if main._should_bail(): return
 	var coin2 = await main.flip_coin(true, is_opponent)
@@ -12036,7 +12055,7 @@ func execute_neo3_twister(attacker: card_object, defender: card_object, is_oppon
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender == null or defender.current_hp <= 0: return
+	if not _ko_alive(defender): return
 	var heads_count = (1 if coin1 else 0) + (1 if coin2 else 0)
 	var player_picks: Array = []
 	if not is_opponent and not defender.attached_energies.is_empty() \
@@ -12355,7 +12374,7 @@ func execute_neo3_strange_dance(attacker: card_object, defender: card_object, is
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if coin and defender != null and defender.current_hp > 0:
+	if coin and _ko_alive(defender):
 		main.card_ops.apply_status(defender, "Confused", not is_opponent)
 		await main.show_message("STRANGE DANCE! HEADS! " + str(damage) + " DAMAGE + " + defender.metadata.get("name","").to_upper() + " IS CONFUSED!")
 	if main._should_bail(): return
@@ -12422,7 +12441,7 @@ func execute_neo3_octazooka(attacker: card_object, defender: card_object, is_opp
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender == null or defender.current_hp <= 0: return
+	if not _ko_alive(defender): return
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
 	if coin:
@@ -12731,7 +12750,7 @@ func execute_neo3_magma_ring(attacker: card_object, defender: card_object, is_op
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0 and not is_protected_from_effects(defender):
+	if _ko_alive(defender) and not is_protected_from_effects(defender):
 		# OLD ISSUE 319: the retreat lock itself was never set (only a marker flag).
 		if is_opponent: main.player_retreat_disabled = true
 		else: main.opponent_retreat_disabled = true
@@ -13508,7 +13527,7 @@ func execute_neo4_bubble_jump(attacker: card_object, defender: card_object, is_o
 	await main.check_all_knockouts()
 	if main._should_bail(): return
 	var own_bench = main.opponent_bench if is_opponent else main.player_bench
-	if own_bench.is_empty() or attacker.current_hp <= 0:
+	if own_bench.is_empty() or not _ko_alive(attacker):
 		return
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
@@ -15443,7 +15462,7 @@ func execute_np_energy_gift(attacker: card_object, defender: card_object, is_opp
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if attacker.current_hp <= 0: return
+	if not _ko_alive(attacker): return
 	# Find a typed energy on attacker
 	var typed_energy: Array = []
 	for e in attacker.attached_energies:
@@ -16889,7 +16908,7 @@ func execute_ecard2_spiral_aura(attacker: card_object, defender: card_object, is
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender.current_hp <= 0:
+	if not _ko_alive(defender):
 		print("ATTACK EXECUTED: Spiral Aura — defender KO'd, no switch")
 		return
 	var target_bench = main.player_bench if is_opponent else main.opponent_bench
@@ -17231,7 +17250,7 @@ func execute_ecard2_miracle_tail(attacker: card_object, defender: card_object, i
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender == null or defender.current_hp <= 0:
+	if not _ko_alive(defender):
 		return
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
@@ -17449,7 +17468,7 @@ func execute_ecard2_skedaddle(attacker: card_object, is_opponent: bool) -> void:
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if attacker.current_hp <= 0 or active_switch_locked(is_opponent):
+	if not _ko_alive(attacker) or active_switch_locked(is_opponent):
 		return
 	var new_active = bench[0]
 	if not is_opponent and bench.size() > 1:
@@ -19108,7 +19127,7 @@ func execute_ex2_discard_for_status(attacker: card_object, defender: card_object
 		return
 	var do_it = true
 	var dfs_e: card_object = null
-	if defender == null or defender.current_hp <= 0:
+	if not _ko_alive(defender):
 		do_it = false   # nothing left to affect
 	elif not is_opponent:
 		do_it = await main.trainer_effects.gym1_prompt_yes_no(attacker, "DISCARD ENERGY?", "Discard a " + energy_type + " Energy to make the Defending Pokemon " + status + "?", "DISCARD", "SKIP")
@@ -21251,7 +21270,7 @@ func execute_ex4_delayed_status(attacker: card_object, defender: card_object, is
 		if main._should_bail(): return
 		await main.check_all_knockouts()
 		if main._should_bail(): return
-	if defender != null and defender.current_hp > 0:
+	if _ko_alive(defender):
 		defender.set_effect("ex4_delayed_status", "until_leaves_play", {"status": status})
 		await main.show_message("A DELAYED " + status.to_upper() + " WILL HIT AT THE END OF THE OPPONENT'S NEXT TURN!")
 		if main._should_bail(): return
@@ -21867,7 +21886,7 @@ func execute_ex4_energy_flip(attacker: card_object, is_opponent: bool) -> void:
 	if main._should_bail(): return
 	# OLD ISSUE 328: the CPU used to skip this. It moves the player's most useful Energy onto the Pokémon that can
 	# use it least (cpu_pick_energy_dump_target) when that is a different Pokémon.
-	if is_opponent and target.current_hp > 0 and target.attached_energies.size() > 0:
+	if is_opponent and _ko_alive(target) and target.attached_energies.size() > 0:
 		var cpu_others = _ex4_opp_pool(is_opponent).filter(func(c): return c != null and c != target and c.current_hp > 0)
 		if not cpu_others.is_empty():
 			var ce = main.cpu_ai.cpu_pick_energy_to_discard_from(target)
@@ -21925,7 +21944,7 @@ func execute_ex4_crushing_wave(attacker: card_object, is_opponent: bool) -> void
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if target.current_hp > 0 and target.attached_energies.size() > 0:
+	if _ko_alive(target) and target.attached_energies.size() > 0:
 		var coin = await main.flip_coin(false, is_opponent)
 		if main._should_bail(): return
 		if coin:
@@ -24020,7 +24039,7 @@ func execute_ex6_hyper_whirlpool(attacker: card_object, defender: card_object, i
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender == null or defender.current_hp <= 0:
+	if not _ko_alive(defender):
 		return
 	var heads = 0
 	while true:
@@ -27853,7 +27872,7 @@ func execute_ex10_hidden_power(attacker: card_object, defender: card_object, is_
 			if base > 0 and defender != null:
 				await gym1_hit_active(attacker, defender, is_opponent, base); did_damage = true
 			await main.check_all_knockouts()
-			if attacker.current_hp > 0 and not main._should_bail():
+			if _ko_alive(attacker) and not main._should_bail():
 				await _ex10_return_pokemon_to_hand(attacker, is_opponent)
 		"P":
 			for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
@@ -28765,7 +28784,7 @@ func execute_ex11_smash_turn(attacker: card_object, defender: card_object, is_op
 	await main.check_all_knockouts()
 	if main._should_bail(): return
 	var bench = main.opponent_bench if is_opponent else main.player_bench
-	if bench.is_empty() or attacker.current_hp <= 0: return
+	if bench.is_empty() or not _ko_alive(attacker): return
 	await apply_self_switch(attacker, is_opponent, true)   # OLD ISSUE 326: CPU never switched; prompt named "Ditto" on every card
 	if main._should_bail(): return
 
@@ -29171,7 +29190,7 @@ func execute_ex12_tender_tentacles(attacker: card_object, defender: card_object,
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if attacker.react_energy_count() > 0 and attacker.current_hp > 0:
+	if attacker.react_energy_count() > 0 and _ko_alive(attacker):
 		await main.card_ops.heal_pokemon(attacker, 20, is_opponent)
 		if main._should_bail(): return
 
@@ -29584,7 +29603,7 @@ func execute_ex12_ex_shield(attacker: card_object, defender: card_object, is_opp
 		if main._should_bail(): return
 		await main.check_all_knockouts()
 		if main._should_bail(): return
-	if attacker.current_hp > 0:
+	if _ko_alive(attacker):
 		attacker.set_effect("ex12_ex_shield", "end_of_opponent_turn", {})
 		await main.show_message(attacker.metadata.get("name","").to_upper() + " IS PROTECTED FROM POKÉMON-ex NEXT TURN!")
 		if main._should_bail(): return
@@ -30222,7 +30241,7 @@ func execute_ex13_devo_crush(attacker: card_object, defender: card_object, is_op
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender == null or defender.current_hp <= 0: return
+	if not _ko_alive(defender): return
 	if defender.attached_pre_evolutions.is_empty(): return
 	if attacker.attached_energies.size() < 2: return
 	var do_it = is_opponent
@@ -30471,7 +30490,7 @@ func execute_ex14_night_murmurs(attacker: card_object, defender: card_object, is
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0 and not defender.is_invincible and "Basic" in defender.metadata.get("subtypes", []):
+	if _ko_alive(defender) and not defender.is_invincible and "Basic" in defender.metadata.get("subtypes", []):
 		main.card_ops.apply_status(defender, "Confused", not is_opponent)
 		await main.show_message(defender.metadata.get("name","").to_upper() + " IS NOW CONFUSED!")
 		if main._should_bail(): return
@@ -31216,7 +31235,7 @@ func execute_ex15_tail_sting(attacker: card_object, defender: card_object, is_op
 	if main._should_bail(): return dmg
 	await main.check_all_knockouts()
 	if main._should_bail(): return dmg
-	if is_ex_def and defender != null and defender.current_hp > 0:
+	if is_ex_def and _ko_alive(defender):
 		main.card_ops.apply_status(defender, "Poisoned", not is_opponent)
 		main.update_status_icons(defender, not is_opponent)
 		await main.show_message("TAIL STING! THE DEFENDING POKÉMON-ex IS NOW POISONED!")
@@ -31234,7 +31253,7 @@ func execute_ex15_flickering_tail(attacker: card_object, defender: card_object, 
 	if main._should_bail(): return dmg
 	await main.check_all_knockouts()
 	if main._should_bail(): return dmg
-	if is_ex_def and defender != null and defender.current_hp > 0:
+	if is_ex_def and _ko_alive(defender):
 		main.card_ops.apply_status(defender, "Asleep", not is_opponent)
 		main.update_status_icons(defender, not is_opponent)
 		await main.show_message("FLICKERING TAIL! THE DEFENDING POKÉMON-ex IS NOW ASLEEP!")
@@ -31249,7 +31268,7 @@ func execute_ex15_sonic_noise(attacker: card_object, defender: card_object, is_o
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
-	if defender != null and defender.current_hp > 0 and main.is_ex_pokemon(defender):
+	if _ko_alive(defender) and main.is_ex_pokemon(defender):
 		main.card_ops.apply_status(defender, "Confused", not is_opponent)
 		main.update_status_icons(defender, not is_opponent)
 		await main.show_message("SONIC NOISE! THE DEFENDING POKÉMON-ex IS NOW CONFUSED!")
@@ -32823,7 +32842,7 @@ func r3_spinning_blow(atk, a, d, opp) -> int:
 		if main._should_bail(): return dmg
 		await main.check_all_knockouts()
 		if main._should_bail(): return dmg
-	if heads == 2 and a.current_hp > 0:
+	if heads == 2 and _ko_alive(a):
 		await apply_self_switch(a, opp)
 	return dmg
 
@@ -32899,7 +32918,7 @@ func r3_bounce_off(atk, a, d, opp) -> int:
 	await main.check_all_knockouts()
 	if main._should_bail(): return 20
 	var d_now = _r3_def(opp)
-	if d_now == null or a.current_hp <= 0:
+	if d_now == null or not _ko_alive(a):
 		return 20
 	var mine = a.attached_energies.size()
 	var theirs = d_now.attached_energies.size()
@@ -33276,7 +33295,7 @@ func r3_aqua_trick(atk, a, d, opp) -> int:
 	await main.check_all_knockouts()
 	if main._should_bail(): return b
 	var bench = main.player_bench if opp else main.opponent_bench
-	if d == null or d.current_hp <= 0 or d.attached_energies.is_empty() or bench.is_empty() or is_protected_from_effects(d):
+	if not _ko_alive(d) or d.attached_energies.is_empty() or bench.is_empty() or is_protected_from_effects(d):
 		return b
 	if not await main.flip_coin(false, opp):
 		return b
@@ -33710,7 +33729,7 @@ func _register_r4_fixes() -> void:
 		if main._should_bail(): return b
 		await main.check_all_knockouts()
 		if main._should_bail(): return b
-		if d != null and d.current_hp > 0 and not is_protected_from_effects(d):
+		if _ko_alive(d) and not is_protected_from_effects(d):
 			var amt = r4_num(atk, "(before applying", 30)
 			d.set_effect("neo_charm", "end_of_own_turn", amt)
 			await main.show_message("DELTA REDUCTION! " + d.metadata.get("name","").to_upper() + "'S ATTACKS DO " + str(amt) + " LESS DAMAGE NEXT TURN!")
@@ -33837,7 +33856,7 @@ func r4_energy_bomb_optional(atk, a, d, opp) -> int:
 	await main.check_all_knockouts()
 	if main._should_bail(): return b
 	var bench = main.opponent_bench if opp else main.player_bench
-	if bench.is_empty() or a.attached_energies.is_empty() or a.current_hp <= 0:
+	if bench.is_empty() or a.attached_energies.is_empty() or not _ko_alive(a):
 		return b
 	var go := false
 	if opp:
@@ -33906,7 +33925,7 @@ func r4_explosive_evolution(atk, a, d, opp) -> int:
 		if main._should_bail(): return 0
 	else:
 		await main.show_message("EXPLOSIVE EVOLUTION: TAILS — NO DAMAGE.")
-	if a.current_hp <= 0:
+	if not _ko_alive(a):
 		return 0
 	var deck = main.opponent_deck if opp else main.player_deck
 	var evos = deck.filter(func(c): return main.can_evolve_from(c, a))

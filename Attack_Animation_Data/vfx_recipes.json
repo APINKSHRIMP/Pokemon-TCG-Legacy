@@ -3404,6 +3404,31 @@
    },
    "sfx": "Seismic Toss"
   },
+  "SeismicTossLaunch": {
+   "body": "lunge",
+   "steps": [
+    {
+     "fx": "Slam",
+     "at": "target",
+     "size": 1.2
+    },
+    {
+     "fx": "SandAttack",
+     "at": "target",
+     "size": 1.2,
+     "par": true,
+     "delay": 1.65,
+     "off": [
+      0,
+      0.3
+     ]
+    }
+   ],
+   "element": "normal",
+   "react": "toss",
+   "power": "heavy",
+   "sfx": "Seismic Toss"
+  },
   "Submission": {
    "body": "lunge",
    "steps": [

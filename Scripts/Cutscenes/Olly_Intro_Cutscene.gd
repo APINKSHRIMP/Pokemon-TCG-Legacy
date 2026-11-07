@@ -574,6 +574,8 @@ func _check_exit() -> void:
 # one while Olly talks, renamed, saved, and the menu closes back to the map. The coin case gets the
 # same treatment for "Put the coin I just gave you in there". TWEAKABLE below.
 const WALK_MIN_VIEW    := 2.0     # seconds each screen is up before the line can be cleared
+## ISSUE #466: the escape menu stays up this much longer before the deck builder opens.
+const WALK_MENU_EXTRA  := 1.0
 const WALK_PULSE_SCALE := 1.06    # the highlighted tile's grow
 const WALK_PULSE_TIME  := 0.5     # one grow-and-shrink
 const WALK_DIM         := Color(0.3, 0.3, 0.3, 1.0)
@@ -595,9 +597,10 @@ func _deck_walkthrough(pack_art: String, from_deck: String, to_deck: String) -> 
 		await say_all(_speaker, LINES_AFTER_BONUS.slice(0, 2))
 		return
 	var started := Time.get_ticks_msec()
+	_walk_lock(true)
 	_hold_line(_speaker, LINES_AFTER_BONUS[0])
 	var menu: Node = await _open_menu_on(DECK_MENU_TILE)
-	await wait(WALK_MIN_VIEW)
+	await wait(WALK_MIN_VIEW + WALK_MENU_EXTRA)   # ISSUE #466: a second longer on the menu
 	var builder: Node = await _open_sub_menu(DECK_SCENE)
 	if builder == null or not builder.has_method("walkthrough_begin"):
 		await _release_line()
@@ -638,6 +641,13 @@ func _say_coin_lines() -> void:
 	if GameState.progress.get(WALK_DONE_KEY + "_coin", false):
 		await say(_speaker, LINES_COIN[1])
 		return
+	_walk_lock(true)
+	# ISSUE #470: the coins are hidden from the moment the case builds them, so the one flying in is
+	# not drawn over a copy already sitting in its slot.
+	var hide: Array = []
+	for c in GameState.progress.get("coins", []):
+		hide.append(String(c) if String(c).ends_with(".png") else String(c) + ".png")
+	GameState.coin_walk_hide = hide
 	_hold_line(_speaker, LINES_COIN[1])
 	await _open_menu_on(COIN_MENU_TILE)
 	await wait(WALK_MIN_VIEW)
@@ -737,7 +747,16 @@ func _close_walk_menu() -> void:
 	map._ui_layer.layer = _walk_ui_layer_was
 	# Closing the menu hands the player back; the cutscene still owns them.
 	player.lock_movement()
+	_walk_lock(false)
+	GameState.coin_walk_hide = []
 	await wait(0.3)
+
+
+## ISSUE #467 / #468 / #470: for the whole menu walkthrough the overworld music keeps playing (the menus'
+## track is held off) and the menu cursor is switched off, so only the message box takes A / B.
+func _walk_lock(on: bool) -> void:
+	SoundManagerScript.hold_world_bgm = on
+	InputDevice.set_suspended(on)
 
 
 func _count_ids(ids: Array) -> Dictionary:

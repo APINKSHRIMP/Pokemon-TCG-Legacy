@@ -437,7 +437,9 @@ func _ring_showing() -> bool:
 func _move(dir: Vector2i) -> void:
 	if _rows.is_empty():
 		return
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+	# ISSUE #458: moving the key cursor is the menus' soft blip, not the high click.
+	print("ISSUE #458 FIX ACTIVE: OSK move blip")
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 	if dir.x != 0:
 		var n: int = (_rows[_row] as Array).size()
 		_col = wrapi(_col + dir.x, 0, n)
@@ -493,7 +495,7 @@ func _press(id: String) -> void:
 		"CAPS":
 			_upper = not _upper
 			_one_shot = false
-			SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 			_refresh_all()
 		_:
 			var ch: String = id

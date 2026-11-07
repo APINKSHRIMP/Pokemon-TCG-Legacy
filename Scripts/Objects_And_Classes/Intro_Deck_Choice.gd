@@ -256,19 +256,26 @@ func _on_group_input(event: InputEvent, index: int) -> void:
 
 # Keys: Left/Right move the highlight, Enter/Space takes it. Every key is swallowed
 # so nothing reaches the map behind the choice.
+# ISSUE #460: the pad too - d-pad / left stick move it, A takes it (it used to read raw keycodes only,
+# so a controller could not pick a deck at all).
 func _input(event: InputEvent) -> void:
 	if not _armed or not visible:
 		return
-	if event is InputEventKey and event.pressed and not event.echo:
-		match event.keycode:
-			KEY_LEFT, KEY_A:
-				_set_hovered(wrapi(_hovered - 1, 0, _groups.size()) if _hovered >= 0 else 0)
-			KEY_RIGHT, KEY_D:
-				_set_hovered(wrapi(_hovered + 1, 0, _groups.size()) if _hovered >= 0 else 0)
-			_:
-				if UIInput.is_accept(event) and _hovered >= 0:
-					_choose(_hovered)
-		get_viewport().set_input_as_handled()
+	if event is InputEventMouseMotion or event is InputEventMouseButton:
+		return   # the groups' own mouse handlers
+	var dir := UIInput.nav_direction(event)
+	if dir == Vector2i.ZERO and event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_A: dir = Vector2i.LEFT
+		elif event.keycode == KEY_D: dir = Vector2i.RIGHT
+	if dir.x != 0:
+		print("ISSUE #460 FIX ACTIVE: deck choice nav ", dir.x)
+		_set_hovered(wrapi(_hovered + dir.x, 0, _groups.size()) if _hovered >= 0 else (0 if dir.x > 0 else _groups.size() - 1))
+	elif UIInput.is_accept(event):
+		if _hovered >= 0:
+			_choose(_hovered)
+		else:
+			_set_hovered(0)   # first A with nothing highlighted just highlights the first deck
+	get_viewport().set_input_as_handled()
 
 
 func _choose(index: int) -> void:

@@ -47,6 +47,13 @@ var _taxi_bob_timer: float  = 0.0
 var _taxi_current_bob: float = 0.0
 var _intro_call: PhoneCall = null
 
+## ISSUE #477: on the café morning the café door calls the player back to the table.
+func _on_before_door_transition(_body: Node2D, target: String) -> bool:
+	if CafeBreakfastCutscene.block_cafe_door(target):
+		return false
+	return true
+
+
 func _allow_menu_open(_is_enter: bool) -> bool:
 	return not _cutscene_active
 
@@ -168,6 +175,12 @@ func _run_taxi_intro() -> void:
 	_drive_taxi_off()
 
 	await get_tree().create_timer(2.0).timeout
+
+	# ISSUE #459: "I know the rules a bit" (the evening arrival, Olly meets the player outside): the
+	# harbour's music starts as the player turns back up and sets off for the house.
+	if GameState.get_intro_profile().get("olly_meets", "door") == "taxi":
+		print("ISSUE #459 FIX ACTIVE: harbour BGM starts on the walk to the house")
+		_start_map_bgm(true)
 
 	await _scripted_walk("up", 90.0)
 	# ISSUE #294: THE WALK IS AIMED AT THE REAL FRONT DOOR.

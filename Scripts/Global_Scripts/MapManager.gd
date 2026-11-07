@@ -629,15 +629,37 @@ func _assign_actor_position(actor: Node2D, actor_name: String, default_pos: Vect
 	var key := _actor_key(actor_name)
 	actor.position = _actor_positions.get(key, default_pos)
 	actor.set_meta("pos_key", key)
+	# ISSUE #474 / #483: the snapshot is keyed by the time slot, and a match can move the clock on
+	# (the outro advances it). Coming back from a battle every actor still on the map then found no
+	# snapshot under the NEW slot and snapped back to its authored spawn. Fall back to the snapshot
+	# taken under the slot the battle started in.
+	var snap_key := key
+	if not _actor_positions.has(key) and GameState.returning_from_battle:
+		var lbe: Dictionary = GameState.last_battled_opponent_entry
+		var t0 := str(lbe.get("time_at_start", ""))
+		if t0 != "":
+			var k0 := "%s|%d|%s|%s" % [_map_data, int(lbe.get("date_at_start", GameState.get_date())), t0, actor_name]
+			if _actor_positions.has(k0):
+				snap_key = k0
+				actor.position = _actor_positions[k0]
+				print("ISSUE #483 FIX ACTIVE: ", actor_name, " restored from the pre-battle slot (", t0, ")")
+	# ISSUE #474: the opponent just fought stands exactly where the player spoke to them.
+	var battled: bool = GameState.returning_from_battle and not GameState.test_match_mode 		and actor_name != "" and actor_name == GameState.current_opponent_name
+	if battled:
+		var lbe2: Dictionary = GameState.last_battled_opponent_entry
+		if lbe2.get("position") is Vector2:
+			actor.position = lbe2["position"]
+		actor.set_meta("battle_hold", true)
+		print("ISSUE #474 FIX ACTIVE: ", actor_name, " back on the spot they were fought at ", actor.position)
 	# ISSUE #57 (retest): stash the captured facing as a meta the actor applies at the END of its own
 	# _ready() (after _init_movement sets a pattern default), so the restored direction wins.
-	if _actor_facings.has(key):
-		actor.set_meta("restore_facing", _actor_facings[key])
+	if _actor_facings.has(snap_key):
+		actor.set_meta("restore_facing", _actor_facings[snap_key])
 	# Restoring the position alone was not enough: a patrolling actor came back
 	# believing it stood at the start of its leg and walked the full distance again
 	# from wherever it had stopped, creeping across the map after every battle.
-	if _actor_movement.has(key):
-		actor.set_meta("restore_movement", _actor_movement[key])
+	if _actor_movement.has(snap_key):
+		actor.set_meta("restore_movement", _actor_movement[snap_key])
 	# Coming out of a battle the actor should still be looking at the player, even
 	# when its pattern normally pins a direction.
 	if GameState.returning_from_battle:
@@ -1510,7 +1532,25 @@ func handle_message_accept() -> void:
 		if message_panel.ok_armed:
 			_on_ok_pressed()
 	elif message_panel.is_choice_mode():
-		_on_yes_pressed()
+		# ISSUE #460: A answers whichever button is highlighted (Yes unless the player moved to No).
+		if message_panel.choice_cursor == 1:
+			print("ISSUE #460 FIX ACTIVE: accept on highlighted NO")
+			_on_no_pressed()
+		else:
+			_on_yes_pressed()
+
+## ISSUE #460: Left / Right on a Yes/No question move the highlight between the two buttons.
+## Returns true when the press was used.
+func handle_message_nav(dir: Vector2i) -> bool:
+	if dir.x == 0 or message_panel == null or not message_panel.visible or not message_panel.is_choice_mode():
+		return false
+	if _emote_busy or _gift_reveal_active or _validation_popup_active:
+		return false
+	var want: int = 1 if dir.x > 0 else 0
+	if message_panel.choice_cursor != want:
+		message_panel.set_choice_cursor(want)
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	return true
 
 func handle_message_cancel() -> void:
 	if _emote_busy:
@@ -1704,6 +1744,7 @@ func _on_yes_pressed():
 			"match_format":   current_opponent.match_format,
 			"sleeve":         current_opponent.sleeve,
 			"time_at_start":  GameState.get_time(),   # see _dismiss_late_opponent
+			"date_at_start":  GameState.get_date(),   # ISSUE #483: the snapshot key's date
 		}
 
 		# Best-of-N opponents: kick off a fresh series. Single-match opponents

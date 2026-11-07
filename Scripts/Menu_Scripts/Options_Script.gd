@@ -401,6 +401,9 @@ func _build_rows() -> void:
 ## Built from UITheme.theme_looks() / theme_modes(), so a look added to THEMES
 ## appears here with no edit to this file.
 func _add_theme_row(parent: VBoxContainer) -> void:
+	# ISSUE #482: themes hidden for now (UITheme.THEME_PICKER_HIDDEN) - no row is built.
+	if UITheme.THEME_PICKER_HIDDEN:
+		return
 	_add_picker_row(parent, THEME_LOOK, "Colour theme", UITheme.theme_looks(),
 		"(changes every screen)")
 	# ISSUE #393: the Dark/Light "Mode" row is gone - every theme is dark now, so it had nothing to offer.
@@ -664,6 +667,11 @@ func _on_theme_part_pressed(section: String, option: String) -> void:
 	# the button faces are baked art, so the only honest preview is a rebuild.
 	GameState.set_ui_theme(composed, false)
 	_rebuild()
+	# ISSUE #462: the rebuild freed the focused button, so the next pad press grabbed the first control
+	# (the Controls button). Put the cursor back on the button that was just pressed.
+	if InputDevice.using_nav() and section_buttons.has(section) and section_buttons[section].has(option):
+		print("ISSUE #462 FIX ACTIVE: refocusing theme button ", option, " after rebuild")
+		(section_buttons[section][option] as Control).grab_focus.call_deferred()
 
 
 func _refresh_section(section: String) -> void:

@@ -5174,6 +5174,8 @@ func gym1_effect_recall(is_opponent: bool) -> void:
 	if active == null:
 		return
 	active.gym1_recall_active = true
+	if is_opponent:
+		print("ISSUE #494 FIX ACTIVE: CPU played Recall on ", active.metadata.get("name", ""))
 	await main.show_message("RECALL — ACTIVE CAN USE ANY ATTACK FROM ITS EVOLUTION CHAIN THIS TURN!")
 	if main._should_bail(): return
 
@@ -9116,7 +9118,13 @@ func effect_ecard2_energy_switch(is_opponent: bool) -> void:
 		return
 	var source: card_object = null
 	var energy: card_object = null
-	if is_opponent:
+	# ISSUE #493: the CPU makes the move its play score was based on (CPU_AI.cpu_energy_switch_plan).
+	var cpu_plan: Dictionary = main.cpu_ai.cpu_energy_switch_plan() if is_opponent else {}
+	if not cpu_plan.is_empty():
+		source = cpu_plan["from"]
+		energy = cpu_plan["e"]
+		print("ISSUE #493 FIX ACTIVE: Energy Switch moves ", energy.metadata.get("name", ""), " from ", source.metadata.get("name", ""), " to ", cpu_plan["to"].metadata.get("name", ""))
+	elif is_opponent:
 		# Take from whichever source needs the Energy LEAST (safest to drain).
 		source = sources[0]
 		for s in sources:
@@ -9134,7 +9142,9 @@ func effect_ecard2_energy_switch(is_opponent: bool) -> void:
 	var targets = all_p.filter(func(p): return p != source)
 	if targets.is_empty(): return
 	var target: card_object = null
-	if is_opponent:
+	if not cpu_plan.is_empty() and cpu_plan["to"] in targets:
+		target = cpu_plan["to"]
+	elif is_opponent:
 		target = main.cpu_ai.cpu_pick_benefit_recipient(targets, "energy", energy)
 	else:
 		target = await main.card_ops.prompt_select_card(targets, "ENERGY SWITCH", "Select a Pokemon to move the Energy to", "ATTACH", false)

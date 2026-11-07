@@ -27,6 +27,7 @@ extends Node
 #   --strict            also check for duplicated cards after EVERY in-game message, and name the message where a
 #                       duplicate first appears (use with --replay to pin down a CARD DUPLICATED find)
 #   --reset-coverage    start the cumulative coverage file from zero
+#   --reset-usage       start the cumulative CPU-usage tally from zero (the old cpu_usage.json is archived with a date)
 #   --replay=RUN:N      replay match N of an earlier run exactly (same decks + seed), e.g.
 #                       --replay=2026-10-09T11-17-10:16   (RUN is the folder name under autotest/runs/)
 #
@@ -100,6 +101,7 @@ var _cpu_offered: Dictionary = {}      # this CPU turn
 var _cpu_used: Dictionary = {}
 var _cpu_turn_open := false
 var _cpu_ko_attacks: Array = []        # attacks this CPU turn that were a guaranteed Knock Out
+var _cpu_ko_target = null              # the Defending Pokémon at the start of that attack phase
 var _cpu_had_energy := false
 var _cpu_attempted := false            # the CPU began an attack (even one that then failed to Confusion)           # CPU held Energy at the start of its turn
 var _cpu_needed_energy := false        # ...and something in play still needed Energy  # activatable Power names (from _power_dispatch)
@@ -279,6 +281,12 @@ func _parse_args() -> void:
 				opt_cards = [opt_stack]
 			"reset-coverage":
 				DirAccess.remove_absolute(OUT_DIR + "coverage.json")
+			"reset-usage":
+				# Start the CPU-usage tally fresh (it is cumulative, so after CPU changes the report mixes old and new
+				# behaviour). The old file is kept as cpu_usage_<timestamp>.json, never deleted.
+				if FileAccess.file_exists(OUT_DIR + "cpu_usage.json"):
+					var stamp := Time.get_datetime_string_from_system().replace(":", "-")
+					DirAccess.rename_absolute(OUT_DIR + "cpu_usage.json", OUT_DIR + "cpu_usage_" + stamp + ".json")
 			"replay":
 				var run := v.get_slice(":", 0)
 				var n := int(v.get_slice(":", 1))
@@ -611,6 +619,7 @@ func cpu_attack_phase(m) -> void:
 	if still_has_energy and _cpu_needed_energy and not m.opponent_energy_played_this_turn:
 		_problem("CPU DECISION: NO ENERGY", "held Energy and had a Pokémon that needed it, but attached none", "noe" + str(match_index) + str(m.turn_number))
 	_cpu_ko_attacks = []   # this attack phase only - never a stale list from an earlier turn
+	_cpu_ko_target = m.player_active_pokemon
 	var mon = m.opponent_active_pokemon
 	if mon == null or m.turn_number <= 1 or mon.special_condition in ["Paralyzed", "Asleep"]:
 		return
@@ -624,7 +633,11 @@ func cpu_attack_phase(m) -> void:
 			var rng_d: Dictionary = m.attack_effects.estimate_attack_damage_range(a, mon, foe)
 			var mn := int(rng_d.get("min", 0))
 			if mn > 0:
-				mn = int(m.calculate_final_damage(mn, mon.get_effective_types(), foe, mon).get("damage", mn))
+				# The CPU honours "this attack's damage isn't affected by Weakness / Resistance" (Swift...) - so must the oracle.
+				var at_txt: String = String(a.get("text", "")).to_lower()
+				var o_iw: bool = "isn't affected by weakness" in at_txt
+				var o_ir: bool = o_iw or "isn't affected by resistance" in at_txt
+				mn = int(m.calculate_final_damage(mn, mon.get_effective_types(), foe, mon, false, o_iw, o_ir).get("damage", mn))
 			if mn >= foe.current_hp:
 				_cpu_ko_attacks.append(an)
 
@@ -643,7 +656,11 @@ func _cpu_close_turn() -> void:
 	var offered_attacks: Array = _cpu_offered.keys().filter(func(k): return k.begins_with("attack|"))
 	# The CPU won the game on this turn, or began an attack (Confusion, a "can't attack X" block): not a missed KO.
 	var cpu_won: bool = match_done and match_result == "loss"
-	if not _cpu_ko_attacks.is_empty() and used_attack not in _cpu_ko_attacks and not cpu_won and not (used_attack == "(no attack)" and _cpu_attempted):
+	# The Defending Pokémon it could have Knocked Out was Knocked Out anyway (the chosen attack did it - often one whose
+	# damage only a per-set nudge knows, like Bass Control's 40 snipe, so this oracle can't see it coming): no miss.
+	var target_ko: bool = _cpu_ko_target != null and is_instance_valid(current_main) and _cpu_ko_target != current_main.player_active_pokemon 		and not (_cpu_ko_target in current_main.player_bench)
+	_cpu_ko_target = null
+	if not _cpu_ko_attacks.is_empty() and used_attack not in _cpu_ko_attacks and not cpu_won and not target_ko and not (used_attack == "(no attack)" and _cpu_attempted):
 		_problem("CPU DECISION: MISSED KO", "used %s when %s was a guaranteed Knock Out" % [used_attack, ", ".join(_cpu_ko_attacks)], "mko" + str(match_index) + str(_cpu_ko_attacks))
 	# ISSUE #455: a CPU that ends its turn rather than use a switch attack that helps nobody (Lure with
 	# no better target) is deliberate - CPU_AI sets cpu_skip_reason for exactly that.
@@ -1149,6 +1166,11 @@ func log_message(text: String, turn: int, opp_turn: bool) -> void:
 	match_messages.append([turn, opp_turn, text])
 	if opp_turn and "CAN'T ATTACK" in text.to_upper():
 		_cpu_attempted = true   # the CPU chose an attack and the game blocked it
+	# The CPU announces its attack ("Opponent's X used Y!") BEFORE the checks that can stop it without a
+	# "can't attack" line: the Baby rule's tails, Scare, Rebellion, Pattern Distraction, Holon Circle.
+	# Those were flagged as SKIPPED ATTACK (2026-11-06 batch: Bounce into a Cleffa, tails).
+	if opp_turn and text.begins_with("Opponent's ") and " used " in text:
+		_cpu_attempted = true
 	_scan_log_text(text)
 	if opt_strict and is_instance_valid(current_main) and not originals[0].is_empty():
 		for side in [false, true]:

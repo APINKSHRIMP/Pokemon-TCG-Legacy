@@ -10191,7 +10191,7 @@
  "Seismic Toss": {
   "cost": 4,
   "dmg": true,
-  "fx": "SeismicToss",
+  "fx": "SeismicTossLaunch",
   "how": "exact",
   "sfx": "Seismic Toss",
   "type": "Fighting"

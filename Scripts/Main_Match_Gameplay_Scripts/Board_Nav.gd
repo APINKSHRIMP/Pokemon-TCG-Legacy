@@ -101,6 +101,9 @@ func _active() -> bool:
 		return false
 	if main.animation_blocker.visible:
 		return false
+	# ISSUE #465: and for a moment after one, and through the turn-start draw.
+	if main.nav_input_settling():
+		return false
 	if main.is_zoomed or main.match_log_open:
 		return false
 	if main.pause_menu != null and is_instance_valid(main.pause_menu):
@@ -530,7 +533,8 @@ func handle_input(event: InputEvent) -> bool:
 			return true
 		var next := _step(targets, cur, dir)
 		if next >= 0:
-			SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_button)
+			# ISSUE #458: a cursor MOVE is the menus' soft blip (plus_select), not the high click.
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 			_set_focus(targets, next, false)
 		_place_ring()
 		return true
@@ -644,8 +648,13 @@ func _on_cancel(event: InputEvent, mode: String) -> bool:
 		"yes_no":
 			return false   # the match's yes/no branch answers NO
 		"selection":
-			# Bench setup's cancel button is "Done" (it starts the game) - never on a back key.
+			# Bench setup's cancel button is "Done" (it starts the game) - never on a KEYBOARD back key.
+			# ISSUE #472: pad B IS Done there (the user asked for it - B is "finished" on a controller).
 			if main.bench_setup_phase_active:
+				if event is InputEventJoypadButton and main.cancel_button.visible and not main.cancel_button.disabled:
+					print("ISSUE #472 FIX ACTIVE: pad B pressed bench-setup Done")
+					main.cancel_button.pressed.emit()
+					return true
 				return not _is_escape(event)
 			if main.cancel_button.visible and not main.cancel_button.disabled:
 				main.cancel_button.pressed.emit()
@@ -755,6 +764,8 @@ func _target_rect_now(t: Dictionary, node: Control) -> Rect2:
 func _process(_delta: float) -> void:
 	if main == null:
 		return
+	if not main.is_zoomed:
+		_preview_moved = false
 	# The player's turn starting puts the cursor on the hand.
 	var players_turn: bool = not main.opponents_turn_active and not main.game_is_over
 	if players_turn and not _was_players_turn:
@@ -767,6 +778,10 @@ func _process(_delta: float) -> void:
 		_active_since_msec = Time.get_ticks_msec()
 	_was_active = active_now
 
+	# ISSUE #463: under a held preview the cursor stays where it is (preview_step moves it), so the
+	# preview keeps following it even though the board itself is frozen.
+	if main.is_zoomed and InputDevice.using_nav():
+		return
 	if not InputDevice.using_nav() or not _active():
 		_hide_ring()
 		return
@@ -789,12 +804,54 @@ func _drop_mouse_selection() -> void:
 			(child as CardDisplay).set_selected(false)
 
 
+## ISSUE #463: arrows / d-pad / stick while a card preview is held (L1 / Shift). The cursor moves
+## exactly as it would without the preview (the match's _process then swaps the preview to the card
+## it lands on) - but nothing is SELECTED on the way: single-pick screens normally pick on move, and
+## a preview must never change the match under it. Skips the cards' own preview-blocking gates.
+var _preview_moved: bool = false
+
+func preview_step(dir: Vector2i) -> void:
+	if main == null or GameState.autotest != null or dir == Vector2i.ZERO:
+		return
+	var mode := _preview_mode()
+	var targets := _targets(mode)
+	if targets.is_empty():
+		return
+	var cur := _current(mode, targets)
+	if cur < 0:
+		return
+	if not _ring_showing():
+		_place_ring()
+	var next := _step(targets, cur, dir)
+	if next < 0:
+		return
+	# Hop over anything that is not a card (buttons, action rows): the preview only shows cards.
+	var guard := 0
+	while next >= 0 and targets[next]["card"] == null and not (targets[next]["node"] is CardDisplay) and guard < 12:
+		var after := _step(targets, next, dir)
+		if after < 0 or after == next:
+			break
+		next = after
+		guard += 1
+	print("ISSUE #463 FIX ACTIVE: preview cursor ", dir, " -> ", targets[next]["key"])
+	_preview_moved = true
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	_focus_key = targets[next]["key"]
+	_place_ring()
+
+
+## ISSUE #463: while a preview is up the cursor walks cards - a selection screen's own cards, else the
+## whole board (a coin call / yes-no / attack chooser offers buttons, which have nothing to preview).
+func _preview_mode() -> String:
+	return "selection" if _mode_now() == "selection" else "board"
+
+
 ## The card under the cursor, for hold-to-zoom on a pad (L1 / Shift) - null when the
 ## cursor is not on a card or is not showing.
 func focused_card_node() -> CardDisplay:
-	if not _ring_showing():
+	if not _ring_showing() and not (main.is_zoomed and _preview_moved):
 		return null
-	var targets := _targets(_mode_now())
+	var targets := _targets(_preview_mode() if main.is_zoomed else _mode_now())
 	var i := _find(targets, _focus_key)
 	if i < 0:
 		return null

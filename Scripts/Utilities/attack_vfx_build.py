@@ -272,6 +272,11 @@ RECIPES = {
     'OneSlap':          rec(L, T('OneSlap', size=0.9)),
     'WakeUpSlap':       rec(L, T('WakeUpSlap', size=1.0)),
     'SeismicToss':      rec(L, T('Slam', size=1.2), Q(0.5, par=True), T('SandAttack', size=0.9, par=True, delay=0.2, off=[0, 0.3])),
+    # ISSUE #487: Seismic Toss itself (exact name only - the other throws keep SeismicToss above). The
+    # downward Slam swing, the defender is flung off the top of the screen spinning ("toss" react in
+    # Attack_VFX.gd), and SEISMIC_TOSS_LAND seconds later it crashes back into its spot - the rocks
+    # (SandAttack) burst as it lands; Attack_VFX shakes the screen and the defender's bench then.
+    'SeismicTossLaunch': rec(L, T('Slam', size=1.2), T('SandAttack', size=1.2, par=True, delay=1.65, off=[0, 0.3])),
     'Submission':       rec(L, T('GrabCrush', size=1.1), T('Slam', size=1.0, par=True, delay=0.4)),
     'RockSmash':        rec(L, T('MegaPunch', size=1.0), T('RockSmash', size=1.1, par=True, delay=0.1)),
     'RockThrow':        rec(H, P('RockThrow', arc=80, spin=540, size=0.3), T('RockSmash', size=1.0)),
@@ -806,6 +811,7 @@ REACT_OF = {
                'BoneRush DrillPeck RazorLeaf LeafStorm WaterGun Flamethrower AirSlash VineWhip MultiPunch ShootingStar Hail',
     'spin':    'DizzyPunch DynamicPunch Twister Whirlwind Gust Hurricane Whirlpool Confusion ConfuseRay Supersonic FireSpin AirCutter',
     'lift':    'SeismicToss Psychic Telekinesis Fling PsychicBlast',
+    'toss':    'SeismicTossLaunch',   # ISSUE #487
     'squash':  'BodySlam Stomp Slam GigaImpact Submission FistSlam Rock Avalanche RockSlide Waterfall Fly Bounce',
     'squeeze': 'Wrap Bind Constrict Squeeze VineWrap GrabCrush PoisonTentacle Clamp ViceGrip Crabhammer Roots GrassKnot Web StringShot',
     'jolt':    'Spark ThunderShock Thunderbolt Thunder ThunderWave ThunderPunch ThunderFang ElectricTackle ElectroBall LightningBall ZapCannon '
@@ -821,7 +827,7 @@ HITS_OF = {2: 'DoubleSlap DoubleKick Twineedle DoubleClaw DoubleSlash ShadowPunc
 HEAVY = ('GigaImpact TakeDown BodySlam Megahorn MegaPunch MegaKick DynamicPunch FistSlam CrossChop SteelPunch Explosion Selfdestruct '
          'HyperBeam FireBlast SacredFire Inferno Eruption Magma HydroPump TidalWave Thunder ZapCannon Gigashock Solarbeam LeafStorm '
          'PsychicBlast DarkBlast DarkPulse RoarOfTime Meteor DragonRage Outrage Earthquake Fissure Avalanche StoneEdge RockBlast '
-         'Blizzard SheerCold Hurricane BraveBird SeismicToss Guillotine HornDrill Waterfall Submission IronTail DragonClaw HyperFang')
+         'Blizzard SheerCold Hurricane BraveBird SeismicToss SeismicTossLaunch Guillotine HornDrill Waterfall Submission IronTail DragonClaw HyperFang')
 RECOIL = 'TakeDown BraveBird GigaImpact Selfdestruct'
 SCREEN_OF = {
     'Explosion': {'flash': '#ffffff', 'shake': 14}, 'Selfdestruct': {'flash': '#fff4d0', 'shake': 10},
@@ -879,6 +885,7 @@ BENCH_FX = {
 # (Thunderbolt, Ember, Hyper Beam...) plays its own move's clip whatever recipe it uses.
 SFX_OF = {
     'Stare': 'Mean Look',   # ISSUE #396
+    'SeismicTossLaunch': 'Seismic Toss',   # ISSUE #487
     'Anger': 'Rage', 'Barrage': 'Barrage 1hit', 'BeatUp': 'Beat Up 1hit', 'BigFireball': 'Overheat', 'BlueFlame': 'Will O Wisp',
     'BoneRush': 'Bone Rush 1hit', 'Bonemerang': 'Bonemerang 2hits', 'BugSwarm': 'Attack Order', 'CallForFamily': 'Helping Hand',
     'CatKick': 'Low Kick', 'ChainLightning': 'Discharge', 'ChantingBell': 'Heal Bell', 'Cheer': 'Helping Hand', 'Clap': 'Encore',
@@ -1111,7 +1118,7 @@ EXACT = {
     'Quick Attack': 'QuickAttack', 'Rage': 'Thrash', 'Rapid Spin': 'Spin', 'Razor Leaf': 'RazorLeaf', 'Razor Wind': 'RazorWind',
     'Recover': 'Recover', 'Rest': 'Rest', 'Roar': 'Roar', 'Rock Blast': 'RockBlast', 'Rock Slide': 'RockSlide', 'Rock Smash': 'RockSmash',
     'Rock Throw': 'RockThrow', 'Rollout': 'Rollout', 'Sacred Fire': 'SacredFire', 'Sand Attack': 'SandAttack', 'Sand-attack': 'SandAttack',
-    'Sandstorm': 'Sandstorm', 'Scary Face': 'ScaryFace', 'Scratch': 'Scratch', 'Screech': 'Screech', 'Seismic Toss': 'SeismicToss',
+    'Sandstorm': 'Sandstorm', 'Scary Face': 'ScaryFace', 'Scratch': 'Scratch', 'Screech': 'Screech', 'Seismic Toss': 'SeismicTossLaunch',
     'Selfdestruct': 'Selfdestruct', 'Sheer Cold': 'SheerCold', 'Signal Beam': 'SignalBeam', 'Silver Wind': 'SilverWind', 'Sing': 'Sing',
     'Skull Bash': 'Headbutt', 'Slam': 'BodySlam', 'Slash': 'Slash', 'Sleep Powder': 'SleepPowder', 'Smog': 'Smog', 'Smokescreen': 'Smokescreen',
     'Sonicboom': 'Sonicboom', 'Spark': 'Spark', 'Spike Cannon': 'PinMissile', 'Spore': 'Spore', 'Stomp': 'Stomp', 'String Shot': 'StringShot',

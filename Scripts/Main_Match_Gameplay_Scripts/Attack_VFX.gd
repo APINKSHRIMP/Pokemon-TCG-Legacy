@@ -87,6 +87,20 @@ const WIGGLE_STEP := 0.05
 const HEAVY_MULT := 1.7
 const MULTI_GAP := 0.13           # seconds between the hits of a multi-hit reaction
 const LIFT_PX := 70.0
+## ISSUE #487: Seismic Toss ("toss" react). TWEAKABLE, base seconds / px. The defender shoots up off the
+## top of the screen spinning (UP), stays gone (HANG), comes spinning back down into its spot (DOWN) and
+## squashes on landing (SETTLE). TOSS_LAND (= UP + HANG + DOWN) must match the SandAttack delay of
+## SeismicTossLaunch in attack_vfx_build.py (the rocks on landing).
+const TOSS_UP := 0.3
+const TOSS_HANG := 1.0
+const TOSS_DOWN := 0.35
+const TOSS_SETTLE := 0.45
+const TOSS_LAND := TOSS_UP + TOSS_HANG + TOSS_DOWN
+const TOSS_HEIGHT := 1500.0
+const TOSS_SPINS_UP := 3.0
+const TOSS_SPINS_DOWN := 3.0
+const TOSS_SHAKE := 12.0
+const TOSS_BANG_CLIP := "Rock Smash"
 const JOLT_PX := 7.0
 const JOLT_STEP := 0.035
 const QUAKE_PX := 7.0
@@ -127,6 +141,26 @@ const DIM_OUT := 0.25
 const SCREEN_FLASH_ALPHA := 0.55
 const SCREEN_FLASH_TIME := 0.32
 const SCREEN_SHAKE_TIME := 0.42
+
+# ── DRAMA: big attacks hit harder (2026-11-06, user request) ─────────────────────────────────────
+# Every damaging hit gets a "drama" score 0..1 from its damage and Energy cost (Solar Beam, Fire Blast,
+# Double-Edge... near 1; a 10-damage jab 0). It scales the screen shake, the defender's knockback, and
+# from DRAMA_FLASH_FROM up adds one soft full-screen flash in the attack's colour; from DRAMA_BENCH_FROM
+# the defender's bench rattles too. Weakness adds DRAMA_WEAK_BONUS. TWEAKABLE.
+# Epilepsy-friendly: at most ONE flash per hit, never above DRAMA_FLASH_ALPHA_MAX, always fading out over
+# at least DRAMA_FLASH_TIME, never strobing (multi-hits flash once), colours brightness-capped.
+const DRAMA_DMG_FLOOR := 30.0       # damage at or under this adds nothing
+const DRAMA_DMG_CEIL := 120.0       # damage at or over this is full drama
+const DRAMA_DMG_WEIGHT := 0.65      # the rest of the score is the Energy cost (1 -> 0, 4+ -> 1)
+const DRAMA_WEAK_BONUS := 0.2
+const DRAMA_SHAKE_FROM := 0.3       # below this no extra shake is added
+const DRAMA_SHAKE_MAX := 10.0       # px of shake added at full drama (recipes with their own shake are scaled instead)
+const DRAMA_SHAKE_BOOST := 0.6      # a recipe's own shake x (1 + this * drama)
+const DRAMA_KNOCK_BOOST := 0.9      # knockback x (1 + this * drama)
+const DRAMA_FLASH_FROM := 0.55
+const DRAMA_FLASH_ALPHA_MAX := 0.22
+const DRAMA_FLASH_TIME := 0.45
+const DRAMA_BENCH_FROM := 0.8
 const SCREEN_SHAKE_STEP := 0.03
 
 const CONTACT_BODIES := ["lunge", "dash", "leap", "spin", "vanish_strike", "dive"]
@@ -419,7 +453,8 @@ func play_intent(attacker: card_object, defender: card_object, attack: Dictionar
 
 ## A damaging hit. `pend` comes from take_pending().
 func play_hit(attacker: card_object, defender: card_object, pend: Dictionary, damage: int, weak: bool, resisted: bool) -> void:
-	var react := {"damage": damage, "weak": weak, "resisted": resisted}
+	var react := {"damage": damage, "weak": weak, "resisted": resisted,
+		"drama": drama_of(pend.get("attack", {}), damage, weak)}
 	if not _enabled():
 		await main.attack_hit_motion(attacker, defender, damage, weak, resisted, true)
 		return
@@ -439,6 +474,19 @@ func play_hit(attacker: card_object, defender: card_object, pend: Dictionary, da
 		return
 	print("ATTACK VFX: hit '", pend["attack"].get("name", ""), "' -> ", recipe.get("_id", "?"), " damage ", damage)
 	await play(attacker, defender, recipe, react)
+
+
+## DRAMA: how big a hit this is, 0..1, from its damage and Energy cost (see DRAMA_* above).
+static func drama_of(attack: Dictionary, damage: int, weak: bool) -> float:
+	if damage <= 0:
+		return 0.0
+	var cost := int(attack.get("convertedEnergyCost", (attack.get("cost", []) as Array).size()))
+	var d_part := clampf((float(damage) - DRAMA_DMG_FLOOR) / (DRAMA_DMG_CEIL - DRAMA_DMG_FLOOR), 0.0, 1.0)
+	var c_part := clampf(float(cost - 1) / 3.0, 0.0, 1.0)
+	var d := DRAMA_DMG_WEIGHT * d_part + (1.0 - DRAMA_DMG_WEIGHT) * c_part
+	if weak:
+		d += DRAMA_WEAK_BONUS
+	return clampf(d, 0.0, 1.0)
 
 
 ## A benched Pokémon has just taken `damage` (Card_Ops.apply_bench_damage). Plays a small copy of the
@@ -955,10 +1003,26 @@ func _impact(ctx: _Ctx) -> void:
 	ctx.impact_done = true
 	_sfx_impact(ctx)
 	var screen: Dictionary = ctx.recipe.get("screen", {})
+	var drama := float(ctx.react.get("drama", 0.0))
+	if bool(ctx.recipe.get("_bench", false)):
+		drama = 0.0
 	if screen.has("flash"):
 		_screen_flash(ctx, Color(str(screen["flash"])))
-	if screen.has("shake"):
-		_screen_shake(ctx, float(screen["shake"]))
+	elif drama >= DRAMA_FLASH_FROM:
+		_drama_flash(ctx, drama)
+	var shake := float(screen.get("shake", 0.0))
+	if shake > 0.0:
+		shake *= 1.0 + DRAMA_SHAKE_BOOST * drama
+	elif drama >= DRAMA_SHAKE_FROM:
+		shake = DRAMA_SHAKE_MAX * drama
+	if shake > 0.0:
+		_screen_shake(ctx, shake)
+	if drama >= DRAMA_BENCH_FROM and main.card_fx != null and ctx.defender != null:
+		for c in _bench_of(ctx.defender):
+			if c != null:
+				main.card_fx.jolt(c, QUAKE_PX * drama, QUAKE_STEP, maxi(2, int(0.35 / QUAKE_STEP)))
+	if drama > 0.0:
+		print("ATTACK VFX DRAMA: ", snappedf(drama, 0.01), " shake ", snappedf(shake, 0.1))
 	if ctx.defender == null or ctx.defender == ctx.attacker:
 		return
 	ctx.jobs.add()
@@ -1003,6 +1067,7 @@ func _react(ctx: _Ctx) -> void:
 		linger_time = maxf(linger_time, 0.5)
 	var hits := maxi(1, int(ctx.recipe.get("hits", 1)))
 	var dir := ctx.dir
+	mult *= 1.0 + DRAMA_KNOCK_BOOST * float(ctx.react.get("drama", 0.0))   # DRAMA: big hits knock further
 	var kb := dir * KNOCK_PX * mult
 	var style_time := 0.0
 	match style:
@@ -1010,6 +1075,7 @@ func _react(ctx: _Ctx) -> void:
 		"multi": style_time = MULTI_GAP * float(hits) + KNOCK_SETTLE
 		"spin": style_time = 0.55
 		"lift": style_time = 0.6
+		"toss": style_time = TOSS_LAND + TOSS_SETTLE
 		"squash", "squeeze": style_time = 0.5
 		"jolt", "shake": style_time = 0.55
 		"freeze": style_time = 0.3
@@ -1052,6 +1118,22 @@ func _react(ctx: _Ctx) -> void:
 					var p := clampf((t - 0.36) / 0.24, 0.0, 1.0)
 					sc = Vector2(1.0 + 0.12 * (1.0 - p) * cos(p * 9.0), 1.0 - 0.16 * (1.0 - p) * cos(p * 9.0))
 					off = Vector2(0, 4.0 * (1.0 - p))
+			"toss":
+				# ISSUE #487: up and away, gone, back down hard, squash.
+				if t < TOSS_UP:
+					var p := t / TOSS_UP
+					off = Vector2(0, -TOSS_HEIGHT * p * p)
+					rot = TAU * TOSS_SPINS_UP * p
+				elif t < TOSS_UP + TOSS_HANG:
+					off = Vector2(0, -TOSS_HEIGHT)
+				elif t < TOSS_LAND:
+					var p := (t - TOSS_UP - TOSS_HANG) / TOSS_DOWN
+					off = Vector2(0, -TOSS_HEIGHT * (1.0 - p * p))
+					rot = -TAU * TOSS_SPINS_DOWN * (1.0 - p)
+				else:
+					var p := clampf((t - TOSS_LAND) / TOSS_SETTLE, 0.0, 1.0)
+					sc = Vector2(1.0 + 0.2 * (1.0 - p) * cos(p * 9.0), 1.0 - 0.26 * (1.0 - p) * cos(p * 9.0))
+					off = Vector2(0, 6.0 * (1.0 - p))
 			"squash":
 				var p := clampf(t / 0.5, 0.0, 1.0)
 				var k := (1.0 - p) * cos(p * 12.0)
@@ -1090,7 +1172,26 @@ func _react(ctx: _Ctx) -> void:
 				if ti >= 0.0 and ti < FLASH_IN:
 					col = flash
 		e["tint"] = col
+	if style == "toss":
+		_toss_landing(ctx)
 	await fx.motion(ctx.defender, total, fn)
+
+
+## ISSUE #487: the crash back down - the screen shakes, every Pokémon on the defender's bench jolts and
+## the bang plays, the moment the tossed card lands.
+func _toss_landing(ctx: _Ctx) -> void:
+	await get_tree().create_timer(GameState.match_time(TOSS_LAND)).timeout
+	if _bail():
+		return
+	print("ISSUE #487 FIX ACTIVE: Seismic Toss lands - shake + bench jolt")
+	_screen_shake(ctx, TOSS_SHAKE)
+	_sfx_play(TOSS_BANG_CLIP, 0.0, -1.0, HIT_DB, 0.9)
+	var fx = main.card_fx
+	if fx != null:
+		var count := maxi(2, int(0.5 / QUAKE_STEP))
+		for c in _bench_of(ctx.defender):
+			if c != null:
+				fx.jolt(c, QUAKE_PX * 1.6, QUAKE_STEP, count)
 
 
 func _knock(kb: Vector2, t: float) -> Vector2:
@@ -1400,6 +1501,21 @@ func _dim_end(r: ColorRect) -> void:
 	await tw.finished
 	if is_instance_valid(r):
 		r.queue_free()
+
+
+## DRAMA: one soft flash in the attack's own colour (brightness-capped, gentle fade - see DRAMA_*).
+func _drama_flash(ctx: _Ctx, drama: float) -> void:
+	var c: Color = _elem_colour(ctx, "glow", Color.WHITE)
+	var m := maxf(c.r, maxf(c.g, c.b))
+	if m > 1.0:
+		c = Color(c.r / m, c.g / m, c.b / m)
+	c = c.lerp(Color.WHITE, 0.35)
+	var r := _overlay(Color(c.r, c.g, c.b, DRAMA_FLASH_ALPHA_MAX * drama), FLASH_Z)
+	ctx.jobs.add()
+	var tw := r.create_tween()
+	tw.tween_property(r, "color:a", 0.0, GameState.match_time(DRAMA_FLASH_TIME)).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(r.queue_free)
+	tw.tween_callback(ctx.jobs.finish)
 
 
 func _screen_flash(ctx: _Ctx, colour: Color) -> void:
@@ -1838,7 +1954,14 @@ func _elem_colour(ctx: _Ctx, key: String, fallback: Color) -> Color:
 func _card_rect(card: card_object) -> Rect2:
 	if card == null:
 		return Rect2()
-	var node: Control = main.find_card_ui_for_object(card)
+	# ISSUE #464: the card's place ON THE BOARD first. A Potion's heal (and any effect fired while a
+	# target-pick screen is still up) found the big copy in the centred selection view instead, so the
+	# effect played in the middle of the screen. The selection copy is only the fallback.
+	var node: Control = main.find_card_ui_for_object(card, true)
+	if node == null or not is_instance_valid(node) or not node.is_visible_in_tree():
+		node = main.find_card_ui_for_object(card)
+		if node != null and is_instance_valid(node) and node.is_visible_in_tree():
+			print("ISSUE #464 FIX ACTIVE: VFX on ", card.metadata.get("name", "?"), " fell back to its selection-screen copy")
 	if node == null or not is_instance_valid(node) or not node.is_visible_in_tree():
 		return Rect2()
 	var sz: Vector2 = node.size * node.get_global_transform().get_scale()

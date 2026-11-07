@@ -122,6 +122,12 @@ const OFFSCREEN_MARGIN_Y : float = 250.0
 # ------------------------------------------------------------
 const OPEN_ELLIE_1 := "So how was the tournament then? I watched some of the live highlights and it looked really good."
 const OPEN_ALEX_1  := "Yeah, didn't you basically get front row seats too so you could see the whole thing?"
+## ISSUE #479: while Ellie is inside paying.
+const ALEX_WHILE_ELLIE_INSIDE := "So… Uh... You read any good books lately?"
+## ISSUE #477: the player walks to the café door while the three of them are sat outside it.
+const ELLIE_WALKED_PAST := "Hey! We're over here, you walked right past us…"
+## ISSUE #480: TWEAKABLE - seconds after Ellie and Alexander set off before the player turns to watch them go.
+const PLAYER_WATCH_LEAVE_DELAY : float = 1.5
 const OPEN_ELLIE_2 := [
 	"I can't wait for the Gym Challenge to start, that'll be really good to watch... At least I know the rules now so I can actually follow a match along.",
 	"There's not much to do today, given it's the bank holiday nearly everything is shut so we're just sitting here practicing this all morning.",
@@ -404,6 +410,27 @@ static func _advance_to_afternoon() -> bool:
 	return true
 
 
+## ISSUE #477: the café door while the three of them are sat outside it - Ellie turns to the door and
+## calls the player back. Returns true when the door is blocked (the map cancels the transition).
+static func block_cafe_door(target_scene: String) -> bool:
+	if target_scene.get_file().get_basename() != "Cafe" or not is_active() or MapManager.cutscene_active:
+		return false
+	var container: Node = MapManager._opponents_container
+	if container == null or not is_instance_valid(container):
+		return false
+	for child in container.get_children():
+		if child.is_in_group("opponents") and child.opponent_name == ELLIE_NAME:
+			print("ISSUE #477 FIX ACTIVE: café door blocked - Ellie calls the player back")
+			MapManager.current_opponent = child
+			child.pause_and_face(child.global_position + Vector2.UP * 10.0)
+			if child.animated_sprite.sprite_frames != null and child.animated_sprite.sprite_frames.has_animation("idle_up"):
+				child.current_facing = "up"
+				child.animated_sprite.play("idle_up")
+			MapManager._show_message_with_ok(ELLIE_WALKED_PAST)
+			return true
+	return false
+
+
 ## Talking to anyone at the table starts the cutscene. Call after the map's _ready().
 static func register(map_scene: Node2D) -> void:
 	if not is_active():
@@ -505,9 +532,15 @@ func run_after_battle() -> void:
 func _play_opening() -> void:
 	var with_olly := olly_here()
 	await say(_sp_ellie, OPEN_ELLIE_1)
+	# ISSUE #476: Alexander looks down at the player (sat below him) for his line.
+	if _alex != null and is_instance_valid(_alex):
+		_alex.face("down")
+	print("ISSUE #476 FIX ACTIVE: Alexander faces the player, Olly looks up at Ellie")
 	await say(_sp_alex, OPEN_ALEX_1)
 	await say_all(_sp_ellie, OPEN_ELLIE_2)
 	if with_olly:
+		# ISSUE #476: Olly looks up at Ellie as he answers her.
+		_olly.face("up")
 		await say(_sp_olly, OPEN_OLLY_1)
 	await say(_sp_ellie, OPEN_ELLIE_3)
 	await say(_sp_alex, OPEN_ALEX_2)
@@ -673,7 +706,12 @@ func _play_after_alex() -> void:
 	var fade_in_door := create_tween()
 	fade_in_door.tween_property(_ellie, "modulate:a", 0.0, ELLIE_DOOR_FADE)
 	await fade_in_door.finished
-	await wait(ELLIE_INSIDE_TIME)
+	# ISSUE #479: an awkward moment while she's in there, then she comes back out.
+	await wait(ELLIE_INSIDE_TIME * 0.5)
+	print("ISSUE #479 FIX ACTIVE: Alexander's small talk while Ellie pays")
+	await say(_sp_alex, ALEX_WHILE_ELLIE_INSIDE)
+	close_box()
+	await wait(ELLIE_INSIDE_TIME * 0.5)
 	_ellie.face("down")
 	var fade_out_door := create_tween()
 	fade_out_door.tween_property(_ellie, "modulate:a", 1.0, ELLIE_DOOR_FADE)
@@ -703,6 +741,13 @@ func _play_after_alex() -> void:
 		Vector2(ALEX_LEAVE_X - LEAVE_RUN_LEFT, ALEX_TURN_Y),
 	]
 	_walk_off(_alex, alex_route, LEAVE_SPEED)
+	# ISSUE #480: a beat after they set off the player turns left to watch them go.
+	var watch := func() -> void:
+		await wait(PLAYER_WATCH_LEAVE_DELAY)
+		if is_inside_tree():
+			print("ISSUE #480 FIX ACTIVE: player turns to watch Ellie and Alexander leave")
+			player_face("left")
+	watch.call()
 	await wait(0.05)
 	await _walk_off(_ellie, ellie_route, LEAVE_SPEED)
 	# Alexander is a step behind; give him the moment to clear the camera too.

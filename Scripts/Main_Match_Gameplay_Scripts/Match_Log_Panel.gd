@@ -125,6 +125,12 @@ const DIVIDER_BOTTOM_GAP: int   = 6    # space below it
 # the visible height Page Up/Down moves.
 const SCROLL_STEP     : int   = 90
 const PAGE_FRACTION   : float = 0.85
+## ISSUE #484: px per second the log scrolls while the pad's d-pad / left stick is HELD (a pad sends
+## no repeats, so a held direction is read every frame). TWEAKABLE.
+const PAD_SCROLL_SPEED : float = 1400.0
+const PAD_STICK_DEADZONE : float = 0.35
+var _pad_scroll_carry: float = 0.0
+var _pad_scroll_logged: bool = false
 
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -528,7 +534,43 @@ func handle_scroll_input(event: InputEvent) -> bool:
 			KEY_HOME:     _scroller.scroll_vertical = 0; return true
 			KEY_END:      _scroll_to_max();         return true
 
+	# ISSUE #484: the pad. D-pad / stick are read every frame in _process (held = keeps scrolling), so
+	# their events are only claimed here; LT / RT page.
+	if UIInput.page_step(event) != 0:
+		_scroll_by(page * UIInput.page_step(event))
+		return true
+	if (event is InputEventJoypadButton or event is InputEventJoypadMotion) and UIInput.is_nav_event(event):
+		return true
+
 	return false
+
+
+func _process(delta: float) -> void:
+	if not is_visible_in_tree() or not is_instance_valid(_scroller):
+		_pad_scroll_carry = 0.0
+		return
+	var v: float = 0.0
+	for dev in Input.get_connected_joypads():
+		if Input.is_joy_button_pressed(dev, JOY_BUTTON_DPAD_UP): v = -1.0
+		elif Input.is_joy_button_pressed(dev, JOY_BUTTON_DPAD_DOWN): v = 1.0
+		else:
+			var ax: float = Input.get_joy_axis(dev, JOY_AXIS_LEFT_Y)
+			if absf(ax) > PAD_STICK_DEADZONE:
+				v = ax
+		if v != 0.0:
+			break
+	if v == 0.0:
+		_pad_scroll_carry = 0.0
+		_pad_scroll_logged = false
+		return
+	if not _pad_scroll_logged:
+		_pad_scroll_logged = true
+		print("ISSUE #484 FIX ACTIVE: pad scrolling the match log, dir ", signf(v))
+	_pad_scroll_carry += v * PAD_SCROLL_SPEED * delta
+	var whole := int(_pad_scroll_carry)
+	if whole != 0:
+		_pad_scroll_carry -= whole
+		_scroll_by(whole)
 
 
 func _scroll_by(delta: int) -> void:

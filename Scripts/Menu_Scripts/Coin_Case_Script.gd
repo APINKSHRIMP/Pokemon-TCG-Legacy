@@ -390,6 +390,10 @@ func _add_coin_to_grid(file_name: String) -> void:
 
 	if is_owned:
 		rect.modulate = Color(0.8, 0.8, 0.8)
+		# ISSUE #470: Olly's walkthrough is about to fly this coin in - no copy sat in the slot under it.
+		if file_name in GameState.coin_walk_hide:
+			print("ISSUE #470 FIX ACTIVE: ", file_name, " built hidden for the walkthrough")
+			rect.modulate.a = 0.0
 		rect.gui_input.connect(_on_coin_clicked.bind(rect))
 		UIKit.make_nav_tile(rect)   # D-pad / arrows land on it, A / Space picks it
 	else:
@@ -411,6 +415,10 @@ func _select_coin_by_name(coin_name: String) -> void:
 	# position and size, which are not real until the container has sorted.
 	await get_tree().process_frame
 	if not is_inside_tree():
+		return
+	# ISSUE #470: a coin Olly's walkthrough is about to fly in is not auto-selected (its pulse made it
+	# visible under the flying copy); the walkthrough selects it once it has landed.
+	if coin_name in GameState.coin_walk_hide:
 		return
 	for child in grid.get_children():
 		if child is TextureRect and child.get_meta("coin_name", "") == coin_name:
@@ -835,5 +843,8 @@ func walkthrough_place_coins(coin_files: Array) -> void:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 		fly.queue_free()
 		rect.modulate = Color(0.8, 0.8, 0.8, 1.0)
+		# ISSUE #470: the equipped coin takes its selected pulse only now it has landed.
+		if String(rect.get_meta("coin_name", "")) == saved_coin_name:
+			_select_coin(rect)
 		await get_tree().create_timer(WALK_COIN_GAP).timeout
 	walkthrough_active = false

@@ -85,6 +85,10 @@ var _primary_btn: Button
 var _confirm_box: DynamicMessageBox = null
 var _chose: bool = false
 
+## ISSUE #457: the keyboard / pad cursor. null = on the slots (Left / Right pick a slot); otherwise
+## one of the three buttons. Down from the slots goes to the button row, Up goes to the bin.
+var _cursor: Button = null
+
 
 ## `host` is the splash. Its shader buttons are reused so this screen's buttons
 ## match the title screen's exactly.
@@ -365,6 +369,7 @@ func _select(slot: int, with_sound: bool = true) -> void:
 func _on_slot_clicked(slot: int) -> void:
 	if not active or _confirm_box != null:
 		return
+	_move_cursor(null)
 	if slot != _selected:
 		_select(slot)
 
@@ -513,6 +518,7 @@ func _on_delete_confirmed() -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 	GameState.delete_slot(_selected)
 	_refresh_slots()
+	_move_cursor(null)   # ISSUE #457: the bin is dead on the now-empty slot
 
 
 func _dismiss_confirm() -> void:
@@ -553,16 +559,62 @@ func _input(event: InputEvent) -> void:
 		_on_cancel_pressed()
 	elif UIInput.is_accept(event):
 		get_viewport().set_input_as_handled()
-		_on_primary_pressed()
-	elif event.is_action_pressed("ui_left"):
+		# ISSUE #457: A presses whatever the cursor is on; on the slots it plays the slot.
+		if _cursor == _cancel_btn:
+			_on_cancel_pressed()
+		elif _cursor == _bin:
+			_on_bin_pressed()
+		else:
+			_on_primary_pressed()
+	elif UIInput.nav_direction(event) != Vector2i.ZERO:
 		get_viewport().set_input_as_handled()
-		_step(-1)
-	elif event.is_action_pressed("ui_right"):
-		get_viewport().set_input_as_handled()
-		_step(1)
+		_nav(UIInput.nav_direction(event))
+	elif UIInput.is_nav_event(event):
+		get_viewport().set_input_as_handled()   # stick drift: never Godot's own focus search
 	elif _is_delete(event):
 		get_viewport().set_input_as_handled()
 		_on_bin_pressed()
+
+
+## ISSUE #457: arrows / d-pad / stick. On the slots Left / Right pick a slot, Down drops to the
+## button row (onto the main button), Up goes to the bin when the slot has a save. On the button row
+## Left / Right swap Cancel <-> main button and Up returns to the slots. On the bin Down / Left return.
+func _nav(dir: Vector2i) -> void:
+	if _cursor == null:
+		if dir.x != 0:
+			_step(dir.x)
+		elif dir.y > 0:
+			_move_cursor(_primary_btn)
+		elif dir.y < 0 and not _bin.disabled:
+			_move_cursor(_bin)
+	elif _cursor == _bin:
+		if dir.y > 0 or dir.x < 0:
+			_move_cursor(null)
+	else:
+		if dir.y < 0:
+			_move_cursor(null)
+		elif dir.x < 0:
+			_move_cursor(_cancel_btn)
+		elif dir.x > 0:
+			_move_cursor(_primary_btn)
+
+
+## Puts the cursor on a button (it takes real GUI focus so InputDevice's ring frames it) or back on
+## the slots (null: focus released, the slot keeps its own selection ring).
+func _move_cursor(btn: Button) -> void:
+	if btn == _cursor:
+		return
+	_cursor = btn
+	print("ISSUE #457 FIX ACTIVE: save-select cursor -> ", "slots" if btn == null else btn.name)
+	for b in [_cancel_btn, _primary_btn, _bin]:
+		(b as Button).focus_mode = Control.FOCUS_ALL if b == btn else Control.FOCUS_NONE
+	if btn != null:
+		btn.grab_focus()   # InputDevice plays the menu blip on a nav focus change
+	else:
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+		var f: Control = get_viewport().gui_get_focus_owner()
+		if f != null:
+			f.release_focus()
 
 
 func _is_delete(event: InputEvent) -> bool:

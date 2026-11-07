@@ -616,6 +616,35 @@ func set_mode(mode: String) -> void:
 	if no_button  != null: no_button.visible  = wants_buttons
 	if ok_button  != null: ok_button.visible  = false
 	_set_caret_visible(not wants_buttons)
+	# ISSUE #460: a question always opens with YES highlighted, so A / Space answers it as before;
+	# Left / Right move the highlight (set_choice_cursor) and A then answers whichever is ringed.
+	set_choice_cursor(0 if wants_buttons else -1)
+
+
+## ISSUE #460: which Yes/No button the keyboard / pad answer goes to - 0 = Yes, 1 = No, -1 = none
+## (not a question). The chosen one wears the selection ring.
+var choice_cursor: int = -1
+
+func set_choice_cursor(index: int) -> void:
+	choice_cursor = index
+	for i in 2:
+		var btn: Button = yes_button if i == 0 else no_button
+		if btn == null:
+			continue
+		var old := btn.get_node_or_null("ChoiceRing")
+		if old != null:
+			btn.remove_child(old)
+			old.queue_free()
+		if i != index:
+			continue
+		var ring := UIKit.add_selection_ring(btn, btn)
+		ring.name = "ChoiceRing"
+		var inset: float = UITheme.SEL_RING_PX + 2.0
+		ring.set_anchors_preset(Control.PRESET_FULL_RECT)
+		ring.offset_left = -inset
+		ring.offset_top = -inset
+		ring.offset_right = inset
+		ring.offset_bottom = inset
 
 
 ## A small chip in the Yes/No buttons' place, for a question the player is NOT being

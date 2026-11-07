@@ -1,8 +1,8 @@
 ==============================================================================
 ISSUE DEBUG-TAG AUDIT
 ==============================================================================
-issues with tags in code : 389
-issues with live prints  : 60
+issues with tags in code : 430
+issues with live prints  : 102
 rows in Game_Issues          : 914
 
 ------------------------------------------------------------------------------
@@ -13,23 +13,23 @@ rows in Game_Issues          : 914
 ------------------------------------------------------------------------------
 [2] ORPHAN TAGS — tag number not present in the log (12)
 ------------------------------------------------------------------------------
-  ISSUE #423: 2 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:13981, Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:8117
-  ISSUE #424: 2 print(s) — Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:3256, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:5732
+  ISSUE #423: 2 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:14000, Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:8146
+  ISSUE #424: 2 print(s) — Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:3256, Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:5734
   ISSUE #425: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:514
   ISSUE #426: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Trainer_Effects.gd:3221
-  ISSUE #427: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:10068
-  ISSUE #428: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:5122
-  ISSUE #429: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10307
-  ISSUE #430: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:16997
-  ISSUE #431: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:9760
-  ISSUE #433: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:6579
-  ISSUE #434: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10865
-  ISSUE #435: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:831
+  ISSUE #427: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:10135
+  ISSUE #428: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd:5131
+  ISSUE #429: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10336
+  ISSUE #430: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Powers_And_Bodies_Effects.gd:17067
+  ISSUE #431: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:9789
+  ISSUE #433: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:6598
+  ISSUE #434: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Main_Match_Core_Gameplay_Script.gd:10894
+  ISSUE #435: 1 print(s) — Scripts/Main_Match_Gameplay_Scripts/Attack_Effects.gd:846
 
 ------------------------------------------------------------------------------
-[3] KEEP — prints on issues still open/untested (48)
+[3] KEEP — prints on issues still open/untested (90)
 ------------------------------------------------------------------------------
-  #304 (Untested Fix, 2), #383 (Untested Fix, 1), #384 (Untested Fix, 1), #385 (Untested Fix, 1), #387 (Untested Fix, 2), #388 (Untested Fix, 1), #389 (Untested Fix, 1), #390 (Untested Fix, 1), #391 (Untested Fix, 1), #394 (Untested Fix, 6), #395 (Untested Fix, 1), #396 (Untested Fix, 2), #397 (Untested Fix, 1), #398 (Untested Fix, 4), #399 (Untested Fix, 2), #400 (Untested Fix, 2), #401 (Untested Fix, 1), #402 (Untested Fix, 2), #403 (Untested Fix, 1), #404 (Untested Fix, 1), #405 (Untested Fix, 1), #406 (Untested Fix, 1), #407 (Untested Fix, 1), #410 (Untested Fix, 2), #411 (Untested Fix, 1), #412 (Untested Fix, 1), #413 (Untested Fix, 1), #414 (Untested Fix, 2), #415 (Untested Fix, 1), #416 (Untested Fix, 1), #418 (Untested Fix, 1), #419 (Untested Fix, 2), #420 (Untested Fix, 2), #421 (Untested Fix, 2), #422 (Untested Fix, 1), #436 (Untested Fix, 1), #439 (Untested Fix, 1), #440 (Untested Fix, 4), #443 (Untested Fix, 1), #444 (Untested Fix, 1), #445 (Untested Fix, 1), #446 (Untested Fix, 2), #448 (Untested Fix, 1), #450 (Untested Fix, 1), #452 (Untested Fix, 1), #453 (Untested Fix, 2), #454 (Untested Fix, 1), #455 (Untested Fix, 3)
+  #304 (Untested Fix, 2), #383 (Untested Fix, 1), #384 (Untested Fix, 1), #385 (Untested Fix, 1), #387 (Untested Fix, 2), #388 (Untested Fix, 1), #389 (Untested Fix, 1), #390 (Untested Fix, 1), #391 (Untested Fix, 1), #394 (Untested Fix, 6), #395 (Untested Fix, 1), #396 (Untested Fix, 2), #397 (Untested Fix, 1), #398 (Untested Fix, 4), #399 (Untested Fix, 2), #400 (Untested Fix, 2), #401 (Untested Fix, 1), #402 (Untested Fix, 2), #403 (Untested Fix, 1), #404 (Untested Fix, 1), #405 (Untested Fix, 1), #406 (Untested Fix, 1), #407 (Untested Fix, 1), #410 (Untested Fix, 2), #411 (Untested Fix, 1), #412 (Untested Fix, 1), #413 (Untested Fix, 1), #414 (Untested Fix, 2), #415 (Untested Fix, 1), #416 (Untested Fix, 1), #418 (Untested Fix, 1), #419 (Untested Fix, 2), #420 (Untested Fix, 2), #421 (Untested Fix, 2), #422 (Untested Fix, 1), #436 (Untested Fix, 1), #439 (Untested Fix, 1), #440 (Untested Fix, 5), #443 (Untested Fix, 1), #444 (Untested Fix, 1), #445 (Untested Fix, 1), #446 (Untested Fix, 2), #447 (Untested Fix, 1), #448 (Untested Fix, 1), #450 (Untested Fix, 1), #452 (Untested Fix, 1), #453 (Untested Fix, 2), #454 (Untested Fix, 1), #455 (Untested Fix, 3), #456 (Untested Fix, 1), #457 (Untested Fix, 1), #458 (Untested Fix, 1), #459 (Untested Fix, 1), #460 (Untested Fix, 2), #461 (Untested Fix, 1), #462 (Untested Fix, 1), #463 (Untested Fix, 1), #464 (Untested Fix, 1), #465 (Untested Fix, 1), #466 (Untested Fix, 1), #467 (Untested Fix, 1), #468 (Untested Fix, 1), #469 (Untested Fix, 1), #470 (Untested Fix, 1), #472 (Untested Fix, 1), #473 (Untested Fix, 1), #474 (Untested Fix, 2), #475 (Untested Fix, 1), #476 (Untested Fix, 1), #477 (Untested Fix, 1), #478 (Untested Fix, 1), #479 (Untested Fix, 1), #480 (Untested Fix, 1), #482 (Untested Fix, 1), #483 (Untested Fix, 2), #484 (Untested Fix, 1), #485 (Untested Fix, 1), #486 (Untested Fix, 3), #487 (Untested Fix, 1), #488 (Untested Fix, 1), #489 (Untested Fix, 1), #490 (Untested Fix, 1), #491 (Untested Fix, 1), #492 (Untested Fix, 1), #493 (Untested Fix, 5), #494 (Untested Fix, 1), #495 (Untested Fix, 1), #497 (Untested Fix, 1), #498 (Untested Fix, 1), #499 (Untested Fix, 1)
 
 NOTE: `# ISSUE #n ...` comments are permanent documentation and are NOT
       reported here. Only executable print/push_error lines are.

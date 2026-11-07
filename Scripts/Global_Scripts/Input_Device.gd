@@ -34,6 +34,19 @@ signal device_changed(device: int)
 enum { MOUSE, KEYBOARD, PAD }
 
 var last: int = MOUSE
+## ISSUE #468 / #470: true while a cutscene drives a menu for the player (Olly's deck builder / coin case
+## walkthrough). The menu cursor stands down completely: no autofocus, no focus at all (anything that
+## takes focus loses it again), no d-pad moves, no shortcuts - so A / Space reach the message box
+## instead of pressing a card tile behind it. Set and cleared by OllyIntroCutscene.
+var suspended: bool = false
+
+func set_suspended(on: bool) -> void:
+	suspended = on
+	print("ISSUE #468 FIX ACTIVE: menu cursor ", "suspended" if on else "back")
+	if on:
+		var f: Control = get_viewport().gui_get_focus_owner()
+		if f != null:
+			f.release_focus()
 
 ## The pad family last seen: "xbox" or "playstation". Re-read on connect/disconnect.
 var _pad_family: String = "xbox"
@@ -169,10 +182,15 @@ func _on_window_input(event: InputEvent) -> void:
 ## edge (no cell that way) the press falls through to the normal geometric search, which is
 ## how the cursor leaves the grid for the buttons around it.
 func _input(event: InputEvent) -> void:
+	if suspended:
+		if UIInput.is_nav_event(event):
+			get_viewport().set_input_as_handled()   # ISSUE #468: nothing to move while a cutscene drives the menu
+		return
 	if _menu_shortcut(event):
 		return
 	var dir := UIInput.nav_direction(event)
 	if dir == Vector2i.ZERO:
+		_swallow_stick_drift(event)
 		return
 	var f: Control = get_viewport().gui_get_focus_owner()
 	if f == null or not f.is_visible_in_tree():
@@ -184,6 +202,29 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	_human_step_input(f, dir)
+
+
+## ISSUE #461: a stick push sends X and Y as SEPARATE motion events. The one that did not step
+## (the other axis drifting, or the same axis after its edge was spent) used to fall through to
+## Godot's own ui_up / ui_down / ui_left / ui_right actions, which moved the focus by Godot's search
+## - pushing right drifted the cursor up or down a row. In a menu that event belongs to the cursor
+## and is swallowed. Left alone: the match (Board_Nav), text fields, and left / right on a slider.
+func _swallow_stick_drift(event: InputEvent) -> void:
+	if not (event is InputEventJoypadMotion) or not UIInput.is_nav_event(event):
+		return
+	var f: Control = get_viewport().gui_get_focus_owner()
+	if f == null or f is LineEdit or f is TextEdit:
+		return
+	if f is Range and (event as InputEventJoypadMotion).axis == JOY_AXIS_LEFT_X:
+		return
+	var root: Node = _trap_root()
+	if root == null:
+		root = _search_root()
+	if root == null or _is_match(root) or not root.is_ancestor_of(f):
+		return
+	if absf((event as InputEventJoypadMotion).axis_value) >= 0.5:
+		print("ISSUE #461 FIX ACTIVE: swallowed stick axis ", (event as InputEventJoypadMotion).axis, " drift ", snappedf((event as InputEventJoypadMotion).axis_value, 0.01))
+	get_viewport().set_input_as_handled()
 
 
 # ── Human-expected menu movement ─────────────────────────────────────────────
@@ -408,13 +449,22 @@ func _focusable_in_cell(c: Control) -> Control:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if suspended:
+		return
 	# Pad Start on a sub-menu (sleeves, coins, costumes, options...): the first press jumps the cursor
 	# to the screen's Save / main action, the next press (or A) confirms it. The pause menu and the
 	# match use Start themselves and consume it before it gets here; the overworld has no menu root.
 	if UIInput.is_pause(event):
 		var root := _search_root()
 		if root != null and not _is_match(root):
-			var main_btn := _primary_action_button()
+			# ISSUE #485: Start goes to the screen's SAVE (or OK / Done / Confirm) button whenever there
+			# is one - even while it is still greyed out (nothing changed yet), which used to send the
+			# cursor to some other primary-styled button instead. Else the old main-action pick.
+			var main_btn: Control = _save_like_button()
+			if main_btn != null:
+				print("ISSUE #485 FIX ACTIVE: Start -> save-like button ", main_btn.name)
+			else:
+				main_btn = _primary_action_button()
 			if main_btn != null:
 				var f: Control = get_viewport().gui_get_focus_owner()
 				if f == main_btn and main_btn is BaseButton and not (main_btn as BaseButton).disabled:
@@ -463,6 +513,30 @@ func _first_menu_button() -> Control:
 	if scope != null:
 		root = scope
 	return first_focusable_in(root)
+
+
+## ISSUE #485: the visible Save / OK / Okay / Done / Confirm button on the screen (or the open popup),
+## disabled ones included, lowest on screen first. null when the screen has none.
+func _save_like_button() -> Control:
+	var root: Node = _search_root()
+	if root == null:
+		return null
+	var trap := _trap_root()
+	if trap != null:
+		root = trap
+	var best: Control = null
+	for b in root.find_children("*", "Button", true, false):
+		var btn := b as Button
+		if not btn.is_visible_in_tree():
+			continue
+		var t := btn.text.strip_edges().to_lower()
+		if not (t.begins_with("save") or t in ["ok", "okay", "done", "confirm"]) or "opponent" in t:
+			continue
+		if best == null or btn.global_position.y > best.global_position.y:
+			best = btn
+	if best != null and best.focus_mode == Control.FOCUS_NONE:
+		best.focus_mode = Control.FOCUS_ALL
+	return best
 
 
 ## The enabled, visible button styled as the screen's go-ahead action (variant good / primary /
@@ -680,6 +754,9 @@ func _enter_trap() -> void:
 func _on_focus_changed(c: Control) -> void:
 	if c == null:
 		return
+	if suspended:
+		c.release_focus.call_deferred()   # ISSUE #468
+		return
 	# ISSUE #447: the quiet blip whenever the keyboard / pad cursor moves to something new.
 	# Only on a REAL move: a screen focusing its own selected item on open (no input yet) is silent.
 	if using_nav() and _last_focus_blip != c and Time.get_ticks_msec() - _last_nav_press_ms < NAV_BLIP_WINDOW_MS:
@@ -718,6 +795,8 @@ var _autofocus_frames: int = 0
 const AUTOFOCUS_DELAY_FRAMES := 4
 
 func _autofocus_new_menu() -> void:
+	if suspended:
+		return
 	var root: Node = _search_root()
 	if root != _last_nav_root:
 		_last_nav_root = root

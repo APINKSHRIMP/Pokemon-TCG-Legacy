@@ -2066,13 +2066,16 @@ func cpu_phase_activate_powers() -> void:
 	# Pokémon evolves", so it fires from perform_evolution -> trigger_chain_reaction_after_evolution.
 	# (Removed the old proactive trigger that fired it "out of nowhere" — ISSUE #72.)
 
-	# basep-13 Solar Power (Venusaur): CPU clears status if own active or opponent's active has status
+	# basep-13 Solar Power (Venusaur): cures BOTH Actives of Asleep / Confused / Paralyzed / Poisoned.
+	# ISSUE #497: it fired when EITHER Active was affected - with only the player's Pokémon Paralyzed or Poisoned,
+	# the CPU cured it for them. Now only when curing ours is worth more than curing theirs.
 	if not toxic_gas:
 		var venusaur = _find_cpu_pokemon_with_power("Solar Power")
 		if venusaur != null and not is_power_blocked_by_status(venusaur) and not venusaur.power_used_this_turn:
-			var own_afflicted = main.opponent_active_pokemon != null and (main.opponent_active_pokemon.special_condition != "" or main.opponent_active_pokemon.is_poisoned)
-			var opp_afflicted = main.player_active_pokemon != null and (main.player_active_pokemon.special_condition != "" or main.player_active_pokemon.is_poisoned)
-			if own_afflicted or opp_afflicted:
+			var own_sev: int = _solar_power_severity(main.opponent_active_pokemon)
+			var opp_sev: int = _solar_power_severity(main.player_active_pokemon)
+			if own_sev > opp_sev:
+				print("ISSUE #497 FIX ACTIVE: Solar Power - ours ", own_sev, " vs theirs ", opp_sev)
 				await announce_cpu_power(venusaur, "Solar Power")   # ISSUE #106
 				if main._should_bail(): return
 				await power_solar_power(venusaur)
@@ -4778,15 +4781,9 @@ func cpu_phase_gym_powers() -> void:
 	# --- Fragrance Trap (gym1-26 Erika's Victreebel) ---
 	var victreebel = _find_pokemon_with_power_on_side("Fragrance Trap", true)
 	if victreebel != null and not victreebel.power_used_this_turn and _power_active_on(victreebel, "Fragrance Trap", false):
-		# Only use if player has bench targets weaker than their active
+		# ISSUE #498: only when a Benched target beats the Defending Pokemon (was: any Benched Pokemon with less HP).
 		if main.player_bench.size() > 0 and main.player_active_pokemon != null:
-			var pa_hp = float(main.player_active_pokemon.current_hp)
-			var has_weaker: bool = false
-			for bp in main.player_bench:
-				if float(bp.current_hp) < pa_hp:
-					has_weaker = true
-					break
-			if has_weaker:
+			if _cpu_fragrance_trap_worth():
 				await announce_cpu_power(victreebel, "Fragrance Trap")   # ISSUE #106
 				if main._should_bail(): return
 				await power_fragrance_trap(victreebel)
@@ -4975,6 +4972,21 @@ func power_special_delivery(pokemon: card_object) -> void:
 	await main.show_message("SPECIAL DELIVERY! CARD PLACED ON TOP OF DECK!")
 	if main._should_bail(): return
 	print("POWER USED: Special Delivery")
+
+## ISSUE #497: how much Solar Power's cure is worth to one Active: Paralyzed / Asleep (can't attack or retreat) 3,
+## Confused 2, Poisoned 1 (+1 more if it takes extra counters, Toxic-style). 0 = nothing to cure.
+func _solar_power_severity(p) -> int:
+	if p == null:
+		return 0
+	var s := 0
+	match p.special_condition:
+		"Paralyzed", "Asleep": s = 3
+		"Confused": s = 2
+	if p.is_poisoned:
+		s += 1
+		if p.poison_damage > 10:
+			s += 1
+	return s
 
 # SOLAR POWER (basep-13 Venusaur): clear all status from both Active Pokemon
 func power_solar_power(pokemon: card_object) -> void:
@@ -9698,7 +9710,21 @@ func power_ecard2_earth_rage(nidoking: card_object) -> void:
 	if main._should_bail(): return
 	print("POWER USED: Earth Rage")
 
-# BACKUP (Porygon2): once per turn, if 2 or fewer cards in hand, draw until you have 3
+# BACKUP (Porygon2): once per turn, draw until the hand holds the card's number.
+# ISSUE #490: two different cards share the name. ecard2-28 says "2 or fewer cards ... until you have 3";
+# ex11-25 says "less than 6 cards ... until you have 6". Both are "fewer than N, draw up to N", so N is
+# read from the card's own text (it was hard-coded to the ecard2 numbers, so ex11's Porygon2 drew to 3
+# and couldn't be used at all with 3-5 cards in hand).
+func backup_hand_target(porygon2: card_object) -> int:
+	for ab in porygon2.metadata.get("abilities", []):
+		if ab is Dictionary and String(ab.get("name", "")) == "Backup":
+			var rx := RegEx.new()
+			rx.compile("until you have (\\d+)")
+			var m := rx.search(String(ab.get("text", "")).to_lower())
+			if m != null:
+				return int(m.get_string(1))
+	return 3
+
 func power_ecard2_backup(porygon2: card_object) -> void:
 	var is_opponent = porygon2.is_owner_opp(main)
 	if is_power_blocked_by_status(porygon2):
@@ -9710,18 +9736,54 @@ func power_ecard2_backup(porygon2: card_object) -> void:
 		if main._should_bail(): return
 		return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
-	if hand.size() > 2:
-		await main.show_message("YOU HAVE MORE THAN 2 CARDS IN HAND!")
+	var target := backup_hand_target(porygon2)
+	print("ISSUE #490 FIX ACTIVE: Backup on ", porygon2.uid, " draws up to ", target, " (hand ", hand.size(), ")")
+	if hand.size() >= target:
+		await main.show_message("YOU ALREADY HAVE " + str(target) + " OR MORE CARDS IN HAND!")
 		if main._should_bail(): return
 		return
 	porygon2.power_used_this_turn = true
-	var to_draw = 3 - hand.size()
+	var to_draw = target - hand.size()
 	if to_draw > 0:
 		await main.card_ops.draw_n(is_opponent, to_draw)
 		if main._should_bail(): return
-	await main.show_message("BACKUP! DREW UP TO 3 CARDS IN HAND!")
+	await main.show_message("BACKUP! DREW UP TO " + str(target) + " CARDS IN HAND!")
 	if main._should_bail(): return
 	print("POWER USED: Backup")
+
+## ISSUE #498: Strange Tentacles hands the PLAYER'S Defending Pokemon an Energy. The CPU used it every time it could
+## (103 of 103 chances) with nothing to gain. Worth it only when that Energy makes one of our attacks hit harder (damage
+## that scales with the Defending Pokemon's Energy) and doesn't make their attacks stronger - unless ours then KOs.
+func _cpu_strange_tentacles_worth(own_active, defender) -> bool:
+	if own_active == null or defender == null or defender.attached_energies.size() >= own_active.attached_energies.size():
+		return false
+	var pool: Array = main.player_discard_pile.filter(func(c): return c.metadata.get("supertype", "") == "Energy")
+	if pool.is_empty():
+		return false
+	var e = pool[0]
+	var ai = main.cpu_ai
+	var dmg_before: int = ai._cpu_best_damage(own_active, own_active.attached_energies, defender)
+	var threat_before: int = ai._cpu_threat_damage(defender, own_active)
+	defender.attached_energies.append(e)
+	var dmg_after: int = ai._cpu_best_damage(own_active, own_active.attached_energies, defender)
+	var threat_after: int = ai._cpu_threat_damage(defender, own_active)
+	defender.attached_energies.erase(e)
+	if dmg_after <= dmg_before:
+		return false
+	if dmg_after >= defender.current_hp and dmg_before < defender.current_hp:
+		return true
+	return threat_after <= threat_before
+
+## ISSUE #498: a free gust (Fragrance Trap, either card) is still only worth using when a Benched target beats the
+## Defending Pokemon already there. Switching frees a Defending Pokemon from its Special Condition, so that one
+## stays put unless the swap sets up a Knock Out.
+func _cpu_fragrance_trap_worth() -> bool:
+	var ai = main.cpu_ai
+	var gain: float = ai.cpu_gust_gain(main.opponent_active_pokemon, ai.cpu_best_damage_vs_any())
+	var cur = main.player_active_pokemon
+	if cur != null and (cur.special_condition != "" or cur.is_poisoned or cur.is_burned) and gain < 500.0:
+		return false
+	return gain > 0.0   # CPU_AI.GUST_MIN_GAIN
 
 # STRANGE TENTACLES (Tentacruel): once per turn, if Defending has less Energy than your Active,
 # may take an Energy from opponent's discard and attach it to the Defending Pokemon
@@ -9901,6 +9963,11 @@ func power_ecard2_fragrance_trap(victreebel: card_object) -> void:
 		if main._should_bail(): return
 		return
 	var chosen: card_object = opp_bench[0]
+	if is_opponent:
+		# ISSUE #498: the best gust target (as the gym1 Fragrance Trap picks), not whichever was benched first.
+		var ft_pick = main.cpu_ai.cpu_pick_gust_target(opp_bench, main.cpu_ai.cpu_best_damage_vs_any(), main.opponent_active_pokemon)
+		if ft_pick != null:
+			chosen = ft_pick
 	if not is_opponent and opp_bench.size() > 1:
 		chosen = await main.card_ops.prompt_select_card(opp_bench, "FRAGRANCE TRAP", "Choose an opponent Benched Pokemon to switch in", "SWITCH", false)
 		if main._should_bail(): return
@@ -10185,14 +10252,17 @@ func cpu_phase_ecard2_powers() -> void:
 
 	var backup = _find_cpu_pokemon_with_power("Backup")
 	if backup != null and not backup.power_used_this_turn and not is_power_blocked_by_status(backup):
-		if main.opponent_hand.size() <= 2:
+		# ISSUE #490: the card's own target (3 or 6); "may draw", so never draw into a deck-out.
+		var bk_draw: int = backup_hand_target(backup) - main.opponent_hand.size()
+		if bk_draw > 0 and main.opponent_deck.size() > bk_draw:
 			await announce_cpu_power(backup, "Backup")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard2_backup(backup)
 			if main._should_bail(): return
 
 	var strange_tentacles = _find_cpu_pokemon_with_power("Strange Tentacles")
-	if strange_tentacles != null and not strange_tentacles.power_used_this_turn and not is_power_blocked_by_status(strange_tentacles):
+	if strange_tentacles != null and not strange_tentacles.power_used_this_turn and not is_power_blocked_by_status(strange_tentacles) 			and _cpu_strange_tentacles_worth(main.opponent_active_pokemon, main.player_active_pokemon):   # ISSUE #498
+		print("ISSUE #498 FIX ACTIVE: Strange Tentacles pays off this turn")
 		await announce_cpu_power(strange_tentacles, "Strange Tentacles")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ecard2_strange_tentacles(strange_tentacles)
@@ -10217,7 +10287,7 @@ func cpu_phase_ecard2_powers() -> void:
 
 	var fragrance_trap = _find_cpu_pokemon_with_power("Fragrance Trap")
 	if fragrance_trap != null and not fragrance_trap.uid.begins_with("gym1-") and not fragrance_trap.power_used_this_turn and not is_power_blocked_by_status(fragrance_trap):
-		if main.player_bench.size() > 0:
+		if main.player_bench.size() > 0 and _cpu_fragrance_trap_worth():   # ISSUE #498
 			await announce_cpu_power(fragrance_trap, "Fragrance Trap")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard2_fragrance_trap(fragrance_trap)

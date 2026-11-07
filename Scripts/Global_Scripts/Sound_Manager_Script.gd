@@ -76,12 +76,27 @@ const SFX_knockout_sound = preload("res://Audio/SFX/knockout_sound.ogg")
 const SFX_select_button = preload("res://Audio/SFX/select_button.ogg")
 ## ISSUE #447 / #454: the quiet blip - a menu cursor moving, a hand card pressed.
 const SFX_select_change = preload("res://Audio/SFX/Select_Change.ogg")
-const SFX_evolve_sound = preload("res://Audio/SFX/evolve_sound.ogg")
+## MATCH SFX OLD / NEW SWITCH (2026-11-06). true = the newer sounds picked from the Pokémon move
+## collection (Audio/SFX/Attacks) plus the louder, slightly slower draw / shuffle; false = the very first
+## match sounds the game shipped with. TWEAKABLE: flip it, or point any *_NEW path at another clip.
+const USE_NEW_MATCH_SFX := true
+const SFX_EVOLVE_OLD := "res://Audio/SFX/evolve_sound.ogg"
+const SFX_EVOLVE_NEW := "res://Audio/SFX/Attacks/Transform.ogg"
+const SFX_ENERGY_OLD := "res://Audio/SFX/energy_sound.ogg"
+const SFX_ENERGY_NEW := "res://Audio/SFX/Attacks/Focus Energy.ogg"
+## The draw / shuffle had no better replacement: the same clips at 0.9x speed (same pitch, WSOLA
+## time-stretch) and louder (draw +8 dB - it was far quieter than every other SFX - shuffle +3 dB).
+const SFX_DRAW_OLD := "res://Audio/SFX/card_draw_sound.ogg"
+const SFX_DRAW_NEW := "res://Audio/SFX/card_draw_sound_v2.ogg"
+const SFX_SHUFFLE_OLD := "res://Audio/SFX/card_shuffle_riffle.ogg"
+const SFX_SHUFFLE_NEW := "res://Audio/SFX/card_shuffle_riffle_v2.ogg"
+
+const SFX_evolve_sound = preload(SFX_EVOLVE_NEW) if USE_NEW_MATCH_SFX else preload(SFX_EVOLVE_OLD)
 const SFX_trainer_sound = preload("res://Audio/SFX/trainer_sound.ogg")
 const SFX_damage_sound = preload("res://Audio/SFX/damage_sound.ogg")
 const SFX_status_sound = preload("res://Audio/SFX/status_sound.ogg")
-const SFX_energy_sound = preload("res://Audio/SFX/energy_sound.ogg")
-const SFX_card_draw_sound = preload("res://Audio/SFX/card_draw_sound.ogg")
+const SFX_energy_sound = preload(SFX_ENERGY_NEW) if USE_NEW_MATCH_SFX else preload(SFX_ENERGY_OLD)
+const SFX_card_draw_sound = preload(SFX_DRAW_NEW) if USE_NEW_MATCH_SFX else preload(SFX_DRAW_OLD)
 const SFX_poison_sound = preload("res://Audio/SFX/poison_sound.ogg")
 const SFX_heal_sound = preload("res://Audio/SFX/heal_sound.ogg")
 
@@ -94,7 +109,7 @@ const SFX_battle_start = preload("res://Audio/SFX/battle_start.ogg")
 ## so it has died away by the time the decks arrive. Match_Transition.gd.
 const SFX_battle_start_fast = preload("res://Audio/SFX/battle_start_fast.ogg")
 ## One riffle of a deck shuffle (0.17s, synthesised) - played per cut of the intro shuffle.
-const SFX_card_shuffle = preload("res://Audio/SFX/card_shuffle_riffle.ogg")
+const SFX_card_shuffle = preload(SFX_SHUFFLE_NEW) if USE_NEW_MATCH_SFX else preload(SFX_SHUFFLE_OLD)
 const SFX_battle_win = preload("res://Audio/SFX/battle_win_sound.ogg")
 const SFX_battle_loss = preload("res://Audio/SFX/battle_loss_sound.ogg")
 
@@ -324,7 +339,15 @@ func stop_cry() -> void:
 # --- BGM: play background music from a res:// path ---
 # If loop is true the track will repeat. Calling this while BGM is
 # already playing will stop the old track and start the new one.
+## ISSUE #467 / #470: true while Olly's intro walks the player through the menus (deck builder, coin
+## case). The overworld track keeps playing: the menus' own track is not started and nothing stops the
+## world's. Set and cleared by OllyIntroCutscene.
+var hold_world_bgm: bool = false
+
 func play_bgm(path: String, loop: bool = true) -> void:
+	if hold_world_bgm and path == BGM_COIN_MODE:
+		print("ISSUE #467 FIX ACTIVE: menu track skipped, the overworld BGM plays on")
+		return
 	if _current_bgm_path == path and bgm_player != null:
 		return
 	stop_bgm()
@@ -478,6 +501,8 @@ func _apply_bgm_duck() -> void:
 
 # --- BGM: stop and free the current BGM player ---
 func stop_bgm() -> void:
+	if hold_world_bgm:
+		return   # ISSUE #467: the walkthrough keeps the world's music
 	if bgm_player != null:
 		bgm_player.stop()
 		bgm_player.queue_free()

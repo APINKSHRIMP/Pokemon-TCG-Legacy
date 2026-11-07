@@ -505,6 +505,11 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		MapManager.handle_message_cancel()
 		return
+	# ISSUE #460: Left / Right move the Yes/No highlight on a question.
+	if MapManager.wants_message_input() and UIInput.is_nav_event(event):
+		if MapManager.handle_message_nav(UIInput.nav_direction(event)):
+			get_viewport().set_input_as_handled()
+			return
 
 	# A cutscene owns the screen: no main menu until it hands control back. The
 	# message-box branch above still runs first, so Escape keeps advancing the

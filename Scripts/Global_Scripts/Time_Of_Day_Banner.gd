@@ -26,7 +26,7 @@ const DROP_FROM := 70.0          # starts this far above its resting spot
 const DELAY := 0.6               # after the map loads, so the scene fade-in is done first
 # ISSUE #379: fly-in and stay are 2.5x their old values (0.35 -> 0.875, 1.0 -> 2.5).
 const IN_TIME := 0.875
-const HOLD_TIME := 2.5
+const HOLD_TIME := 5.0   # ISSUE #478: doubled (was 2.5)
 const OUT_TIME := 0.35
 const FONT_SIZE := 30
 const ICON_SIZE := 34.0
@@ -87,6 +87,7 @@ static func play(ui_layer: Node, time_name: String) -> void:
 	tween.tween_interval(DELAY)
 	tween.tween_property(panel, "position:y", REST_POS.y, IN_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(panel, "modulate:a", 1.0, IN_TIME)
+	print("ISSUE #478 FIX ACTIVE: time banner holds ", HOLD_TIME, "s")
 	tween.tween_interval(HOLD_TIME)
 	tween.tween_property(panel, "position:y", REST_POS.y - DROP_FROM, OUT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(panel, "modulate:a", 0.0, OUT_TIME)

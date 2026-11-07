@@ -93,9 +93,10 @@ func _do_sleep() -> void:
 	GameState.save_menu_return_state(scene_path, _player.position, "left")
 	GameState.sleep_until_next_day()
 	GameState.sleep_wakeup_fade = true
-	# The music fades out with the screen while the bedtime sound plays; the new day's track
-	# starts once "The next morning..." has gone (BaseMapScene._ready, WAKE_BGM_FADE_IN).
-	SoundManagerScript.fade_bgm(0.0, SLEEP_FADE_DURATION)
+	# ISSUE #489: the bedroom music stops DEAD (no fade) and the goodnight sound plays on its own; the
+	# new day's track starts once "The next morning..." has gone (BaseMapScene._ready, WAKE_BGM_FADE_IN).
+	print("ISSUE #489 FIX ACTIVE: bedroom BGM stopped at once for the goodnight sound")
+	SoundManagerScript.stop_bgm()
 	if ResourceLoader.exists(BEDTIME_SFX_PATH):
 		SoundManagerScript.play_sfx_from_path(BEDTIME_SFX_PATH)
 	# Lights out first: every lamp in the room goes off, a short beat, then the fade.

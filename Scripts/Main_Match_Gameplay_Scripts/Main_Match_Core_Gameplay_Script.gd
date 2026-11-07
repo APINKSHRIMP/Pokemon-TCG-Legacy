@@ -2573,10 +2573,24 @@ func _make_bench_power_button(mon: card_object, entry: Dictionary,
 ## The list mirrors update_main_screen_buttons()'s `should_disable` — the End Turn
 ## button and the action rows must never disagree about whose turn it is — plus
 ## is_pokemon_selection_mode_active(), which covers the target-picking modes.
+var _issue491_logged := false
+
 func _player_can_act_now() -> bool:
 	if game_is_over or opponents_turn_active:
 		return false
 	if match_just_started_basic_pokemon_required or bench_setup_phase_active:
+		return false
+	# ISSUE #491: no turn has started yet. Between "Done" on the bench setup and the coin
+	# deciding who goes first there is now a long sequence (match-rule messages, the prize
+	# cards dealt one at a time, a pause, the coin call) and nothing else closed this window.
+	# The autotester's bot played Trainers, attached Energy and RETREATED in it; the first
+	# turn then started mid-retreat and left the old Active in two places and the new one in
+	# none (and a redraw loop overflowed the stack). Hand_Drag reads this gate too, so a
+	# player dragging a card during the prize deal hit the same thing.
+	if turn_number <= 0:
+		if not _issue491_logged:
+			_issue491_logged = true
+			print("ISSUE #491 FIX ACTIVE: no actions before the first turn starts")
 		return false
 	if card_selection_mode_enabled or power_menu_active:
 		return false
@@ -3640,7 +3654,10 @@ func display_hp_circles_above_align(active_pokemon: card_object, is_opponent: bo
 	# ISSUE #376: dozens of effects hand this a BENCHED Pokémon (Curse, Damage Swap, Strange Behavior...),
 	# which painted its HP over the Active's ("0 / 30" on a full-HP Dugtrio while Rattata was the one
 	# Knocked Out). A Pokémon on either Bench is redrawn in its own bench slot instead (#173's rule).
-	if active_pokemon != null and (active_pokemon in player_bench or active_pokemon in opponent_bench):
+	# ISSUE #491: never for a Pokémon that IS an Active - a card in both places (a broken swap)
+	# made display_pokemon and this call each other until the stack overflowed.
+	if active_pokemon != null and active_pokemon != player_active_pokemon and active_pokemon != opponent_active_pokemon \
+			and (active_pokemon in player_bench or active_pokemon in opponent_bench):
 		var bench_side_opp: bool = active_pokemon in opponent_bench
 		display_pokemon(bench_side_opp)
 		return
@@ -4507,6 +4524,7 @@ func update_main_screen_buttons() -> void:
 	var should_disable = (
 		match_just_started_basic_pokemon_required or
 		bench_setup_phase_active or
+		turn_number <= 0 or   # ISSUE #491: before the first turn has begun
 		card_selection_mode_enabled or
 		opponents_turn_active or
 		card_attach_mode_active or
@@ -6360,9 +6378,11 @@ func _play_prize_draw() -> void:
 		animation_blocker.visible = true
 		var stagger: float = GameState.transition_time(PRIZE_DRAW_STAGGER)
 		for i in range(maxi(mine.size(), theirs.size())):
-			if i < mine.size():
+			# ISSUE #491: a prize slot can be rebuilt (and freed) while the deal awaits; a freed node
+			# passed to the typed `target` parameter is a script error before the guard inside runs.
+			if i < mine.size() and is_instance_valid(mine[i]):
 				_fly_prize_card(mine[i], player_deck_icon, card_back_texture, flight)
-			if i < theirs.size():
+			if i < theirs.size() and is_instance_valid(theirs[i]):
 				_fly_prize_card(theirs[i], opponent_deck_icon, opponent_card_back_texture, flight)
 			SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 			await get_tree().create_timer(stagger).timeout
@@ -6962,15 +6982,17 @@ func run_bench_from_hand_triggers(pokemon: card_object) -> void:
 
 
 # Function that get's the card position/location/object. Called from various functions when trying to find a specific card object
-func find_card_ui_for_object(card_obj: card_object) -> TextureRect:
+## `board_only`: ISSUE #464 - skip the selection screens' copies and find the card where it sits on the
+## board (an effect that plays ON a Pokémon must not land on the big centred copy a target pick drew).
+func find_card_ui_for_object(card_obj: card_object, board_only: bool = false) -> TextureRect:
 	# Helper: searches one level of direct children for a TextureRect matching card_obj,
 	# then also searches one level deeper through VBoxContainer → Control wrappers
 	# created by build_pokemon_slot_with_energies_and_hp.
 	var containers_to_search: Array = []
 	
-	if small_selection_container.visible:
+	if small_selection_container.visible and not board_only:
 		containers_to_search.append(small_selection_container)
-	if selection_scroller.visible:
+	if selection_scroller.visible and not board_only:
 		containers_to_search.append(large_selection_container)
 	
 	containers_to_search.append_array([
@@ -7823,9 +7845,13 @@ func player_start_turn_checks() -> void:
 	if _should_bail():
 		return
 	# OLD ISSUE 309: Trainer locks now lift at the END of the locked side's turn (Trainer_Effects.tick_trainer_lock)
+	# ISSUE #465: keys / pad wait for the turn-start draw (opened before the blocker drops).
+	player_turn_start_running = true
 	opponent_blocker.visible = false
 	await turn_label_gap()   # ISSUE #369
-	if _should_bail(): return
+	if _should_bail():
+		player_turn_start_running = false
+		return
 	# ISSUE #282: up out of the player's corner, exactly like "End turn".
 	show_floating_label("Start turn", _turn_float_anchor(), Color.WHITE, true)
 	turn_number += 1
@@ -7839,15 +7865,18 @@ func player_start_turn_checks() -> void:
 	update_main_screen_buttons()
 
 	if drawn_card == null:
+		player_turn_start_running = false
 		return
 
 	# MATCH EFFECT: draw_count — draw extra cards at turn start (deck-out handled inside)
 	for extra_draw in range(match_effects.turn_start_draw_count(false) - 1):
 		var extra_card = await draw_card_from_deck(false)
 		if extra_card == null:
+			player_turn_start_running = false
 			return
 
 	refresh_hand_display(false)
+	player_turn_start_running = false
 	update_deck_icon(false)
 	powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil: recompute board-wide δ grant
 
@@ -12311,19 +12340,7 @@ func _handle_card_click(clicked_card: card_object) -> void:
 						if card in pokedex_reorder_result:
 							var new_pos = pokedex_reorder_result.find(card) + 1
 							c_ui.modulate = Color(0.6, 0.6, 0.6, 1.0)
-							var num_label = Label.new()
-							num_label.text = str(new_pos)
-							num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-							num_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-							num_label.theme = theme_disabled
-							num_label.add_theme_font_size_override("font_size", 72)
-							num_label.add_theme_color_override("font_color", Color.WHITE)
-							num_label.add_theme_color_override("font_outline_color", Color.BLACK)
-							num_label.add_theme_constant_override("outline_size", 12)
-							num_label.custom_minimum_size = c_ui.size
-							num_label.size = c_ui.size
-							num_label.mouse_filter = MOUSE_FILTER_IGNORE
-							c_ui.add_child(num_label)
+							add_pick_number_label(c_ui, new_pos)
 						else:
 							c_ui.modulate = Color(1.0, 1.0, 1.0, 1.0)
 				
@@ -12341,19 +12358,7 @@ func _handle_card_click(clicked_card: card_object) -> void:
 			# Add a number label on top of the card
 			var card_ui = find_card_ui_for_object(clicked_card)
 			if card_ui:
-				var num_label = Label.new()
-				num_label.text = str(position_num)
-				num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				num_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				num_label.theme = theme_disabled
-				num_label.add_theme_font_size_override("font_size", 72)
-				num_label.add_theme_color_override("font_color", Color.WHITE)
-				num_label.add_theme_color_override("font_outline_color", Color.BLACK)
-				num_label.add_theme_constant_override("outline_size", 12)
-				num_label.custom_minimum_size = card_ui.size
-				num_label.size = card_ui.size
-				num_label.mouse_filter = MOUSE_FILTER_IGNORE
-				card_ui.add_child(num_label)
+				add_pick_number_label(card_ui, position_num)
 				# Dim the card to show it's been selected
 				card_ui.modulate = Color(0.6, 0.6, 0.6, 1.0)
 			
@@ -12431,7 +12436,51 @@ func multi_select_min() -> int:
 # MULTI-SELECT: one place that words the hint + confirm button for the open multi-select, from
 # the current pick count. "N MORE" (greyed) until the minimum is met, then "CONFIRM (k)" — or
 # "SKIP" when nothing is picked and none are required. The caller's own hint stays in front.
+## ISSUE #473: the big pick-order number over a card - the Pokédex reorder's label (20% bigger than it
+## was: 72 -> 86, outline 12 -> 14), now also on every pick-several screen (Computer Search,
+## Maintenance, Energy Retrieval...). TWEAKABLE.
+const PICK_NUMBER_FONT := 86
+const PICK_NUMBER_OUTLINE := 14
+
+func add_pick_number_label(card_ui: Control, n: int) -> Label:
+	var num_label := Label.new()
+	num_label.name = "PickNumber"
+	num_label.text = str(n)
+	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	num_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	num_label.theme = theme_disabled
+	num_label.add_theme_font_size_override("font_size", PICK_NUMBER_FONT)
+	num_label.add_theme_color_override("font_color", Color.WHITE)
+	num_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	num_label.add_theme_constant_override("outline_size", PICK_NUMBER_OUTLINE)
+	num_label.custom_minimum_size = card_ui.size
+	num_label.size = card_ui.size
+	num_label.mouse_filter = MOUSE_FILTER_IGNORE
+	card_ui.add_child(num_label)
+	return num_label
+
+
+## ISSUE #473: re-numbers the picks on a pick-several screen - 1 on the first card picked, 2 on the next...
+## Un-picking a card renumbers the rest. Single-pick screens (one card is the whole answer) show none.
+func _refresh_multi_pick_numbers() -> void:
+	for root in [large_selection_container, small_selection_container]:
+		if root == null:
+			continue
+		for n in root.find_children("PickNumber", "Label", true, false):
+			n.get_parent().remove_child(n)
+			n.queue_free()
+	if not trainer_discard_selection_active or trainer_discard_cards_needed <= 1:
+		return
+	for i in trainer_discard_selected.size():
+		var ui: Control = find_card_ui_for_object(trainer_discard_selected[i])
+		if ui != null:
+			add_pick_number_label(ui, i + 1)
+	if not trainer_discard_selected.is_empty():
+		print("ISSUE #473 FIX ACTIVE: numbered ", trainer_discard_selected.size(), " pick(s)")
+
+
 func refresh_multi_select_labels() -> void:
+	_refresh_multi_pick_numbers()
 	var picked := trainer_discard_selected.size()
 	var need := trainer_discard_cards_needed
 	var min_n := multi_select_min()
@@ -12512,7 +12561,30 @@ func clear_current_action_selection() -> void:
 # ==============================================================================
 
 # Follows the mouse for as long as the key is held.
+## ISSUE #465: keys / pad stay locked for this long after the last card flight / animation blocker
+## went away. Chained steps (a draw, then the hand redraw, then a message; an attach flight, then the
+## refresh) leave a few frames between blockers where the mouse is shut out but A / Space / the
+## d-pad went through. TWEAKABLE (ms).
+const INPUT_SETTLE_MS := 250
+var _last_anim_busy_ms: int = -100000
+## ISSUE #465: true from the player's turn starting until their turn-start draw(s) have landed - the
+## cursor sits on the hand from the start of the turn, and A opened it before the first card arrived.
+var player_turn_start_running: bool = false
+var _issue465_logged_ms: int = 0
+
+## ISSUE #465: true while keys / pad must not act on the board (an animation is running or only just
+## finished, or the turn-start draw is still landing). Board_Nav and Hand_Drag read it.
+func nav_input_settling() -> bool:
+	var busy: bool = player_turn_start_running or animation_blocker.visible or _anim_in_flight 		or Time.get_ticks_msec() - _last_anim_busy_ms < INPUT_SETTLE_MS
+	if busy and Time.get_ticks_msec() - _issue465_logged_ms > 1000:
+		_issue465_logged_ms = Time.get_ticks_msec()
+		print("ISSUE #465 FIX ACTIVE: board input held (turn start ", player_turn_start_running, ", anim ", animation_blocker.visible or _anim_in_flight, ")")
+	return busy
+
+
 func _process(_delta: float) -> void:
+	if animation_blocker.visible or _anim_in_flight:
+		_last_anim_busy_ms = Time.get_ticks_msec()
 	# DEV: hold Ctrl to see the opponent's hand + Prize cards. Polled (not an input event) so it works at any moment —
 	# the CPU's turn, message boxes, input blockers, card previews — and alt-tab can't strand it.
 	if DebugMode.is_enabled() and GameState.autotest == null:
@@ -12696,6 +12768,10 @@ func _input(event: InputEvent) -> void:
 	# way out. Card nodes are deeper in the tree, so their own _input runs before this
 	# one and is blocked separately - see CardDisplay.zoom_active.
 	if is_zoomed:
+		# ISSUE #463: directions still move the board cursor under the preview (keys / pad), so the
+		# preview cycles through the cards - hand, bench, actives, piles. Nothing is selected.
+		if board_nav != null and InputDevice.using_nav() and UIInput.nav_direction(event) != Vector2i.ZERO:
+			board_nav.preview_step(UIInput.nav_direction(event))
 		get_viewport().set_input_as_handled()
 		return
 

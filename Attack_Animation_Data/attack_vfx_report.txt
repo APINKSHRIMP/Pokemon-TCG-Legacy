@@ -590,8 +590,10 @@
     Delta Search, Errand-Running, Friend Search, Holon Search, Important Errands, Limited Delivery, Look for Friends, Messenger, Minor Errand-Running, Pick and Choose, Seek Out, Sniff Out, Synchronized Search
 [Seeds] 1
     Fruition
-[SeismicToss] 11
-    Fling Away, Flip Over, Horn Toss, Light Touch Throw, Mega Throw, Overhead Toss, Pivot Throw, Seismic Toss, Toss, Toss and Turn, Tusk Toss
+[SeismicToss] 10
+    Fling Away, Flip Over, Horn Toss, Light Touch Throw, Mega Throw, Overhead Toss, Pivot Throw, Toss, Toss and Turn, Tusk Toss
+[SeismicTossLaunch] 1
+    Seismic Toss
 [Selfdestruct] 4
     Detonate, Detonation, Selfdestruct, Spontaneous Explosion
 [ShadowClaw] 1

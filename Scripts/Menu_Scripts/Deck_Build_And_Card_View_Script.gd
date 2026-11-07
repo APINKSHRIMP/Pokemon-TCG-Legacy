@@ -129,6 +129,12 @@ const DECK_SIZE     := 60
 # meant a shipped build had no deck rules at all. The two places that read it
 # now call DebugMode.is_enabled() directly: _get_max_for_card() and
 # _deck_save_blocker().
+#
+# ISSUE #475: switched OFF - debugging has moved on, so even in debug mode a deck holds no more copies
+# than the player owns (4 per name group) and only a legal 60-card deck saves. Set true to bring the
+# unlimited test-deck builder back.
+const DEBUG_UNLIMITED_DECKS := false
+var _issue475_logged := false
 
 # ─── Energy style data ──────────────────────────────────────────────────────
 # Each style maps to 6 card IDs in a fixed order: grass, fire, water,
@@ -997,9 +1003,15 @@ func _load_owned_cards_for_set(set_id: String) -> Array:
 		# ISSUE #350: the intro walkthrough draws the bonus pack's cards as not-yet-owned, then
 		# flies them in. _owned_override holds how many of each to hold back.
 		if not _owned_override.is_empty():
+			# ISSUE #466: "__all__" holds back EVERY owned card (the walkthrough flies the whole set in).
+			var hold_all: bool = _owned_override.has("__all__")
 			for c in cards:
 				var cid := String(c.get("card_id", ""))
-				if _owned_override.has(cid):
+				if hold_all:
+					if int(c.get("owned", 0)) > 0:
+						_walk_held[cid] = int(c.get("owned", 0))
+					c["owned"] = 0
+				elif _owned_override.has(cid):
 					c["owned"] = maxi(0, int(c.get("owned", 0)) - int(_owned_override[cid]))
 		return cards
 	return []
@@ -1120,7 +1132,7 @@ func _get_name_group(card_id: String) -> String:
 ## Returns -1 for unlimited (won't happen for non-energy cards).
 func _get_max_for_card(card_id: String, owned: int) -> int:
 	# DEBUG ONLY: ignore group/ownership limits so any number of any card is allowed.
-	if DebugMode.is_enabled():
+	if DEBUG_UNLIMITED_DECKS and DebugMode.is_enabled():
 		return DECK_SIZE
 	var meta = _get_card_meta(card_id)
 	if meta == null:
@@ -3901,7 +3913,10 @@ func _show_deck_message(text: String, colour: Color = MSG_COLOUR) -> void:
 ##      cannot be set up at the start of a match at all, so saving one is never useful
 ##   3) a deck name has been entered
 func _deck_save_blocker() -> String:
-	if DebugMode.is_enabled():
+	if DebugMode.is_enabled() and not DEBUG_UNLIMITED_DECKS and not _issue475_logged:
+		_issue475_logged = true
+		print("ISSUE #475 FIX ACTIVE: debug mode keeps the normal deck rules (owned copies, 60 cards)")
+	if DEBUG_UNLIMITED_DECKS and DebugMode.is_enabled():
 		if total_deck_count < 1:
 			return "Deck is empty"
 	elif total_deck_count < DECK_SIZE:
@@ -4474,6 +4489,16 @@ const WALK_ROW_SCROLL    := 0.25   # scrolling a changed card into view during t
 
 var walkthrough_active: bool = false
 var _owned_override: Dictionary = {}   # card_id -> copies to hold back from the grid
+var _walk_held: Dictionary = {}        # ISSUE #466: card_id -> copies owned, held back by "__all__"
+## ISSUE #466: TWEAKABLE - each card's fade + fall into its slot, the gap before the next one sets off,
+## and how quickly the grid scroll catches up with the newest card (higher = tighter follow).
+const WALK_ALL_FLY_TIME := 0.5
+const WALK_ALL_STAGGER  := 0.1
+const WALK_ALL_FOLLOW   := 4.0
+## ISSUE #469: TWEAKABLE - the +1 / -1 that floats off a card while Olly rebuilds the deck.
+const WALK_DELTA_RISE   := 60.0
+const WALK_DELTA_TIME   := 0.9
+const WALK_DELTA_FONT   := 44
 var _walk_blocker: Control = null
 
 
@@ -4499,6 +4524,14 @@ func walkthrough_end() -> void:
 ## slots, scrolls so the first row holding one is the top row, then flies each copy in -- the copies
 ## of one card a moment apart -- and ticks its "in deck / owned" count up as it lands.
 func walkthrough_reveal_new_cards(set_id: String, new_counts: Dictionary) -> void:
+	# ISSUE #466: every owned card in the set flies in now (the deck's as well as the new ones), all
+	# together - one sets off every WALK_ALL_STAGGER and each takes WALK_ALL_FLY_TIME - while the grid
+	# scrolls smoothly down behind them. `new_counts` is kept for the old one-by-one reveal below.
+	await _walk_reveal_all(set_id)
+
+
+## The pre-#466 reveal: only the new cards, one after another. Kept, unused.
+func _walk_reveal_new_only(set_id: String, new_counts: Dictionary) -> void:
 	_owned_override = new_counts.duplicate()
 	for pos in unlocked_indices.size():
 		if set_list[unlocked_indices[pos]]["set_id"] == set_id:
@@ -4651,6 +4684,111 @@ func _walk_fly_into(idx: int, cid: String) -> void:
 	lbl.text = "%d / %d" % [int(cell.get_meta("in_deck", 0)), owned]
 
 
+## ISSUE #466: shows `set_id` with every owned card held back as an empty slot, then flies them all in.
+func _walk_reveal_all(set_id: String) -> void:
+	_walk_held.clear()
+	_owned_override = {"__all__": true}
+	for pos in unlocked_indices.size():
+		if set_list[unlocked_indices[pos]]["set_id"] == set_id:
+			current_unlock_pos = pos
+	_display_current_set()
+	await grid_built
+	await get_tree().process_frame
+	_owned_override.clear()
+	var cells := _walk_cells()
+	var entries: Array = []   # [cell, card_id, copies]
+	for i in cells.size():
+		var cid := String(cells[i].get_meta("card_id", ""))
+		if int(_walk_held.get(cid, 0)) > 0:
+			entries.append([cells[i], cid, int(_walk_held[cid])])
+	print("ISSUE #466 FIX ACTIVE: flying ", entries.size(), " owned cards in together")
+	if entries.is_empty():
+		return
+	var scroll = grid.get_parent()
+	if scroll is ScrollContainer:
+		(scroll as ScrollContainer).scroll_vertical = 0
+	var landed := [0]
+	var t := 0.0
+	var launched := 0
+	while landed[0] < entries.size() and is_inside_tree():
+		var dt := get_process_delta_time()
+		t += dt
+		while launched < entries.size() and t >= launched * WALK_ALL_STAGGER:
+			var e: Array = entries[launched]
+			var land_one := func() -> void:
+				await _walk_fly_follow(e[0], String(e[1]), int(e[2]))
+				landed[0] += 1
+			land_one.call()
+			launched += 1
+		# The grid follows the newest card: its row sits at the bottom of the view, eased, never jumping.
+		if scroll is ScrollContainer and launched > 0:
+			var newest: Control = entries[launched - 1][0]
+			if is_instance_valid(newest):
+				var sc := scroll as ScrollContainer
+				var bar: VScrollBar = sc.get_v_scroll_bar()
+				var max_y: float = maxf(0.0, bar.max_value - bar.page) if bar != null else 0.0
+				var row_bottom: float = newest.position.y + CARD_SIZE.y
+				var want: float = clampf(row_bottom - sc.size.y + 20.0, 0.0, max_y)
+				if want > sc.scroll_vertical:
+					sc.scroll_vertical = int(lerpf(sc.scroll_vertical, want, 1.0 - exp(-dt * WALK_ALL_FOLLOW)) + 0.5)
+		await get_tree().process_frame
+	_walk_held.clear()
+
+
+## ISSUE #466: one card fades in above its (scrolling) slot and falls into it, tracking the slot every
+## frame; on landing the empty slot becomes the real card with all its copies.
+func _walk_fly_follow(cell: Control, cid: String, copies: int) -> void:
+	var fly := TextureRect.new()
+	fly.texture = _load_card_texture_small_first(_small_card_image_path(cid))
+	fly.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fly.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	fly.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fly.z_index = 350
+	fly.modulate.a = 0.0
+	add_child(fly)
+	fly.size = CARD_SIZE
+	var step := func(k: float) -> void:
+		if is_instance_valid(cell) and is_instance_valid(fly):
+			var e := 1.0 - pow(1.0 - k, 3.0)
+			fly.global_position = cell.global_position - Vector2(0, WALK_FLY_RISE * (1.0 - e))
+			fly.modulate.a = minf(1.0, k * 2.0)
+	step.call(0.0)
+	var tw := create_tween()
+	tw.tween_method(step, 0.0, 1.0, WALK_ALL_FLY_TIME)
+	await tw.finished
+	if is_instance_valid(fly):
+		fly.queue_free()
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	if not is_instance_valid(cell) or cell.get_parent() != grid:
+		return
+	var at := cell.get_index()
+	_add_card_to_grid({"card_id": cid, "owned": copies})
+	var fresh: Control = grid.get_child(grid.get_child_count() - 1)
+	grid.move_child(fresh, at)
+	grid.remove_child(cell)
+	cell.queue_free()
+
+
+## ISSUE #469: a green "+1" or red "-1" floats up off a card and fades while Olly edits the deck.
+func _walk_delta_label(cell: Control, delta: int) -> void:
+	var lbl := Label.new()
+	lbl.text = "+1" if delta > 0 else "-1"
+	lbl.add_theme_font_size_override("font_size", WALK_DELTA_FONT)
+	lbl.add_theme_color_override("font_color", Color("4CE07A") if delta > 0 else Color("FF5A5A"))
+	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
+	lbl.add_theme_constant_override("outline_size", 10)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.z_index = 360
+	add_child(lbl)
+	lbl.reset_size()
+	var start: Vector2 = cell.global_position + Vector2(CARD_SIZE.x * 0.5 - lbl.size.x * 0.5, CARD_SIZE.y * 0.25)
+	lbl.global_position = start
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(lbl, "global_position:y", start.y - WALK_DELTA_RISE, WALK_DELTA_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(lbl, "modulate:a", 0.0, WALK_DELTA_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(lbl.queue_free)
+
+
 ## +1 / -1 copy of `cid` in the deck, exactly as a click would, with the card scrolled into view.
 func _walk_change_count(cid: String, delta: int) -> void:
 	var have: int = int(deck_cards.get(cid, 0))
@@ -4670,6 +4808,8 @@ func _walk_change_count(cid: String, delta: int) -> void:
 		if String(cell.get_meta("card_id", "")) != cid:
 			continue
 		await _walk_scroll_to_row(int(i / COLUMNS), WALK_ROW_SCROLL)
+		print("ISSUE #469 FIX ACTIVE: ", "+1 " if delta > 0 else "-1 ", cid)
+		_walk_delta_label(cell, delta)
 		cell.set_meta("in_deck", now)
 		var lbl: Label = cell.get_meta("count_label")
 		lbl.text = "%d / %d" % [now, int(cell.get_meta("owned", 0))]
