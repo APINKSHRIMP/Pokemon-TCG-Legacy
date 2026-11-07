@@ -77,22 +77,21 @@ const COL_PLAYER     := Color(1.0, 1.0, 1.0)
 const COL_OLLY       := Color(0.55, 0.85, 1.0)    # light blue
 const COL_ELLIE      := Color(1.0, 0.50, 0.80)    # pink
 const COL_ALEXANDER  := Color(1.0, 0.88, 0.20)    # yellow
-const COL_SHOPKEEPER := Color(0.12, 0.28, 0.78)   # darker blue
-const COL_OPP_BEATEN := Color(1.0, 0.68, 0.68)    # pale red
-const COL_OPP_DARK   := Color(0.55, 0.04, 0.04)   # undefeated: pulses dark -> light red
-const COL_OPP_LIGHT  := Color(1.0, 0.42, 0.42)
-const COL_NPC_MET    := Color(0.33, 0.33, 0.35)   # dark grey
-const COL_NPC_NEW    := Color(0.80, 0.80, 0.82)   # pale grey
+# Opponents, three states (user spec 2026-11-07). Each dot cycles between its BASE colour and its
+# PEAK as it glows: never battled goes DARKER, battled-but-unbeaten goes LIGHTER, beaten goes paler
+# still, towards white/grey. "Battled" = any finished match on their head-to-head record.
+const COL_OPP_NEW_BASE    := Color(0.78, 0.08, 0.08)   # never battled: a slightly darker red...
+const COL_OPP_NEW_PEAK    := Color(0.38, 0.01, 0.01)   # ...glowing darker
+const COL_OPP_MET_BASE    := Color(1.0, 0.36, 0.36)    # battled, not beaten: a slightly lighter red...
+const COL_OPP_MET_PEAK    := Color(1.0, 0.62, 0.62)    # ...glowing lighter
+const COL_OPP_BEATEN_BASE := Color(1.0, 0.80, 0.80)    # beaten: a much paler red...
+const COL_OPP_BEATEN_PEAK := Color(0.93, 0.91, 0.91)   # ...glowing towards white/grey
 const COL_OUTLINE    := Color(0.05, 0.05, 0.08, 0.9)
 const COL_FOG        := Color(0.03, 0.04, 0.07, 1.0)
 
 ## Story characters, matched on their message-box name (friendly_name), falling back to the
 ## tracking name - so "Fish Shop Alexander" and "Ellie 2" both count.
 const STORY_COLOURS := {"Olly": COL_OLLY, "Ellie": COL_ELLIE, "Alexander": COL_ALEXANDER}
-
-## npc_types that count as shopkeepers (darker blue) when they stand outdoors.
-const SHOPKEEPER_TYPES := ["shop", "weighted_pack_seller", "sleeve_seller", "costume_seller",
-	"juice_vendor", "card_buyer", "coin_flipper"]
 
 ## Blips never sit on these picture colours (trees, then water). The traces are a hair off the real
 ## maps in places, so an outdoor blip landing on one is nudged to the nearest other pixel, up to
@@ -168,6 +167,7 @@ var _bounds := Rect2()               # the unlocked part of the picture
 var _dragging := false
 var _ready_for_input := false
 var _closing := false
+var _held := false                   # see hold_for_message()
 var _time: float = 0.0
 ## Each blip: {"pos": Vector2 picture px, "colour": Color, "radius": float, "kind": String,
 ## "phase": float}. "offset" (screen px) spreads a building's occupants side by side.
@@ -447,8 +447,26 @@ func _offscreen_y() -> float:
 # INPUT
 # ============================================================
 
+## Opened as the Town Hall's gift (MapManager._reveal_tracker_app): the "You received" notice sits
+## over the phone and owns every press until it is cleared, so the map lets input straight past
+## (and its dim stops catching clicks) until release_hold().
+func hold_for_message() -> void:
+	_held = true
+	_dragging = false
+	if _dim != null:
+		_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func release_hold() -> void:
+	_held = false
+	if _dim != null:
+		_dim.mouse_filter = Control.MOUSE_FILTER_STOP
+
+
 ## Everything is eaten while the map is up, so nothing reaches the world or the main-menu shortcut.
 func _input(event: InputEvent) -> void:
+	if _held:
+		return
 	get_viewport().set_input_as_handled()
 	if not _ready_for_input:
 		return
@@ -477,7 +495,7 @@ func _input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
-	if _ready_for_input:
+	if _ready_for_input and not _held:
 		var dir := Vector2.ZERO
 		if Input.is_key_pressed(KEY_A) or Input.is_action_pressed("ui_left"):  dir.x -= 1.0   # arrows, D-pad, stick
 		if Input.is_key_pressed(KEY_D) or Input.is_action_pressed("ui_right"): dir.x += 1.0
@@ -601,8 +619,8 @@ func _collect_blips() -> void:
 			b["offset"] = Vector2((col - (in_row - 1) * 0.5) * step, (row - (rows - 1) * 0.5) * step)
 			_blip_list.append(b)
 
-	# Draw order: plain dots under shopkeepers under story characters under the player.
-	var rank := {"npc": 0, "opponent": 1, "shop": 2, "story": 3, "player": 4}
+	# Draw order: opponents under story characters under the player.
+	var rank := {"opponent": 1, "story": 3, "player": 4}
 	_blip_list.sort_custom(func(x, y): return rank.get(x["kind"], 0) < rank.get(y["kind"], 0))
 
 
@@ -614,15 +632,21 @@ func _blip_for(a: Dictionary, is_interior: bool) -> Dictionary:
 		return {"kind": "story", "colour": STORY_COLOURS[story], "radius": STORY_RADIUS, "phase": phase}
 	if is_interior and not SHOW_INTERIOR_CROWDS:
 		return {}
-	if a["is_opponent"]:
-		var beaten := GameState.has_beaten_opponent(String(a["name"]))
-		return {"kind": "opponent", "beaten": beaten, "radius": DOT_RADIUS, "phase": phase,
-			"colour": COL_OPP_BEATEN if beaten else COL_OPP_DARK}
-	if not is_interior and String(a.get("npc_type", "")) in SHOPKEEPER_TYPES:
-		return {"kind": "shop", "colour": COL_SHOPKEEPER, "radius": DOT_RADIUS, "phase": phase}
-	var met := GameState.has_met_npc(String(a["name"]))
-	return {"kind": "npc", "colour": COL_NPC_MET if met else COL_NPC_NEW, "radius": DOT_RADIUS,
-		"phase": phase}
+	# Only opponents and the three story characters are shown: no NPC or shopkeeper dots.
+	if not a["is_opponent"]:
+		return {}
+	var opp := String(a["name"])
+	var base := COL_OPP_NEW_BASE
+	var peak := COL_OPP_NEW_PEAK
+	if GameState.has_beaten_opponent(opp):
+		base = COL_OPP_BEATEN_BASE
+		peak = COL_OPP_BEATEN_PEAK
+	else:
+		var record: Array = GameState.get_opponent_record(opp)
+		if int(record[0]) + int(record[1]) > 0:
+			base = COL_OPP_MET_BASE
+			peak = COL_OPP_MET_PEAK
+	return {"kind": "opponent", "colour": base, "peak": peak, "radius": DOT_RADIUS, "phase": phase}
 
 
 func _story_name(tracking: String, friendly: String) -> String:
@@ -755,8 +779,7 @@ func _draw_blips() -> void:
 		var colour: Color = b["colour"]
 		match String(b["kind"]):
 			"opponent":
-				if not b.get("beaten", false):
-					colour = COL_OPP_DARK.lerp(COL_OPP_LIGHT, wave * 0.5 + 0.5)
+				colour = colour.lerp(Color(b["peak"]), wave * 0.5 + 0.5)
 			_:
 				colour = colour.lightened(0.18 * (wave * 0.5 + 0.5))
 		# Radar rings on the player and the story characters.

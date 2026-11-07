@@ -223,6 +223,9 @@ const BILL_PAID := [
 	["A", "Calm down, I'll make up for it and get you a few packs don't worry."],
 	["E", "THANKS. Alright [NAME], we'll see you later!"],
 ]
+# Said by Alexander straight after BILL_PAID, only while the player has not registered at the
+# Town Hall yet (no TCG Tracker App -- MapManager.TRACKER_ITEM).
+const ALEX_TOWN_HALL := "Oh and [NAME], make sure you visit the Town Hall to officially register with the championships ASAP. The mobile tracker app has been so useful to see where other people are."
 
 # ------------------------------------------------------------
 # STATE
@@ -728,6 +731,8 @@ func _play_after_alex() -> void:
 	player_face("down")
 
 	await _say_script(BILL_PAID)
+	if not GameState.has_item(MapManager.TRACKER_ITEM):
+		await say(_sp_alex, ALEX_TOWN_HALL)
 	close_box()
 
 	# Off down to the path and away to the left together, Alexander half a step to her left.

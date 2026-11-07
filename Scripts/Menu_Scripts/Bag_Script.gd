@@ -8,6 +8,7 @@ extends Control
 ## the name instead of the name alone.
 ##
 ## What counts as a key item is KEY_ITEMS below, in the order they are listed:
+##   * the TCG Tracker Map (item "Map") -- from the Town Hall registration (MapManager)
 ##   * fishing rods and fishing permits -- items in progress["items"] (FishingRods)
 ##   * anything in FLAG_ITEMS -- a save flag shown as an item (none at the moment).
 ## Add a new key item by adding a row here.
@@ -64,6 +65,9 @@ func _ready() -> void:
 ## Every key item the player has, in display order.
 func _owned_entries() -> Array:
 	var out: Array = []
+	# The TCG Tracker App, from registering at the Town Hall (MapManager._handle_registration).
+	if GameState.has_item(MapManager.TRACKER_ITEM):
+		out.append({"label": MapManager.TRACKER_LABEL, "art": MapManager.TRACKER_ITEM})
 	for rod in FishingRods.ROD_ORDER:
 		if GameState.has_item(rod):
 			out.append({"label": FishingRods.label(rod), "art": rod})

@@ -150,6 +150,8 @@ const LINES_COIN := [
 	"You can also play matches using whatever coin you want. Your starter deck came with a coin and a case to keep them all in.",
 	"Put the coin I just gave you in there, for your next match you can use that instead if you prefer it!",
 ]
+# After the battle, win or loss, just before his goodbye: the Town Hall registration nudge.
+const LINE_TOWN_HALL := "From tomorrow the Town Hall is offering a cheap official registration service so make sure you check out the Town Hall in the morning."
 const LINES_NEW_GOODBYE := [
 	"I've really gotta shoot off and get the shop open. El has gone out for the day and is back tonight, Alexander is covering the shop for me this evening but I don't know what he's doing otherwise.",
 	"If you're still interested in fishing then you should swing by and I'll hook you up with a rod!",
@@ -494,6 +496,7 @@ func _play_after_battle() -> void:
 			await say(_speaker, LINE_ENERGY_AFTER_BONUS)
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
 			await _say_coin_lines()
+			await say(_speaker, LINE_TOWN_HALL)
 			await say_all(_speaker, LINES_NEW_GOODBYE)
 		"starter":
 			await say_all(_speaker, LINES_RULES_BONUS)
@@ -505,6 +508,7 @@ func _play_after_battle() -> void:
 			await say(_speaker, LINE_ENERGY_AFTER_BONUS)
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
 			await _say_coin_lines()
+			await say(_speaker, LINE_TOWN_HALL)
 			await say_all(_speaker, LINES_RULES_GOODBYE)
 		"advanced":
 			await say(_speaker, LINE_GET_PACKS)
@@ -512,10 +516,12 @@ func _play_after_battle() -> void:
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
 			if GameState.get_familiarity() == GameState.FAMILIARITY_PLAYED:
 				await say_all(_speaker, LINES_CAFE_MORNING)
+			await say(_speaker, LINE_TOWN_HALL)
 			await say_all(_speaker, LINES_ADVANCED_GOODBYE)
 		"packs":
 			# The energy came before the deck builder.
 			await say(_speaker, LINE_GET_PACKS)
+			await say(_speaker, LINE_TOWN_HALL)
 			await say_all(_speaker, LINES_ADVANCED_GOODBYE)
 	close_box()
 

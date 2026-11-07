@@ -264,6 +264,47 @@ const COINFLIP_WIN_MSG: String    = "Wow!! Congrats, you got all 5 heads!"
 const COINFLIP_PRIZE_MSG: String  = "Here's your prize!"
 const COINFLIP_DONE_MSG: String   = "Sorry, only one coin per person, you've already proven your luck!"
 
+# ------------------------------------------------------------
+# TOWN HALL REGISTRATION (npc_type "registrar")
+# ------------------------------------------------------------
+# The Town Hall Receptionist charges a one-off $50 to register with the TCG Championships.
+# Registering grants the TCG Tracker App -- the phone map (WorldMap). Owning the bag item
+# TRACKER_ITEM is the ONE record that the player has registered: M / pad Back does nothing
+# without it (_can_open_world_map). Her lines live here rather than in TownHall.json's
+# `says` because they are a multi-box conversation with a Yes/No at the end; the json's
+# meet/repeat strings are the originals these were split from.
+const TRACKER_ITEM: String     = "Map"          # Image_Assets/Assorted_Extras/Map.png, the bag's art
+const TRACKER_LABEL: String    = "TCG Tracker Map"
+## TWEAKABLE: the one-off registration fee.
+const REGISTRATION_FEE: int    = 50
+## The opponent whose first battle day is the start of the Card Elder Challenge.
+const CARD_ELDER_NAME: String  = "Card Elder Hamish"
+const CARD_ELDER_MAP: String   = "TownHall"
+## Used only if the schedule scan below finds no battle day at all.
+const CARD_ELDER_FALLBACK_START: int = 4
+
+## First meeting: these boxes in order, the last one a Yes/No.
+const REGISTRAR_MEET := [
+	"Good [TIME]! I think I know what you're here for, I've been so busy running non stop registrations and you look like you know how to play!",
+	"That is what you're here for right? It's only a one off registration fee of $50 and all proceeds go right back into making the town better!",
+	"By registering you will also gain access to the TCG Tracker App, making it easier for you to find like minded opponents to play against.",
+]
+const REGISTRAR_ASK    := "Are you looking to officially register with the Pokemon TCG Championships?"
+## Met before, not registered yet: a single Yes/No.
+const REGISTRAR_REPEAT := "Are you here to register with the Pokemon TCG Championships? Registration is a one off payment of $50."
+const REGISTRAR_THANKS := "Thank you so much, your registration is complete and you are now officially registered into the system."
+const REGISTRAR_ELDER_DAYS     := "The Card Elder Challenge doesn't start for another %d days."
+const REGISTRAR_ELDER_TOMORROW := "The Card Elder Challenge doesn't start until tomorrow."
+const REGISTRAR_ELDER_UNDERWAY := "The Card Elder Challenge is already underway, simply speak with any of the Card Elders to begin the challenge!"
+const REGISTRAR_LOGIN  := "You'll be automatically logged into your TCG Tracker App, just open the app up with [M]/[Back] and you'll be able to see all the other registrants around your area. Do come back if you need anything else!"
+const REGISTRAR_RECEIVED := "You received the TCG Tracker App"
+## Already registered: these boxes, no question.
+const REGISTRAR_DONE := [
+	"Press [M]/[Back] to open the TCG Tracker App wherever you are to look for other players in the area. Each player can be seen with a different coloured dot.",
+	"A dark red dot is someone you've not met at all, a lighter red dot shows someone you haven't beaten yet and a pale red dot shows someone you have already beaten.",
+]
+const REGISTRAR_BROKE_MSG := "Sorry, you don't have enough cash!"
+
 # TWEAKABLE — the coin row's geometry. It is boxed in on both sides: at the top of
 # its arc a coin must still be on screen (ROW_CENTER_Y - ARC_HEIGHT - COIN_SIZE.y/2
 # >= 0, currently 90px to spare) and at rest it must sit clear of the message box's
@@ -1047,6 +1088,8 @@ func _npc_is_vendor(npc: Node) -> bool:
 	if npc == null:
 		return false
 	var t: String = npc.npc_type if "npc_type" in npc else ""
+	if t == "registrar":
+		return not GameState.has_item(TRACKER_ITEM)   # the cash chip only while there is a fee to pay
 	return t == "shop" or t == "juice_vendor" or t == "coin_flipper" or t == "card_buyer" \
 			or t == "weighted_pack_seller" or t == "sleeve_seller" or t == "costume_seller"
 
@@ -1656,6 +1699,11 @@ func _on_yes_pressed():
 		_handle_coinflip_entry()
 		return
 
+	# Town Hall Receptionist — take the fee and register (grants the TCG Tracker App)
+	if current_npc != null and current_npc.npc_type == "registrar":
+		_handle_registration()
+		return
+
 	# Card buyer — his whole offer is a full screen, so hand over to it
 	if current_npc != null and current_npc.npc_type == "card_buyer":
 		_open_bulk_sell_shop()
@@ -1909,6 +1957,25 @@ func _on_player_npc_interact(npc: Node):
 			_show_message_with_ok(COINFLIP_DONE_MSG)
 		else:
 			_show_message_with_choices(npc.repeat_text if seen_before else npc.meet_text)
+		return
+
+	# Town Hall Receptionist: the $50 registration that grants the TCG Tracker App. Read
+	# has_been_met() BEFORE marking, as the coin flipper does.
+	if npc.npc_type == "registrar":
+		var registrar_seen: bool = npc.has_been_met()
+		npc.mark_as_met()
+		npc.refresh_bubble()
+		var steps: Array = []
+		if GameState.has_item(TRACKER_ITEM):
+			for line in REGISTRAR_DONE:
+				steps.append({"text": line})
+		elif registrar_seen:
+			steps.append({"text": REGISTRAR_REPEAT, "ask": true})
+		else:
+			for line in REGISTRAR_MEET:
+				steps.append({"text": line})
+			steps.append({"text": REGISTRAR_ASK, "ask": true})
+		_run_npc_steps(steps, 0)
 		return
 
 	# Card buyer: buys every copy of a card beyond the fourth, priced by rarity. The pitch
@@ -2929,6 +2996,70 @@ func _coinflip_already_won() -> bool:
 
 # Yes on the offer. Charges the fee and puts the coin row on screen behind the
 # "good luck" message, which is what actually starts the flips when dismissed.
+## Yes to the Town Hall Receptionist: take the fee, register, then her three closing lines
+## and the TCG Tracker App reveal (_reveal_tracker_app). The item is granted with the
+## payment, not at the end, so quitting mid-conversation never loses the $50.
+func _handle_registration() -> void:
+	if GameState.get_cash() < REGISTRATION_FEE:
+		_show_message_with_ok(REGISTRAR_BROKE_MSG)
+		return
+	GameState.add_cash(-REGISTRATION_FEE)            # saves progress itself
+	GameState.add_item_to_collection(TRACKER_ITEM)   # and so does this
+	var elder_line := _card_elder_start_line()
+	show_message_then(REGISTRAR_THANKS, func():
+		show_message_then(elder_line, func():
+			show_message_then(REGISTRAR_LOGIN, _reveal_tracker_app)))
+
+
+## "Doesn't start for X days" / "until tomorrow" / "already underway", from today's date and
+## the first day the Card Elders battle in TownHall.json (so moving their schedule moves this).
+func _card_elder_start_line() -> String:
+	var days_left: int = _card_elder_start_day() - GameState.get_date()
+	if days_left >= 2:
+		return REGISTRAR_ELDER_DAYS % days_left
+	if days_left == 1:
+		return REGISTRAR_ELDER_TOMORROW
+	return REGISTRAR_ELDER_UNDERWAY
+
+
+func _card_elder_start_day() -> int:
+	for day in range(1, 31):
+		for time in GameState.TIMES_OF_DAY:
+			var cast: Dictionary = CharacterSchedule.cast_for(CARD_ELDER_MAP, day, time, evaluate_condition)
+			for entry: Dictionary in cast.get("opponents", []):
+				if String(entry.get("name", "")) == CARD_ELDER_NAME:
+					return day
+	return CARD_ELDER_FALLBACK_START
+
+
+## The gift moment: instead of an item fading up, the phone map itself opens with the
+## "You received" notice over it. The map ignores input until the notice is cleared; after
+## that it is the ordinary map, and closing it hands the player back to the overworld.
+func _reveal_tracker_app() -> void:
+	var host := get_tree().current_scene
+	if host == null or _player == null or not is_instance_valid(_player):
+		_on_ok_pressed()
+		return
+	var phone := WorldMap.open(host, _player)
+	phone.hold_for_message()
+	# The message box lives on the map's UILAYER, under the phone's layer -- lift it over
+	# the phone for this one notice, then put it back.
+	var old_layer: int = _ui_layer.layer
+	_ui_layer.layer = WorldMap.LAYER + 1
+	_pending_ok_action = func():
+		if _ui_layer != null and is_instance_valid(_ui_layer):
+			_ui_layer.layer = old_layer
+		if current_npc != null:
+			current_npc.refresh_bubble()
+		_hide_message()
+		# _hide_message hands movement back; the phone is still up and owns the player.
+		if _player != null and is_instance_valid(_player) and _player.has_method("lock_movement"):
+			_player.lock_movement()
+		if is_instance_valid(phone):
+			phone.release_hold()
+	_show_large_message_with_ok(REGISTRAR_RECEIVED)
+
+
 func _handle_coinflip_entry() -> void:
 	if GameState.get_cash() < COINFLIP_COST:
 		_show_message_with_ok(COINFLIP_BROKE_MSG)
@@ -3373,6 +3504,9 @@ func is_debug_menu_open() -> bool:
 ## The phone map opens only in a map scene, with the player free to walk: not over a
 ## message, cutscene, the main menu, fishing or either debug tool.
 func _can_open_world_map() -> bool:
+	# The TCG Tracker App comes from registering at the Town Hall (_handle_registration).
+	if not GameState.has_item(TRACKER_ITEM):
+		return false
 	if WorldMap.is_open() or cutscene_active or overworld_paused:
 		return false
 	if is_placement_tool_open() or is_debug_menu_open():
