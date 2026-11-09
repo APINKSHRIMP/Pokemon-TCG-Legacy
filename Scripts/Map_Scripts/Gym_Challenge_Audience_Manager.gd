@@ -29,6 +29,10 @@ const BASE_ATTENDANCE: Dictionary = {
 	"Morning": 0.80, "Afternoon": 1.00, "Evening": 0.50, "Night": 0.20, "Bedtime": 0.0,
 }
 const DAILY_DECAY := 0.9
+## TWEAKABLE: word gets round as the player climbs. Each Gym Leader beaten adds this much on top
+## of whatever the slot's attendance is (Lt. Surge, 3rd: x1.3. Blaine, 7th: x1.7). A multiplier,
+## so a thin Night late on stays thin. The stands cap at their seat counts.
+const LEADER_CROWD_BONUS := 0.1
 
 # ============================================================
 # TWEAKABLE: REGENERATION PERCENTAGES
@@ -219,6 +223,7 @@ static func _get_counts(date: int, time: String) -> Array:
 		return [0, 0, 0]
 	var elapsed: int = maxi(0, date - CHALLENGE_START_DAY)
 	var fill: float = base * pow(DAILY_DECAY, elapsed)
+	fill = minf(1.0, fill * (1.0 + LEADER_CROWD_BONUS * GameState.gym_leaders_beaten()))
 	return [
 		int(round(LEFT_SEATS.size() * fill)),
 		int(round(TOP_SEATS.size() * fill)),

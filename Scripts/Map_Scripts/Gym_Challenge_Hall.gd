@@ -11,7 +11,11 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Challenge_Hall.tscn"
 
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return SoundManagerScript.BGM_GYM_CHALLENGE_HALL
+## One track until the 7th Gym Leader falls, another once only Giovanni is left.
+func get_bgm_path() -> String:
+	if GameState.has_beaten_opponent(GameState.GYM_LEADERS[6]):
+		return SoundManagerScript.BGM_GYM_CHALLENGE_HALL_FINAL
+	return SoundManagerScript.BGM_GYM_CHALLENGE_HALL
 func get_map_data_name() -> String: return "Gym_Challenge_Hall"
 
 func _ready():

@@ -21,7 +21,8 @@ var _cafe_call_walked: float = 0.0
 
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME
+func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME_DAY
+func get_evening_bgm_path() -> String: return SoundManagerScript.BGM_PLAYER_HOME_NIGHT
 
 func _ready() -> void:
 	super._ready()

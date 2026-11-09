@@ -11,20 +11,73 @@
     "loop    : set false for story characters who must never repeat when the",
     "          calendar loops -- they are matched against the real day instead.",
     "",
-    "CALENDAR mirrors Celeste Harbour's (opens day 1, authored through 8, loops days",
-    "5-8 for ever) so this building's cast cycles in step with the town outside.",
+    "THE TCG CLUB. Reachable only once the Gym Challenge is complete AND the player has",
+    "bought club membership from the receptionist downstairs (flag town_hall_club_member).",
     "",
-    "Upstairs in the Town Hall. Its stairs stay roped off until the Gym Challenge is complete."
+    "CALENDAR: a 3-day rota looping days 8-10 for ever (day 11 = day 8, 12 = 9, ...).",
+    "The Gym Challenge cannot be finished before day 13, so the rota is always running",
+    "by the time anyone gets up here. Put rotating club opponents on '8', '9', '10'.",
+    "",
+    "THE CARD ELDERS live here every day once gym_challenge_complete is set (they leave",
+    "the ground floor at the same moment). Same opponent names as downstairs, so they",
+    "already count as beaten: single matches now (match_format \"\" overrides the",
+    "constants' best_of_3) and no first-win x3 reward, since that is first-win only."
   ],
   "map": "TownHall_Upstairs",
   "calendar": {
-    "opens": 1,
-    "authored_through": 8,
+    "opens": 8,
+    "authored_through": 10,
     "loop": {
-      "from": 5,
-      "period": 4
+      "from": 8,
+      "period": 3
     }
   },
   "npcs": {},
-  "opponents": {}
+  "opponents": {
+    "Card Elder Hamish": {
+      "at": [319, 141],
+      "days": "8-10",
+      "times": "M,A,E,N",
+      "move": "idle_left",
+      "requires": "flag: gym_challenge_complete",
+      "match_format": "",
+      "says": {
+        "meet": "Hoh Hoh, welcome to the club! Fancy a friendly game? No best of three up here, just a good old battle.",
+        "repeat": "Hoh Hoh, welcome to the club! Fancy a friendly game? No best of three up here, just a good old battle.",
+        "first_win": "Well done, that was quite the battle.",
+        "rematch_win": "Battling like this makes me feel young again.",
+        "loss": "Don't be disheartened, the rain will always stop."
+      }
+    },
+    "Card Elder Rayne": {
+      "at": [319, 1],
+      "days": "8-10",
+      "times": "M,A,E,N",
+      "move": "idle_left",
+      "requires": "flag: gym_challenge_complete",
+      "match_format": "",
+      "says": {
+        "meet": "Hoh Hoh, the Gym Hero Challenge champion! Up for a quick game to feel the torrent once more?",
+        "repeat": "Hoh Hoh, the Gym Hero Challenge champion! Up for a quick game to feel the torrent once more?",
+        "first_win": "Congratulations on your win. You've earned my respect.",
+        "rematch_win": "Come back any time and battle us old folk.",
+        "loss": "Don't be disheartened, the rain will always stop."
+      }
+    },
+    "Card Elder Waverly": {
+      "at": [319, 71],
+      "days": "8-10",
+      "times": "M,A,E,N",
+      "move": "idle_left",
+      "requires": "flag: gym_challenge_complete",
+      "match_format": "",
+      "says": {
+        "meet": "Well well, look who made it to the club. One game, winner buys the tea?",
+        "repeat": "Well well, look who made it to the club. One game, winner buys the tea?",
+        "first_win": "Well well well, what a jolly good play!",
+        "rematch_win": "We've been winning and losing for so long it's always fun either way.",
+        "loss": "When you fail, get up and try again."
+      }
+    }
+  }
 }

@@ -391,7 +391,7 @@ func _ready() -> void:
 	UIKit.set_shortcut(load_btn, UIInput.MENU_PAD_LOAD, [KEY_L])
 	# Start background music — loops until scene changes. Hard Mode's draft build uses the
 	# normal track too; the draft music is only for its pack opening.
-	SoundManagerScript.play_bgm(SoundManagerScript.BGM_COIN_MODE, true)
+	SoundManagerScript.play_bgm(SoundManagerScript.menu_bgm(), true)
 	SoundManagerScript.fade_bgm(1.0, 0.0)
 	
 	# Load data sources

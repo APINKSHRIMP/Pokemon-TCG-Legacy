@@ -221,6 +221,7 @@ func _ready() -> void:
 
 	if battle_won:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_win)
+		_start_victory_music()
 	else:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_battle_loss)
 
@@ -1253,12 +1254,29 @@ func _restart_match() -> void:
 
 
 ## Kills the win/loss jingle. Split out of transition_back_to_map() so the retry path
-## can stop it too without duplicating the loop.
+## can stop it too without duplicating the loop. The victory track is left alone: it fades
+## out properly in transition_back_to_map(), and freeing it here would leave SoundManager
+## holding a dead player.
 func _stop_outcome_jingle() -> void:
 	for child in SoundManagerScript.get_children():
-		if child is AudioStreamPlayer:
+		if child is AudioStreamPlayer and child != SoundManagerScript.bgm_player:
 			child.stop()
 			child.queue_free()
+
+
+## TWEAKABLE: the beat between the win jingle ending and the victory track starting, and how
+## long that track takes to fade away on the way back to the overworld.
+const VICTORY_BGM_GAP := 0.2
+const VICTORY_BGM_FADE_OUT := 0.8
+
+## The win jingle plays out first, then the victory track loops until the rewards are cleared.
+## Not awaited by anyone: a player who clicks straight through is gone before the timer ends.
+func _start_victory_music() -> void:
+	var wait: float = SoundManagerScript.SFX_battle_win.get_length() + VICTORY_BGM_GAP
+	await get_tree().create_timer(wait).timeout
+	if transitioning or not is_inside_tree():
+		return
+	SoundManagerScript.play_bgm(SoundManagerScript.BGM_VICTORY)
 
 
 func transition_back_to_map() -> void:
@@ -1280,8 +1298,14 @@ func transition_back_to_map() -> void:
 	# A story battle can hold the clock still and move it on itself (the café breakfast
 	# jumps to the afternoon once both its matches are played, won or lost).
 	var holds_clock: bool = bool(GameState.forced_opponent_overrides.get("no_time_advance", false))
+	# Each game of a best-of-three counts as its own match (2 or 3); a single match is 1.
+	var series_games: int = GameState.last_series_games
+	GameState.last_series_games = 0
 	if not holds_clock:
-		GameState.count_match_toward_time(_was_first_win)
+		GameState.count_match_toward_time(_was_first_win, maxi(1, series_games))
+		# A best-of-three won against a Card Elder always moves the clock on.
+		if battle_won and series_games > 0 and GameState.current_opponent_name in GameState.CARD_ELDERS:
+			GameState.force_time_advance_credit()
 	# ISSUE #441: fish caught this slot (day 3+) count a tenth of a match each, but only
 	# ever get checked here -- at the end of a real match -- so fish alone never move time.
 	if not holds_clock and GameState.get_time_progress() >= float(GameState.matches_to_advance_time()):
@@ -1299,6 +1323,12 @@ func transition_back_to_map() -> void:
 	GameState.forced_opponent_overrides = {}
 
 	_stop_outcome_jingle()
+
+	# The victory track is fully gone before the map loads and starts its own music, so the
+	# two never overlap.
+	if SoundManagerScript.bgm_player != null:
+		SoundManagerScript.fade_out_bgm(VICTORY_BGM_FADE_OUT)
+		await get_tree().create_timer(VICTORY_BGM_FADE_OUT).timeout
 
 	# OLD: the outro faded to black, then the map appeared.
 	# var tween = create_tween()

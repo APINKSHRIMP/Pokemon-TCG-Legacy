@@ -890,8 +890,13 @@ var series_losses: int = 0
 var series_required_to_win: int = 0
 var series_total_games: int = 0
 var series_round_results: Array = []
+## Games played in the series that just finished, written by the Best_Of_3 transition as
+## it hands the decided series to the outro (clear_match_series() wipes the rest). 0 for a
+## single match. The outro reads it for the clock (count_match_toward_time) and clears it.
+var last_series_games: int = 0
 
 func start_match_series(opponent_name: String, match_format: String) -> void:
+	last_series_games = 0
 	series_opponent_name = opponent_name
 	series_format = match_format
 	series_wins = 0
@@ -1762,14 +1767,31 @@ func every_match_advances_time(date: int = -1) -> bool:
 	return date >= 3
 
 
-## Called by the outro once per finished match (a best-of-three counts once). A first
-## win has already been counted by mark_opponent_beaten(); anything else counts only
-## from day 3 on.
-func count_match_toward_time(was_first_win: bool) -> void:
-	if was_first_win or not every_match_advances_time():
+## Called by the outro once per finished match. `games` is how many games it took: 1 for
+## a single match, 2 or 3 for a best-of-three -- each game of a series counts as its own
+## match for the clock. A first win's first game has already been counted by
+## mark_opponent_beaten(); anything else counts only from day 3 on (days 1-2 count first
+## wins only, one each, as before).
+func count_match_toward_time(was_first_win: bool, games: int = 1) -> void:
+	if not every_match_advances_time():
 		return
-	progress["opponents_beaten_count_current"] = get_current_defeated() + 1
+	var extra: int = games - (1 if was_first_win else 0)
+	if extra <= 0:
+		return
+	progress["opponents_beaten_count_current"] = get_current_defeated() + extra
 	save_progress()
+
+
+## A best-of-three won against a Card Elder always moves the clock on, whatever was
+## already played this slot (it counts as SERIES_WIN_FORCED_MATCHES, topped up to the
+## slot's threshold -- Night needs 5). Called by the outro after count_match_toward_time().
+const SERIES_WIN_FORCED_MATCHES := 4
+
+func force_time_advance_credit() -> void:
+	var needed: int = maxi(SERIES_WIN_FORCED_MATCHES, matches_to_advance_time())
+	if get_current_defeated() < needed:
+		progress["opponents_beaten_count_current"] = needed
+		save_progress()
 
 
 func mark_first_launch_complete() -> void:
@@ -1953,6 +1975,13 @@ func mark_opponent_beaten(opponent_name: String):
 		progress["opponents_beaten_count_total"] = progress.get("opponents_beaten_count_total", 0) + 1
 		if OPPONENT_FLAG_UNLOCKS.has(opponent_name):
 			progress[OPPONENT_FLAG_UNLOCKS[opponent_name]] = true
+		# The last of the three Card Elders: the Medal of Elders, announced back in the hall.
+		if opponent_name in CARD_ELDERS and card_elders_beaten() == CARD_ELDERS.size() \
+				and not has_item(MEDAL_OF_ELDERS_ITEM):
+			var items: Array = progress.get("items", [])
+			items.append(MEDAL_OF_ELDERS_ITEM)
+			progress["items"] = items
+			progress[MEDAL_OF_ELDERS_UNSEEN] = true
 		save_progress()
 
 
@@ -2001,6 +2030,43 @@ func record_opponent_result(opponent_name: String, won: bool) -> void:
 ## Raised the first time the player beats Gym Challenge Giovanni, i.e. the whole Gym
 ## Challenge is complete. Currently gates the Gym packs at the Weighed Pack Seller.
 const GYM_CHALLENGE_COMPLETE_FLAG := "gym_challenge_complete"
+## Bought from the Town Hall Receptionist ($50) once the Gym Challenge is complete. Opens
+## the stairs to the TCG club upstairs (Town_Hall.gd) and moves the security guard aside.
+const TOWN_HALL_CLUB_FLAG := "town_hall_club_member"
+## Paid at the Gym Challenge Reception ($100, Gym Receptionist 1) by showing the Medal of
+## Elders. Lets the player through the Gym Security guard into the Gym Challenge Hall.
+const GYM_CHALLENGE_ENTRY_FLAG := "gym_challenge_entered"
+
+# ── CARD ELDER CHALLENGE ──────────────────────────────────────────────────────
+## The three Town Hall Card Elders. Beating all three grants the Medal of Elders.
+const CARD_ELDERS := ["Card Elder Hamish", "Card Elder Rayne", "Card Elder Waverly"]
+## The key item (bag art: Image_Assets/Assorted_Extras/Medal_of_Elders.png, text only
+## until drawn). Proof at the Gym Challenge Reception that all three Elders are beaten.
+const MEDAL_OF_ELDERS_ITEM := "Medal_of_Elders"
+const MEDAL_OF_ELDERS_LABEL := "Medal of Elders"
+## Set with the medal; Town_Hall.gd shows the "You received" notice and clears it.
+const MEDAL_OF_ELDERS_UNSEEN := "medal_of_elders_unseen"
+
+## In the order the Gym Challenge fights them.
+const GYM_LEADERS := [
+	"Gym Challenge Brock", "Gym Challenge Misty", "Gym Challenge Lt. Surge", "Gym Challenge Erika",
+	"Gym Challenge Koga", "Gym Challenge Sabrina", "Gym Challenge Blaine", "Gym Challenge Giovanni",
+]
+
+func gym_leaders_beaten() -> int:
+	var n := 0
+	for leader in GYM_LEADERS:
+		if has_beaten_opponent(leader):
+			n += 1
+	return n
+
+
+func card_elders_beaten() -> int:
+	var n := 0
+	for elder in CARD_ELDERS:
+		if has_beaten_opponent(elder):
+			n += 1
+	return n
 
 ## opponent name -> flag raised by their first defeat. Handled in mark_opponent_beaten().
 const OPPONENT_FLAG_UNLOCKS := {

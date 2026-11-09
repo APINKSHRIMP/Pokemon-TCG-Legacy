@@ -135,6 +135,9 @@ var _coinflip_rects: Array = []           # the five TextureRects, left to right
 # screen. wants_message_input() reports it so keys and clicks are swallowed for
 # the whole sequence rather than falling through to the map underneath.
 var _coinflip_animating: bool = false
+# From the first paid go until the player walks away: the coins stay up and the flipper's
+# music plays across every retry. See _coinflip_end_session().
+var _coinflip_session_active: bool = false
 
 # Container holding the displayed card/coin TextureRects during gift reveal
 var _gift_display_container: Control = null
@@ -263,6 +266,14 @@ const COINFLIP_START_MSG: String  = "Flipping coins, good luck!"
 const COINFLIP_WIN_MSG: String    = "Wow!! Congrats, you got all 5 heads!"
 const COINFLIP_PRIZE_MSG: String  = "Here's your prize!"
 const COINFLIP_DONE_MSG: String   = "Sorry, only one coin per person, you've already proven your luck!"
+const COINFLIP_RETRY_ASK: String  = " Would you like to try again?"
+# TWEAKABLE: the crossfades into the flipper's music and back to the map's.
+const COINFLIP_MUSIC_FADE_OUT := 0.5
+const COINFLIP_MUSIC_FADE_IN  := 0.5
+# TWEAKABLE: the sea fading away as a match starts. The music itself stops dead there already.
+const MATCH_START_AMBIENCE_FADE := 0.4
+# Ocean_Ambience.GROUP. Spelled out: an autoload must not depend on a map class at compile time.
+const MAP_AMBIENCE_GROUP := "map_ambience"
 
 # ------------------------------------------------------------
 # TOWN HALL REGISTRATION (npc_type "registrar")
@@ -288,6 +299,14 @@ const REGISTRAR_MEET := [
 	"Good [TIME]! I think I know what you're here for, I've been so busy running non stop registrations and you look like you know how to play!",
 	"That is what you're here for right? It's only a one off registration fee of $50 and all proceeds go right back into making the town better!",
 	"By registering you will also gain access to the TCG Tracker App, making it easier for you to find like minded opponents to play against.",
+	"Be warned though, without registering you won't be able to enter the Gym Hero Challenge! To be granted access you'll also need to defeat all 3 of our Card Elders and earn the Medal of Elders.",
+]
+## Day ELDER_CHALLENGE_LAST_DAY + 1 on, all three Elders beaten: the challenge is over (the
+## Elders leave the hall -- TownHall.json) and she says so instead of REGISTRAR_DONE.
+const ELDER_CHALLENGE_LAST_DAY := 10
+const REGISTRAR_ELDERS_ENDED := [
+	"The Card Elder Challenge has now ended! If you missed out then you'll have to wait for the next round.",
+	"Sadly anyone who didn't win in time won't be able to take part in the Gym Hero Challenge. Not you though, congratulations on earning the Medal of Elders!",
 ]
 const REGISTRAR_ASK    := "Are you looking to officially register with the Pokemon TCG Championships?"
 ## Met before, not registered yet: a single Yes/No.
@@ -304,6 +323,38 @@ const REGISTRAR_DONE := [
 	"A dark red dot is someone you've not met at all, a lighter red dot shows someone you haven't beaten yet and a pale red dot shows someone you have already beaten.",
 ]
 const REGISTRAR_BROKE_MSG := "Sorry, you don't have enough cash!"
+
+# TCG CLUB MEMBERSHIP -- the receptionist's second sale, offered once the Gym Challenge is
+# complete (GameState.GYM_CHALLENGE_COMPLETE_FLAG) to a player who already holds the
+# tracker. Paying raises GameState.TOWN_HALL_CLUB_FLAG; Town_Hall.gd opens the stairs.
+## TWEAKABLE: the one-off club fee.
+const CLUB_FEE: int = 50
+## Not a member yet: these boxes in order, the last one a Yes/No.
+const CLUB_PITCH := [
+	"Welcome back, the TCG proved so popular for the harbour we've turned one of our upstairs rooms into a dedicated TCG club!",
+	"For permanent access it's a registration fee of $50... again all proceeds go straight back into maintaining the town hall for the public.",
+]
+const CLUB_ASK := "Would you like to register? It's a one time fee giving you permanent access to the club upstairs?"
+const CLUB_THANKS := "Thanks for registering! Make your way up whenever you want."
+## Already a member.
+const CLUB_MEMBER_REPEAT := "Thanks again for registering! The club is upstairs, make your way up whenever you want."
+
+# GYM CHALLENGE ENTRY (npc_type "gym_registrar", Gym Receptionist 1) -- the fee is only
+# taken from a player holding the Medal of Elders (all three Card Elders beaten). Paying
+# raises GameState.GYM_CHALLENGE_ENTRY_FLAG; Gym_Challenge_Reception.gd opens the hall door.
+## TWEAKABLE: the entry fee.
+const GYM_ENTRY_FEE: int = 100
+const GYM_ENTRY_NO_MEDAL := [
+	"Welcome! Are you here to enter the Gym Hero Challenge? Before I can take your entrance fee I'll need to see your Medal of Elders.",
+	"Only trainers who have defeated all 3 Card Elders at the Celeste Harbour Town Hall may enter. Come back once you've earned it!",
+]
+const GYM_ENTRY_PITCH := [
+	"Welcome! Are you here to enter the Gym Hero Challenge? May I see your Medal of Elders please?",
+	"Wonderful, that's all in order! The entrance fee is $100, paid in full up front. Winning will grant you a large cash prize, free travel on any Bakushin transport service and a unique coin!",
+]
+const GYM_ENTRY_ASK := "Would you like to enter the Gym Hero Challenge for $100?"
+const GYM_ENTRY_THANKS := "Thank you, you're all registered! Security will let you through to the hall whenever you're ready. Good luck!!"
+const GYM_ENTRY_DONE := "You're registered for the Gym Hero Challenge. You only pay once, so come and go through to the hall as often as you like. Good luck!!"
 
 # TWEAKABLE — the coin row's geometry. It is boxed in on both sides: at the top of
 # its arc a coin must still be on screen (ROW_CENTER_Y - ARC_HEIGHT - COIN_SIZE.y/2
@@ -403,6 +454,12 @@ func initialise(
 	# day and time -- the Pikachu Fans move across the forest once you beat them.
 	var cast: Dictionary = CharacterSchedule.cast_for(
 		map_data, GameState.get_date(), GameState.get_time(), evaluate_condition)
+	# A map can rework its cast before anything spawns (the Town Hall puts Card Elders in
+	# matches with challengers and keeps spectators off the player): adjust_cast(cast) on
+	# the map root, handed back changed.
+	var cast_owner: Node = player.get_parent()
+	if cast_owner != null and cast_owner.has_method("adjust_cast"):
+		cast = cast_owner.adjust_cast(cast)
 	_load_and_spawn_opponents(cast.get("opponents", []))
 	_load_and_spawn_npcs(cast.get("npcs", []))
 
@@ -1089,7 +1146,11 @@ func _npc_is_vendor(npc: Node) -> bool:
 		return false
 	var t: String = npc.npc_type if "npc_type" in npc else ""
 	if t == "registrar":
-		return not GameState.has_item(TRACKER_ITEM)   # the cash chip only while there is a fee to pay
+		# the cash chip only while there is a fee to pay
+		return not GameState.has_item(TRACKER_ITEM) or _club_membership_on_offer()
+	if t == "gym_registrar":
+		return GameState.has_item(GameState.MEDAL_OF_ELDERS_ITEM) \
+				and not GameState.has_flag(GameState.GYM_CHALLENGE_ENTRY_FLAG)
 	return t == "shop" or t == "juice_vendor" or t == "coin_flipper" or t == "card_buyer" \
 			or t == "weighted_pack_seller" or t == "sleeve_seller" or t == "costume_seller"
 
@@ -1364,6 +1425,8 @@ func _hide_message():
 	message_panel.clear_chips()
 	_clear_gift_display()
 	_clear_coinflip_display()
+	if _coinflip_session_active:   # e.g. OK on "not enough cash" part-way through a session
+		_coinflip_end_session()
 	_pending_confirm_yes = Callable()
 	_pending_confirm_no = Callable()
 	# A cutscene closes and reopens this box between every line. Handing movement
@@ -1519,6 +1582,7 @@ func start_forced_battle(entry: Dictionary, overrides: Dictionary = {}) -> void:
 
 	end_cutscene_message()
 	SoundManagerScript.stop_bgm()
+	get_tree().call_group(MAP_AMBIENCE_GROUP, "silence", MATCH_START_AMBIENCE_FADE)
 	_freeze_overworld_actors()
 
 	# The overworld breaks into pixels and dissolves away (PixelDissolve).
@@ -1704,6 +1768,11 @@ func _on_yes_pressed():
 		_handle_registration()
 		return
 
+	# Gym Challenge Reception — take the entry fee (the medal was checked before the ask)
+	if current_npc != null and current_npc.npc_type == "gym_registrar":
+		_handle_gym_entry()
+		return
+
 	# Card buyer — his whole offer is a full screen, so hand over to it
 	if current_npc != null and current_npc.npc_type == "card_buyer":
 		_open_bulk_sell_shop()
@@ -1804,6 +1873,7 @@ func _on_yes_pressed():
 
 		_hide_message()
 		SoundManagerScript.stop_bgm()
+		get_tree().call_group(MAP_AMBIENCE_GROUP, "silence", MATCH_START_AMBIENCE_FADE)
 
 		# ISSUE #56: freeze the overworld the instant the battle is accepted, so NPCs/opponents can't
 		# keep wandering (and drift away from the player) during the 0.5s fade before the intro loads.
@@ -1823,6 +1893,10 @@ func _on_no_pressed():
 		_pending_confirm_no = Callable()
 		_hide_message()
 		no_cb.call()
+		return
+	# No to "try again?" on the coin flipper: the coins fade away and the map's music comes back.
+	if _coinflip_session_active:
+		await _coinflip_walk_away()
 		return
 	if current_opponent != null:
 		current_opponent.refresh_bubble()
@@ -1966,7 +2040,17 @@ func _on_player_npc_interact(npc: Node):
 		npc.mark_as_met()
 		npc.refresh_bubble()
 		var steps: Array = []
-		if GameState.has_item(TRACKER_ITEM):
+		if _club_membership_on_offer():
+			for line in CLUB_PITCH:
+				steps.append({"text": line})
+			steps.append({"text": CLUB_ASK, "ask": true})
+		elif GameState.has_item(TRACKER_ITEM) and GameState.has_flag(GameState.TOWN_HALL_CLUB_FLAG):
+			steps.append({"text": CLUB_MEMBER_REPEAT})
+		elif GameState.has_item(TRACKER_ITEM) and GameState.get_date() > ELDER_CHALLENGE_LAST_DAY \
+				and GameState.card_elders_beaten() == GameState.CARD_ELDERS.size():
+			for line in REGISTRAR_ELDERS_ENDED:
+				steps.append({"text": line})
+		elif GameState.has_item(TRACKER_ITEM):
 			for line in REGISTRAR_DONE:
 				steps.append({"text": line})
 		elif registrar_seen:
@@ -1976,6 +2060,23 @@ func _on_player_npc_interact(npc: Node):
 				steps.append({"text": line})
 			steps.append({"text": REGISTRAR_ASK, "ask": true})
 		_run_npc_steps(steps, 0)
+		return
+
+	# Gym Challenge Reception: the $100 entry fee, taken only on sight of the Medal of Elders.
+	if npc.npc_type == "gym_registrar":
+		npc.mark_as_met()
+		npc.refresh_bubble()
+		var gym_steps: Array = []
+		if GameState.has_flag(GameState.GYM_CHALLENGE_ENTRY_FLAG):
+			gym_steps.append({"text": GYM_ENTRY_DONE})
+		elif not GameState.has_item(GameState.MEDAL_OF_ELDERS_ITEM):
+			for line in GYM_ENTRY_NO_MEDAL:
+				gym_steps.append({"text": line})
+		else:
+			for line in GYM_ENTRY_PITCH:
+				gym_steps.append({"text": line})
+			gym_steps.append({"text": GYM_ENTRY_ASK, "ask": true})
+		_run_npc_steps(gym_steps, 0)
 		return
 
 	# Card buyer: buys every copy of a card beyond the fourth, priced by rarity. The pitch
@@ -2984,11 +3085,13 @@ func _handle_juice_purchase() -> void:
 # once per save, and the 20th paid go wins it outright (COINFLIP_PITY).
 #
 # The whole run is one await chain hanging off _run_coinflip_sequence(), driven
-# by the existing message pipeline at three points:
-#   Yes on the offer      -> _handle_coinflip_entry()   (pays, builds the row)
+# by the existing message pipeline at these points:
+#   Yes on the offer      -> _handle_coinflip_entry()   (pays, builds the row, music on)
 #   OK on "good luck!"    -> _run_coinflip_sequence()   (via _pending_ok_action)
 #   OK on the win message -> _on_coinflip_prize_ack()   (fades out, then gifts)
-# A loss just ends on its own OK, which falls through to the normal dismiss.
+# A loss keeps the coins on screen and asks "try again?" over them:
+#   Yes -> _handle_coinflip_entry() pays and flips again straight away
+#   No  -> _coinflip_walk_away()    (fades out, the map's music comes back)
 # ============================================================
 
 func _coinflip_already_won() -> bool:
@@ -3000,6 +3103,9 @@ func _coinflip_already_won() -> bool:
 ## and the TCG Tracker App reveal (_reveal_tracker_app). The item is granted with the
 ## payment, not at the end, so quitting mid-conversation never loses the $50.
 func _handle_registration() -> void:
+	if _club_membership_on_offer():
+		_handle_club_registration()
+		return
 	if GameState.get_cash() < REGISTRATION_FEE:
 		_show_message_with_ok(REGISTRAR_BROKE_MSG)
 		return
@@ -3009,6 +3115,42 @@ func _handle_registration() -> void:
 	show_message_then(REGISTRAR_THANKS, func():
 		show_message_then(elder_line, func():
 			show_message_then(REGISTRAR_LOGIN, _reveal_tracker_app)))
+
+
+## True while the receptionist is selling TCG club membership: tracker already owned, Gym
+## Challenge complete, not a member yet.
+func _club_membership_on_offer() -> bool:
+	return GameState.has_item(TRACKER_ITEM) \
+			and GameState.has_flag(GameState.GYM_CHALLENGE_COMPLETE_FLAG) \
+			and not GameState.has_flag(GameState.TOWN_HALL_CLUB_FLAG)
+
+
+## Yes to the club pitch: take the fee, raise the flag, and have the Town Hall open its
+## stairs and walk the guard aside while the thank-you is on screen.
+func _handle_club_registration() -> void:
+	if GameState.get_cash() < CLUB_FEE:
+		_show_message_with_ok(REGISTRAR_BROKE_MSG)
+		return
+	GameState.add_cash(-CLUB_FEE)                          # saves progress itself
+	GameState.set_flag(GameState.TOWN_HALL_CLUB_FLAG)
+	var scene := get_tree().current_scene
+	if scene != null and scene.has_method("refresh_club_access"):
+		scene.refresh_club_access()
+	_show_message_with_ok(CLUB_THANKS)
+
+
+## Yes to the Gym Receptionist: take the $100, raise the entry flag, and have the reception
+## walk its security guard away from the hall door while the thank-you is up.
+func _handle_gym_entry() -> void:
+	if GameState.get_cash() < GYM_ENTRY_FEE:
+		_show_message_with_ok(REGISTRAR_BROKE_MSG)
+		return
+	GameState.add_cash(-GYM_ENTRY_FEE)                       # saves progress itself
+	GameState.set_flag(GameState.GYM_CHALLENGE_ENTRY_FLAG)
+	var scene := get_tree().current_scene
+	if scene != null and scene.has_method("refresh_hall_access"):
+		scene.refresh_hall_access()
+	_show_message_with_ok(GYM_ENTRY_THANKS)
 
 
 ## "Doesn't start for X days" / "until tomorrow" / "already underway", from today's date and
@@ -3071,10 +3213,43 @@ func _handle_coinflip_entry() -> void:
 		int(GameState.progress.get(COINFLIP_ATTEMPTS_KEY, 0)) + 1
 	GameState.add_cash(-COINFLIP_COST)   # saves progress itself
 	_build_coinflip_display()
+	# Yes to "try again?": they have already been wished luck, so straight back to flipping.
+	if _coinflip_session_active:
+		_run_coinflip_sequence()
+		return
+	_coinflip_session_active = true
+	SoundManagerScript.crossfade_bgm(SoundManagerScript.BGM_COIN_FLIP_GAME,
+			COINFLIP_MUSIC_FADE_OUT, COINFLIP_MUSIC_FADE_IN)
 	# The box is shown AFTER the row is built so _apply_cash_chip() reads the
 	# post-payment balance and the panel ends up on top of the new overlay.
 	_pending_ok_action = _run_coinflip_sequence
 	_show_message_with_ok(COINFLIP_START_MSG)
+
+
+## The flipper's music gives way to whatever this map plays right now (nothing, outdoors at
+## Bedtime). Safe to call once per session only: it is what closes the session.
+func _coinflip_end_session() -> void:
+	_coinflip_session_active = false
+	var map: Node = get_tree().current_scene
+	var back: String = String(map.call("_bgm_now")) if map != null and map.has_method("_bgm_now") else ""
+	if back == "":
+		SoundManagerScript.fade_out_bgm(COINFLIP_MUSIC_FADE_OUT)
+	else:
+		SoundManagerScript.crossfade_bgm(back, COINFLIP_MUSIC_FADE_OUT, COINFLIP_MUSIC_FADE_IN)
+
+
+## No to "try again?".
+func _coinflip_walk_away() -> void:
+	message_panel.visible = false
+	_coinflip_animating = true   # keep input swallowed across the fade
+	_coinflip_end_session()
+	await _fade_out_coinflip_display()
+	if not _coinflip_still_valid():
+		return
+	_coinflip_animating = false
+	if current_npc != null:
+		current_npc.refresh_bubble()
+	_hide_message()
 
 # Dim overlay + five coins in a row, all showing heads, sitting above the world
 # but below the message box.
@@ -3178,12 +3353,9 @@ func _run_coinflip_sequence() -> void:
 		_pending_ok_action = _on_coinflip_prize_ack
 		_show_message_with_ok(COINFLIP_WIN_MSG)
 	else:
-		# Loss: back to the overworld first, then the consolation line.
-		await _fade_out_coinflip_display()
-		if not _coinflip_still_valid():
-			return
+		# Loss: the coins stay up and the music plays on while they decide.
 		_coinflip_animating = false
-		_show_message_with_ok(_coinflip_loss_text(COINFLIP_COIN_COUNT - heads))
+		_show_message_with_choices(_coinflip_loss_text(COINFLIP_COIN_COUNT - heads) + COINFLIP_RETRY_ASK)
 
 # Guard for every resume point in the chain above. The awaits span seconds, and
 # anything that tears the map down in the meantime (a scene change, the message
@@ -3245,6 +3417,7 @@ func _coinflip_loss_text(tails: int) -> String:
 func _on_coinflip_prize_ack() -> void:
 	message_panel.visible = false
 	_coinflip_animating = true   # keep input swallowed across the fade
+	_coinflip_end_session()
 	await _fade_out_coinflip_display()
 	if not _coinflip_still_valid():
 		return
@@ -3798,6 +3971,7 @@ func _start_test_match(current: Node) -> void:
 
 	_hide_message()
 	SoundManagerScript.stop_bgm()
+	get_tree().call_group(MAP_AMBIENCE_GROUP, "silence", MATCH_START_AMBIENCE_FADE)
 
 	# OLD: the overworld broke into pixels, then the separate intro scene loaded.
 	# await PixelDissolve.out_to_scene(MATCH_INTRO_SCENE)

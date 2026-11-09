@@ -21,7 +21,8 @@ const BED_TOO_EARLY_TEXT := {
 const NEXT_MORNING_FONT := "res://UI_Themes/ChakraPetch-Bold.ttf"
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME
+func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME_DAY
+func get_evening_bgm_path() -> String: return SoundManagerScript.BGM_PLAYER_HOME_NIGHT
 
 func _scene_setup():
 	_apply_moved_in_state()

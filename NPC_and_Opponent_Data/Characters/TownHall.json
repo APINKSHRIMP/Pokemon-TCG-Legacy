@@ -11,28 +11,45 @@
     "loop    : set false for story characters who must never repeat when the",
     "          calendar loops -- they are matched against the real day instead.",
     "",
-    "CALENDAR mirrors Celeste Harbour's (opens day 1, authored through 8, loops days",
-    "5-8 for ever) so this building's cast cycles in step with the town outside.",
+    "CALENDAR opens day 1, authored through 11, then loops day 11 for ever: from day 11",
+    "the hall is the receptionist and whichever Card Elders are still to be beaten. Once",
+    "all three are beaten the Elders (beaten ones too) leave for good -- on the NEXT visit,",
+    "never under the player's feet straight after the winning match.",
     "",
-    "The three Card Elders stand behind the three card mats (CardMat/2/3 in TownHall.tscn).",
-    "Day 3 they are gift-giving NPCs (kind: npc) because the queue is too long; days 4-6",
-    "and 8 they battle. The Plaza Challengers are their challengers and spectators, days 3-8.",
-    "All of them moved here from the Celeste Harbour plaza with their schedules unchanged."
+    "THE CARD ELDER CHALLENGE starts on day 4. Days 2-3 the Elders wander Celeste",
+    "Harbour (Super Elder Hamish/Rayne/Waverly in Celeste_Harbour.json). Day 4 Morning",
+    "and Afternoon they are busy NPCs behind the three card mats (CardMat/2/3) with the",
+    "Plaza Challenger crowd queuing in front; from Evening 4 they battle M,A,E,N.",
+    "Beating an Elder swaps them for their '<name> Defeated' NPC (no rematch). Once the",
+    "Gym Challenge is complete (flag gym_challenge_complete) all of them leave this",
+    "room and move upstairs into the TCG club (TownHall_Upstairs.json).",
+    "Evening 4 to day 10 the Town Hall Spectators (1-24) watch from the sides and back,",
+    "a big crowd on days 4-7 thinning to one or two by day 10, then none.",
+    "WHO IS PLAYING WHICH ELDER is decided in code (Town_Hall_Crowd.gd), not here: each",
+    "slot with a spectator puts one 'Elder Challenger N' on an Elder's challenger spot",
+    "(Hamish 399,83.5 / Rayne 271,83.5 / Waverly 335,83.5) and that Elder is busy. ANY",
+    "character placed here on one of those spots (Ellie, Olly, Alexander...) is playing",
+    "that Elder too and locks them out for the slot.",
+    "",
+    "TOWN HALL SECURITY appears once the Gym Challenge is complete: blocking the stairs",
+    "until the player buys club membership (flag town_hall_club_member, sold by the",
+    "receptionist -- MapManager CLUB_* lines), then standing beside them. Town_Hall.gd",
+    "owns the rope and the stair collision and moves the guard aside live on payment."
   ],
   "map": "TownHall",
   "calendar": {
     "opens": 1,
-    "authored_through": 8,
+    "authored_through": 11,
     "loop": {
-      "from": 5,
-      "period": 4
+      "from": 11,
+      "period": 1
     }
   },
   "npcs": {
     "Plaza Challenger 1": {
-      "at": [223, 35.5],
-      "days": "3-7/2",
-      "times": "M,A",
+      "at": [335, 83.5],
+      "days": "4",
+      "times": "M",
       "move": "idle_up",
       "says": {
         "meet": "I'm in the middle of an impornt match here don't disturb me!",
@@ -40,9 +57,9 @@
       }
     },
     "Plaza Challenger 2": {
-      "at": [287, 35.5],
-      "days": "3-7/2",
-      "times": "M,A",
+      "at": [271, 83.5],
+      "days": "4",
+      "times": "M",
       "move": "idle_up",
       "says": {
         "meet": "I'm definitely going to lose here this is so tough.",
@@ -50,9 +67,9 @@
       }
     },
     "Plaza Challenger 3": {
-      "at": [351, 35.5],
-      "days": "3-7/2",
-      "times": "M,A",
+      "at": [399, 83.5],
+      "days": "4",
+      "times": "M",
       "move": "idle_up",
       "says": {
         "meet": "I only came here to see the beach but thought I'd try my luck with this challenge.",
@@ -60,17 +77,26 @@
       }
     },
     "Plaza Challenger 4": {
-      "at": [203, 55.5],
-      "days": "3-7/2",
-      "times": "M,A",
+      "at": [251, 103.5],
       "move": "idle_up",
       "says": {
         "meet": "Wow this is an intense match!",
         "repeat": "I've never seen plays like this before."
-      }
+      },
+      "when": [
+        {
+          "days": "4",
+          "times": "M"
+        },
+        {
+          "at": [335, 83.5],
+          "days": "4",
+          "times": "A"
+        }
+      ]
     },
     "Plaza Challenger 5": {
-      "at": [183, 47.5],
+      "at": [231, 95.5],
       "move": "idle_up",
       "says": {
         "meet": "I enjoy watching the elders play, they're so highly skilled",
@@ -78,31 +104,40 @@
       },
       "when": [
         {
-          "days": "4-8/2",
-          "times": "M,A"
-        },
-        {
-          "days": "3-8",
-          "times": "E",
-          "says": {
-            "meet": "I've been watching everyone play all day.",
-            "repeat": "if you're going to try it then good luck!!!"
-          }
-        },
-        {
-          "at": [189.5, 20.5],
-          "days": "3-7/2",
-          "times": "M,A",
+          "at": [237.5, 68.5],
+          "days": "4",
+          "times": "M",
           "move": "idle_right",
           "says": {
             "meet": "I'm no good at playing myself but I love to watch.",
             "repeat": "It's a really good match to watch!"
           }
+        },
+        {
+          "at": [243.5, 101.5],
+          "days": "4",
+          "times": "A",
+          "says": {
+            "meet": "I'm no good at playing myself but I love to watch.",
+            "repeat": "It's a really good match to watch!"
+          }
+        },
+        {
+          "days": "4",
+          "times": "E"
+        },
+        {
+          "days": "4",
+          "times": "N",
+          "says": {
+            "meet": "I've been watching everyone play all day.",
+            "repeat": "if you're going to try it then good luck!!!"
+          }
         }
       ]
     },
     "Plaza Challenger 6": {
-      "at": [377, 30.5],
+      "at": [425, 78.5],
       "move": "idle_left",
       "says": {
         "meet": "I thought I was too old to be good at this, but the elders are amazing.",
@@ -110,13 +145,18 @@
       },
       "when": [
         {
-          "days": "3-8",
-          "times": "M,A"
+          "days": "4",
+          "times": "M,E"
         },
         {
-          "at": [375, 47.5],
-          "days": "3-8",
-          "times": "E",
+          "at": [433, 92.5],
+          "days": "4",
+          "times": "A"
+        },
+        {
+          "at": [423, 95.5],
+          "days": "4",
+          "times": "N",
           "move": "idle_up",
           "says": {
             "meet": "I thought I was too old to be good at this, but the elders are amazing and have been playing all day long.",
@@ -126,44 +166,609 @@
       ]
     },
     "Plaza Challenger 7": {
-      "at": [376.5, 55.5],
-      "days": "3-7/2",
-      "times": "M,A",
+      "at": [424.5, 103.5],
       "move": "idle_up",
       "says": {
         "meet": "Hey get in line!! There's a queue of us here.",
         "repeat": "Ya gotta wait ya turn."
-      }
+      },
+      "when": [
+        {
+          "days": "4",
+          "times": "M"
+        },
+        {
+          "at": [399, 83.5],
+          "days": "4",
+          "times": "A"
+        }
+      ]
     },
     "Plaza Challenger 7b": {
-      "at": [336.5, 60.5],
-      "days": "3-7/2",
-      "times": "M,A",
+      "at": [384.5, 108.5],
       "move": "idle_up",
       "says": {
         "meet": "Wow! I wish I could play as good as these.",
         "repeat": "I'm pretty new to this whole card thing."
-      }
+      },
+      "when": [
+        {
+          "days": "4",
+          "times": "M"
+        },
+        {
+          "at": [365.5, 106.5],
+          "days": "4",
+          "times": "A"
+        }
+      ]
     },
     "Plaza Challenger 8": {
-      "at": [249.5, 60.5],
-      "days": "3-8",
-      "times": "M,A",
+      "at": [297.5, 108.5],
       "move": "idle_up",
       "says": {
         "meet": "I've been collecting for a LONG time but I'll never be as good at battling as these folk are. You might be able to make more use of this than I can.",
         "repeat": "I've got well over 10,000 cards, I've been collecting them for years."
-      }
+      },
+      "when": [
+        {
+          "days": "4",
+          "times": "M,E"
+        },
+        {
+          "at": [303.5, 116.5],
+          "days": "4",
+          "times": "A"
+        }
+      ]
     },
     "Plaza Challenger 9": {
-      "at": [289.5, 65.5],
-      "days": "3-7/2",
-      "times": "M,A",
+      "at": [337.5, 113.5],
       "move": "idle_up",
       "says": {
         "meet": "WOW! Such cool cards!!!",
         "repeat": "I wish I had cards as cool as these!"
-      }
+      },
+      "when": [
+        {
+          "days": "4",
+          "times": "M"
+        },
+        {
+          "at": [271, 83.5],
+          "days": "4",
+          "times": "A"
+        }
+      ]
+    },
+    "Town Hall Spectator 1": {
+      "at": [367, 122],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I came here for the beach but the matches in here are way more exciting!",
+        "repeat": "Shh, I think they're about to play something big."
+      },
+      "when": [
+        { "days": "6", "times": "M,A,E", "at": [367, 122], "move": "idle_up" },
+        { "days": "7", "times": "E,N", "at": [456, 126], "move": "idle_left" }
+      ]
+    },
+    "Town Hall Spectator 2": {
+      "at": [303, 122],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "Those Elders have been playing cards since before I was born.",
+        "repeat": "I could watch them play all day."
+      },
+      "when": [
+        { "days": "5", "times": "M", "at": [303, 122], "move": "idle_up" },
+        { "days": "6", "times": "E,N", "at": [239, 152], "move": "idle_up" },
+        { "days": "7", "times": "E,N", "at": [303, 152], "move": "idle_up" },
+        { "days": "9", "times": "E", "at": [303, 122], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 3": {
+      "at": [367, 152],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "Every time I think a challenger has it won, the Elders pull something out of nowhere.",
+        "repeat": "I've learnt more watching here than from any guidebook."
+      },
+      "when": [
+        { "days": "7", "times": "M,A", "at": [367, 152], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 4": {
+      "at": [444, 58],
+      "move": "idle_left",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "Splendid play, simply splendid.",
+        "repeat": "I do enjoy watching the masters at work."
+      },
+      "when": [
+        { "days": "4", "times": "N", "at": [444, 58], "move": "idle_left" },
+        { "days": "5", "times": "A,E,N", "at": [303, 122], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 5": {
+      "at": [367, 122],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I'm supposed to be at work right now... just one more match.",
+        "repeat": "Don't tell my boss you saw me here."
+      },
+      "when": [
+        { "days": "5", "times": "M", "at": [367, 122], "move": "idle_up" },
+        { "days": "6", "times": "M", "at": [239, 152], "move": "idle_up" },
+        { "days": "9", "times": "M", "at": [239, 152], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 6": {
+      "at": [456, 126],
+      "move": "idle_left",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I heard about the Card Elders from all the way across the region.",
+        "repeat": "They're even better than people say."
+      },
+      "when": [
+        { "days": "4", "times": "N", "at": [456, 126], "move": "idle_left" },
+        { "days": "6", "times": "M,A,E,N", "at": [456, 92], "move": "idle_left" },
+        { "days": "8", "times": "N", "at": [367, 152], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 7": {
+      "at": [444, 58],
+      "move": "idle_left",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "Watching the challengers lose is half the fun, ho ho.",
+        "repeat": "Will you be the one to finally beat them?"
+      },
+      "when": [
+        { "days": "4", "times": "E", "at": [444, 58], "move": "idle_left" },
+        { "days": "6", "times": "M", "at": [303, 122], "move": "idle_up" },
+        { "days": "7", "times": "M,A", "at": [456, 126], "move": "idle_left" },
+        { "days": "9", "times": "A", "at": [214, 92], "move": "idle_right" }
+      ]
+    },
+    "Town Hall Spectator 8": {
+      "at": [456, 126],
+      "move": "idle_left",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I took on the Elders back in my day. Never did manage to beat them.",
+        "repeat": "Go on, show them how it's done."
+      },
+      "when": [
+        { "days": "4", "times": "E", "at": [456, 126], "move": "idle_left" },
+        { "days": "5", "times": "A,E,N", "at": [444, 58], "move": "idle_left" },
+        { "days": "6", "times": "N", "at": [214, 92], "move": "idle_right" },
+        { "days": "8", "times": "A", "at": [226, 58], "move": "idle_right" }
+      ]
+    },
+    "Town Hall Spectator 9": {
+      "at": [239, 152],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "Wow, the Gym Hero Challenge is going to be crazy after this!",
+        "repeat": "I hope I get a seat in the stands for the Gym Hero Challenge."
+      },
+      "when": [
+        { "days": "5", "times": "M", "at": [239, 152], "move": "idle_up" },
+        { "days": "6", "times": "M", "at": [214, 92], "move": "idle_right" },
+        { "days": "8", "times": "M,A,E", "at": [431, 152], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 10": {
+      "at": [226, 126],
+      "move": "idle_right",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I can't wait for the Gym Hero Challenge now. If the Elders play like this, imagine the Gym Heroes!",
+        "repeat": "Do you think anyone will beat all three?"
+      },
+      "when": [
+        { "days": "4", "times": "E", "at": [226, 126], "move": "idle_right" },
+        { "days": "5", "times": "M", "at": [303, 152], "move": "idle_up" },
+        { "days": "5", "times": "E,N", "at": [367, 122], "move": "idle_up" },
+        { "days": "7", "times": "A", "at": [431, 152], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 11": {
+      "at": [303, 122],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I wish I was good enough to enter. I can barely beat my little brother.",
+        "repeat": "Maybe next year..."
+      },
+      "when": [
+        { "days": "4", "times": "N", "at": [303, 122], "move": "idle_up" },
+        { "days": "5", "times": "A,E", "at": [226, 126], "move": "idle_right" },
+        { "days": "6", "times": "A", "at": [303, 122], "move": "idle_up" },
+        { "days": "6", "times": "N", "at": [226, 58], "move": "idle_right" },
+        { "days": "8", "times": "M", "at": [226, 126], "move": "idle_right" },
+        { "days": "8", "times": "N", "at": [303, 152], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 12": {
+      "at": [239, 152],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "Did you see that play?! Absolutely incredible!",
+        "repeat": "I'm taking notes for my own deck."
+      },
+      "when": [
+        { "days": "4", "times": "E,N", "at": [239, 152], "move": "idle_up" },
+        { "days": "6", "times": "A", "at": [226, 126], "move": "idle_right" },
+        { "days": "7", "times": "M,A,E,N", "at": [456, 92], "move": "idle_left" },
+        { "days": "10", "times": "M", "at": [456, 126], "move": "idle_left" }
+      ]
+    },
+    "Town Hall Spectator 13": {
+      "at": [303, 152],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "We're filming for the local news. The whole harbour is talking about the Card Elder Challenge!",
+        "repeat": "Try not to block the shot, thanks."
+      },
+      "when": [
+        { "days": "4", "times": "N", "at": [303, 152], "move": "idle_up" },
+        { "days": "5", "times": "A,E", "at": [367, 152], "move": "idle_up" },
+        { "days": "6", "times": "E", "at": [303, 122], "move": "idle_up" },
+        { "days": "9", "times": "M,A", "at": [226, 58], "move": "idle_right" }
+      ]
+    },
+    "Town Hall Spectator 14": {
+      "at": [431, 152],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I'm covering the Card Elder Challenge for the Harbour Herald. Only those who beat all three get into the Gym Hero Challenge!",
+        "repeat": "Any comment for the paper? No? Fair enough."
+      },
+      "when": [
+        { "days": "4", "times": "E", "at": [431, 152], "move": "idle_up" },
+        { "days": "7", "times": "M", "at": [226, 126], "move": "idle_right" },
+        { "days": "8", "times": "M", "at": [456, 92], "move": "idle_left" }
+      ]
+    },
+    "Town Hall Spectator 15": {
+      "at": [431, 152],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "In my day we played with nothing but Base Set, and we were grateful.",
+        "repeat": "These youngsters are getting rather good."
+      },
+      "when": [
+        { "days": "4", "times": "N", "at": [431, 152], "move": "idle_up" },
+        { "days": "5", "times": "A", "at": [431, 152], "move": "idle_up" },
+        { "days": "6", "times": "M", "at": [226, 126], "move": "idle_right" },
+        { "days": "7", "times": "M,A", "at": [239, 152], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 16": {
+      "at": [214, 92],
+      "move": "idle_right",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "Darling, I came for the sea air but stayed for the cards.",
+        "repeat": "Oh, that was a dreadful misplay, simply dreadful."
+      },
+      "when": [
+        { "days": "5", "times": "M", "at": [214, 92], "move": "idle_right" },
+        { "days": "5", "times": "E,N", "at": [239, 152], "move": "idle_up" },
+        { "days": "7", "times": "M,A,E,N", "at": [226, 58], "move": "idle_right" },
+        { "days": "8", "times": "A,E", "at": [226, 126], "move": "idle_right" }
+      ]
+    },
+    "Town Hall Spectator 17": {
+      "at": [431, 152],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I told work I was at the dentist. Totally worth it.",
+        "repeat": "Don't tell anyone you saw me here."
+      },
+      "when": [
+        { "days": "5", "times": "M", "at": [431, 152], "move": "idle_up" },
+        { "days": "6", "times": "M,A", "at": [367, 152], "move": "idle_up" },
+        { "days": "7", "times": "M", "at": [214, 92], "move": "idle_right" }
+      ]
+    },
+    "Town Hall Spectator 18": {
+      "at": [367, 122],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "Our whole class came to watch! The Gym Hero Challenge is all anyone talks about at school.",
+        "repeat": "I'm going to enter when I'm older!"
+      },
+      "when": [
+        { "days": "5", "times": "A", "at": [367, 122], "move": "idle_up" },
+        { "days": "6", "times": "M,A,E", "at": [444, 58], "move": "idle_left" }
+      ]
+    },
+    "Town Hall Spectator 19": {
+      "at": [456, 92],
+      "move": "idle_left",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I wish I was good enough to enter the Gym Hero Challenge!",
+        "repeat": "My deck is all Rattata. Is that bad?"
+      },
+      "when": [
+        { "days": "4", "times": "E", "at": [456, 92], "move": "idle_left" },
+        { "days": "5", "times": "M,A,E,N", "at": [456, 92], "move": "idle_left" },
+        { "days": "6", "times": "A", "at": [456, 126], "move": "idle_left" },
+        { "days": "6", "times": "N", "at": [303, 152], "move": "idle_up" },
+        { "days": "7", "times": "A", "at": [303, 122], "move": "idle_up" },
+        { "days": "9", "times": "E", "at": [444, 58], "move": "idle_left" }
+      ]
+    },
+    "Town Hall Spectator 20": {
+      "at": [456, 126],
+      "move": "idle_left",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I beat the Elders once, many years ago. They've only got sharper since.",
+        "repeat": "Watch how they manage their energy. That's the secret."
+      },
+      "when": [
+        { "days": "5", "times": "A", "at": [456, 126], "move": "idle_left" },
+        { "days": "6", "times": "M,A,E", "at": [431, 152], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 21": {
+      "at": [456, 126],
+      "move": "idle_left",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I'm sketching the matches. The Elders make such dramatic faces!",
+        "repeat": "Hold still, I'm drawing you into the crowd."
+      },
+      "when": [
+        { "days": "5", "times": "M", "at": [456, 126], "move": "idle_left" },
+        { "days": "5", "times": "E,N", "at": [431, 152], "move": "idle_up" },
+        { "days": "7", "times": "E", "at": [214, 92], "move": "idle_right" },
+        { "days": "9", "times": "M", "at": [456, 126], "move": "idle_left" }
+      ]
+    },
+    "Town Hall Spectator 22": {
+      "at": [226, 58],
+      "move": "idle_right",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "I came down off the mountain just for this. Worth every step!",
+        "repeat": "The Gym Hero Challenge is going to be even bigger!"
+      },
+      "when": [
+        { "days": "5", "times": "M,A", "at": [226, 58], "move": "idle_right" },
+        { "days": "7", "times": "E", "at": [367, 122], "move": "idle_up" },
+        { "days": "8", "times": "M,A,E,N", "at": [303, 122], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Spectator 23": {
+      "at": [367, 152],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "Oh my, the tension in here! I can hardly bear to watch.",
+        "repeat": "Is it over yet? Tell me when it's over."
+      },
+      "when": [
+        { "days": "5", "times": "M", "at": [367, 152], "move": "idle_up" },
+        { "days": "6", "times": "A,E", "at": [226, 58], "move": "idle_right" }
+      ]
+    },
+    "Town Hall Spectator 24": {
+      "at": [367, 152],
+      "move": "idle_up",
+      "requires": "not flag: gym_challenge_complete",
+      "says": {
+        "meet": "Some of the cards I've seen played today are worth a fortune!",
+        "repeat": "I'd trade my whole binder for that Elder's deck."
+      },
+      "when": [
+        { "days": "4", "times": "E,N", "at": [367, 152], "move": "idle_up" },
+        { "days": "5", "times": "A,E,N", "at": [303, 152], "move": "idle_up" },
+        { "days": "6", "times": "N", "at": [367, 122], "move": "idle_up" },
+        { "days": "10", "times": "M,A", "at": [239, 152], "move": "idle_up" }
+      ]
+    },
+    "Town Hall Security": {
+      "at": [115, -57],
+      "move": "idle_down",
+      "says": {
+        "meet": "Only club members allowed upstairs. If you're interested then register at the desk.",
+        "repeat": "Only club members allowed upstairs. If you're interested then register at the desk."
+      },
+      "when": [
+        {
+          "requires": {
+            "conditions": [
+              {
+                "flag": "gym_challenge_complete",
+                "type": "flag_set"
+              },
+              {
+                "flag": "town_hall_club_member",
+                "type": "flag_not_set"
+              }
+            ],
+            "type": "all"
+          }
+        },
+        {
+          "at": [37, -57],
+          "move": "idle_right",
+          "requires": "flag: town_hall_club_member",
+          "says": {
+            "meet": "Welcome, member. Head on up whenever you like, the club is open all day.",
+            "repeat": "Enjoy the club!"
+          }
+        }
+      ]
+    },
+    "Card Elder Hamish Defeated": {
+      "at": [399, 45.5],
+      "move": "idle_down",
+      "requires": {
+        "conditions": [
+          {
+            "target": "Card Elder Hamish",
+            "type": "opponent_defeated"
+          },
+          {
+            "flag": "gym_challenge_complete",
+            "type": "flag_not_set"
+          }
+        ],
+        "type": "all"
+      },
+      "says": {
+        "meet": "You've already earned my medal, there's nothing more I can teach you down here. Collect all 3 of our medals and the Gym Hero Challenge awaits!",
+        "repeat": "Good luck in the Gym Hero Challenge, make us old folk proud."
+      },
+      "when": [
+        {
+          "days": "4",
+          "times": "E,N"
+        },
+        {
+          "days": "5-10",
+          "times": "M,A,E,N"
+        },
+        {
+          "days": "11",
+          "times": "M,A,E,N",
+          "requires": {
+            "type": "all",
+            "conditions": [
+              { "type": "opponent_defeated", "target": "Card Elder Hamish" },
+              { "type": "flag_not_set", "flag": "gym_challenge_complete" },
+              {
+                "type": "any",
+                "conditions": [
+                  { "type": "opponent_not_defeated", "target": "Card Elder Hamish" },
+                  { "type": "opponent_not_defeated", "target": "Card Elder Rayne" },
+                  { "type": "opponent_not_defeated", "target": "Card Elder Waverly" }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Card Elder Rayne Defeated": {
+      "at": [271, 45.5],
+      "move": "idle_down",
+      "requires": {
+        "conditions": [
+          {
+            "target": "Card Elder Rayne",
+            "type": "opponent_defeated"
+          },
+          {
+            "flag": "gym_challenge_complete",
+            "type": "flag_not_set"
+          }
+        ],
+        "type": "all"
+      },
+      "says": {
+        "meet": "Hoh Hoh, you've already weathered my storm and earned my medal. The Gym Heroes are waiting for you now.",
+        "repeat": "Come back and see us old folk once the Gym Hero Challenge is done."
+      },
+      "when": [
+        {
+          "days": "4",
+          "times": "E,N"
+        },
+        {
+          "days": "5-10",
+          "times": "M,A,E,N"
+        },
+        {
+          "days": "11",
+          "times": "M,A,E,N",
+          "requires": {
+            "type": "all",
+            "conditions": [
+              { "type": "opponent_defeated", "target": "Card Elder Rayne" },
+              { "type": "flag_not_set", "flag": "gym_challenge_complete" },
+              {
+                "type": "any",
+                "conditions": [
+                  { "type": "opponent_not_defeated", "target": "Card Elder Hamish" },
+                  { "type": "opponent_not_defeated", "target": "Card Elder Rayne" },
+                  { "type": "opponent_not_defeated", "target": "Card Elder Waverly" }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Card Elder Waverly Defeated": {
+      "at": [335, 45.5],
+      "move": "idle_down",
+      "requires": {
+        "conditions": [
+          {
+            "target": "Card Elder Waverly",
+            "type": "opponent_defeated"
+          },
+          {
+            "flag": "gym_challenge_complete",
+            "type": "flag_not_set"
+          }
+        ],
+        "type": "all"
+      },
+      "says": {
+        "meet": "Well well, back again? You've already got my medal. A rematch will have to wait until you've conquered the Gym Hero Challenge.",
+        "repeat": "We'll be waiting for you, champion."
+      },
+      "when": [
+        {
+          "days": "4",
+          "times": "E,N"
+        },
+        {
+          "days": "5-10",
+          "times": "M,A,E,N"
+        },
+        {
+          "days": "11",
+          "times": "M,A,E,N",
+          "requires": {
+            "type": "all",
+            "conditions": [
+              { "type": "opponent_defeated", "target": "Card Elder Waverly" },
+              { "type": "flag_not_set", "flag": "gym_challenge_complete" },
+              {
+                "type": "any",
+                "conditions": [
+                  { "type": "opponent_not_defeated", "target": "Card Elder Hamish" },
+                  { "type": "opponent_not_defeated", "target": "Card Elder Rayne" },
+                  { "type": "opponent_not_defeated", "target": "Card Elder Waverly" }
+                ]
+              }
+            ]
+          }
+        }
+      ]
     },
     "Town Hall Receptionist": {
       "says": {
@@ -172,13 +777,26 @@
       },
       "move": "idle_down",
       "times": "M,A,E,N",
-      "at": [115, 41]
+      "at": [111, 44]
     }
   },
   "opponents": {
     "Card Elder Hamish": {
-      "at": [351, -2.5],
+      "at": [399, 45.5],
       "move": "idle_down",
+      "requires": {
+        "conditions": [
+          {
+            "target": "Card Elder Hamish",
+            "type": "opponent_not_defeated"
+          },
+          {
+            "flag": "gym_challenge_complete",
+            "type": "flag_not_set"
+          }
+        ],
+        "type": "all"
+      },
       "says": {
         "meet": "Back for the challenge then hey? Remember you'll need to defeat all 3 of us if you want to progress.",
         "repeat": "Very well, I always enjoy a good challenge!",
@@ -188,23 +806,40 @@
       },
       "when": [
         {
-          "days": "4-6,8",
-          "times": "M,A,E"
+          "kind": "npc",
+          "days": "4",
+          "times": "M,A",
+          "says": {
+            "meet": "Hoh Hoh, the Card Elder Challenge has begun! As you can see everyone wanted to be first in line. Come back this evening once we've worked through this lot and I'll gladly take you on.",
+            "repeat": "Patience now, we'll be free this evening."
+          }
         },
         {
-          "kind": "npc",
-          "days": "3",
-          "times": "M,A,E",
-          "says": {
-            "meet": "We're not as young as we used to be but we're still the best in the harbour. If you're looking to take on the Gym Hero Challenge you're better off coming back tomorrow when there are less people waiting, otherwise you'll be stood around all day. This card might help your chances.",
-            "repeat": "You might need to buy a few more packs from the Card Mart first too. A lot of people are generous to give cards away so make sure you speak to everyone around too."
-          }
+          "days": "4",
+          "times": "E,N"
+        },
+        {
+          "days": "5-11",
+          "times": "M,A,E,N"
         }
       ]
     },
     "Card Elder Rayne": {
-      "at": [223, -2.5],
+      "at": [271, 45.5],
       "move": "idle_down",
+      "requires": {
+        "conditions": [
+          {
+            "target": "Card Elder Rayne",
+            "type": "opponent_not_defeated"
+          },
+          {
+            "flag": "gym_challenge_complete",
+            "type": "flag_not_set"
+          }
+        ],
+        "type": "all"
+      },
       "says": {
         "meet": "Hoh Hoh, are you ready to feel the torrent? If you win I'll give you a medal to prove your triumph.",
         "repeat": "Hoh Hoh! I enjoyed the battle that much I'd also like another!",
@@ -214,24 +849,40 @@
       },
       "when": [
         {
-          "days": "4-6,8",
-          "times": "M,A,E"
+          "kind": "npc",
+          "days": "4",
+          "times": "M,A",
+          "says": {
+            "meet": "Hoh Hoh, I'm right in the middle of a match! The whole harbour has turned up today. Come back this evening when the crowd has died down and you can feel the torrent.",
+            "repeat": "Still busy I'm afraid, come back this evening!"
+          }
         },
         {
-          "kind": "npc",
-          "at": [287, -2.5],
-          "days": "3",
-          "times": "M,A,E",
-          "says": {
-            "meet": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? If you beat all 3 of us Elders we will grant you permission! .....However I'm already flat out with all these tourists. Take this card for now and come back tomorrow instead when it's quieter",
-            "repeat": "You might need some better cards if you have a hope of beating us, make sure you've visited the card mart today and also check out card vendor at the market if you haven't already."
-          }
+          "days": "4",
+          "times": "E,N"
+        },
+        {
+          "days": "5-11",
+          "times": "M,A,E,N"
         }
       ]
     },
     "Card Elder Waverly": {
-      "at": [287, -2.5],
+      "at": [335, 45.5],
       "move": "idle_down",
+      "requires": {
+        "conditions": [
+          {
+            "target": "Card Elder Waverly",
+            "type": "opponent_not_defeated"
+          },
+          {
+            "flag": "gym_challenge_complete",
+            "type": "flag_not_set"
+          }
+        ],
+        "type": "all"
+      },
       "says": {
         "meet": "Are you ready to take me on then? If you win then you'll do well in the Gym Hero Challenge.",
         "repeat": "Up for another round then? Happy to oblige.",
@@ -241,18 +892,21 @@
       },
       "when": [
         {
-          "days": "4-6,8",
-          "times": "M,A,E"
+          "kind": "npc",
+          "days": "4",
+          "times": "M,A",
+          "says": {
+            "meet": "Hold on there, can't you see the queue? We'll be playing all day with this lot, but come back this evening and I'll be ready for you.",
+            "repeat": "This evening, I promise!"
+          }
         },
         {
-          "kind": "npc",
-          "at": [223, -2.5],
-          "days": "3",
-          "times": "M,A,E",
-          "says": {
-            "meet": "Hold on there sonny boy, with the SS Anne, you've arrived a bit too late! There's a lot of people already in the queue, by the looks of things it'll take us all day to get through this lot but it should be quieter tomorrow so take this card to help with your patience.",
-            "repeat": "Make sure you've earned as many cards as you can around here, you'll need them to defeat us 3."
-          }
+          "days": "4",
+          "times": "E,N"
+        },
+        {
+          "days": "5-11",
+          "times": "M,A,E,N"
         }
       ]
     }

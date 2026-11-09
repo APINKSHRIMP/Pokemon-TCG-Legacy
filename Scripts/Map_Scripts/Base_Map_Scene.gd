@@ -21,6 +21,9 @@ extends Node2D
 # ============================================================
 
 const TimeOfDayGrade = preload("res://Scripts/Global_Scripts/Time_Of_Day_Grade.gd")
+## Ocean_Ambience.GROUP. Spelled out, not preloaded: a preload here would compile that script
+## (and the autoloads it names) in the middle of the autoloads compiling this one.
+const MAP_AMBIENCE_GROUP := "map_ambience"
 
 @onready var _player: CharacterBody2D = $Player
 @onready var _ui_layer: CanvasLayer = $UILAYER
@@ -48,9 +51,15 @@ func get_bgm_path() -> String:
 
 # BGM .ogg path for this scene in the Evening and at Night. "" (the default) keeps playing
 # the daytime track, so a map only needs this once it has an evening track assigned.
-# Nothing plays at Bedtime either way (see _bgm_now).
+# Nothing plays outdoors at Bedtime either way (see _bgm_now).
 func get_evening_bgm_path() -> String:
 	return ""
+
+# A map with its own track per time slot: { "Morning": path, "Afternoon": path, ... } -- the
+# TIME_BGM_* tables in SoundManagerScript. Overrides both getters above when not empty. A slot
+# left out is silence outdoors at Bedtime; indoors the Night track carries on through Bedtime.
+func get_time_bgm() -> Dictionary:
+	return {}
 
 # Which character file in NPC_and_Opponent_Data/Characters/ describes this map's
 # cast -- the file's basename, e.g. "Celeste_Harbour". Return "" for a map with no
@@ -108,12 +117,23 @@ const DOOR_CLOSED_FOR_NIGHT_TEXT := "The %s door is locked. It's closed for the 
 const FISH_NOT_OPEN_YET_TEXT := "The FISH door is locked. It seems it hasn't opened up yet."
 ## Town Hall upstairs, until the Gym Challenge is complete. Debug mode walks straight up.
 const TOWN_HALL_UPSTAIRS_CLOSED_TEXT := "The way upstairs is roped off. It isn't open to the public yet."
+## Town Hall upstairs after the Gym Challenge, until club membership is bought. Same words
+## as the Town Hall Security guard in TownHall.json.
+const TOWN_HALL_MEMBERS_ONLY_TEXT := "Only club members allowed upstairs. If you're interested then register at the desk."
+const GYM_HALL_ENTRANTS_ONLY_TEXT := "Only registered entrants allowed through. Register for the Gym Hero Challenge at the desk, you'll need your Medal of Elders."
 
 ## The message for a locked door, or "" when it opens.
 func _locked_door_text(target_map: String) -> String:
-	if target_map == "TownHall_Upstairs" and not DebugMode.is_enabled() \
-			and not GameState.has_flag(GameState.GYM_CHALLENGE_COMPLETE_FLAG):
-		return TOWN_HALL_UPSTAIRS_CLOSED_TEXT
+	if target_map == "TownHall_Upstairs" and not DebugMode.is_enabled():
+		if not GameState.has_flag(GameState.GYM_CHALLENGE_COMPLETE_FLAG):
+			return TOWN_HALL_UPSTAIRS_CLOSED_TEXT
+		if not GameState.has_flag(GameState.TOWN_HALL_CLUB_FLAG):
+			return TOWN_HALL_MEMBERS_ONLY_TEXT
+	# The Gym Challenge Hall, until the $100 entry is paid at the reception desk (MapManager
+	# gym_registrar). Same words as Gym Security 1 in Gym_Challenge_Reception.json.
+	if target_map == "Gym_Challenge_Hall" and not DebugMode.is_enabled() \
+			and not GameState.has_flag(GameState.GYM_CHALLENGE_ENTRY_FLAG):
+		return GYM_HALL_ENTRANTS_ONLY_TEXT
 	# Coming back from inside the same building (Fish_Shop_Downstairs -> Fish_Shop).
 	if get_scene_path().get_file().get_basename().begins_with(target_map):
 		return ""
@@ -136,6 +156,12 @@ const BEDTIME_SILENT_INDOORS := false
 ## Bedtime - nobody is out that late (ISSUE #417), so the world is left to its ambient sounds.
 func _bgm_now() -> String:
 	var time := GameState.get_time()
+	var by_time := get_time_bgm()
+	if by_time.has(time):
+		return String(by_time[time])
+	if not by_time.is_empty() and time == "Bedtime" and not uses_time_of_day() \
+			and not BEDTIME_SILENT_INDOORS:
+		return String(by_time.get("Night", ""))
 	if time == "Bedtime":
 		# The open sea's "BGM" is its ambience (waves), not music - it carries on.
 		if get_bgm_path() == SoundManagerScript.BGM_SEA_SOUNDS:
@@ -149,11 +175,11 @@ func _bgm_now() -> String:
 	return get_bgm_path()
 
 ## Starts this map's music, or stops whatever is still playing (a battle's, the last map's) when it has none now.
-func _start_map_bgm(restart: bool) -> void:
+func _start_map_bgm() -> void:
 	var bgm := _bgm_now()
 	if bgm != "":
-		SoundManagerScript.play_bgm(bgm, restart)
-	elif get_bgm_path() != "" or get_evening_bgm_path() != "":
+		SoundManagerScript.play_bgm(bgm, true)
+	elif get_bgm_path() != "" or get_evening_bgm_path() != "" or not get_time_bgm().is_empty():
 		SoundManagerScript.stop_bgm()   # ISSUE #417: Bedtime
 
 ## TWEAKABLE -- time slots in which an interior's curtains are drawn. Any node whose name
@@ -178,10 +204,10 @@ func _ready():
 	if is_sleep_wakeup:
 		# The bed faded the night's music out; the new day's track starts silent and fades up.
 		SoundManagerScript.fade_bgm(0.0, 0.0)
-		_start_map_bgm(true)
+		_start_map_bgm()
 		SoundManagerScript.fade_bgm(1.0, WAKE_BGM_FADE_IN)
 	else:
-		_start_map_bgm(true)
+		_start_map_bgm()
 	# Read now: MapManager.initialise() below consumes the battle-return flag.
 	var from_battle: bool = GameState.returning_from_battle
 	var came_outside: bool = uses_time_of_day() and GameState.last_map_was_interior
@@ -474,6 +500,8 @@ func _on_door_entered(body: Node2D):
 	body.lock_movement()
 	GameState.entering_from = get_scene_path().get_file().get_basename()
 
+	# The waves go down with the picture rather than cutting dead on the scene change.
+	get_tree().call_group(MAP_AMBIENCE_GROUP, "silence", 0.5)
 	var tween := create_tween()
 	tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, 0.5)
 	tween.tween_callback(func():
@@ -586,7 +614,7 @@ func _close_menu_overlay() -> void:
 	# ISSUE #446: the escape menu's shared track is on the global player now -- drop it so
 	# a map with no music of its own does not carry the menu theme out into the world.
 	SoundManagerScript.stop_bgm()
-	_start_map_bgm(false)   # ISSUE #417
+	_start_map_bgm()   # ISSUE #417
 
 # ============================================================
 # SUB-MENU OVERLAYS (ISSUE #53)

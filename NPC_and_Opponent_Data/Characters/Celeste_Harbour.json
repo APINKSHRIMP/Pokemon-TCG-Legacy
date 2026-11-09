@@ -902,7 +902,7 @@
             "repeat": "I normally visit the pier in the evening but I'm all worn out from cleaning up today so I think I will just go to bed early tonight."
           },
           "gift_type": "card",
-          "gift_value": "basep-11"
+          "gift_value": "base2-11"
         },
         {
           "at": [857, 2313],
@@ -1373,33 +1373,83 @@
         }
       ]
     },
-    "Super Elder": {
-      "at": [2500, 1520],
-      "days": "2",
-      "times": "E",
-      "move": {
-        "pattern": "random_wander",
-        "radius": 60,
-        "speed": 30
-      },
-      "says": {
-        "meet": "The 3 of us will be giving out winner medals tomorrow so if you think you're good enough now come back tomorrow and try and beat us!",
-        "repeat": "If you can beat all 3 of us tomorrow you can enter the gym leader challenge!"
-      }
-    },
     "Super Elder Hamish": {
       "at": [1396, 1271],
-      "days": "2",
-      "times": "M,A",
       "move": {
         "pattern": "random_wander",
         "radius": 60,
         "speed": 30
       },
       "says": {
-        "meet": "Hoh Hoh, I imagine you're new in town ey? I'm Hamish one of the the 3 Card Elders in town. If you beat all 3 of us in a match we will grant you access to the Gym Hero Challenge. However... Because it's the bank holiday weekend we're having the day off!",
-        "repeat": "Thanks to the Bank Holiday, there are no more trains to this station for the rest of the day. The market is also shut so the plazas will be quite quiet until tomorrow."
-      }
+        "meet": "Hoh Hoh, I imagine you're new in town ey? I'm Hamish, one of the 3 Card Elders in town. Beat all 3 of us and we'll grant you access to the Gym Hero Challenge! The official Card Elder Challenge doesn't start until the day after tomorrow, so I'm just stretching my legs. Here, take this card to get you started.",
+        "repeat": "Make sure you've registered at the Town Hall before the challenge starts. That's where you'll find the 3 of us, behind the card mats."
+      },
+      "when": [
+        {
+          "days": "2",
+          "times": "M,A,E"
+        },
+        {
+          "days": "3",
+          "times": "M,A,E",
+          "says": {
+            "meet": "Hoh Hoh, I imagine you're new in town ey? I'm Hamish, one of the 3 Card Elders in town. Beat all 3 of us and we'll grant you access to the Gym Hero Challenge! The official Card Elder Challenge starts tomorrow, so I'm just stretching my legs. Here, take this card to get you started.",
+            "repeat": "Tomorrow's the big day! You'll find the 3 of us at the card mats in the Town Hall."
+          }
+        }
+      ]
+    },
+    "Super Elder Rayne": {
+      "at": [2500, 1520],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 60,
+        "speed": 30
+      },
+      "says": {
+        "meet": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? Beat all 3 of us Elders and we'll grant you permission! The Card Elder Challenge doesn't start until the day after tomorrow though, so I'm enjoying a stroll in the meantime. Take this card, it might help you feel the torrent.",
+        "repeat": "You might need some better cards if you have a hope of beating us. Make sure you've visited the Card Mart and the card vendor at the market."
+      },
+      "when": [
+        {
+          "days": "2",
+          "times": "M,A,E"
+        },
+        {
+          "days": "3",
+          "times": "M,A,E",
+          "says": {
+            "meet": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? Beat all 3 of us Elders and we'll grant you permission! The Card Elder Challenge starts tomorrow, so I'm enjoying one last stroll before it begins. Take this card, it might help you feel the torrent.",
+            "repeat": "You might need some better cards if you have a hope of beating us. Make sure you've visited the Card Mart and the card vendor at the market."
+          }
+        }
+      ]
+    },
+    "Super Elder Waverly": {
+      "at": [1650, 2020],
+      "move": {
+        "pattern": "random_wander",
+        "radius": 60,
+        "speed": 30
+      },
+      "says": {
+        "meet": "Hello there young one, you look like a card player. The 3 of us Elders will be taking on challengers at the Town Hall, but not until the day after tomorrow. Take this card to help with your patience.",
+        "repeat": "Make sure you've earned as many cards as you can around here, you'll need them to defeat us 3."
+      },
+      "when": [
+        {
+          "days": "2",
+          "times": "M,A,E"
+        },
+        {
+          "days": "3",
+          "times": "M,A,E",
+          "says": {
+            "meet": "Hello there young one, you look like a card player. The 3 of us Elders will be taking on challengers at the Town Hall from tomorrow. Take this card to help with your patience.",
+            "repeat": "Make sure you've earned as many cards as you can around here, you'll need them to defeat us 3 tomorrow."
+          }
+        }
+      ]
     },
     "Train Employee 1": {
       "at": [2897, 859],
@@ -1643,7 +1693,7 @@
       "move": "idle_up",
       "days": "1",
       "times": "E",
-      "at": [-62, 564]
+      "at": [-71, 572]
     },
     "Hiker": {
       "says": {

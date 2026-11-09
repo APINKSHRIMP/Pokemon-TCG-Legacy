@@ -58,7 +58,8 @@ func _allow_menu_open(_is_enter: bool) -> bool:
 	return not _cutscene_active
 
 func get_scene_path() -> String:    return SCENE_PATH
-func get_bgm_path() -> String:      return SoundManagerScript.BGM_CELESTE_HARBOUR
+## No Bedtime entry: just the sea then, which Ocean_Ambience.gd plays at every hour.
+func get_time_bgm() -> Dictionary:  return SoundManagerScript.TIME_BGM_HARBOUR
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
 func get_map_data_name() -> String: return "Celeste_Harbour"
 func uses_time_of_day() -> bool: return true
@@ -180,7 +181,7 @@ func _run_taxi_intro() -> void:
 	# harbour's music starts as the player turns back up and sets off for the house.
 	if GameState.get_intro_profile().get("olly_meets", "door") == "taxi":
 		print("ISSUE #459 FIX ACTIVE: harbour BGM starts on the walk to the house")
-		_start_map_bgm(true)
+		_start_map_bgm()
 
 	await _scripted_walk("up", 90.0)
 	# ISSUE #294: THE WALK IS AIMED AT THE REAL FRONT DOOR.
@@ -352,6 +353,7 @@ func _scripted_walk(direction: String, distance: float, speed: float = 80.0) -> 
 
 func _scene_setup():
 	$Taxi.visible = false
+	load("res://Scripts/Objects_And_Classes/Ocean_Ambience.gd").attach(self, _player)
 	var time_of_day: String = GameState.get_time()
 	var date: int = GameState.get_date()
 	set_time_of_day(time_of_day)

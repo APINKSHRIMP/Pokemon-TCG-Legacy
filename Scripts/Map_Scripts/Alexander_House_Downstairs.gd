@@ -6,7 +6,8 @@ extends BaseMapScene
 const SCENE_PATH = "res://Scenes/Map_Scenes/Alexander_House_Downstairs.tscn"
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME
+func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME_DAY
+func get_evening_bgm_path() -> String: return SoundManagerScript.BGM_PLAYER_HOME_NIGHT
 func get_map_data_name() -> String:   return "Alexander_House_Downstairs"
 
 func _scene_setup():

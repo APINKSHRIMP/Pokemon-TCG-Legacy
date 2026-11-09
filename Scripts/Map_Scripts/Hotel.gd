@@ -5,7 +5,7 @@ extends BaseMapScene
 const SCENE_PATH = "res://Scenes/Map_Scenes/Hotel.tscn"
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME_ALT
+func get_bgm_path() -> String:        return SoundManagerScript.BGM_HOTEL
 func get_map_data_name() -> String:   return "Hotel"
 
 # Bedtime: the Hotel stays open but nobody is on the desk, so a sign stands in.

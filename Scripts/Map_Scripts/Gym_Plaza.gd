@@ -12,11 +12,9 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
 const DEFAULT_SPAWN_POSITION             = Vector2(1763, 1810)
 
 func get_scene_path() -> String:     return SCENE_PATH
-## ISSUE #211: the plaza and the hall behind it are one place, so they share a
-## track. BGM_STARTING_MENU (the PTCG main-menu theme) moved to the boot splash and
-## the first-launch setup
-## screen, which is the only other place a menu theme belongs.
-func get_bgm_path() -> String:       return SoundManagerScript.BGM_GYM_CHALLENGE_HALL
+## Shared with the Gym Challenge Reception, so the track runs on through the door. The Hall
+## behind it has its own music (Gym_Challenge_Hall.gd).
+func get_time_bgm() -> Dictionary:   return SoundManagerScript.TIME_BGM_GYM_PLAZA
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
 func get_map_data_name() -> String: return "Gym_Plaza"
 func uses_time_of_day() -> bool: return true

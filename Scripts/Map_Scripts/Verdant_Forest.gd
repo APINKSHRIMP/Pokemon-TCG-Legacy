@@ -5,7 +5,7 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Verdant_Forest.tscn"
 const DEFAULT_SPAWN_POSITION    = Vector2(1770, 1850)
 
 func get_scene_path() -> String:     return SCENE_PATH
-func get_bgm_path() -> String:       return SoundManagerScript.BGM_VERDANT_FOREST
+func get_time_bgm() -> Dictionary:   return SoundManagerScript.TIME_BGM_FOREST
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
 func get_map_data_name() -> String: return "Verdant_Forest"
 func uses_time_of_day() -> bool: return true

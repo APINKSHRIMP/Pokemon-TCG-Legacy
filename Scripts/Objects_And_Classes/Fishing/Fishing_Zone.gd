@@ -32,7 +32,10 @@ const NAME_PREFIX := "Fish_"
 ##
 ## While a cast is running the minigame takes the level over with set_ambience() (the sea
 ## comes UP to full as the music goes down) and hands it back with clear_ambience().
-const AMBIENCE_PATH := "res://Audio/BGM/Sea2.ogg"
+##
+## Celeste Harbour's sea already plays everywhere on the map (Ocean_Ambience.gd), so there the
+## zone plays nothing itself: it hands the fishing level over and leaves the rest alone.
+const AMBIENCE_PATH := "res://Audio/BGM/OceanClose.ogg"
 const AMBIENCE_IDLE := 0.5        ## stood in a fishing spot, not fishing
 const AMBIENCE_FADE_IN := 1.5
 const AMBIENCE_FADE_OUT := 3.0    ## walking away: "lower the ocean sound slowly"
@@ -68,20 +71,37 @@ func _ready() -> void:
 # SEA AMBIENCE
 # ============================================================
 
+## The map-wide sea, on a map that has one.
+func _map_sea() -> Node:
+	return get_parent().get_node_or_null("OceanAmbience")
+
+
 ## Hands the level to the caller (the fishing minigame) until clear_ambience().
 func set_ambience(level: float, seconds: float) -> void:
+	var sea := _map_sea()
+	if sea != null:
+		sea.call("set_ambience", level, seconds)
+		return
 	_ambience_override = clampf(level, 0.0, 1.0)
 	_fade_ambience(_ambience_override, seconds)
 
 
 ## Gives the level back to "wherever the player is standing".
 func clear_ambience() -> void:
+	var sea := _map_sea()
+	if sea != null:
+		sea.call("clear_ambience")
+		return
 	_ambience_override = -1.0
 
 
 ## Called by MapManager.set_overworld_paused(). The override is left alone, so a cast that
 ## was paused mid-way gets its own level back rather than the standing-still one.
 func set_ambience_paused(paused: bool) -> void:
+	var sea := _map_sea()
+	if sea != null:
+		sea.call("set_ambience_paused", paused)
+		return
 	_ambience_paused = paused
 
 
@@ -111,6 +131,8 @@ func _ensure_ambience() -> void:
 
 
 func _process(delta: float) -> void:
+	if _map_sea() != null:
+		return
 	if _ambience_paused:
 		if not is_equal_approx(_ambience_target, 0.0):
 			_fade_ambience(0.0, AMBIENCE_PAUSE_FADE)

@@ -96,7 +96,7 @@ func _ready() -> void:
 	UIKit.set_shortcut(hide_btn, UIInput.MENU_PAD_ALT, [KEY_H])
 	add_child(audio_player)
 
-	var audio_stream = load(SoundManagerScript.BGM_COIN_MODE)
+	var audio_stream = load(SoundManagerScript.menu_bgm())
 	audio_player.stream = audio_stream
 	audio_player.bus = SoundManagerScript.MUSIC_BUS
 	audio_player.stream.loop = true

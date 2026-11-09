@@ -162,7 +162,7 @@ func _ready() -> void:
 	# and is the track that belongs to the screen the player is looking at.
 	if not in_match_mode:
 		add_child(audio_player)
-		var audio_stream = load(SoundManagerScript.BGM_COIN_MODE)
+		var audio_stream = load(SoundManagerScript.menu_bgm())
 		audio_player.stream = audio_stream
 		audio_player.bus = SoundManagerScript.MUSIC_BUS
 		if audio_stream != null:

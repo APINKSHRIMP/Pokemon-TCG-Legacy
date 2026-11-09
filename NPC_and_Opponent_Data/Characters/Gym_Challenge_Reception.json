@@ -27,8 +27,8 @@
       "times": "M,A,E,N",
       "move": "idle_left",
       "says": {
-        "meet": "Welcome! Are you here to enter the Gym Hero Challenge? The entrance fee is $500 which must be paid in full up front and the challenge begins tomorrow. Winning will grant you a large cash prize, free travel on any Bakushin transport service and a unique coin! Are you entering?",
-        "repeat": "Thank you for registering early. You need only pay once for full access to the challenge and you are welcome to enter and leave as often as you like while the challenge is ongoing from tomorrow morning. Good luck!!"
+        "meet": "(npc_type gym_registrar: her lines are MapManager GYM_ENTRY_* -- the $100 entry, Medal of Elders required)",
+        "repeat": "(npc_type gym_registrar: her lines are MapManager GYM_ENTRY_* -- the $100 entry, Medal of Elders required)"
       }
     },
     "Gym Receptionist 2": {
@@ -63,13 +63,29 @@
     },
     "Gym Security 1": {
       "at": [220, 40],
-      "days": "9-16",
-      "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
-        "meet": "The Gym Hero Challenge does not start until tomorrow morning. We are still making final preperations but you can register for the challenge at the reception desk to your right.",
-        "repeat": "Once you have registered for the challenge you can enter the hall from tomorrow morning."
-      }
+        "meet": "Only registered entrants allowed through. Register for the Gym Hero Challenge at the desk, you'll need your Medal of Elders.",
+        "repeat": "Only registered entrants allowed through. Register for the Gym Hero Challenge at the desk, you'll need your Medal of Elders."
+      },
+      "when": [
+        {
+          "days": "9-16",
+          "times": "M,A,E,N",
+          "requires": "not flag: gym_challenge_entered"
+        },
+        {
+          "at": [188, 40],
+          "days": "9-16",
+          "times": "M,A,E,N",
+          "move": "idle_right",
+          "requires": "flag: gym_challenge_entered",
+          "says": {
+            "meet": "You're registered, head on through. Good luck in the Gym Hero Challenge!",
+            "repeat": "Go on through, the hall is right behind me."
+          }
+        }
+      ]
     },
     "Gym Security 2": {
       "at": [492, 40],

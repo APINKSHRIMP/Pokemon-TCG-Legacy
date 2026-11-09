@@ -39,7 +39,7 @@ var _count_chip_holder : Control = null
 
 func _ready() -> void:
 	add_child(audio_player)
-	var audio_stream = load(SoundManagerScript.BGM_COIN_MODE)
+	var audio_stream = load(SoundManagerScript.menu_bgm())
 	if audio_stream != null:
 		audio_player.stream = audio_stream
 		audio_player.bus = SoundManagerScript.MUSIC_BUS
@@ -68,6 +68,9 @@ func _owned_entries() -> Array:
 	# The TCG Tracker App, from registering at the Town Hall (MapManager._handle_registration).
 	if GameState.has_item(MapManager.TRACKER_ITEM):
 		out.append({"label": MapManager.TRACKER_LABEL, "art": MapManager.TRACKER_ITEM})
+	# Beating all three Town Hall Card Elders (GameState.mark_opponent_beaten).
+	if GameState.has_item(GameState.MEDAL_OF_ELDERS_ITEM):
+		out.append({"label": GameState.MEDAL_OF_ELDERS_LABEL, "art": GameState.MEDAL_OF_ELDERS_ITEM})
 	for rod in FishingRods.ROD_ORDER:
 		if GameState.has_item(rod):
 			out.append({"label": FishingRods.label(rod), "art": rod})

@@ -153,12 +153,16 @@ const BATTLE_BGM_MARKER := "battle"
 const BGM_BOSS_BATTLE                    := BGM_DIR + "Boss_battle (PTCG2 The Final Duel GRs King Biruri)" + BGM_EXT
 const BGM_CALM_BATTLE                    := BGM_DIR + "Calm Battle (PMD Surrounded Sea)" + BGM_EXT
 const BGM_CALM_BATTLE_2                  := BGM_DIR + "Calm Battle 2 (PMD Crystal_Cave)" + BGM_EXT
+const BGM_CALM_BATTLE_3                  := BGM_DIR + "Calm Battle 3 (PMDEoS Drenched Bluff)" + BGM_EXT
 const BGM_DARK_BATTLE                    := BGM_DIR + "Dark_battle (PTCG2 Duel Vs Team GR)" + BGM_EXT
 const BGM_DARK_BATTLE_2                  := BGM_DIR + "Dark_battle_2 (PTCG2 Colorless Altar A Dark Dwelling)" + BGM_EXT
+const BGM_DARK_BATTLE_3                  := BGM_DIR + "Dark Battle 3 (PMDEoS In the Depths of the Pit)" + BGM_EXT
 const BGM_EASY_BATTLE                    := BGM_DIR + "Easy_battle (PMD beach cave)" + BGM_EXT
+const BGM_EASY_BATTLE_2                  := BGM_DIR + "Easy Battle 2 (PMDEoS Foggy Forest)" + BGM_EXT
 const BGM_EASY_TENSE_BATTLE              := BGM_DIR + "Easy tense Battle (Pinball Catchem Evolution in Blue Field)" + BGM_EXT
-const BGM_FUN_BATTLE_PMD                 := BGM_DIR + "Fun_battle (PMD Makuhita_Dojo)" + BGM_EXT
+const BGM_FUN_BATTLE_PMD                 := BGM_DIR + "Fun_battle (PMDX Makuhita Dojo)" + BGM_EXT
 const BGM_FUN_BATTLE_PINBALL             := BGM_DIR + "Fun_battle (Pinball Red Field)" + BGM_EXT
+const BGM_FUN_BATTLE_3                   := BGM_DIR + "Fun Battle 3 (PMDEoS Craggy Coast)" + BGM_EXT
 const BGM_GYM_LEADER_CHALLENGE_BATTLE    := BGM_DIR + "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)" + BGM_EXT
 const BGM_IMPORTANT_BATTLE               := BGM_DIR + "Important_battle (Pokmon Card GB2 - GRs Challenge Cup)" + BGM_EXT
 const BGM_IMPORTANT_BATTLE_2             := BGM_DIR + "Important_battle_2 (Pokemon Card GB2 - Duel Vs Fortress Leader)" + BGM_EXT
@@ -167,38 +171,104 @@ const BGM_JOLLY_BATTLE_2                 := BGM_DIR + "Jolly_battle 2 (Pinball C
 const BGM_LAID_BACK_BATTLE               := BGM_DIR + "Laid Back Battle (Pinball Blue Field)" + BGM_EXT
 const BGM_MEDIUM_BATTLE                  := BGM_DIR + "Medium Battle (PMD Mt Freeze)" + BGM_EXT
 const BGM_MEDIUM_BATTLE_2                := BGM_DIR + "Medium_battle 2 (PMD Amp_Plains)" + BGM_EXT
-const BGM_MEDIUM_BATTLE_3                := BGM_DIR + "Medium_Battle 3 (PMD Thunderwave_Cave)" + BGM_EXT
+const BGM_MEDIUM_BATTLE_3                := BGM_DIR + "Medium_Battle 3 (PMDX Thunderwave Cave)" + BGM_EXT
 const BGM_MEDIUM_BATTLE_4                := BGM_DIR + "Medium Battle (PMD Mt. Bristle)" + BGM_EXT
+const BGM_MEDIUM_BATTLE_5                := BGM_DIR + "Medium Battle 5 (PMDX Mt Steel)" + BGM_EXT
+const BGM_MEDIUM_BATTLE_6                := BGM_DIR + "Medium Battle 6 (PMDEoS Cave and Side Path)" + BGM_EXT
 const BGM_NICE_BATTLE                    := BGM_DIR + "Nice_battle (PTCG2 - GRs Grass Water Forts)" + BGM_EXT
 const BGM_OUTLAW_BATTLE                  := BGM_DIR + "Outlaw_battle (PMD Outlaw)" + BGM_EXT
 const BGM_SERIOUS_BATTLE                 := BGM_DIR + "Serious Battle (PTCG2 GR Rises to Power)" + BGM_EXT
 const BGM_SIMPLE_BATTLE                  := BGM_DIR + "Simple_battle (PTCG2 Mr Ishiharas Villa)" + BGM_EXT
 const BGM_TENSE_BATTLE                   := BGM_DIR + "Tense_battle (PTCG2 GRs Lightning Psychic Forts)" + BGM_EXT
+const BGM_TENSE_BATTLE_2                 := BGM_DIR + "Tense Battle 2 (PMDX Buried Relic)" + BGM_EXT
 const BGM_WORRYING_BATTLE                := BGM_DIR + "Worrying_Battle (PTCG2 GRs Fire Fighting Forts)" + BGM_EXT
 const BGM_CHILLED_BATTLE                 := BGM_DIR + "chilled_battle (PTCG Masons Lab)" + BGM_EXT
 const BGM_FAST_BATTLE                    := BGM_DIR + "fast_battle (PTCG Ronalds Theme)" + BGM_EXT
 const BGM_HARD_BATTLE                    := BGM_DIR + "hard_battle (PTCG Club Master)" + BGM_EXT
 const BGM_HARD_BATTLE_2                  := BGM_DIR + "hard_battle_2 (PTCG Grand Master Battle)" + BGM_EXT
+const BGM_HARD_BATTLE_3                  := BGM_DIR + "Hard Battle 3 (PMDX Mt Blaze Peak)" + BGM_EXT
+const BGM_HARD_BATTLE_4                  := BGM_DIR + "Hard Battle 4 (PMDX Magma Cavern)" + BGM_EXT
 const BGM_JAZZY_BATTLE                   := BGM_DIR + "jazzy_battle (PTCG Grass Lightning Club)" + BGM_EXT
 const BGM_NORMAL_BATTLE                  := BGM_DIR + "normal_battle (PTCG)" + BGM_EXT
 const BGM_WEIRD_BATTLE                   := BGM_DIR + "weird_battle (PTCG Imakuma)" + BGM_EXT
 
-# --- Location, menu and cutscene tracks ---
-const BGM_CELESTE_HARBOUR                := BGM_DIR + "CelesteHarbour (RSE Dewford)" + BGM_EXT
-const BGM_FISH_SHOP                      := BGM_DIR + "FishShop (RSE Rustboro)" + BGM_EXT
-const BGM_GYM_CHALLENGE_HALL             := BGM_DIR + "Gym Leader Challenge Hall (Pokmon Card GB2 - GRs Challenge Cup)" + BGM_EXT
-const BGM_MYSTERY                        := BGM_DIR + "Mystery (PMD Personality_Test)" + BGM_EXT
-const BGM_MYSTERY_2                      := BGM_DIR + "Mystery 2 (PMD Welcome_to_the_World_of_Pokmon)" + BGM_EXT
-const BGM_PLAYER_HOME                    := BGM_DIR + "Player Home (003 File Select PMD Blue Rescue Team OST)" + BGM_EXT
-const BGM_PLAYER_HOME_ALT                := BGM_DIR + "Player Home (PMD File Select)" + BGM_EXT
+# --- Maps with a track per time slot (BaseMapScene.get_time_bgm returns one of these tables) ---
+const BGM_HARBOUR_MORNING                := BGM_DIR + "Celeste Harbour Morning (ORAS Dewford Town)" + BGM_EXT
+const BGM_HARBOUR_AFTERNOON              := BGM_DIR + "Celeste Harbour Afternoon (ORAS Sootopolis City)" + BGM_EXT
+const BGM_HARBOUR_EVENING                := BGM_DIR + "Celeste Harbour Evening and Town Hall (ORAS Verdanturf Town)" + BGM_EXT
+const BGM_HARBOUR_NIGHT                  := BGM_DIR + "Celeste Harbour Night (HGSS Vermilion City)" + BGM_EXT
+const BGM_FOREST_MORNING                 := BGM_DIR + "Verdant Forest Morning (HGSS National Park)" + BGM_EXT
+const BGM_FOREST_AFTERNOON               := BGM_DIR + "Verdant Forest Afternoon (HGSS Viridian Forest)" + BGM_EXT
+const BGM_FOREST_EVENING                 := BGM_DIR + "Verdant Forest Evening (DPPT Lake)" + BGM_EXT
+const BGM_FOREST_NIGHT                   := BGM_DIR + "Verdant Forest Night (DPPT Eterna Forest)" + BGM_EXT
+const BGM_FOREST_BEDTIME                 := BGM_DIR + "TreeWind" + BGM_EXT
+const BGM_GYM_PLAZA_MORNING              := BGM_DIR + "Gym Plaza Morning (BW2 Opelucid City Gym)" + BGM_EXT
+const BGM_GYM_PLAZA_AFTERNOON            := BGM_DIR + "Gym Plaza Afternoon (BW2 Driftveil Gym)" + BGM_EXT
+const BGM_GYM_PLAZA_EVENING              := BGM_DIR + "Gym Plaza Evening (BW2 Humilau City Gym)" + BGM_EXT
+const BGM_GYM_PLAZA_NIGHT                := BGM_DIR + "Gym Plaza Night (BW2 Castelia City Gym)" + BGM_EXT
+const BGM_NEO_TOWN_MORNING               := BGM_DIR + "Neo Town Morning (DPPT Jubilife City)" + BGM_EXT
+const BGM_NEO_TOWN_AFTERNOON             := BGM_DIR + "Neo Town Afternoon (DPPT Hearthome City)" + BGM_EXT
+const BGM_NEO_TOWN_EVENING               := BGM_DIR + "Neo Town Evening (HGSS Ecruteak City)" + BGM_EXT
+const BGM_NEO_TOWN_NIGHT                 := BGM_DIR + "Neo Town Night (HGSS Cianwood City)" + BGM_EXT
+const BGM_NEO_FOREST_MORNING             := BGM_DIR + "Neo Forest Morning (PMDEoS Waterfall Cave)" + BGM_EXT
+const BGM_NEO_FOREST_AFTERNOON           := BGM_DIR + "Neo Forest Afternoon (RGR Panula Cave)" + BGM_EXT
+const BGM_NEO_FOREST_EVENING             := BGM_DIR + "Neo Forest Evening (DPPT Mt Coronet)" + BGM_EXT
+const BGM_NEO_FOREST_NIGHT               := BGM_DIR + "Neo Forest Night (HGSS Ice Cave)" + BGM_EXT
+
+## A slot a table leaves out: outdoors it is silence at Bedtime, indoors the Night track carries on.
+const TIME_BGM_HARBOUR := {
+	"Morning": BGM_HARBOUR_MORNING, "Afternoon": BGM_HARBOUR_AFTERNOON,
+	"Evening": BGM_HARBOUR_EVENING, "Night": BGM_HARBOUR_NIGHT,
+}
+const TIME_BGM_FOREST := {
+	"Morning": BGM_FOREST_MORNING, "Afternoon": BGM_FOREST_AFTERNOON,
+	"Evening": BGM_FOREST_EVENING, "Night": BGM_FOREST_NIGHT, "Bedtime": BGM_FOREST_BEDTIME,
+}
+## Gym Plaza AND Gym Challenge Reception: same table, so the track runs on through the door.
+const TIME_BGM_GYM_PLAZA := {
+	"Morning": BGM_GYM_PLAZA_MORNING, "Afternoon": BGM_GYM_PLAZA_AFTERNOON,
+	"Evening": BGM_GYM_PLAZA_EVENING, "Night": BGM_GYM_PLAZA_NIGHT,
+}
+## Maps not built yet: return these from get_time_bgm() when they arrive.
+const TIME_BGM_NEO_TOWN := {
+	"Morning": BGM_NEO_TOWN_MORNING, "Afternoon": BGM_NEO_TOWN_AFTERNOON,
+	"Evening": BGM_NEO_TOWN_EVENING, "Night": BGM_NEO_TOWN_NIGHT,
+}
+const TIME_BGM_NEO_FOREST := {
+	"Morning": BGM_NEO_FOREST_MORNING, "Afternoon": BGM_NEO_FOREST_AFTERNOON,
+	"Evening": BGM_NEO_FOREST_EVENING, "Night": BGM_NEO_FOREST_NIGHT,
+}
+
+# --- Ambience (looped beds, played by their own systems) ---
+const BGM_OCEAN_CLOSE                    := BGM_DIR + "OceanClose" + BGM_EXT
+const BGM_OCEAN_FAR                      := BGM_DIR + "OceanFar" + BGM_EXT
 const BGM_SEA_SOUNDS                     := BGM_DIR + "SEA SOUNDS_bgm" + BGM_EXT
+
+# --- Interior, menu and cutscene tracks ---
+## Until the 7th Gym Leader (Blaine) falls, then the FINAL one: only Giovanni is left.
+const BGM_GYM_CHALLENGE_HALL             := BGM_DIR + "Gym Challenge Hall (BW2 Nimbasa City Gym Runway)" + BGM_EXT
+const BGM_GYM_CHALLENGE_HALL_FINAL       := BGM_DIR + "Gym Challenge Hall Final (BW2 Nimbasa City Gym Stage)" + BGM_EXT
+const BGM_FISH_SHOP                      := BGM_DIR + "FISH (RGR Summertown)" + BGM_EXT
+const BGM_WINDMILL                       := BGM_DIR + "Windmill (HGSS Ruins of Alph)" + BGM_EXT
+const BGM_CAFE                           := BGM_DIR + "Cafe (ORAS Oceanic Museum)" + BGM_EXT
+const BGM_CARD_MART                      := BGM_DIR + "Card Mart (ORAS Poke Mart)" + BGM_EXT
+const BGM_HOTEL                          := BGM_DIR + "Hotel (ORAS Lilycove City)" + BGM_EXT
+## The same file as the harbour's Evening track, so walking in at Evening does not restart it.
+const BGM_TOWN_HALL                      := BGM_HARBOUR_EVENING
+const BGM_PLAYER_HOME_DAY                := BGM_DIR + "Player Home Day (PMDX File Select)" + BGM_EXT
+const BGM_PLAYER_HOME_NIGHT              := BGM_DIR + "Player Home Night (PMDX Personality Test)" + BGM_EXT
+## Only the Train Station plays this now.
 const BGM_SHOP_1                         := BGM_DIR + "Shop1 (PMD Spindas Cafe)" + BGM_EXT
-const BGM_SHOP_2                         := BGM_DIR + "Shop2 (PMD Kecleon Shop)" + BGM_EXT
-const BGM_SHOP_3                         := BGM_DIR + "Shop3 (Undertale Sans Theme)" + BGM_EXT
-const BGM_VERDANT_FOREST                 := BGM_DIR + "Verdant Forest (DPPT Eterna Forest)" + BGM_EXT
-const BGM_BEACH                          := BGM_DIR + "beach_bgm (PMD Beach at dusk)" + BGM_EXT
+## The Rocket Mart and every shop screen.
+const BGM_SHOP_2                         := BGM_DIR + "Rocket Mart and Shops (PMDX Kecleon Shop)" + BGM_EXT
+## Won a match: after the win jingle, until the rewards are cleared (Match_End_Outro).
+const BGM_VICTORY                        := BGM_DIR + "Victory (PMDX Happiness)" + BGM_EXT
+## The Gym Plaza five-coin flipper, from paying up to walking away (MapManager).
+const BGM_COIN_FLIP_GAME                 := BGM_DIR + "Coin Flip Game (HGSS Mt Moon)" + BGM_EXT
+## The escape menu and its sub-menus: pick with menu_bgm(), never name these directly.
 const BGM_COIN_MODE                      := BGM_DIR + "coin_mode (PTCG Water Club)" + BGM_EXT
-# Hard Mode's draft: Olly's twelve packs opening only (the deck build after it uses BGM_COIN_MODE).
+const BGM_MENU_NIGHT                     := BGM_DIR + "Menu Night (PTCG Remastered Water Rock Psychic Club)" + BGM_EXT
+# Hard Mode's draft: Olly's twelve packs opening only (the deck build after it uses the menu track).
 const BGM_DRAFT_TIME                     := BGM_DIR + "DraftTime (RSE Trick House)" + BGM_EXT
 # The PTCG main-menu theme. The FILE was renamed gym_plaza -> starting_menu when the
 # track moved off the Gym Plaza (ISSUE #211) and onto the boot splash and the
@@ -206,7 +276,21 @@ const BGM_DRAFT_TIME                     := BGM_DIR + "DraftTime (RSE Trick Hous
 # every load() of it returned null and the setup screen booted in silence.
 const BGM_STARTING_MENU                  := BGM_DIR + "starting_menu (PTCG Main Menu)" + BGM_EXT
 const BGM_MAIN_MENU                      := BGM_DIR + "main_menu_music (PTCG Menu Theme)" + BGM_EXT
-const BGM_WORLD_MAP                      := BGM_DIR + "world_map_music (PMD Square)" + BGM_EXT
+
+## TWEAKABLE: the time slots the menu family plays BGM_MENU_NIGHT in.
+const MENU_NIGHT_TIMES := ["Evening", "Night", "Bedtime"]
+
+## The menu family's track right now: the remastered club theme from the Evening on.
+##
+## GameState is looked up by node, on purpose. Calling its methods by name here makes this autoload
+## need GameState's whole script to compile, which starts the Cutscene <-> MapManager script cycle
+## from the wrong end and fails with "Could not resolve class Cutscene".
+func menu_bgm() -> String:
+	var game_state: Node = get_node_or_null(^"/root/GameState")
+	if game_state != null and String(game_state.call("get_time")) in MENU_NIGHT_TIMES:
+		return BGM_MENU_NIGHT
+	return BGM_COIN_MODE
+
 
 # --- BGM player (persists until stopped or replaced) ---
 var bgm_player: AudioStreamPlayer = null
@@ -345,9 +429,12 @@ func stop_cry() -> void:
 var hold_world_bgm: bool = false
 
 func play_bgm(path: String, loop: bool = true) -> void:
-	if hold_world_bgm and path == BGM_COIN_MODE:
+	if hold_world_bgm and (path == BGM_COIN_MODE or path == BGM_MENU_NIGHT):
 		print("ISSUE #467 FIX ACTIVE: menu track skipped, the overworld BGM plays on")
 		return
+	# A new track always wins over a fade_out_bgm() still on its way down: one player, no overlap.
+	if _stop_when_faded:
+		_cancel_fade_out()
 	if _current_bgm_path == path and bgm_player != null:
 		return
 	stop_bgm()
@@ -379,8 +466,8 @@ func play_menu_family_bgm() -> bool:
 	var host: Node = GameState.menu_overlay_host
 	if host == null or not is_instance_valid(host):
 		return false
-	print("ISSUE #446 FIX ACTIVE: shared menu BGM (", _current_bgm_path == BGM_COIN_MODE, " already on)")
-	play_bgm(BGM_COIN_MODE)
+	print("ISSUE #446 FIX ACTIVE: shared menu BGM (", _current_bgm_path == menu_bgm(), " already on)")
+	play_bgm(menu_bgm())
 	return true
 
 
@@ -467,6 +554,8 @@ var _bgm_duck: float = 1.0
 var _bgm_duck_target: float = 1.0
 var _bgm_duck_rate: float = 0.0
 var _bgm_duck_delay: float = 0.0
+## True while fade_out_bgm() is taking the track down to be stopped.
+var _stop_when_faded: bool = false
 
 
 ## Ramp the current track to `target_linear` (0 = silent, 1 = full) over `seconds`, after
@@ -483,6 +572,23 @@ func fade_bgm(target_linear: float, seconds: float, delay: float = 0.0) -> void:
 	_bgm_duck_rate = 1.0 / maxf(0.01, seconds)
 
 
+## Fades the current track away and stops it, leaving the level back at full for whatever
+## plays next. play_bgm() during the fade simply cuts over (see the top of play_bgm).
+func fade_out_bgm(seconds: float) -> void:
+	if bgm_player == null:
+		return
+	_stop_when_faded = true
+	fade_bgm(0.0, seconds)
+
+
+func _cancel_fade_out() -> void:
+	_stop_when_faded = false
+	_bgm_duck = 1.0
+	_bgm_duck_target = 1.0
+	_bgm_duck_rate = 0.0
+	_bgm_duck_delay = 0.0
+
+
 func _process(delta: float) -> void:
 	if is_equal_approx(_bgm_duck, _bgm_duck_target):
 		return
@@ -491,6 +597,8 @@ func _process(delta: float) -> void:
 		return
 	_bgm_duck = move_toward(_bgm_duck, _bgm_duck_target, _bgm_duck_rate * delta)
 	_apply_bgm_duck()
+	if _stop_when_faded and _bgm_duck <= 0.001:
+		stop_bgm()
 
 
 func _apply_bgm_duck() -> void:
@@ -503,6 +611,8 @@ func _apply_bgm_duck() -> void:
 func stop_bgm() -> void:
 	if hold_world_bgm:
 		return   # ISSUE #467: the walkthrough keeps the world's music
+	if _stop_when_faded:
+		_cancel_fade_out()
 	if bgm_player != null:
 		bgm_player.stop()
 		bgm_player.queue_free()

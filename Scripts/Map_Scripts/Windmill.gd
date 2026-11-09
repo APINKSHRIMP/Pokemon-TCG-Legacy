@@ -28,7 +28,7 @@ const VANISH_STRETCH := 1.6    # how tall the line gets as he narrows
 const AFTER_BATTLE_PAUSE := 0.8   # back from beating him: the beat before "MEW"
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return SoundManagerScript.BGM_CALM_BATTLE_2
+func get_bgm_path() -> String:        return SoundManagerScript.BGM_WINDMILL
 func get_map_data_name() -> String: return "Windmill"
 
 

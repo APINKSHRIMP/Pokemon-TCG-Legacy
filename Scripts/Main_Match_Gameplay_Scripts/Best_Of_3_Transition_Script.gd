@@ -299,6 +299,8 @@ func _do_transition() -> void:
 	_transitioning = true
 	_click_enabled = false
 	if _decided:
+		# Every game of the series counts toward the clock (the outro reads this).
+		GameState.last_series_games = GameState.series_round_results.size()
 		GameState.clear_match_series()
 		SceneCache.change_scene("res://Scenes/Main_Match_Gameplay_Scenes/Match_End_Outro_Scene.tscn")
 	else:

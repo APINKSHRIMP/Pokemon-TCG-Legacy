@@ -11,9 +11,9 @@ extends CanvasLayer
 ## Blips are a snapshot taken when the phone opens - nothing on the map moves while it is up:
 ##   - the current map uses its LIVE actors, where they are standing right now;
 ##   - every other outdoor map resolves its cast for this day and time from the character files;
-##   - anyone inside a building is drawn at that building's icon, side by side with anyone else
-##     in there. Only the player and the story characters are shown indoors unless
-##     SHOW_INTERIOR_CROWDS is on.
+##   - anyone inside a building is drawn at that building's icon, in a centred grid of rows of
+##     CLUSTER_PER_ROW: the player, Olly / Ellie / Alexander, and every opponent battleable there
+##     right now (in their own shade of red), exactly as outdoors.
 
 const MAP_TEXTURE := "res://Image_Assets/Map_Maps/WorldMap1.png"
 const PHONE_ART   := "res://Image_Assets/Character_Sprites/Talking_Sprites/Phones/iPhone4.png"
@@ -23,6 +23,7 @@ const VISIT_FLAG_PREFIX := "map_visited_"
 
 ## The key that opens and closes the map. Escape closes it too.
 const OPEN_KEY := KEY_M
+const ControllerDiagram := preload("res://Scripts/Menu_Scripts/Controller_Diagram.gd")
 
 const SCREEN_W : float = 1920.0
 const SCREEN_H : float = 1080.0
@@ -70,8 +71,8 @@ const GLOW_ALPHA    : float = 0.30
 const RING_TIME     : float = 1.6    # seconds for one radar ring to spread and fade
 const RING_REACH    : float = 3.5    # how far a ring spreads, as a multiple of the blip's radius
 const RING_WIDTH    : float = 1.5
-const CLUSTER_GAP   : float = 3.0    # space between blips sharing a building
-const CLUSTER_PER_ROW : int = 4
+const CLUSTER_GAP   : float = 4.0    # screen px between blips sharing a building
+const CLUSTER_PER_ROW : int = 5      # a building's dots wrap into rows of this many
 
 const COL_PLAYER     := Color(1.0, 1.0, 1.0)
 const COL_OLLY       := Color(0.55, 0.85, 1.0)    # light blue
@@ -102,8 +103,10 @@ const BLOCKED_COLOURS := [
 ]
 const SNAP_MAX : int = 40
 
-## false = indoors, only the player and the story characters are drawn on the building's icon.
-const SHOW_INTERIOR_CROWDS := false
+## Story-character matcher: "Olly", "Ellie" or "Alexander" as a WHOLE WORD anywhere in the
+## message-box name or the tracking name, any case - so "Olly 2", "Fish Shop Alexander" and
+## "Ellie's Mum" all count, but "Holly" or "Kellie" never do. First word found wins.
+static var _story_regex: RegEx = null
 
 # ─── THE PICTURE ──────────────────────────────────────────────────────────────
 ## Per outdoor area: picture_px = world_px * scale + offset, and the horizontal band of the
@@ -140,6 +143,23 @@ const INTERIORS := {
 	"Gym_Challenge_Hall":         ["Gym_Plaza", Vector2(625, 213)],
 }
 
+# ─── TWEAKABLE: the controls + legend panels either side of the phone ─────────
+# Shown every time the map opens. Controls follow the device in use: keyboard + mouse, or a pad
+# (Xbox / PlayStation names).
+const HINT_GAP          : float = 48.0   # screen px between the phone and each panel
+const HINT_PAD          : int   = 22     # inner margin of a panel
+const HINT_ROW_GAP      : int   = 12
+const HINT_COL_GAP      : int   = 18
+const HINT_TITLE_SIZE   : int   = 18
+const HINT_KEY_SIZE     : int   = 14
+const HINT_TEXT_SIZE    : int   = 17
+const LEGEND_DOT_RADIUS : float = 7.0    # bigger than a map dot (DOT_RADIUS) so it reads at a glance
+const LEGEND_DOT_BOX    : float = 30.0
+
+# ─── TWEAKABLE: pad zoom (the triggers; the mouse wheel does it on K&M) ──────
+const PAD_ZOOM_RATE      : float = 2.2   # zoom multiplies by this per second at a full pull
+const PAD_TRIGGER_DEADZONE : float = 0.15
+
 const LAYER : int = 175
 
 static var _open: WorldMap = null
@@ -156,6 +176,11 @@ var _cover: Control = null
 var _spinner: ColorRect = null
 var _spinner_tween: Tween = null
 var _player: Node = null
+var _hints: Control = null           # the controls + legend panels beside the phone
+var _controls_panel: PanelContainer = null
+var _legend_panel: PanelContainer = null
+var _legend_dots: Array[Control] = []
+var _hints_pad: bool = false         # which control set the panel is showing
 
 # ─── State ───────────────────────────────────────────────────────────────────
 var _phone_size := Vector2.ZERO
@@ -227,6 +252,8 @@ func _ready() -> void:
 		_player.lock_movement()
 	MapManager.set_overworld_paused(true)
 	_build()
+	if _rig != null:
+		_build_hints()
 	_collect_blips()
 	_start_view()
 	_play_open()
@@ -378,6 +405,167 @@ func _build_cover(screen_size: Vector2) -> void:
 
 
 # ============================================================
+# CONTROLS + LEGEND (every opening)
+# ============================================================
+
+## Two panels beside the phone: the controls for the device in use on the left, what the three
+## opponent dots mean on the right. They fade up with the map and follow a device switch live.
+func _build_hints() -> void:
+	_hints = Control.new()
+	_hints.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hints.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hints.modulate.a = 0.0
+	add_child(_hints)
+
+	_controls_panel = _hint_panel()
+	_hints.add_child(_controls_panel)
+	_controls_panel.resized.connect(_place_hints)
+	_fill_controls()
+
+	_legend_panel = _hint_panel()
+	_hints.add_child(_legend_panel)
+	_legend_panel.resized.connect(_place_hints)
+	# Each row: [base colour, peak colour (null = the story glow: lightened), text]. Rows in a
+	# section pulse one after another (phase steps of a third).
+	var body := _hint_body(_legend_panel, "Favourites")
+	_legend_rows(_hint_grid(body), [
+		[COL_OLLY, null, "Olly"],
+		[COL_ELLIE, null, "Ellie"],
+		[COL_ALEXANDER, null, "Alexander"],
+	])
+	body.add_child(_hint_heading("Opponents"))
+	_legend_rows(_hint_grid(body), [
+		[COL_OPP_NEW_BASE, COL_OPP_NEW_PEAK, "Not battled yet"],
+		[COL_OPP_MET_BASE, COL_OPP_MET_PEAK, "Battled, not beaten"],
+		[COL_OPP_BEATEN_BASE, COL_OPP_BEATEN_PEAK, "Beaten"],
+	])
+
+	InputDevice.device_changed.connect(_on_device_changed)
+	_place_hints()
+
+
+## One pulsing dot + its text per row, drawn exactly as the map draws that kind of blip.
+func _legend_rows(grid: GridContainer, rows: Array) -> void:
+	for i in rows.size():
+		var dot := Control.new()
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dot.custom_minimum_size = Vector2(LEGEND_DOT_BOX, LEGEND_DOT_BOX)
+		var base: Color = rows[i][0]
+		var peak = rows[i][1]
+		var phase: float = i / 3.0
+		dot.draw.connect(func():
+			var wave: float = sin(_time * TAU / PULSE_TIME + phase * TAU)
+			var r: float = LEGEND_DOT_RADIUS * (1.0 + PULSE_GROW * wave)
+			var glow_t: float = wave * 0.5 + 0.5
+			var c: Color = base.lightened(0.18 * glow_t) if peak == null else base.lerp(peak, glow_t)
+			_draw_dot(dot, dot.size * 0.5, r, c))
+		grid.add_child(dot)
+		_legend_dots.append(dot)
+		grid.add_child(_hint_text(String(rows[i][2])))
+
+
+func _on_device_changed(_device: int) -> void:
+	if _controls_panel != null and InputDevice.using_pad() != _hints_pad:
+		_fill_controls()
+
+
+## (Re)writes the controls list for the device in use. Keep in step with _input / _process.
+func _fill_controls() -> void:
+	_hints_pad = InputDevice.using_pad()
+	for c in _controls_panel.get_children():
+		_controls_panel.remove_child(c)
+		c.queue_free()
+	var rows: Array
+	if _hints_pad:
+		var fam: String = InputDevice.pad_family()
+		var n := func(id: String) -> String: return ControllerDiagram.button_name(id, fam)
+		rows = [
+			["%s / %s" % [n.call("lstick"), n.call("dpad")], "Move the map"],
+			[n.call("rt"), "Zoom in"],
+			[n.call("lt"), "Zoom out"],
+			["%s / %s" % [n.call("view"), n.call("b")], "Close"],
+		]
+	else:
+		rows = [
+			["WASD / Arrows", "Move the map"],
+			["Left-click + drag", "Move the map"],
+			["Mouse wheel", "Zoom in / out"],
+			["M / Esc", "Close"],
+		]
+	var grid := _hint_grid(_hint_body(_controls_panel, "Controls"))
+	for r in rows:
+		var key := Label.new()
+		UIKit.set_label(key, "small_label", String(r[0]), "accent", HINT_KEY_SIZE)
+		key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		key.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		grid.add_child(key)
+		grid.add_child(_hint_text(String(r[1])))
+
+
+## Left panel's right edge HINT_GAP short of the phone, right panel's left edge HINT_GAP past it,
+## both centred on the phone's resting height.
+func _place_hints() -> void:
+	if _rig == null:
+		return
+	var left_x: float = _rig.position.x
+	var mid_y: float = _rest_y + _phone_size.y * 0.5
+	if _controls_panel != null:
+		_controls_panel.size = Vector2.ZERO   # shrink to content
+		_controls_panel.position = Vector2(left_x - HINT_GAP - _controls_panel.size.x,
+			mid_y - _controls_panel.size.y * 0.5)
+	if _legend_panel != null:
+		_legend_panel.size = Vector2.ZERO
+		_legend_panel.position = Vector2(left_x + _phone_size.x + HINT_GAP,
+			mid_y - _legend_panel.size.y * 0.5)
+
+
+func _hint_panel() -> PanelContainer:
+	var p := UIKit.make_panel()
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return p
+
+
+## Margin + a title inside `panel`; returns the column the rows go in.
+func _hint_body(panel: PanelContainer, title: String) -> VBoxContainer:
+	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, HINT_PAD)
+	panel.add_child(margin)
+	var col := VBoxContainer.new()
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_theme_constant_override("separation", HINT_ROW_GAP + 4)
+	margin.add_child(col)
+	col.add_child(_hint_heading(title))
+	return col
+
+
+func _hint_heading(title: String) -> Label:
+	var head := Label.new()
+	UIKit.set_label(head, "subtitle", title, "field_fg", HINT_TITLE_SIZE)
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return head
+
+
+func _hint_grid(col: VBoxContainer) -> GridContainer:
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grid.add_theme_constant_override("h_separation", HINT_COL_GAP)
+	grid.add_theme_constant_override("v_separation", HINT_ROW_GAP)
+	col.add_child(grid)
+	return grid
+
+
+func _hint_text(text: String) -> Label:
+	var l := Label.new()
+	UIKit.set_label(l, "chip", text, "field_fg", HINT_TEXT_SIZE)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return l
+
+
+# ============================================================
 # OPEN / CLOSE
 # ============================================================
 
@@ -404,6 +592,8 @@ func _play_open() -> void:
 	reveal.tween_property(_cover, "modulate:a", 0.0, MAP_FADE_IN)
 	reveal.tween_property(_content, "modulate:a", 1.0, MAP_FADE_IN)
 	reveal.tween_property(_blips, "modulate:a", 1.0, MAP_FADE_IN)
+	if _hints != null:
+		reveal.tween_property(_hints, "modulate:a", 1.0, MAP_FADE_IN)
 	_ready_for_input = true
 
 
@@ -418,6 +608,8 @@ func close() -> void:
 		var fade := create_tween().set_parallel(true)
 		fade.tween_property(_content, "modulate:a", 0.0, MAP_FADE_OUT)
 		fade.tween_property(_blips, "modulate:a", 0.0, MAP_FADE_OUT)
+		if _hints != null:
+			fade.tween_property(_hints, "modulate:a", 0.0, MAP_FADE_OUT)
 		await fade.finished
 		create_tween().tween_property(_dim, "modulate:a", 0.0, SLIDE_OUT_TIME)
 		create_tween().tween_property(_rig, "modulate:a", 0.0, SLIDE_OUT_TIME)
@@ -504,8 +696,16 @@ func _process(delta: float) -> void:
 		if dir != Vector2.ZERO:
 			_centre += dir.normalized() * PAN_SPEED * delta / _zoom
 			_apply_view()
+		# Pad zoom: RT in, LT out, about the middle of the screen.
+		var pull: float = 0.0
+		for id in Input.get_connected_joypads():
+			pull += Input.get_joy_axis(id, JOY_AXIS_TRIGGER_RIGHT) - Input.get_joy_axis(id, JOY_AXIS_TRIGGER_LEFT)
+		if absf(pull) > PAD_TRIGGER_DEADZONE:
+			_zoom_at(pow(PAD_ZOOM_RATE, clampf(pull, -1.0, 1.0) * delta), _screen_size * 0.5)
 	if _blips != null:
 		_blips.queue_redraw()
+	for d in _legend_dots:
+		d.queue_redraw()
 
 
 # ============================================================
@@ -605,8 +805,16 @@ func _collect_blips() -> void:
 			indoors[icon] = []
 		indoors[icon].append(me)
 
+	# Each building's dots in a centred grid, CLUSTER_PER_ROW to a row: the player first, then
+	# Olly / Ellie / Alexander, then the opponents (stable within each kind).
+	var order := {"player": 0, "story": 1, "opponent": 2}
 	for icon: Vector2 in indoors:
 		var group: Array = indoors[icon]
+		var keyed: Array = []
+		for i in group.size():
+			keyed.append([int(order.get(group[i]["kind"], 3)), i, group[i]])
+		keyed.sort_custom(func(x, y): return x[0] < y[0] or (x[0] == y[0] and x[1] < y[1]))
+		group = keyed.map(func(k): return k[2])
 		var n: int = group.size()
 		var rows: int = int(ceil(float(n) / CLUSTER_PER_ROW))
 		var step: float = STORY_RADIUS * 2.0 + CLUSTER_GAP
@@ -625,14 +833,14 @@ func _collect_blips() -> void:
 
 
 ## {"kind", "colour", "radius", "phase"} for one actor, or {} when it is not drawn.
-func _blip_for(a: Dictionary, is_interior: bool) -> Dictionary:
+func _blip_for(a: Dictionary, _is_interior: bool) -> Dictionary:
 	var story := _story_name(String(a["name"]), String(a.get("friendly", "")))
 	var phase := randf()
 	if story != "":
 		return {"kind": "story", "colour": STORY_COLOURS[story], "radius": STORY_RADIUS, "phase": phase}
-	if is_interior and not SHOW_INTERIOR_CROWDS:
-		return {}
-	# Only opponents and the three story characters are shown: no NPC or shopkeeper dots.
+	# Only opponents and the three story characters are shown, indoors and out: no NPC or
+	# shopkeeper dots. An opponent who is not battleable right now (an Elder busy as an NPC, a
+	# beaten "Defeated" stand-in) is an NPC in the cast, so it never reaches this point.
 	if not a["is_opponent"]:
 		return {}
 	var opp := String(a["name"])
@@ -650,10 +858,16 @@ func _blip_for(a: Dictionary, is_interior: bool) -> Dictionary:
 
 
 func _story_name(tracking: String, friendly: String) -> String:
-	for key: String in STORY_COLOURS:
-		for n in [friendly, tracking]:
-			if n == key or n.begins_with(key + " "):
-				return key
+	if _story_regex == null:
+		_story_regex = RegEx.new()
+		_story_regex.compile("(?i)\\b(" + "|".join(PackedStringArray(STORY_COLOURS.keys())) + ")\\b")
+	for n in [friendly, tracking]:
+		var m := _story_regex.search(n)
+		if m != null:
+			var word := m.get_string(1).to_lower()
+			for key: String in STORY_COLOURS:
+				if key.to_lower() == word:
+					return key
 	return ""
 
 
@@ -676,6 +890,9 @@ func _live_actors() -> Array[Dictionary]:
 func _scheduled_actors(map_name: String, date: int, time: String, constants: Dictionary) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var cast: Dictionary = CharacterSchedule.cast_for(map_name, date, time, MapManager.evaluate_condition)
+	# The Town Hall's busy Elders are NPCs this slot -- no battle dot for them.
+	if map_name == TownHallCrowd.MAP_NAME:
+		cast = TownHallCrowd.apply(cast, date, time, null)
 	var origin := _container_offset(map_name)
 	for section in ["opponents", "npcs"]:
 		var pool: Dictionary = constants.get(section, {})
@@ -790,8 +1007,13 @@ func _draw_blips() -> void:
 				ring_col.a = (1.0 - p) * 0.7
 				_blips.draw_arc(at, float(b["radius"]) * (1.0 + p * (RING_REACH - 1.0)), 0.0, TAU,
 					32, ring_col, RING_WIDTH, true)
-		var glow := colour
-		glow.a = GLOW_ALPHA
-		_blips.draw_circle(at, r * GLOW_SCALE, glow, true, -1.0, true)
-		_blips.draw_circle(at, r + OUTLINE_PX, COL_OUTLINE, true, -1.0, true)
-		_blips.draw_circle(at, r, colour, true, -1.0, true)
+		_draw_dot(_blips, at, r, colour)
+
+
+## One blip's body: soft halo, dark rim, fill. Shared with the legend so they match exactly.
+func _draw_dot(canvas: CanvasItem, at: Vector2, r: float, colour: Color) -> void:
+	var glow := colour
+	glow.a = GLOW_ALPHA
+	canvas.draw_circle(at, r * GLOW_SCALE, glow, true, -1.0, true)
+	canvas.draw_circle(at, r + OUTLINE_PX, COL_OUTLINE, true, -1.0, true)
+	canvas.draw_circle(at, r, colour, true, -1.0, true)
