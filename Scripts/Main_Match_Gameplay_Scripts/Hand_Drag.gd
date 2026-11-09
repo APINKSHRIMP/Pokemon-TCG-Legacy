@@ -180,7 +180,8 @@ func _on_press(mb: InputEventMouseButton) -> void:
 		_press = {"kind": "hand", "card": hand_hit["card"], "node": hand_hit["node"], "start": pos}
 		# ISSUE #454: the quiet blip, on the PRESS - a click and the start of a drag sound the same.
 		print("ISSUE #454 FIX ACTIVE: hand card press blip")
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_select_change)
+		# The same blip the keyboard / pad cursor makes when it moves.
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 		get_viewport().set_input_as_handled()
 		return
 	# ISSUE #419: a click on the hand bar that misses every card (the gaps, the bar's edge) used to
@@ -194,6 +195,7 @@ func _on_press(mb: InputEventMouseButton) -> void:
 	var mon := pokemon_at(pos)
 	if mon != null:
 		_press = {"kind": "board", "card": mon, "node": main.find_card_ui_for_object(mon), "start": pos}
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 		get_viewport().set_input_as_handled()
 		return
 	# A click anywhere else puts a picked-up card back down.

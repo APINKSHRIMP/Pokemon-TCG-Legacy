@@ -224,10 +224,16 @@ const TIME_BGM_FOREST := {
 	"Morning": BGM_FOREST_MORNING, "Afternoon": BGM_FOREST_AFTERNOON,
 	"Evening": BGM_FOREST_EVENING, "Night": BGM_FOREST_NIGHT, "Bedtime": BGM_FOREST_BEDTIME,
 }
-## Gym Plaza AND Gym Challenge Reception: same table, so the track runs on through the door.
-const TIME_BGM_GYM_PLAZA := {
+## Gym Challenge Reception, which has no Bedtime entry so its Night track carries on then.
+const TIME_BGM_GYM_RECEPTION := {
 	"Morning": BGM_GYM_PLAZA_MORNING, "Afternoon": BGM_GYM_PLAZA_AFTERNOON,
 	"Evening": BGM_GYM_PLAZA_EVENING, "Night": BGM_GYM_PLAZA_NIGHT,
+}
+## Gym Plaza: the same tracks, so the music runs on through the door, with the forest's wind at
+## Bedtime to match Verdant Forest.
+const TIME_BGM_GYM_PLAZA := {
+	"Morning": BGM_GYM_PLAZA_MORNING, "Afternoon": BGM_GYM_PLAZA_AFTERNOON,
+	"Evening": BGM_GYM_PLAZA_EVENING, "Night": BGM_GYM_PLAZA_NIGHT, "Bedtime": BGM_FOREST_BEDTIME,
 }
 ## Maps not built yet: return these from get_time_bgm() when they arrive.
 const TIME_BGM_NEO_TOWN := {
@@ -265,9 +271,8 @@ const BGM_SHOP_2                         := BGM_DIR + "Rocket Mart and Shops (PM
 const BGM_VICTORY                        := BGM_DIR + "Victory (PMDX Happiness)" + BGM_EXT
 ## The Gym Plaza five-coin flipper, from paying up to walking away (MapManager).
 const BGM_COIN_FLIP_GAME                 := BGM_DIR + "Coin Flip Game (HGSS Mt Moon)" + BGM_EXT
-## The escape menu and its sub-menus: pick with menu_bgm(), never name these directly.
+## The escape menu and its sub-menus: pick with menu_bgm(), never name this directly.
 const BGM_COIN_MODE                      := BGM_DIR + "coin_mode (PTCG Water Club)" + BGM_EXT
-const BGM_MENU_NIGHT                     := BGM_DIR + "Menu Night (PTCG Remastered Water Rock Psychic Club)" + BGM_EXT
 # Hard Mode's draft: Olly's twelve packs opening only (the deck build after it uses the menu track).
 const BGM_DRAFT_TIME                     := BGM_DIR + "DraftTime (RSE Trick House)" + BGM_EXT
 # The PTCG main-menu theme. The FILE was renamed gym_plaza -> starting_menu when the
@@ -277,18 +282,8 @@ const BGM_DRAFT_TIME                     := BGM_DIR + "DraftTime (RSE Trick Hous
 const BGM_STARTING_MENU                  := BGM_DIR + "starting_menu (PTCG Main Menu)" + BGM_EXT
 const BGM_MAIN_MENU                      := BGM_DIR + "main_menu_music (PTCG Menu Theme)" + BGM_EXT
 
-## TWEAKABLE: the time slots the menu family plays BGM_MENU_NIGHT in.
-const MENU_NIGHT_TIMES := ["Evening", "Night", "Bedtime"]
-
-## The menu family's track right now: the remastered club theme from the Evening on.
-##
-## GameState is looked up by node, on purpose. Calling its methods by name here makes this autoload
-## need GameState's whole script to compile, which starts the Cutscene <-> MapManager script cycle
-## from the wrong end and fails with "Could not resolve class Cutscene".
+## The menu family's track, at every time of day.
 func menu_bgm() -> String:
-	var game_state: Node = get_node_or_null(^"/root/GameState")
-	if game_state != null and String(game_state.call("get_time")) in MENU_NIGHT_TIMES:
-		return BGM_MENU_NIGHT
 	return BGM_COIN_MODE
 
 
@@ -383,6 +378,9 @@ func cry_length(species: String) -> float:
 	return stream.get_length() if stream != null else 0.0
 
 
+# TWEAKABLE -- how loud a cry plays with the Cries slider at 100%. The slider scales down from here.
+const CRY_LEVEL := 0.75
+
 # `species` is the sprite basename, e.g. "278_Wingull" -> res://Audio/Cries/278_Wingull.ogg.
 # Returns true if the cry started.
 func play_cry(species: String) -> bool:
@@ -407,6 +405,7 @@ func play_cry(species: String) -> bool:
 	if _cry_player == null or not is_instance_valid(_cry_player):
 		_cry_player = AudioStreamPlayer.new()
 		_cry_player.bus = CRIES_BUS
+		_cry_player.volume_db = linear_to_db(CRY_LEVEL)
 		add_child(_cry_player)
 	_cry_player.stream = stream
 	_cry_player.play()
@@ -429,7 +428,7 @@ func stop_cry() -> void:
 var hold_world_bgm: bool = false
 
 func play_bgm(path: String, loop: bool = true) -> void:
-	if hold_world_bgm and (path == BGM_COIN_MODE or path == BGM_MENU_NIGHT):
+	if hold_world_bgm and path == BGM_COIN_MODE:
 		print("ISSUE #467 FIX ACTIVE: menu track skipped, the overworld BGM plays on")
 		return
 	# A new track always wins over a fade_out_bgm() still on its way down: one player, no overlap.

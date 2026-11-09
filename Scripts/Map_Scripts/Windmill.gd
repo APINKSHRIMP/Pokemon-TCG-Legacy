@@ -19,6 +19,7 @@ const MEWTWO_NAME := "Mewtwo"
 const VANISHED_FLAG := "mewtwo_vanished"
 const LAST_WORD := "MEW"
 const TALK_BUBBLE := "res://Image_Assets/Icons/Message_Icons/new_talk.png"
+const DUST_SCRIPT := "res://Scripts/Objects_And_Classes/Windmill_Dust.gd"
 
 # TWEAKABLE — the vanish: he flares white, squeezes into a thin line and is gone.
 const VANISH_PAUSE := 0.4      # after the box closes, before he starts to go
@@ -37,6 +38,7 @@ func _ready() -> void:
 	var back_from_mewtwo: bool = GameState.returning_from_battle and GameState.current_opponent_name == MEWTWO_NAME
 	if back_from_mewtwo:
 		_player.lock_movement()
+	add_child(load(DUST_SCRIPT).new())
 	await super._ready()
 	if not GameState.has_beaten_opponent(MEWTWO_NAME) or GameState.has_flag(VANISHED_FLAG):
 		if back_from_mewtwo:

@@ -776,8 +776,20 @@
         "repeat": "Are you here to register with the Pokemon TCG Championships? Registration is a one off payment of $50."
       },
       "move": "idle_down",
-      "times": "M,A,E,N",
-      "at": [111, 44]
+      "at": [111, 44],
+      "when": [
+        {
+          "times": "M,A,E,N"
+        },
+        {
+          "times": "B",
+          "npc_type": "text_only",
+          "says": {
+            "meet": "I'm sorry, the Town Hall is closed for the night and registrations have finished for today. Please come back in the morning.",
+            "repeat": "We're closed for the night. Please make your way out, and come back in the morning."
+          }
+        }
+      ]
     }
   },
   "opponents": {

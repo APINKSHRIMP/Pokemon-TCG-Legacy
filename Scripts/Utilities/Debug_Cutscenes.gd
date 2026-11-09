@@ -211,8 +211,7 @@ static func launch(id: String) -> void:
 static func _reset_story() -> void:
 	for key in STORY_KEYS:
 		GameState.progress.erase(key)
-	GameState.progress["opponents_beaten_count_current"] = 0
-	GameState.progress["fish_caught_current_slot"] = 0   # ISSUE #441
+	GameState.progress["time_points"] = 0
 	GameState.forced_opponent_overrides = {}
 	GameState.clear_menu_return_state()
 	GameState.use_spawn_position = false

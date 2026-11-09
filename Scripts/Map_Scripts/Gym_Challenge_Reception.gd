@@ -21,7 +21,7 @@ const GUARD_STEP_ASIDE_TIME := 0.6
 
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_time_bgm() -> Dictionary:    return SoundManagerScript.TIME_BGM_GYM_PLAZA
+func get_time_bgm() -> Dictionary:    return SoundManagerScript.TIME_BGM_GYM_RECEPTION
 func get_map_data_name() -> String: return "Gym_Challenge_Reception"
 
 func _scene_setup():

@@ -100,19 +100,26 @@ func _on_before_door_transition(_body: Node2D, _target: String) -> bool:
 # ============================================================
 # LOCKED DOORS
 # ============================================================
-# Doors into these buildings are locked at Bedtime -- target scene basename ->
-# the name the message gives it. Doors OUT are never locked, so nobody is shut in.
-# The Hotel and the Gym Challenge Reception stay open (the Reception so a late
-# finisher can still leave the Hall).
+# Doors into these buildings are locked at Bedtime -- target scene basename -> the name the
+# message gives it. Only doors from outdoors lock (and the Hall's, from the Reception), so
+# anyone already inside can always walk out. The player's home, the Hotel and the Windmill
+# stay open.
 const BEDTIME_LOCKED_DOORS := {
 	"Fish_Shop":          "FISH",
 	"Card_Mart":          "Card Mart",
 	"Rocket_Mart":        "Rocket Mart",
+	"Gym_Challenge_Reception": "Gym Challenge Reception",
 	"Gym_Challenge_Hall": "Gym Challenge Hall",
 	"TrainStation":       "Train Station",
 	"TownHall":           "Town Hall",
+	"Cafe":               "Cafe",
 }
 const DOOR_CLOSED_FOR_NIGHT_TEXT := "The %s door is locked. It's closed for the night."
+## TWEAKABLE: doors locked at Bedtime with their own message rather than the one above.
+const BEDTIME_LOCKED_DOOR_LINES := {
+	"Ellie_House_Downstairs": "It's way past a socially acceptable time to just be dropping by now...",
+	"Alexander_House_Downstairs": "The lights are off. Knocking at this hour would be a terrible way to stay friends...",
+}
 ## Day 2 until Olly has been played (CafeBreakfastCutscene.fish_shop_locked()).
 const FISH_NOT_OPEN_YET_TEXT := "The FISH door is locked. It seems it hasn't opened up yet."
 ## Town Hall upstairs, until the Gym Challenge is complete. Debug mode walks straight up.
@@ -139,8 +146,11 @@ func _locked_door_text(target_map: String) -> String:
 		return ""
 	if target_map == "Fish_Shop" and CafeBreakfastCutscene.fish_shop_locked():
 		return FISH_NOT_OPEN_YET_TEXT
-	if GameState.get_time() == "Bedtime" and BEDTIME_LOCKED_DOORS.has(target_map):
-		return DOOR_CLOSED_FOR_NIGHT_TEXT % BEDTIME_LOCKED_DOORS[target_map]
+	if GameState.get_time() == "Bedtime" and (uses_time_of_day() or target_map == "Gym_Challenge_Hall"):
+		if BEDTIME_LOCKED_DOOR_LINES.has(target_map):
+			return BEDTIME_LOCKED_DOOR_LINES[target_map]
+		if BEDTIME_LOCKED_DOORS.has(target_map):
+			return DOOR_CLOSED_FOR_NIGHT_TEXT % BEDTIME_LOCKED_DOORS[target_map]
 	return ""
 
 # ============================================================

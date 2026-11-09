@@ -366,6 +366,8 @@ func set_time_of_day(time: String) -> void:
 	# Lights come on at dusk; Time_Of_Day_Grade.LIGHT_ENERGY runs them dimmer at Evening.
 	if time == "Evening" or GameState.is_night_time(time):
 		$LIGHTS.visible = true
+		# Houses and shops have turned in by Bedtime; the street lights stay on.
+		$LIGHTS/LATENIGHTOFF.visible = time != "Bedtime"
 	else:
 		$LIGHTS.queue_free()
 	_set_taxi_lights(time)

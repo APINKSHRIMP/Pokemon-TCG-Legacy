@@ -1986,6 +1986,12 @@ func _viewer_remove_card_rect(card_id: String) -> void:
 	for i in range(_viewer_grid.get_child_count() - 1, -1, -1):
 		var child := _viewer_grid.get_child(i)
 		if String(child.get_meta("card_id", "")) == card_id:
+			# The cursor was on this image: it moves on to the next card (the previous one at the
+			# end of the grid) before the image goes, so the selection is never left empty.
+			if (child as Control).has_focus():
+				var next_i := i + 1 if i + 1 < _viewer_grid.get_child_count() else i - 1
+				if next_i >= 0:
+					(_viewer_grid.get_child(next_i) as Control).grab_focus()
 			_viewer_grid.remove_child(child)
 			child.queue_free()
 			return

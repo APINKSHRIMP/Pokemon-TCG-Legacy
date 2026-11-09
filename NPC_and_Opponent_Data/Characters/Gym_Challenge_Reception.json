@@ -23,43 +23,92 @@
   "npcs": {
     "Gym Receptionist 1": {
       "at": [298, 161],
-      "days": "9-16",
-      "times": "M,A,E,N",
       "move": "idle_left",
       "says": {
         "meet": "(npc_type gym_registrar: her lines are MapManager GYM_ENTRY_* -- the $100 entry, Medal of Elders required)",
         "repeat": "(npc_type gym_registrar: her lines are MapManager GYM_ENTRY_* -- the $100 entry, Medal of Elders required)"
-      }
+      },
+      "when": [
+        {
+          "days": "9-16",
+          "times": "M,A,E,N"
+        },
+        {
+          "days": "9-16",
+          "times": "B",
+          "npc_type": "text_only",
+          "says": {
+            "meet": "I'm sorry, registration has closed for the night. Challenge hours are 8am to 11pm, so please come back in the morning.",
+            "repeat": "Challenge hours are 8am to 11pm. Please come back in the morning."
+          }
+        }
+      ]
     },
     "Gym Receptionist 2": {
       "at": [331, 198],
-      "days": "9-16",
-      "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
         "meet": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym",
         "repeat": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym"
-      }
+      },
+      "when": [
+        {
+          "days": "9-16",
+          "times": "M,A,E,N"
+        },
+        {
+          "days": "9-16",
+          "times": "B",
+          "says": {
+            "meet": "We're asking everyone to please leave, as we are now closed. Thank you for your understanding.",
+            "repeat": "We're closed for the night, so please make your way out. Thank you!"
+          }
+        }
+      ]
     },
     "Gym Receptionist 3": {
       "at": [414, 161],
-      "days": "9-16",
-      "times": "M,A,E,N",
       "move": "idle_right",
       "says": {
         "meet": "Welcome! Sorry - If you're looking to register to enter the challenge, please speak with my colleague on the other side of the desk. She will be able to take your entrance fee and register you into the challenge. This side is spectator entrance only.",
         "repeat": "Welcome! Sorry - If you're looking to register to enter the challenge, please speak with my colleague on the other side of the desk. She will be able to take your entrance fee and register you into the challenge. This side is spectator entrance only."
-      }
+      },
+      "when": [
+        {
+          "days": "9-16",
+          "times": "M,A,E,N"
+        },
+        {
+          "days": "9-16",
+          "times": "B",
+          "says": {
+            "meet": "Spectator tickets are finished for today. Challenge hours are 8am to 11pm, so please come back in the morning.",
+            "repeat": "Challenge hours are 8am to 11pm. Please come back in the morning."
+          }
+        }
+      ]
     },
     "Gym Receptionist 4": {
       "at": [387, 198],
-      "days": "9-16",
-      "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
         "meet": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym",
         "repeat": "Each Gym Hero Challenge match is in best of 3 format. You must win at least 2 matches to progress to the next game. There is also a banned trainer list. You cannot use any of the following cards: Lass, Super Energy Removal, Energy Removal, Rocket's Sneak Attack, Imposter Oak's Revenge, The Rocket's Trap, No Removal Gym or Chaos Gym"
-      }
+      },
+      "when": [
+        {
+          "days": "9-16",
+          "times": "M,A,E,N"
+        },
+        {
+          "days": "9-16",
+          "times": "B",
+          "says": {
+            "meet": "We're closed for the night, I'm afraid. Challenge hours are 8am to 11pm, so come back in the morning.",
+            "repeat": "Challenge hours are 8am to 11pm. See you in the morning!"
+          }
+        }
+      ]
     },
     "Gym Security 1": {
       "at": [220, 40],
@@ -69,6 +118,14 @@
         "repeat": "Only registered entrants allowed through. Register for the Gym Hero Challenge at the desk, you'll need your Medal of Elders."
       },
       "when": [
+        {
+          "days": "9-16",
+          "times": "B",
+          "says": {
+            "meet": "Sorry, the hall is closed for the night. No re-entry until the morning.",
+            "repeat": "No re-entry until the morning. Have a good night."
+          }
+        },
         {
           "days": "9-16",
           "times": "M,A,E,N",
@@ -89,13 +146,25 @@
     },
     "Gym Security 2": {
       "at": [492, 40],
-      "days": "9-16",
-      "times": "M,A,E,N",
       "move": "idle_down",
       "says": {
         "meet": "The Gym Hero Challenge doesn't start until tomorrow morning so no spectators are allowed in until then. Please purchase a spectator entry ticket at the desk, or you can register to enter into the competition yourself.",
         "repeat": "Only spectators will be allowed to enter through here from tomorrow onwards. All entrants into the competition need to use the other door"
-      }
+      },
+      "when": [
+        {
+          "days": "9-16",
+          "times": "M,A,E,N"
+        },
+        {
+          "days": "9-16",
+          "times": "B",
+          "says": {
+            "meet": "Sorry, the stands are closed for the night. No re-entry until the morning.",
+            "repeat": "No re-entry until the morning, I'm afraid."
+          }
+        }
+      ]
     },
     "Gym Shopkeeper": {
       "at": [80, 355],

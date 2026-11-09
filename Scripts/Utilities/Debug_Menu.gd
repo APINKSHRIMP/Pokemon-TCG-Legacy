@@ -169,7 +169,7 @@ func _build_world_column(col: VBoxContainer) -> void:
 	col.add_child(_note("Milestones at or below the number count as rung (items unlocked); the next real catch past one rings it. Re-enter FISH to see the change."))
 
 	_heading(col, "PROGRESS")
-	col.add_child(_button("+1 OPPONENTS DEFEATED", _add_defeated))
+	col.add_child(_button("+%d TIME POINTS" % GameState.TIME_POINTS_FIRST_WIN, _add_time_points))
 	col.add_child(_note("Three in one period advances the time after your next real win."))
 
 	_heading(col, "BATTLE")
@@ -303,9 +303,9 @@ func _fill_fish_tanks() -> void:
 	_say("Every FISH tank filled for %d fish sent. Re-enter FISH to see it." % GameState.fish_sent_total())
 
 
-func _add_defeated() -> void:
-	MapManager.debug_add_defeated()
-	_say("Opponents defeated this period: %d." % GameState.get_current_defeated())
+func _add_time_points() -> void:
+	MapManager.debug_add_time_points()
+	_say("Time points this period: %d of %d." % [GameState.get_time_points(), GameState.time_points_to_advance()])
 
 
 func _apply_cheat(code: String) -> void:
@@ -331,9 +331,9 @@ func _say(text: String, colour: Color = GOOD_COLOUR) -> void:
 func _refresh_state() -> void:
 	if _state_label == null:
 		return
-	_state_label.text = "Day %d   |   %s   |   Cash %d   |   Fish Coins %d   |   Defeated this period %d" % [
+	_state_label.text = "Day %d   |   %s   |   Cash %d   |   Fish Coins %d   |   Time points %d of %d" % [
 			GameState.get_date(), GameState.get_time(), GameState.get_cash(),
-			GameState.get_fish_coins(), GameState.get_current_defeated()]
+			GameState.get_fish_coins(), GameState.get_time_points(), GameState.time_points_to_advance()]
 	if _cash_edit != null and not _cash_edit.has_focus():
 		_cash_edit.text = str(GameState.get_cash())
 	if _fish_coin_edit != null and not _fish_coin_edit.has_focus():

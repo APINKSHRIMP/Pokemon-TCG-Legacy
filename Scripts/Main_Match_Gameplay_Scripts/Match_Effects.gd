@@ -316,19 +316,29 @@ func max_bench_size_override() -> int:
 # One human-readable uppercase line per effect, shown at the start of each game.
 func get_announcement_lines() -> Array:
 	var lines := []
-	for e in effects:
+	for line in describe_entries(effects):
+		lines.append(line + "!")
+	return lines
+
+# The same lines for a raw match_effects array, without a match running: the overworld's
+# modifiers box lists them before the player accepts (MapManager._show_modifiers_box).
+static func describe_entries(raw: Array) -> Array:
+	var lines := []
+	for e in raw:
+		if not e is Dictionary or not e.has("type"):
+			continue
 		var line := _describe_effect(e)
 		if line == "":
 			continue
-		match e["applies_to"]:
+		match str(e.get("applies_to", "both")):
 			"player":
 				line += " (YOUR SIDE ONLY)"
 			"opponent":
 				line += " (OPPONENT'S SIDE ONLY)"
-		lines.append(line + "!")
+		lines.append(line)
 	return lines
 
-func _describe_effect(e: Dictionary) -> String:
+static func _describe_effect(e: Dictionary) -> String:
 	match e["type"]:
 		"type_damage_bonus":
 			return "%s POKEMON DEAL +%d ATTACK DAMAGE" % [str(e.get("pokemon_type", "?")).to_upper(), int(e.get("amount", 0))]

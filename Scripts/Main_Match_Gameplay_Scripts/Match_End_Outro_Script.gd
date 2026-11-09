@@ -95,7 +95,8 @@ const PACK_IMAGE_DIR: String = "res://Image_Assets/Packs/"
 # 1555x2464, so this is a maximum rather than a size — _show_gift() fits to it.
 const PACK_REVEAL_BOX: Vector2 = Vector2(430, 682)
 
-var _was_first_win: bool = false     # a first-ever win over this opponent (time advance reads it)
+var _was_first_win: bool = false     # a first-ever win over this opponent
+var _was_new_opponent: bool = false  # not beaten before this match, won or lost (time advance reads it)
 var _result_dialogue: String = ""   # opponent win/loss text shown after fly-in
 
 # Gift overlay nodes — created and freed around each revealed item
@@ -185,6 +186,7 @@ func _ready() -> void:
 	# Compute is_first_win once so both the dialogue and build_rewards share it
 	var is_first_win = not GameState.has_beaten_opponent(GameState.current_opponent_name)
 	_was_first_win = battle_won and is_first_win
+	_was_new_opponent = is_first_win
 
 	# ISSUE #124 FIX ACTIVE: the opponent's name used to be glued onto the FRONT of their own
 	# dialogue as plain text ("MISTY:\nnice match!"), which is exactly what the message box's
@@ -1280,6 +1282,14 @@ func _start_victory_music() -> void:
 
 
 func transition_back_to_map() -> void:
+	# Read and cleared before anything else, so a forfeited retry fight can't leave them
+	# set for the rematch that follows it.
+	var series_results: Array = GameState.last_series_results
+	var forfeited: bool = GameState.last_match_forfeited
+	GameState.last_series_results = []
+	GameState.last_match_forfeited = false
+	GameState.last_match_won = battle_won
+
 	# A lost scripted fight never reaches the overworld: it goes straight back into
 	# the match. Checked before anything else here, so none of the leaving-the-match
 	# bookkeeping below runs for a battle that is about to start again.
@@ -1291,24 +1301,17 @@ func transition_back_to_map() -> void:
 	transitioning  = true
 	click_enabled  = false
 
-	# Time advancement: enough matches push Morning -> Afternoon -> Evening -> Night ->
-	# Bedtime. How many, and which matches count, is GameState's TIME ADVANCE section (2
-	# first wins a slot on day 1, 3 on day 2, then any 4 matches from day 3, 5 for Night
-	# -> Bedtime). Bedtime never auto-advances; the player advances it by sleeping in bed.
-	# A story battle can hold the clock still and move it on itself (the café breakfast
-	# jumps to the afternoon once both its matches are played, won or lost).
+	# Time advancement: enough points push Morning -> Afternoon -> Evening -> Night ->
+	# Bedtime. What scores and how much is GameState's TIME ADVANCE section. Bedtime never
+	# auto-advances; the player advances it by sleeping in bed. A story battle can hold the
+	# clock still and move it on itself (the café breakfast jumps to the afternoon once both
+	# its matches are played, won or lost).
 	var holds_clock: bool = bool(GameState.forced_opponent_overrides.get("no_time_advance", false))
-	# Each game of a best-of-three counts as its own match (2 or 3); a single match is 1.
-	var series_games: int = GameState.last_series_games
-	GameState.last_series_games = 0
 	if not holds_clock:
-		GameState.count_match_toward_time(_was_first_win, maxi(1, series_games))
-		# A best-of-three won against a Card Elder always moves the clock on.
-		if battle_won and series_games > 0 and GameState.current_opponent_name in GameState.CARD_ELDERS:
-			GameState.force_time_advance_credit()
-	# ISSUE #441: fish caught this slot (day 3+) count a tenth of a match each, but only
-	# ever get checked here -- at the end of a real match -- so fish alone never move time.
-	if not holds_clock and GameState.get_time_progress() >= float(GameState.matches_to_advance_time()):
+		GameState.score_match_for_time(battle_won, _was_new_opponent, forfeited, series_results)
+	# ISSUE #441: fish points only ever get checked here -- at the end of a real match -- so
+	# fish alone never move time.
+	if not holds_clock and GameState.get_time_points() >= GameState.time_points_to_advance():
 		match GameState.get_time():
 			"Morning":
 				GameState.advance_time("Afternoon")

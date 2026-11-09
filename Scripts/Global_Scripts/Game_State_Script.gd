@@ -890,13 +890,20 @@ var series_losses: int = 0
 var series_required_to_win: int = 0
 var series_total_games: int = 0
 var series_round_results: Array = []
-## Games played in the series that just finished, written by the Best_Of_3 transition as
-## it hands the decided series to the outro (clear_match_series() wipes the rest). 0 for a
-## single match. The outro reads it for the clock (count_match_toward_time) and clears it.
-var last_series_games: int = 0
+## Each game's result ("win"/"loss") in the series that just ended, kept because
+## clear_match_series() wipes series_round_results. Written by the Best_Of_3 transition as it
+## hands a decided series to the outro, and by a forfeit. Empty for a single match. The outro
+## reads it for the clock (score_match_for_time) and clears it.
+var last_series_results: Array = []
+## The match just ended by the player forfeiting. Read and cleared with last_series_results.
+var last_match_forfeited: bool = false
+## Whether the last match or series was won. Set by the outro for the overworld, because
+## battle_result is cleared on the way back (the late goodbye picks its line from this).
+var last_match_won: bool = false
 
 func start_match_series(opponent_name: String, match_format: String) -> void:
-	last_series_games = 0
+	last_series_results = []
+	last_match_forfeited = false
 	series_opponent_name = opponent_name
 	series_format = match_format
 	series_wins = 0
@@ -1295,8 +1302,8 @@ func load_progress():
 		progress["costumes"] = []
 	if not progress.has("gifts_received"):
 		progress["gifts_received"] = []
-	if not progress.has("opponents_beaten_count_current"):
-		progress["opponents_beaten_count_current"] = 0
+	if not progress.has("time_points"):
+		progress["time_points"] = 0
 	if not progress.has("opponents_beaten_count_total"):
 		progress["opponents_beaten_count_total"] = 0
 	if not progress.has("time"):
@@ -1721,77 +1728,93 @@ func has_saved_deck() -> bool:
 
 
 # ============================================================
-# TIME ADVANCE — how many matches move the clock on
+# TIME ADVANCE — the points that move the clock on
 # ============================================================
-# 2 per time slot on day 1, 3 on day 2, 4 from day 3 -- except Night -> Bedtime, which
-# takes one more from day 3 (MATCHES_NIGHT_TO_BEDTIME). Bedtime itself never advances;
-# only the bed moves the clock on from there.
-# On days 1 and 2 only a FIRST win over an opponent counts (mark_opponent_beaten());
-# from day 3 every finished match counts, won, lost or a rematch.
+# Every slot has a points target (time_points_to_advance). Matches and fish add points, and
+# the outro checks the target at the end of each match, so fish alone never move the clock.
+# Reaching the target moves one slot on and any spare points are thrown away. Bedtime itself
+# never advances; only the bed moves the clock on from there.
+#
+# Days 1 and 2: only a FIRST win scores. Everything else scores nothing.
+# Day 3 on: see the TIME_POINTS values below.
+#
+# Best of 3: each game won scores +10 against an opponent not yet beaten or +6 against one
+# already beaten, each game lost scores +4, then the series result scores the same as a single
+# match (first win +10, rematch win +6, loss +4). So a first win at 2-0 is 10+10+10 = 30, at 2-1
+# is 10+4+10+10 = 34, and a loss to a new opponent at 1-2 is 10+4+4+4 = 22. A forfeit scores the
+# games already finished plus TIME_POINTS_FORFEIT, with no series result, so forfeiting at the
+# start of a series is never a faster way to skip time than forfeiting a single match.
 
-## TWEAKABLE -- matches per slot from day 3, and the longer Night -> Bedtime stretch.
-const MATCHES_PER_SLOT := 4
-const MATCHES_NIGHT_TO_BEDTIME := 5
+## TWEAKABLE -- the points target for each slot.
+const TIME_POINTS_DAY_1 := 20               # 2 first wins
+const TIME_POINTS_DAY_2 := 30               # 3 first wins
+const TIME_POINTS_PER_SLOT := 40            # day 3 on: 4 first wins, 7 rematches or 10 losses
 
-func matches_to_advance_time(date: int = -1, time: String = "") -> int:
+## TWEAKABLE -- what each result is worth.
+const TIME_POINTS_FIRST_WIN := 10
+const TIME_POINTS_REMATCH_WIN := 6
+const TIME_POINTS_LOSS := 4
+const TIME_POINTS_FORFEIT := 3              # 14 forfeits a slot
+const TIME_POINTS_FISH := 1
+const TIME_POINTS_SERIES_NEW_GAME_WIN := 10 # each game won in a best of 3 against a new opponent
+const TIME_POINTS_SERIES_GAME_WIN := 6      # each game won in a best of 3 against a beaten opponent
+const TIME_POINTS_SERIES_GAME_LOSS := 4     # each game lost in a best of 3
+
+func time_points_to_advance(date: int = -1) -> int:
 	if date < 0:
 		date = get_date()
-	if time == "":
-		time = get_time()
 	if date <= 1:
-		return 2
+		return TIME_POINTS_DAY_1
 	if date == 2:
-		return 3
-	if time == "Night":
-		return MATCHES_NIGHT_TO_BEDTIME
-	return MATCHES_PER_SLOT
+		return TIME_POINTS_DAY_2
+	return TIME_POINTS_PER_SLOT
 
 
-## ISSUE #441: from day 3 every fish caught is worth FISH_PER_MATCH-th of a match toward
-## the slot. Fish alone never move the clock: the outro still only checks at the end of a
-## match, so 2 wins + 900 fish waits for one more battle. Reset with the match counter.
-const FISH_PER_MATCH := 10
-
-func get_slot_fish() -> int:
-	return int(progress.get("fish_caught_current_slot", 0))
+func get_time_points() -> int:
+	return int(progress.get("time_points", 0))
 
 
-## Matches + fish credit this slot -- what the outro compares against matches_to_advance_time().
-func get_time_progress() -> float:
-	return float(get_current_defeated()) + float(get_slot_fish()) / float(FISH_PER_MATCH)
+func add_time_points(amount: int) -> void:
+	progress["time_points"] = get_time_points() + amount
+	save_progress()
 
 
+## True from day 3, when fish and every match result start to score.
 func every_match_advances_time(date: int = -1) -> bool:
 	if date < 0:
 		date = get_date()
 	return date >= 3
 
 
-## Called by the outro once per finished match. `games` is how many games it took: 1 for
-## a single match, 2 or 3 for a best-of-three -- each game of a series counts as its own
-## match for the clock. A first win's first game has already been counted by
-## mark_opponent_beaten(); anything else counts only from day 3 on (days 1-2 count first
-## wins only, one each, as before).
-func count_match_toward_time(was_first_win: bool, games: int = 1) -> void:
+## Called by the outro once per finished match or series. `series_results` holds each finished
+## game's "win"/"loss" and is empty for a single match. `new_opponent` is true when this opponent
+## had not been beaten before this match, whatever the result.
+func score_match_for_time(won: bool, new_opponent: bool, forfeited: bool, series_results: Array) -> void:
+	var points: int = _match_time_points(won, new_opponent, forfeited, series_results)
+	if points > 0:
+		add_time_points(points)
+
+
+func _match_time_points(won: bool, new_opponent: bool, forfeited: bool, series_results: Array) -> int:
+	var first_win: bool = won and new_opponent
 	if not every_match_advances_time():
-		return
-	var extra: int = games - (1 if was_first_win else 0)
-	if extra <= 0:
-		return
-	progress["opponents_beaten_count_current"] = get_current_defeated() + extra
-	save_progress()
+		return TIME_POINTS_FIRST_WIN if first_win else 0
+	if forfeited:
+		return _series_games_points(series_results, new_opponent) + TIME_POINTS_FORFEIT
+	var result_points: int = TIME_POINTS_LOSS
+	if first_win:
+		result_points = TIME_POINTS_FIRST_WIN
+	elif won:
+		result_points = TIME_POINTS_REMATCH_WIN
+	return _series_games_points(series_results, new_opponent) + result_points
 
 
-## A best-of-three won against a Card Elder always moves the clock on, whatever was
-## already played this slot (it counts as SERIES_WIN_FORCED_MATCHES, topped up to the
-## slot's threshold -- Night needs 5). Called by the outro after count_match_toward_time().
-const SERIES_WIN_FORCED_MATCHES := 4
-
-func force_time_advance_credit() -> void:
-	var needed: int = maxi(SERIES_WIN_FORCED_MATCHES, matches_to_advance_time())
-	if get_current_defeated() < needed:
-		progress["opponents_beaten_count_current"] = needed
-		save_progress()
+func _series_games_points(series_results: Array, new_opponent: bool) -> int:
+	var game_win: int = TIME_POINTS_SERIES_NEW_GAME_WIN if new_opponent else TIME_POINTS_SERIES_GAME_WIN
+	var total := 0
+	for result in series_results:
+		total += game_win if result == "win" else TIME_POINTS_SERIES_GAME_LOSS
+	return total
 
 
 func mark_first_launch_complete() -> void:
@@ -1971,7 +1994,6 @@ func has_beaten_opponent(opponent_name: String) -> bool:
 func mark_opponent_beaten(opponent_name: String):
 	if not has_beaten_opponent(opponent_name):
 		progress["opponents_beaten"].append(opponent_name)
-		progress["opponents_beaten_count_current"] = progress.get("opponents_beaten_count_current", 0) + 1
 		progress["opponents_beaten_count_total"] = progress.get("opponents_beaten_count_total", 0) + 1
 		if OPPONENT_FLAG_UNLOCKS.has(opponent_name):
 			progress[OPPONENT_FLAG_UNLOCKS[opponent_name]] = true
@@ -2132,12 +2154,9 @@ func get_player_name() -> String:
 func get_date() -> int:
 	return int(progress.get("date", 1))
 
-func get_current_defeated() -> int:
-	return int(progress.get("opponents_beaten_count_current", 0))
-
 ## Sets the time to a specific value. Pass an empty string to auto-step.
 ## Auto-step: Morning -> Afternoon -> Evening -> Night -> Bedtime -> Morning (and increment date).
-## Resets opponents_beaten_count_current to 0 on every time change.
+## Resets time_points to 0 on every time change.
 func advance_time(new_time: String = "") -> void:
 	if new_time == "":
 		# Auto-step to next time period
@@ -2160,8 +2179,7 @@ func advance_time(new_time: String = "") -> void:
 		progress["date"] = get_date() + 1
 
 	progress["time"] = new_time
-	progress["opponents_beaten_count_current"] = 0
-	progress["fish_caught_current_slot"] = 0   # ISSUE #441
+	progress["time_points"] = 0
 	_unlock_card_mart_packs()
 	save_progress()
 	print("Time advanced to: ", new_time, " | Date: ", get_date())
@@ -2367,10 +2385,9 @@ func add_fish_caught(amount: int = 1) -> void:
 	_load_nature_guide()
 	_nature_guide["fish_caught"] = get_fish_caught() + amount
 	save_nature_guide()
-	# ISSUE #441: from day 3 a fish counts as a tenth of a match toward the time slot.
+	# ISSUE #441: from day 3 a fish adds a little toward the time slot.
 	if every_match_advances_time():
-		progress["fish_caught_current_slot"] = get_slot_fish() + amount
-		save_progress()
+		add_time_points(TIME_POINTS_FISH * amount)
 
 
 # ============================================================

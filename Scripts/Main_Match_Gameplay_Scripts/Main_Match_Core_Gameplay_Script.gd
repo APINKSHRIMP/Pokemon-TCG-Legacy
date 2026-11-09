@@ -6438,8 +6438,13 @@ func _fly_prize_card(target: Control, from: Control, tex: Texture2D, dur: float)
 # series here makes the outro treat this as a plain single-match loss and return the player
 # to the map — instead of scoring round 1 and dropping them straight into round 2 of a
 # series they just tried to leave.
+#
+# The games already finished are kept for the clock, which scores a forfeit lower than a loss
+# (GameState.score_match_for_time).
 func end_game() -> void:
+	GameState.last_match_forfeited = true
 	if GameState.series_active:
+		GameState.last_series_results = GameState.series_round_results.duplicate()
 		GameState.clear_match_series()
 	game_end_logic(true)
 
@@ -12006,6 +12011,12 @@ func array_container_clicked(event: InputEvent, card_array: Array) -> void:
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
 			return
 		if msgbox_container.visible or coin_container.visible: return
+		# On the player's own turn a plain mouse click never opens the large hand: Alt + click does.
+		# Hand_Drag normally claims these clicks, but stands aside for the moments it is not free
+		# (a card still landing after a play), and a fast click used to fall through to here.
+		if card_array == player_hand and InputDevice.last == InputDevice.MOUSE and not event.alt_pressed \
+				and turn_number > 0 and not opponents_turn_active:
+			return
 		if card_array.size() > 0:
 			# ISSUE #83: viewing either bench is a VIEW (no "place on bench" action); clicking a card
 			# in it opens a single-card preview. Only flag it when we aren't already mid-action so it
@@ -12150,6 +12161,11 @@ func this_card_clicked(clicked_card: card_object) -> void:
 	# the action button instead of being handled as an ordinary (toggling) click.
 	if _is_double_click(clicked_card) and _double_click_confirm(clicked_card):
 		return
+	# A mouse click on a card makes the same blip the keyboard / pad cursor makes when it moves.
+	# Not while a message or coin is up: _handle_card_click ignores the click then.
+	if InputDevice.last == InputDevice.MOUSE and GameState.autotest == null \
+			and not msgbox_container.visible and not coin_container.visible:
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 	_handle_card_click(clicked_card)
 
 

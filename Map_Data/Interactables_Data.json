@@ -45,7 +45,5 @@
 	},
 	"Alexander_House_Downstairs": {},
 	"TownHall_Upstairs": {},
-	"Hotel": {
-		"Sign_Desk": "For late night hotel service please call the number below"
-	}
+	"Hotel": {}
 }

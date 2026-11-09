@@ -12,8 +12,8 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Gym_Plaza.tscn"
 const DEFAULT_SPAWN_POSITION             = Vector2(1763, 1810)
 
 func get_scene_path() -> String:     return SCENE_PATH
-## Shared with the Gym Challenge Reception, so the track runs on through the door. The Hall
-## behind it has its own music (Gym_Challenge_Hall.gd).
+## The same tracks as the Gym Challenge Reception, so the music runs on through the door, plus
+## the forest's wind at Bedtime. The Hall behind it has its own music (Gym_Challenge_Hall.gd).
 func get_time_bgm() -> Dictionary:   return SoundManagerScript.TIME_BGM_GYM_PLAZA
 func get_default_spawn() -> Vector2: return DEFAULT_SPAWN_POSITION
 func get_map_data_name() -> String: return "Gym_Plaza"

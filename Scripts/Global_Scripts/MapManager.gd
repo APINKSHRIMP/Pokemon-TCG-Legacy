@@ -482,16 +482,20 @@ func initialise(
 		# OLD (ISSUE #381): Bedtime only, a quick fade to black and back with the opponent gone.
 		# if GameState.get_time() == "Bedtime" and not GameState.test_match_mode:
 		# 	_bedtime_dismiss_battled_opponent()   # ISSUE #381 (runs on; not awaited)
-		# Any time slot change: the opponent says it's late and leaves on the next click.
+		# The clock reached Bedtime: the opponent says it's late and leaves on the next click.
 		if not GameState.test_match_mode:
 			_dismiss_late_opponent()   # runs on; not awaited
 		_handle_battle_return()
 
 
-## 2026-11-05: replaces the Bedtime-only fade below. When the clock moved on during a match and the
-## opponent just fought is not in the new time slot (respawned only because they were just fought, so
-## flagged "leaving_late"), they speak once -- in their own colours and name pill -- a random "it's late"
-## line plus a random "I have to go" line, and are gone on the click that closes it.
+## When a match takes the clock to Bedtime and the opponent just fought is not in that slot
+## (respawned only because they were just fought, so flagged "leaving_late"), they speak once -- in
+## their own colours and name pill -- and are gone on the click that closes it. Any other slot change
+## says nothing: the line only exists to explain them vanishing. What happens depends on the map:
+##   Outdoors: their line (random "it's late" + "I have to go", or SERIES_GOODBYES), then a fade.
+##   The Gym Challenge Hall: the same, but the player is walked out to the Reception with them.
+##   Other interiors: nobody leaves (CharacterSchedule.BEDTIME_KEEPS_NIGHT_CAST), so only a
+##   SERIES_GOODBYES line (the Card Elders) is said, and they stay where they are.
 ## Waits for the return-from-match overlay to clear first. TWEAKABLE: the delay and both line lists.
 const LATE_DISMISS_DELAY := 0.3
 const LATE_LINES_A := [
@@ -505,14 +509,123 @@ const LATE_LINES_B := [
 	"Sorry, gotta go!", "I best be going.",
 ]
 
+## TWEAKABLE: what each Card Elder and Gym Hero says when a best of 3 takes the clock to Bedtime,
+## in place of the random lines above.
+##   win    they lost.
+##   loss   they won.
+##   last   Elders only: they lost and this was the third Elder beaten.
+const SERIES_GOODBYES := {
+	"Card Elder Hamish": {
+		"win": "Congratulations on your win! Goodness, look how late it is. I know you have what it takes to finish the challenge tomorrow.",
+		"last": "Hoh Hoh, that's all three of us beaten, and it's taken half the night! Get some rest, you've more than earned it.",
+		"loss": "Hoh Hoh, what a battle, but look how late it is! Get some rest and come back for another go tomorrow.",
+	},
+	"Card Elder Rayne": {
+		"win": "Well done, your battle was incredible and it's taken us all night. Good luck, I know you'll finish the challenge tomorrow!",
+		"last": "You've weathered all three of us, and it's taken us all night! Off you go and rest, the Gym Hero Challenge can wait for morning.",
+		"loss": "The rain will always stop, and tonight it's stopped very late indeed! Get some sleep and try again tomorrow.",
+	},
+	"Card Elder Waverly": {
+		"win": "Well well, it's been a jolly good battle, but look at the hour! Sleep well. I've no doubt you'll finish the challenge tomorrow.",
+		"last": "Well well, that's all three of us, and at this hour too! Sleep well, you'll need it for the Gym Hero Challenge.",
+		"loss": "Well well, a jolly good battle, but it's far too late for another! Sleep on it and come back tomorrow.",
+	},
+	"Gym Challenge Brock": {
+		"win": "You cracked my defence, but look how late it is! Get a good night's rest before you take on Misty.",
+		"loss": "My defence held, but that went on far too long. Go and get some rest, and come back harder tomorrow.",
+	},
+	"Gym Challenge Misty": {
+		"win": "Hey, we're the last ones here! That was such a good match. Good luck with Lt. Surge tomorrow!",
+		"loss": "Yay, I won, but we're the last ones here! Go dry off and get some sleep, then come back for another splash tomorrow.",
+	},
+	"Gym Challenge Lt. Surge": {
+		"win": "Lights out, soldier! That's enough for one night. Get some shut-eye before you take on Erika.",
+		"loss": "Ha! I'd zap you again, kid, but it's past lights out. Get some shut-eye and report back tomorrow!",
+	},
+	"Gym Challenge Erika": {
+		"win": "It was lovely battling you, but look at how late it is! Rest well tonight, and I wish you good fortune against Koga.",
+		"loss": "Oh my, even my flowers have closed for the night. Do rest well, and please come back to see me tomorrow.",
+	},
+	"Gym Challenge Koga": {
+		"win": "Fwahaha! Night has fallen, and even a ninja must rest. Sleep well, for Sabrina will see you when you return.",
+		"loss": "Fwahaha! Night has long since fallen, and my poison has done its work. Rest now, and return tomorrow if you dare.",
+	},
+	"Gym Challenge Sabrina": {
+		"win": "...I saw how late this would run, but not how it would end. Rest tonight. Blaine will give you everything he has when you return.",
+		"loss": "...As I foresaw, it is very late, and you will return tomorrow. Go and rest your mind until then.",
+	},
+	"Gym Challenge Blaine": {
+		"win": "Hah! We've burned the midnight oil! Rest up tonight, because Giovanni is all that's left and you'll need that fire.",
+		"loss": "Hah! We've burned the midnight oil and you're all ashes! Go and cool off, then come back for more tomorrow.",
+	},
+	"Gym Challenge Giovanni": {
+		"win": "...It is far later than I intended, and you are the champion now. Leave me. You have earned your rest.",
+		"loss": "It is late, and you are not yet ready. Rest, if you can. I will be waiting tomorrow.",
+	},
+}
+
+## When the Gym Challenge Hall empties at Bedtime the player is taken out with the Gym Hero.
+const GYM_HALL_MAP := "Gym_Challenge_Hall"
+const GYM_RECEPTION_SCENE := "res://Scenes/Map_Scenes/Gym_Challenge_Reception.tscn"
+const GYM_HALL_EXIT_SPAWN := Vector2(220, 72)   # TWEAKABLE: just below Gym Security 1 (220, 40)
+const GYM_HALL_EXIT_FADE := 0.5                 # TWEAKABLE: the fade out, same as a door
+
+## True when the match just played started before Bedtime and ended in it.
+func _clock_moved_to_bedtime() -> bool:
+	var started_in: String = str(GameState.last_battled_opponent_entry.get("time_at_start", ""))
+	return GameState.get_time() == "Bedtime" and started_in != "" and started_in != "Bedtime"
+
+
+## This opponent's own SERIES_GOODBYES line after a best of 3, or "" when there isn't one. The
+## upstairs club Elders play single matches, so they have none.
+func _series_goodbye_line(opp: Node) -> String:
+	if str(GameState.last_battled_opponent_entry.get("match_format", "")) != "best_of_3":
+		return ""
+	var lines: Dictionary = SERIES_GOODBYES.get(opp.opponent_name, {})
+	var key := "loss"
+	if GameState.last_match_won:
+		key = "win"
+		if opp.opponent_name in GameState.CARD_ELDERS \
+				and GameState.card_elders_beaten() == GameState.CARD_ELDERS.size():
+			key = "last"
+	return str(lines.get(key, ""))
+
+
+## Under black, out of the empty Hall and into the Reception below the guard, facing him.
+func _leave_gym_hall() -> void:
+	GameState.returning_from_battle = false
+	GameState.save_player_direction("up")
+	GameState.spawn_position = GYM_HALL_EXIT_SPAWN
+	GameState.use_spawn_position = true
+	GameState.entering_from = GYM_HALL_MAP
+	var tween := get_tree().current_scene.create_tween()
+	tween.tween_property(get_tree().current_scene, "modulate", Color.BLACK, GYM_HALL_EXIT_FADE)
+	tween.tween_callback(func():
+		cutscene_active = false
+		SceneCache.change_scene(GYM_RECEPTION_SCENE)
+	)
+
+
 func _dismiss_late_opponent() -> void:
+	if not _clock_moved_to_bedtime():
+		return
 	var opp: Node = null
+	var fought: String = str(GameState.last_battled_opponent_entry.get("name", ""))
 	for child in _opponents_container.get_children():
-		if child.is_in_group("opponents") and child.has_meta("leaving_late"):
+		if child.is_in_group("opponents") and child.opponent_name == fought:
 			opp = child
 			break
 	if opp == null:
 		return
+	var map_root: Node = _player.get_parent()
+	var outdoors: bool = map_root.has_method("uses_time_of_day") and map_root.uses_time_of_day()
+	var in_gym_hall: bool = _map_data == GYM_HALL_MAP
+	var leaves: bool = opp.has_meta("leaving_late") and (outdoors or in_gym_hall)
+	var line := _series_goodbye_line(opp)
+	if line == "":
+		if not leaves:
+			return
+		line = str(LATE_LINES_A.pick_random()) + " " + str(LATE_LINES_B.pick_random())
 	cutscene_active = true
 	if _player != null and is_instance_valid(_player):
 		_player.lock_movement()
@@ -526,11 +639,20 @@ func _dismiss_late_opponent() -> void:
 		cutscene_active = false
 		return
 	current_opponent = opp
-	await _show_message_with_ok(str(LATE_LINES_A.pick_random()) + " " + str(LATE_LINES_B.pick_random()))
+	await _show_message_with_ok(line)
 	while message_panel != null and is_instance_valid(message_panel) and message_panel.visible:
 		await get_tree().process_frame
+	if not leaves:
+		cutscene_active = false
+		if _player != null and is_instance_valid(_player):
+			_player.unlock_movement()
+			_player.can_move = true
+		return
 	if _player != null and is_instance_valid(_player):
 		_player.lock_movement()   # closing the box hands movement back
+	if in_gym_hall:
+		_leave_gym_hall()
+		return
 	# They leave under a quick fade to black and back (the same beat Bedtime used).
 	var layer := CanvasLayer.new()
 	layer.layer = 90
@@ -872,10 +994,9 @@ func _load_and_spawn_opponents(entries: Array):
 			_assign_actor_position(opp, lbe.get("name", ""), lbe["position"])
 			_opponents_container.add_child(opp)
 			# They are only here because they were just fought - they are not in this
-			# time slot's cast. If the clock moved on during the match, they say so and
-			# leave once the player is back (_dismiss_late_opponent).
-			var started_in: String = str(lbe.get("time_at_start", ""))
-			if started_in != "" and started_in != GameState.get_time():
+			# time slot's cast. If the clock reached Bedtime during the match, they say so
+			# and leave once the player is back (_dismiss_late_opponent).
+			if _clock_moved_to_bedtime():
 				opp.set_meta("leaving_late", true)
 
 
@@ -1324,12 +1445,38 @@ func _show_message_with_choices(text: String):
 # ISSUE #128: "OK" boxes no longer draw an OK button -- a click anywhere, Space, Enter or
 # Escape all dismiss them -- and the panel drops into the space the button row used to take.
 func _show_message_with_ok(text: String, font_size: int = 28):
+	_hide_modifiers_box()
 	text = await _emote_prelude(text)
 	_apply_actor_chips()
 	message_panel.set_mode("ok")
 	message_panel.set_body_text(text, font_size)
 	message_panel.visible = true
 	_player.can_move = false
+
+# ------------------------------------------------------------
+# MODIFIERS BOX
+# ------------------------------------------------------------
+# What a match's match_effects will do, on screen while the player decides on the Yes/No.
+# Both scripts are load()ed, not preloaded, to keep them out of this autoload's compile.
+const MATCH_EFFECTS_SCRIPT := "res://Scripts/Main_Match_Gameplay_Scripts/Match_Effects.gd"
+const MODIFIERS_BOX_SCRIPT := "res://Scripts/Global_Scripts/Match_Modifiers_Box.gd"
+var _modifiers_box: Control = null
+
+func _show_modifiers_box() -> void:
+	_hide_modifiers_box()
+	if current_opponent == null or not message_panel.visible or not message_panel.is_choice_mode():
+		return
+	var lines: Array = load(MATCH_EFFECTS_SCRIPT).describe_entries(current_opponent.match_effects)
+	if lines.is_empty():
+		return
+	_modifiers_box = load(MODIFIERS_BOX_SCRIPT).new()
+	_modifiers_box.setup(message_panel, lines)
+	message_panel.add_child(_modifiers_box)
+
+func _hide_modifiers_box() -> void:
+	if _modifiers_box != null and is_instance_valid(_modifiers_box):
+		_modifiers_box.queue_free()
+	_modifiers_box = null
 
 # ------------------------------------------------------------
 # SPEECH EMOTES
@@ -1421,6 +1568,7 @@ func _show_large_message_then(text: String, on_ok: Callable) -> void:
 	_show_large_message_with_ok(text)
 
 func _hide_message():
+	_hide_modifiers_box()
 	message_panel.visible = false
 	message_panel.clear_chips()
 	_clear_gift_display()
@@ -1737,7 +1885,8 @@ func _on_player_interact(opponent: Node):
 		await _show_message_with_ok(opponent.rematch_win_text)
 		message_panel.set_button_notice(HARD_MODE_NO_REMATCH_TEXT)
 		return
-	_show_message_with_choices(opponent.get_greeting_text())
+	await _show_message_with_choices(opponent.get_greeting_text())
+	_show_modifiers_box()
 
 func _on_yes_pressed():
 	await _flush_after_emote()
@@ -3820,7 +3969,7 @@ func debug_set_date(date: int) -> void:
 	_debug_set_date_time(date, "")
 
 
-## Changing date/time wipes the current-period defeated count, mirroring what
+## Changing date/time wipes the current-period time points, mirroring what
 ## advance_time() does, then reloads the map in place so its date/time characters
 ## are rebuilt with the player standing where they were.
 func _debug_set_date_time(new_date: int, new_time: String) -> void:
@@ -3832,8 +3981,7 @@ func _debug_set_date_time(new_date: int, new_time: String) -> void:
 	else:
 		GameState.progress["time"] = new_time
 		print("DEBUG: time set to ", new_time)
-	GameState.progress["opponents_beaten_count_current"] = 0
-	GameState.progress["fish_caught_current_slot"] = 0   # ISSUE #441
+	GameState.progress["time_points"] = 0
 	GameState.save_progress()
 	if current != null:
 		_debug_reload_map_in_place(current)
@@ -3848,13 +3996,12 @@ func debug_set_fish_coins(amount: int) -> void:
 	GameState.add_fish_coins(amount - GameState.get_fish_coins())
 	print("DEBUG: fish coins = ", GameState.get_fish_coins())
 
-## No reset, no reload. This is the count the outro reads to auto-advance time (2/3/4 a slot,
-## see GameState.matches_to_advance_time), so taking it one short and then winning a real
+## No reset, no reload. These are the points the outro reads to auto-advance time (see
+## GameState.time_points_to_advance), so taking them one win short and then winning a real
 ## battle exercises the real path.
-func debug_add_defeated() -> void:
-	GameState.progress["opponents_beaten_count_current"] = GameState.get_current_defeated() + 1
-	GameState.save_progress()
-	print("DEBUG: opponents defeated = ", GameState.get_current_defeated())
+func debug_add_time_points() -> void:
+	GameState.add_time_points(GameState.TIME_POINTS_FIRST_WIN)
+	print("DEBUG: time points = ", GameState.get_time_points(), " of ", GameState.time_points_to_advance())
 
 
 func debug_start_test_match() -> void:
@@ -4055,7 +4202,7 @@ func _debug_reload_map_in_place(current: Node) -> void:
 	GameState.save_menu_return_state(scene_path, pos, dir)
 	SceneCache.change_scene(scene_path)
 
-# Shows a big "Opponents defeated: N" label on the current scene's UI layer
+# Shows a big "Time points: N of N" label on the current scene's UI layer
 # for 2 seconds. Re-pressing C refreshes the text and restarts the timer.
 func _debug_flash_defeated_count() -> void:
 	if _ui_layer == null or not is_instance_valid(_ui_layer):
@@ -4079,9 +4226,7 @@ func _debug_flash_defeated_count() -> void:
 		_debug_defeated_label.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 		_ui_layer.add_child(_debug_defeated_label)
 
-	_debug_defeated_label.text = "Opponents defeated: " + str(GameState.get_current_defeated())
-	if GameState.get_slot_fish() > 0:   # ISSUE #441
-		_debug_defeated_label.text += "  (+%d fish = %.1f)" % [GameState.get_slot_fish(), GameState.get_time_progress()]
+	_debug_defeated_label.text = "Time points: %d of %d" % [GameState.get_time_points(), GameState.time_points_to_advance()]
 	_debug_flash_defeated_label_finish()
 
 # Flashes arbitrary text using the same big centred label as the defeated counter.

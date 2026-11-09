@@ -29,7 +29,7 @@
 	"matches_won": 0,
 	"npc_interactions": [],
 	"opponents_beaten": [],
-	"opponents_beaten_count_current": 0,
+	"time_points": 0,
 	"opponents_beaten_count_total": 0,
 	"packs_unlocked": [
 		"base1",

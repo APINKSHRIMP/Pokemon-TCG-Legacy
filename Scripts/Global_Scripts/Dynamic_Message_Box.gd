@@ -212,6 +212,10 @@ func _box_l() -> float:
 func _box_r() -> float:
 	return _box_l() + _box_w()
 
+## The box's top-right corner on screen, for anything that sits against it.
+func panel_top_right() -> Vector2:
+	return Vector2(_box_r(), _panel_bottom - _panel_height)
+
 
 func _on_screen_resized() -> void:
 	offset_right = UIKit.screen_w()

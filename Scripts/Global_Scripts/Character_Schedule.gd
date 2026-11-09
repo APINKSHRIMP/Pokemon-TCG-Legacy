@@ -20,6 +20,16 @@ const TIME_LETTERS := {
 ## or "*" times spec means the four daytime slots, never this one.
 const OPT_IN_TIMES := ["Bedtime"]
 
+## TWEAKABLE: interiors whose people stay put at Bedtime. Anyone with no Bedtime rule of their own
+## reads their Night rule instead, so a match that ends in Bedtime doesn't empty the room around
+## the player. Left out on purpose: the Gym Challenge Hall (empties at Bedtime) and the Gym
+## Challenge Reception (its Bedtime cast and lines are written out in its own file).
+const BEDTIME_KEEPS_NIGHT_CAST := [
+	"Cafe", "Card_Mart", "Fish_Shop", "Fish_Shop_Downstairs", "Hotel", "Rocket_Mart", "TrainStation",
+	"TownHall", "TownHall_Upstairs", "Windmill", "Ellie_House_Downstairs", "Ellie_House_Upstairs",
+	"Alexander_House_Downstairs", "Alexander_House_Upstairs",
+]
+
 ## Keys that describe the schedule itself rather than the character.
 const SCHEDULE_KEYS := ["when", "days", "times", "loop", "kind"]
 
@@ -359,6 +369,10 @@ static func cast_for(map_name: String, day: int, time_of_day: String,
 
 	var calendar: Dictionary = doc.get("calendar", {})
 	var looped_day := resolve_day(calendar, day)
+	# A character's own Bedtime rule wins; Night is only the fallback.
+	var times_to_try: Array = [time_of_day]
+	if time_of_day == "Bedtime" and BEDTIME_KEEPS_NIGHT_CAST.has(map_name):
+		times_to_try.append("Night")
 
 	for section in ["npcs", "opponents"]:
 		var cast: Dictionary = doc.get(section, {})
@@ -382,13 +396,16 @@ static func cast_for(map_name: String, day: int, time_of_day: String,
 			if rules is Array:
 				var hit: Dictionary = {}
 				var matched := false
-				for i in rules.size():
-					var rule = rules[i]
-					if rule is Dictionary and _rule_matches(rule, day_for_match, time_of_day,
-							condition_eval, character.get("requires")):
-						hit = rule
-						rule_index = i
-						matched = true
+				for try_time in times_to_try:
+					for i in rules.size():
+						var rule = rules[i]
+						if rule is Dictionary and _rule_matches(rule, day_for_match, try_time,
+								condition_eval, character.get("requires")):
+							hit = rule
+							rule_index = i
+							matched = true
+							break
+					if matched:
 						break
 				if not matched:
 					continue
@@ -402,8 +419,14 @@ static func cast_for(map_name: String, day: int, time_of_day: String,
 						body[key] = hit[key]
 				if hit.has("kind"):
 					body["kind"] = hit["kind"]
-			elif not _rule_matches(character, day_for_match, time_of_day, condition_eval):
-				continue
+			else:
+				var own_match := false
+				for try_time in times_to_try:
+					if _rule_matches(character, day_for_match, try_time, condition_eval):
+						own_match = true
+						break
+				if not own_match:
+					continue
 
 			var target: String = section
 			match body.get("kind", ""):

@@ -624,6 +624,7 @@
           "times": "N"
         }
       ],
+      "match_format": "best_of_3",
       "music": "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)",
       "restrictions": {
         "banned_card_ids": [

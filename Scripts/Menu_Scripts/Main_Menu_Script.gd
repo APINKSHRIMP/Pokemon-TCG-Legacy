@@ -152,8 +152,7 @@ func _ready() -> void:
 		print("ISSUE #446 FIX ACTIVE: escape menu plays the shared sub-menu track")
 		SoundManagerScript.play_bgm(SoundManagerScript.menu_bgm())
 	else:
-		var menu_track: String = SoundManagerScript.menu_bgm()
-		var audio_stream = load(SoundManagerScript.BGM_MAIN_MENU if menu_track == SoundManagerScript.BGM_COIN_MODE else menu_track)
+		var audio_stream = load(SoundManagerScript.BGM_MAIN_MENU)
 		audio_player.stream = audio_stream
 		audio_player.bus = SoundManagerScript.MUSIC_BUS
 		if audio_stream != null:
