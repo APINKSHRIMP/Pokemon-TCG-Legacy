@@ -250,8 +250,18 @@
         "repeat": "Shh, I think they're about to play something big."
       },
       "when": [
-        { "days": "6", "times": "M,A,E", "at": [367, 122], "move": "idle_up" },
-        { "days": "7", "times": "E,N", "at": [456, 126], "move": "idle_left" }
+        {
+          "days": "6",
+          "times": "M,A,E",
+          "at": [367, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "7",
+          "times": "E,N",
+          "at": [456, 126],
+          "move": "idle_left"
+        }
       ]
     },
     "Town Hall Spectator 2": {
@@ -263,10 +273,30 @@
         "repeat": "I could watch them play all day."
       },
       "when": [
-        { "days": "5", "times": "M", "at": [303, 122], "move": "idle_up" },
-        { "days": "6", "times": "E,N", "at": [239, 152], "move": "idle_up" },
-        { "days": "7", "times": "E,N", "at": [303, 152], "move": "idle_up" },
-        { "days": "9", "times": "E", "at": [303, 122], "move": "idle_up" }
+        {
+          "days": "5",
+          "times": "M",
+          "at": [303, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "E,N",
+          "at": [239, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "7",
+          "times": "E,N",
+          "at": [303, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "9",
+          "times": "E",
+          "at": [303, 122],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 3": {
@@ -278,7 +308,12 @@
         "repeat": "I've learnt more watching here than from any guidebook."
       },
       "when": [
-        { "days": "7", "times": "M,A", "at": [367, 152], "move": "idle_up" }
+        {
+          "days": "7",
+          "times": "M,A",
+          "at": [367, 152],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 4": {
@@ -290,8 +325,18 @@
         "repeat": "I do enjoy watching the masters at work."
       },
       "when": [
-        { "days": "4", "times": "N", "at": [444, 58], "move": "idle_left" },
-        { "days": "5", "times": "A,E,N", "at": [303, 122], "move": "idle_up" }
+        {
+          "days": "4",
+          "times": "N",
+          "at": [444, 58],
+          "move": "idle_left"
+        },
+        {
+          "days": "5",
+          "times": "A,E,N",
+          "at": [303, 122],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 5": {
@@ -303,9 +348,24 @@
         "repeat": "Don't tell my boss you saw me here."
       },
       "when": [
-        { "days": "5", "times": "M", "at": [367, 122], "move": "idle_up" },
-        { "days": "6", "times": "M", "at": [239, 152], "move": "idle_up" },
-        { "days": "9", "times": "M", "at": [239, 152], "move": "idle_up" }
+        {
+          "days": "5",
+          "times": "M",
+          "at": [367, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "M",
+          "at": [239, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "9",
+          "times": "M",
+          "at": [239, 152],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 6": {
@@ -317,9 +377,24 @@
         "repeat": "They're even better than people say."
       },
       "when": [
-        { "days": "4", "times": "N", "at": [456, 126], "move": "idle_left" },
-        { "days": "6", "times": "M,A,E,N", "at": [456, 92], "move": "idle_left" },
-        { "days": "8", "times": "N", "at": [367, 152], "move": "idle_up" }
+        {
+          "days": "4",
+          "times": "N",
+          "at": [456, 126],
+          "move": "idle_left"
+        },
+        {
+          "days": "6",
+          "times": "M,A,E,N",
+          "at": [456, 92],
+          "move": "idle_left"
+        },
+        {
+          "days": "8",
+          "times": "N",
+          "at": [367, 152],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 7": {
@@ -331,10 +406,30 @@
         "repeat": "Will you be the one to finally beat them?"
       },
       "when": [
-        { "days": "4", "times": "E", "at": [444, 58], "move": "idle_left" },
-        { "days": "6", "times": "M", "at": [303, 122], "move": "idle_up" },
-        { "days": "7", "times": "M,A", "at": [456, 126], "move": "idle_left" },
-        { "days": "9", "times": "A", "at": [214, 92], "move": "idle_right" }
+        {
+          "days": "4",
+          "times": "E",
+          "at": [444, 58],
+          "move": "idle_left"
+        },
+        {
+          "days": "6",
+          "times": "M",
+          "at": [303, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "7",
+          "times": "M,A",
+          "at": [456, 126],
+          "move": "idle_left"
+        },
+        {
+          "days": "9",
+          "times": "A",
+          "at": [214, 92],
+          "move": "idle_right"
+        }
       ]
     },
     "Town Hall Spectator 8": {
@@ -346,10 +441,30 @@
         "repeat": "Go on, show them how it's done."
       },
       "when": [
-        { "days": "4", "times": "E", "at": [456, 126], "move": "idle_left" },
-        { "days": "5", "times": "A,E,N", "at": [444, 58], "move": "idle_left" },
-        { "days": "6", "times": "N", "at": [214, 92], "move": "idle_right" },
-        { "days": "8", "times": "A", "at": [226, 58], "move": "idle_right" }
+        {
+          "days": "4",
+          "times": "E",
+          "at": [456, 126],
+          "move": "idle_left"
+        },
+        {
+          "days": "5",
+          "times": "A,E,N",
+          "at": [444, 58],
+          "move": "idle_left"
+        },
+        {
+          "days": "6",
+          "times": "N",
+          "at": [214, 92],
+          "move": "idle_right"
+        },
+        {
+          "days": "8",
+          "times": "A",
+          "at": [226, 58],
+          "move": "idle_right"
+        }
       ]
     },
     "Town Hall Spectator 9": {
@@ -361,9 +476,24 @@
         "repeat": "I hope I get a seat in the stands for the Gym Hero Challenge."
       },
       "when": [
-        { "days": "5", "times": "M", "at": [239, 152], "move": "idle_up" },
-        { "days": "6", "times": "M", "at": [214, 92], "move": "idle_right" },
-        { "days": "8", "times": "M,A,E", "at": [431, 152], "move": "idle_up" }
+        {
+          "days": "5",
+          "times": "M",
+          "at": [239, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "M",
+          "at": [214, 92],
+          "move": "idle_right"
+        },
+        {
+          "days": "8",
+          "times": "M,A,E",
+          "at": [431, 152],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 10": {
@@ -375,10 +505,30 @@
         "repeat": "Do you think anyone will beat all three?"
       },
       "when": [
-        { "days": "4", "times": "E", "at": [226, 126], "move": "idle_right" },
-        { "days": "5", "times": "M", "at": [303, 152], "move": "idle_up" },
-        { "days": "5", "times": "E,N", "at": [367, 122], "move": "idle_up" },
-        { "days": "7", "times": "A", "at": [431, 152], "move": "idle_up" }
+        {
+          "days": "4",
+          "times": "E",
+          "at": [226, 126],
+          "move": "idle_right"
+        },
+        {
+          "days": "5",
+          "times": "M",
+          "at": [303, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "5",
+          "times": "E,N",
+          "at": [367, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "7",
+          "times": "A",
+          "at": [431, 152],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 11": {
@@ -390,12 +540,42 @@
         "repeat": "Maybe next year..."
       },
       "when": [
-        { "days": "4", "times": "N", "at": [303, 122], "move": "idle_up" },
-        { "days": "5", "times": "A,E", "at": [226, 126], "move": "idle_right" },
-        { "days": "6", "times": "A", "at": [303, 122], "move": "idle_up" },
-        { "days": "6", "times": "N", "at": [226, 58], "move": "idle_right" },
-        { "days": "8", "times": "M", "at": [226, 126], "move": "idle_right" },
-        { "days": "8", "times": "N", "at": [303, 152], "move": "idle_up" }
+        {
+          "days": "4",
+          "times": "N",
+          "at": [303, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "5",
+          "times": "A,E",
+          "at": [226, 126],
+          "move": "idle_right"
+        },
+        {
+          "days": "6",
+          "times": "A",
+          "at": [303, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "N",
+          "at": [226, 58],
+          "move": "idle_right"
+        },
+        {
+          "days": "8",
+          "times": "M",
+          "at": [226, 126],
+          "move": "idle_right"
+        },
+        {
+          "days": "8",
+          "times": "N",
+          "at": [303, 152],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 12": {
@@ -407,10 +587,30 @@
         "repeat": "I'm taking notes for my own deck."
       },
       "when": [
-        { "days": "4", "times": "E,N", "at": [239, 152], "move": "idle_up" },
-        { "days": "6", "times": "A", "at": [226, 126], "move": "idle_right" },
-        { "days": "7", "times": "M,A,E,N", "at": [456, 92], "move": "idle_left" },
-        { "days": "10", "times": "M", "at": [456, 126], "move": "idle_left" }
+        {
+          "days": "4",
+          "times": "E,N",
+          "at": [239, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "A",
+          "at": [226, 126],
+          "move": "idle_right"
+        },
+        {
+          "days": "7",
+          "times": "M,A,E,N",
+          "at": [456, 92],
+          "move": "idle_left"
+        },
+        {
+          "days": "10",
+          "times": "M",
+          "at": [456, 126],
+          "move": "idle_left"
+        }
       ]
     },
     "Town Hall Spectator 13": {
@@ -422,10 +622,30 @@
         "repeat": "Try not to block the shot, thanks."
       },
       "when": [
-        { "days": "4", "times": "N", "at": [303, 152], "move": "idle_up" },
-        { "days": "5", "times": "A,E", "at": [367, 152], "move": "idle_up" },
-        { "days": "6", "times": "E", "at": [303, 122], "move": "idle_up" },
-        { "days": "9", "times": "M,A", "at": [226, 58], "move": "idle_right" }
+        {
+          "days": "4",
+          "times": "N",
+          "at": [303, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "5",
+          "times": "A,E",
+          "at": [367, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "E",
+          "at": [303, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "9",
+          "times": "M,A",
+          "at": [226, 58],
+          "move": "idle_right"
+        }
       ]
     },
     "Town Hall Spectator 14": {
@@ -437,9 +657,24 @@
         "repeat": "Any comment for the paper? No? Fair enough."
       },
       "when": [
-        { "days": "4", "times": "E", "at": [431, 152], "move": "idle_up" },
-        { "days": "7", "times": "M", "at": [226, 126], "move": "idle_right" },
-        { "days": "8", "times": "M", "at": [456, 92], "move": "idle_left" }
+        {
+          "days": "4",
+          "times": "E",
+          "at": [431, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "7",
+          "times": "M",
+          "at": [226, 126],
+          "move": "idle_right"
+        },
+        {
+          "days": "8",
+          "times": "M",
+          "at": [456, 92],
+          "move": "idle_left"
+        }
       ]
     },
     "Town Hall Spectator 15": {
@@ -451,10 +686,30 @@
         "repeat": "These youngsters are getting rather good."
       },
       "when": [
-        { "days": "4", "times": "N", "at": [431, 152], "move": "idle_up" },
-        { "days": "5", "times": "A", "at": [431, 152], "move": "idle_up" },
-        { "days": "6", "times": "M", "at": [226, 126], "move": "idle_right" },
-        { "days": "7", "times": "M,A", "at": [239, 152], "move": "idle_up" }
+        {
+          "days": "4",
+          "times": "N",
+          "at": [431, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "5",
+          "times": "A",
+          "at": [431, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "M",
+          "at": [226, 126],
+          "move": "idle_right"
+        },
+        {
+          "days": "7",
+          "times": "M,A",
+          "at": [239, 152],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 16": {
@@ -466,10 +721,30 @@
         "repeat": "Oh, that was a dreadful misplay, simply dreadful."
       },
       "when": [
-        { "days": "5", "times": "M", "at": [214, 92], "move": "idle_right" },
-        { "days": "5", "times": "E,N", "at": [239, 152], "move": "idle_up" },
-        { "days": "7", "times": "M,A,E,N", "at": [226, 58], "move": "idle_right" },
-        { "days": "8", "times": "A,E", "at": [226, 126], "move": "idle_right" }
+        {
+          "days": "5",
+          "times": "M",
+          "at": [214, 92],
+          "move": "idle_right"
+        },
+        {
+          "days": "5",
+          "times": "E,N",
+          "at": [239, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "7",
+          "times": "M,A,E,N",
+          "at": [226, 58],
+          "move": "idle_right"
+        },
+        {
+          "days": "8",
+          "times": "A,E",
+          "at": [226, 126],
+          "move": "idle_right"
+        }
       ]
     },
     "Town Hall Spectator 17": {
@@ -481,9 +756,24 @@
         "repeat": "Don't tell anyone you saw me here."
       },
       "when": [
-        { "days": "5", "times": "M", "at": [431, 152], "move": "idle_up" },
-        { "days": "6", "times": "M,A", "at": [367, 152], "move": "idle_up" },
-        { "days": "7", "times": "M", "at": [214, 92], "move": "idle_right" }
+        {
+          "days": "5",
+          "times": "M",
+          "at": [431, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "M,A",
+          "at": [367, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "7",
+          "times": "M",
+          "at": [214, 92],
+          "move": "idle_right"
+        }
       ]
     },
     "Town Hall Spectator 18": {
@@ -495,8 +785,18 @@
         "repeat": "I'm going to enter when I'm older!"
       },
       "when": [
-        { "days": "5", "times": "A", "at": [367, 122], "move": "idle_up" },
-        { "days": "6", "times": "M,A,E", "at": [444, 58], "move": "idle_left" }
+        {
+          "days": "5",
+          "times": "A",
+          "at": [367, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "M,A,E",
+          "at": [444, 58],
+          "move": "idle_left"
+        }
       ]
     },
     "Town Hall Spectator 19": {
@@ -508,12 +808,42 @@
         "repeat": "My deck is all Rattata. Is that bad?"
       },
       "when": [
-        { "days": "4", "times": "E", "at": [456, 92], "move": "idle_left" },
-        { "days": "5", "times": "M,A,E,N", "at": [456, 92], "move": "idle_left" },
-        { "days": "6", "times": "A", "at": [456, 126], "move": "idle_left" },
-        { "days": "6", "times": "N", "at": [303, 152], "move": "idle_up" },
-        { "days": "7", "times": "A", "at": [303, 122], "move": "idle_up" },
-        { "days": "9", "times": "E", "at": [444, 58], "move": "idle_left" }
+        {
+          "days": "4",
+          "times": "E",
+          "at": [456, 92],
+          "move": "idle_left"
+        },
+        {
+          "days": "5",
+          "times": "M,A,E,N",
+          "at": [456, 92],
+          "move": "idle_left"
+        },
+        {
+          "days": "6",
+          "times": "A",
+          "at": [456, 126],
+          "move": "idle_left"
+        },
+        {
+          "days": "6",
+          "times": "N",
+          "at": [303, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "7",
+          "times": "A",
+          "at": [303, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "9",
+          "times": "E",
+          "at": [444, 58],
+          "move": "idle_left"
+        }
       ]
     },
     "Town Hall Spectator 20": {
@@ -525,8 +855,18 @@
         "repeat": "Watch how they manage their energy. That's the secret."
       },
       "when": [
-        { "days": "5", "times": "A", "at": [456, 126], "move": "idle_left" },
-        { "days": "6", "times": "M,A,E", "at": [431, 152], "move": "idle_up" }
+        {
+          "days": "5",
+          "times": "A",
+          "at": [456, 126],
+          "move": "idle_left"
+        },
+        {
+          "days": "6",
+          "times": "M,A,E",
+          "at": [431, 152],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 21": {
@@ -538,10 +878,30 @@
         "repeat": "Hold still, I'm drawing you into the crowd."
       },
       "when": [
-        { "days": "5", "times": "M", "at": [456, 126], "move": "idle_left" },
-        { "days": "5", "times": "E,N", "at": [431, 152], "move": "idle_up" },
-        { "days": "7", "times": "E", "at": [214, 92], "move": "idle_right" },
-        { "days": "9", "times": "M", "at": [456, 126], "move": "idle_left" }
+        {
+          "days": "5",
+          "times": "M",
+          "at": [456, 126],
+          "move": "idle_left"
+        },
+        {
+          "days": "5",
+          "times": "E,N",
+          "at": [431, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "7",
+          "times": "E",
+          "at": [214, 92],
+          "move": "idle_right"
+        },
+        {
+          "days": "9",
+          "times": "M",
+          "at": [456, 126],
+          "move": "idle_left"
+        }
       ]
     },
     "Town Hall Spectator 22": {
@@ -553,9 +913,24 @@
         "repeat": "The Gym Hero Challenge is going to be even bigger!"
       },
       "when": [
-        { "days": "5", "times": "M,A", "at": [226, 58], "move": "idle_right" },
-        { "days": "7", "times": "E", "at": [367, 122], "move": "idle_up" },
-        { "days": "8", "times": "M,A,E,N", "at": [303, 122], "move": "idle_up" }
+        {
+          "days": "5",
+          "times": "M,A",
+          "at": [226, 58],
+          "move": "idle_right"
+        },
+        {
+          "days": "7",
+          "times": "E",
+          "at": [367, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "8",
+          "times": "M,A,E,N",
+          "at": [303, 122],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Spectator 23": {
@@ -567,8 +942,18 @@
         "repeat": "Is it over yet? Tell me when it's over."
       },
       "when": [
-        { "days": "5", "times": "M", "at": [367, 152], "move": "idle_up" },
-        { "days": "6", "times": "A,E", "at": [226, 58], "move": "idle_right" }
+        {
+          "days": "5",
+          "times": "M",
+          "at": [367, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "A,E",
+          "at": [226, 58],
+          "move": "idle_right"
+        }
       ]
     },
     "Town Hall Spectator 24": {
@@ -580,10 +965,30 @@
         "repeat": "I'd trade my whole binder for that Elder's deck."
       },
       "when": [
-        { "days": "4", "times": "E,N", "at": [367, 152], "move": "idle_up" },
-        { "days": "5", "times": "A,E,N", "at": [303, 152], "move": "idle_up" },
-        { "days": "6", "times": "N", "at": [367, 122], "move": "idle_up" },
-        { "days": "10", "times": "M,A", "at": [239, 152], "move": "idle_up" }
+        {
+          "days": "4",
+          "times": "E,N",
+          "at": [367, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "5",
+          "times": "A,E,N",
+          "at": [303, 152],
+          "move": "idle_up"
+        },
+        {
+          "days": "6",
+          "times": "N",
+          "at": [367, 122],
+          "move": "idle_up"
+        },
+        {
+          "days": "10",
+          "times": "M,A",
+          "at": [239, 152],
+          "move": "idle_up"
+        }
       ]
     },
     "Town Hall Security": {
@@ -655,14 +1060,29 @@
           "requires": {
             "type": "all",
             "conditions": [
-              { "type": "opponent_defeated", "target": "Card Elder Hamish" },
-              { "type": "flag_not_set", "flag": "gym_challenge_complete" },
+              {
+                "type": "opponent_defeated",
+                "target": "Card Elder Hamish"
+              },
+              {
+                "type": "flag_not_set",
+                "flag": "gym_challenge_complete"
+              },
               {
                 "type": "any",
                 "conditions": [
-                  { "type": "opponent_not_defeated", "target": "Card Elder Hamish" },
-                  { "type": "opponent_not_defeated", "target": "Card Elder Rayne" },
-                  { "type": "opponent_not_defeated", "target": "Card Elder Waverly" }
+                  {
+                    "type": "opponent_not_defeated",
+                    "target": "Card Elder Hamish"
+                  },
+                  {
+                    "type": "opponent_not_defeated",
+                    "target": "Card Elder Rayne"
+                  },
+                  {
+                    "type": "opponent_not_defeated",
+                    "target": "Card Elder Waverly"
+                  }
                 ]
               }
             ]
@@ -705,14 +1125,29 @@
           "requires": {
             "type": "all",
             "conditions": [
-              { "type": "opponent_defeated", "target": "Card Elder Rayne" },
-              { "type": "flag_not_set", "flag": "gym_challenge_complete" },
+              {
+                "type": "opponent_defeated",
+                "target": "Card Elder Rayne"
+              },
+              {
+                "type": "flag_not_set",
+                "flag": "gym_challenge_complete"
+              },
               {
                 "type": "any",
                 "conditions": [
-                  { "type": "opponent_not_defeated", "target": "Card Elder Hamish" },
-                  { "type": "opponent_not_defeated", "target": "Card Elder Rayne" },
-                  { "type": "opponent_not_defeated", "target": "Card Elder Waverly" }
+                  {
+                    "type": "opponent_not_defeated",
+                    "target": "Card Elder Hamish"
+                  },
+                  {
+                    "type": "opponent_not_defeated",
+                    "target": "Card Elder Rayne"
+                  },
+                  {
+                    "type": "opponent_not_defeated",
+                    "target": "Card Elder Waverly"
+                  }
                 ]
               }
             ]
@@ -755,14 +1190,29 @@
           "requires": {
             "type": "all",
             "conditions": [
-              { "type": "opponent_defeated", "target": "Card Elder Waverly" },
-              { "type": "flag_not_set", "flag": "gym_challenge_complete" },
+              {
+                "type": "opponent_defeated",
+                "target": "Card Elder Waverly"
+              },
+              {
+                "type": "flag_not_set",
+                "flag": "gym_challenge_complete"
+              },
               {
                 "type": "any",
                 "conditions": [
-                  { "type": "opponent_not_defeated", "target": "Card Elder Hamish" },
-                  { "type": "opponent_not_defeated", "target": "Card Elder Rayne" },
-                  { "type": "opponent_not_defeated", "target": "Card Elder Waverly" }
+                  {
+                    "type": "opponent_not_defeated",
+                    "target": "Card Elder Hamish"
+                  },
+                  {
+                    "type": "opponent_not_defeated",
+                    "target": "Card Elder Rayne"
+                  },
+                  {
+                    "type": "opponent_not_defeated",
+                    "target": "Card Elder Waverly"
+                  }
                 ]
               }
             ]
@@ -834,7 +1284,8 @@
           "days": "5-11",
           "times": "M,A,E,N"
         }
-      ]
+      ],
+      "sleeve": "Apex_Venusaur"
     },
     "Card Elder Rayne": {
       "at": [271, 45.5],
@@ -877,7 +1328,8 @@
           "days": "5-11",
           "times": "M,A,E,N"
         }
-      ]
+      ],
+      "sleeve": "Apex_Blastoise"
     },
     "Card Elder Waverly": {
       "at": [335, 45.5],
@@ -920,7 +1372,8 @@
           "days": "5-11",
           "times": "M,A,E,N"
         }
-      ]
+      ],
+      "sleeve": "Apex_Charizard"
     }
   }
 }

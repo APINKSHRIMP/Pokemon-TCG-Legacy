@@ -933,7 +933,7 @@
       ]
     },
     "Pikachu Fan Juniper": {
-      "at": [-476, 1658],
+      "at": [-501, 1666],
       "move": "idle_random",
       "requires": "not beaten: Pikachu Fan Juniper",
       "says": {
@@ -1676,7 +1676,8 @@
           "days": "8,12",
           "times": "M"
         }
-      ]
+      ],
+      "sleeve": "Pokeball"
     },
     "Youngster Milo": {
       "at": [-348, 974],
@@ -1705,7 +1706,8 @@
           "days": "9",
           "times": "M,A"
         }
-      ]
+      ],
+      "sleeve": "Ariados"
     }
   }
 }

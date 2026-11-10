@@ -862,6 +862,12 @@ func open_power_menu() -> void:
 # Activates a specific Pokemon Power
 
 func activate_power(pokemon: card_object, ability: Dictionary) -> void:
+	# A power pressed inside the bench view / viewer: the look-only screen closes first, so the
+	# power's own picker (Evolutionary Light's deck search...) is a real selection screen and the
+	# shake plays on the board card, not on a view copy that is about to be torn down.
+	if not main.opponents_turn_active and (main.bench_view_active or main.pokemon_preview_active):
+		print("VIEW->PICKER FIX ACTIVE: closing the view before ", ability.get("name", ""))
+		main.hide_selection_mode_display_main()
 	main.hide_attack_buttons()
 	_ensure_power_dispatch_ready()
 	# EX6 Mt. Moon: HP < 70 Pokemon can't use Poke-Powers (guards both player and CPU execution).

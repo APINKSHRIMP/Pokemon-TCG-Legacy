@@ -80,6 +80,12 @@ func _answer_prompts() -> bool:
 	# 2. A coin is mid-flip — nothing to answer, just wait.
 	if main.coin_container.visible:
 		return false
+	# 2b. A copy attack (Metronome...) choosing from its rows in the action panel.
+	if main.copy_pick_active and not main.copy_pick_pool.is_empty():
+		var i: int = rng.randi() % main.copy_pick_pool.size()
+		_log("copy pick '" + str(main.copy_pick_pool[i].get("name", "")) + "'")
+		main.special_attack_selected.emit(i)
+		return true
 	# 3. A row of buttons (option prompts, attack copy menus, the Power menu).
 	if main.attack_buttons_container.visible:
 		return _answer_buttons()
@@ -293,7 +299,7 @@ func _board_idle() -> bool:
 	var m = main
 	if m.opponents_turn_active or m.game_is_over:
 		return false
-	if m.msgbox_container.visible or m.coin_container.visible or m.attack_buttons_container.visible:
+	if m.msgbox_container.visible or m.coin_container.visible or m.attack_buttons_container.visible or m.copy_pick_active:
 		return false
 	if m.card_selection_mode_enabled:
 		return false

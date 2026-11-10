@@ -47,6 +47,8 @@ var _date_spin: SpinBox = null
 var _cash_edit: LineEdit = null
 var _fish_coin_edit: LineEdit = null
 var _fish_sent_edit: LineEdit = null
+var _clock_edit: LineEdit = null
+var _points_edit: LineEdit = null
 ## The main page of columns, and the CUTSCENES sub-page that replaces it while open.
 var _main_page: ScrollContainer = null
 var _cutscene_page: ScrollContainer = null
@@ -168,9 +170,25 @@ func _build_world_column(col: VBoxContainer) -> void:
 	col.add_child(_button("FILL ALL TANKS", _fill_fish_tanks))
 	col.add_child(_note("Milestones at or below the number count as rung (items unlocked); the next real catch past one rings it. Re-enter FISH to see the change."))
 
-	_heading(col, "PROGRESS")
+	_heading(col, "CLOCK")
+	var clock_row := _row(col)
+	_clock_edit = LineEdit.new()
+	_clock_edit.placeholder_text = "10:59pm"
+	_clock_edit.custom_minimum_size = Vector2(240, BUTTON_HEIGHT)
+	_clock_edit.add_theme_font_size_override("font_size", FONT_SIZE)
+	_clock_edit.text_submitted.connect(func(_text: String): _set_clock())
+	clock_row.add_child(_clock_edit)
+	_add_expanded(clock_row, _button("SET CLOCK", _set_clock))
+	var points_row := _row(col)
+	_points_edit = LineEdit.new()
+	_points_edit.placeholder_text = "Points"
+	_points_edit.custom_minimum_size = Vector2(240, BUTTON_HEIGHT)
+	_points_edit.add_theme_font_size_override("font_size", FONT_SIZE)
+	_points_edit.text_submitted.connect(func(_text: String): _set_points())
+	points_row.add_child(_points_edit)
+	_add_expanded(points_row, _button("SET POINTS", _set_points))
 	col.add_child(_button("+%d TIME POINTS" % GameState.TIME_POINTS_FIRST_WIN, _add_time_points))
-	col.add_child(_note("Three in one period advances the time after your next real win."))
+	col.add_child(_note("Clock: 10:59pm, 10:59 pm, 22:59, 1am (8am to 7:54am next morning). Points are whole, so it lands on the last point at or before that minute - the next point (a pack is +1 from day 3) tips it over. Points: the exact count in this period; a full period moves time on."))
 
 	_heading(col, "BATTLE")
 	col.add_child(_button("START TEST MATCH", func(): MapManager.debug_start_test_match()))
@@ -303,6 +321,70 @@ func _fill_fish_tanks() -> void:
 	_say("Every FISH tank filled for %d fish sent. Re-enter FISH to see it." % GameState.fish_sent_total())
 
 
+func _set_clock() -> void:
+	var hours := _parse_clock(_clock_edit.text)
+	if hours < 0.0:
+		_say("Clock: type a time like 10:59pm, 22:59 or 1am.", BAD_COLOUR)
+		return
+	_clock_edit.release_focus()
+	if not MapManager.debug_set_clock(hours):
+		_say("Clock: 8am to 7:54am (the next morning) only.", BAD_COLOUR)
+		return
+	_say("Clock set: %s (%s, %d of %d points)." % [_clock_text(GameState.clock_hours()), GameState.get_time(),
+			GameState.get_time_points(), GameState.time_points_to_advance()])
+
+
+func _set_points() -> void:
+	var text := _points_edit.text.strip_edges()
+	if not text.is_valid_int() or int(text) < 0:
+		_say("Points have to be a whole number, 0 or more.", BAD_COLOUR)
+		return
+	_points_edit.release_focus()
+	MapManager.debug_set_time_points(int(text))
+	_say("Time points this period: %d of %d (%s)." % [GameState.get_time_points(),
+			GameState.time_points_to_advance(), _clock_text(GameState.clock_hours())])
+
+
+## "10:59pm" / "10:59 pm" / "22:59" / "1am" / "23" -> hours on the game's clock, where after midnight
+## counts on from 24 (1am = 25) and the day starts at 8am. -1 if it can't be read.
+func _parse_clock(raw: String) -> float:
+	var t := raw.strip_edges().to_lower().replace(" ", "").replace(".", "")
+	var suffix := ""
+	if t.ends_with("am") or t.ends_with("pm"):
+		suffix = t.right(2)
+		t = t.left(t.length() - 2)
+	var parts := t.split(":")
+	if parts.size() > 2 or not parts[0].is_valid_int():
+		return -1.0
+	var hour := int(parts[0])
+	var minute := 0
+	if parts.size() == 2:
+		if not parts[1].is_valid_int():
+			return -1.0
+		minute = int(parts[1])
+	if minute < 0 or minute > 59:
+		return -1.0
+	if suffix != "":
+		if hour < 1 or hour > 12:
+			return -1.0
+		hour = hour % 12 + (12 if suffix == "pm" else 0)
+	elif hour < 0 or hour > 23:
+		return -1.0
+	var hours := float(hour) + float(minute) / 60.0
+	if hours < 8.0:
+		hours += 24.0   # after midnight: still the same game day
+	return hours
+
+
+## 22.9 -> "10:54pm", 25.0 -> "1:00am" (the debug readout shows minutes; the real clock shows whole hours).
+func _clock_text(hours: float) -> String:
+	var total := int(round(hours * 60.0))
+	var hour := (total / 60) % 24
+	var minute := total % 60
+	var shown := hour % 12
+	return "%d:%02d%s" % [12 if shown == 0 else shown, minute, "am" if hour < 12 else "pm"]
+
+
 func _add_time_points() -> void:
 	MapManager.debug_add_time_points()
 	_say("Time points this period: %d of %d." % [GameState.get_time_points(), GameState.time_points_to_advance()])
@@ -331,9 +413,11 @@ func _say(text: String, colour: Color = GOOD_COLOUR) -> void:
 func _refresh_state() -> void:
 	if _state_label == null:
 		return
-	_state_label.text = "Day %d   |   %s   |   Cash %d   |   Fish Coins %d   |   Time points %d of %d" % [
-			GameState.get_date(), GameState.get_time(), GameState.get_cash(),
+	_state_label.text = "Day %d   |   %s %s   |   Cash %d   |   Fish Coins %d   |   Time points %d of %d" % [
+			GameState.get_date(), GameState.get_time(), _clock_text(GameState.clock_hours()), GameState.get_cash(),
 			GameState.get_fish_coins(), GameState.get_time_points(), GameState.time_points_to_advance()]
+	if _points_edit != null and not _points_edit.has_focus():
+		_points_edit.text = str(GameState.get_time_points())
 	if _cash_edit != null and not _cash_edit.has_focus():
 		_cash_edit.text = str(GameState.get_cash())
 	if _fish_coin_edit != null and not _fish_coin_edit.has_focus():

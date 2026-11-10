@@ -60,7 +60,7 @@ const KEYBOARD_ROWS := {
 		["F", "Jump the cursor to your attacks"],
 		["V", "View your Active Pokemon"],
 		["C", "View the opponent's Active Pokemon"],
-		["Click", "Click either Active: view it"],
+		["Alt+Click", "An Active or Bench: view it (your turn)"],
 		["Wheel", "Scroll a long hand or the log"],
 	],
 	"menus": [

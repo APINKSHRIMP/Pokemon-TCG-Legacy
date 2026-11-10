@@ -1035,7 +1035,47 @@ func _basic_matches_stage2(basic: card_object, stage2: card_object) -> bool:
 		if card_data.get("name", "") == s2_evolves_from:
 			if card_data.get("evolvesFrom", "") == basic_name:
 				return true
-	return false
+	# 2026-11-10: the middle card is often in ANOTHER set - Fossil's Dragonite evolves from
+	# Dragonair, which is only in Base Set - so Breeder refused Dratini -> Dragonite with a
+	# Dragonite and an evolvable Dratini right there. Look across every set.
+	var bases: Array = _stage1_bases_all_sets().get(s2_evolves_from, [])
+	return basic_name in bases
+
+
+## Every Stage 1 name in the game -> the Basic names it evolves from, read once from all of
+## Card_Set_Data (through main's set cache, so each set is still parsed only once).
+var _stage1_bases: Dictionary = {}
+func _stage1_bases_all_sets() -> Dictionary:
+	if not _stage1_bases.is_empty():
+		return _stage1_bases
+	for f in DirAccess.get_files_at("res://Card_Set_Data/"):
+		if not f.ends_with(".json"):
+			continue
+		var prefix := f.get_basename()
+		var cards: Array = main.get_set_cards(prefix)
+		if cards.is_empty():
+			var file := FileAccess.open("res://Card_Set_Data/" + f, FileAccess.READ)
+			if file == null:
+				continue
+			var parsed = JSON.parse_string(file.get_as_text())
+			file.close()
+			if not (parsed is Array):
+				continue
+			main._set_metadata_cache[prefix] = parsed
+			cards = parsed
+		for cd in cards:
+			if not (cd is Dictionary) or not ("Stage 1" in cd.get("subtypes", [])):
+				continue
+			var nm := String(cd.get("name", ""))
+			var from := String(cd.get("evolvesFrom", ""))
+			if nm == "" or from == "":
+				continue
+			var list: Array = _stage1_bases.get(nm, [])
+			if not from in list:
+				list.append(from)
+			_stage1_bases[nm] = list
+	print("BREEDER FIX: Stage 1 -> Basic map built across all sets (", _stage1_bases.size(), " names)")
+	return _stage1_bases
 
 # base1-77 — Pokemon Trader: Trade 1 Pokemon from hand for 1 from deck
 func _cpu_pokedex_priority(card: card_object) -> float:
@@ -1207,6 +1247,11 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var who = "Opponent" if is_opponent else "You"
 	var card_name = card.metadata.get("name", "Unknown")
+	# TRAINER UNDO: the player may take this card back (see main.trainer_undo_open). Where it sat in
+	# the hand, and the coin count, so "You played X!" can tell whether anything happened first.
+	var can_undo: bool = not is_opponent and GameState.autotest == null
+	var hand_index: int = hand.find(card)
+	var steps_before: int = main.irrevocable_steps
 
 	# MATCH EFFECT: trainer_discard_cost — pay the discard cost before the trainer resolves.
 	# (Cost is paid even if Mind Games / Chaos Gym later wastes the card.)
@@ -1270,15 +1315,26 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 			main.cpu_ai.invalidate_cpu_evaluation()
 			return
 
-	# Step 1: Show trainer card animation
-	await show_trainer_card_played_animation(card, is_opponent)
-	
-	# Step 2: Route to the correct handler based on card type
+	# Step 1: Show trainer card animation. TRAINER UNDO: B / right-click on "You played X!" takes it
+	# back - not when a match-rule cost was paid or a coin was flipped for it (Chaos Gym, Mind Games).
+	var showcase_undo: bool = can_undo and rule_discard_cost <= 0 and main.irrevocable_steps == steps_before
+	var taken_back: bool = await show_trainer_card_played_animation(card, is_opponent, showcase_undo)
+	if main._should_bail(): return
+	if taken_back:
+		_undo_trainer_play(card, hand_index, false, "at \"You played\"")
+		return
+
+	# Step 2: Route to the correct handler based on card type. TRAINER UNDO: open the window right
+	# before each resolve, so its first public picker can take the play back.
+	var was_supporter_turn: bool = player_played_supporter_this_turn
 	if is_bench_token_trainer(card):
+		_open_trainer_undo(can_undo)
 		await resolve_bench_token_trainer(card, is_opponent)
 	elif is_attached_trainer(card):
+		_open_trainer_undo(can_undo)
 		await resolve_attached_trainer(card, is_opponent)
 	elif is_stadium_trainer(card):
+		_open_trainer_undo(can_undo)
 		await resolve_stadium_trainer(card, is_opponent)
 	else:
 		# GYM1-103 No Removal Gym: Energy Removal / Super Energy Removal require an extra 2-card hand discard
@@ -1301,9 +1357,19 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 				opponent_played_supporter_this_turn = true
 			else:
 				player_played_supporter_this_turn = true
+		_open_trainer_undo(can_undo)
 		await resolve_standard_trainer(card, is_opponent)
-		if not _flight_done:
+		if not _flight_done and not main.trainer_undo_requested:
 			await _flight_finished   # ISSUE #364
+
+	# TRAINER UNDO: the first picker was cancelled - the effect has already unwound (every step
+	# returns at _should_bail), so nothing happened; the card goes back to where it was in the hand.
+	var undone: bool = main.trainer_undo_requested
+	main.trainer_undo_open = false
+	main.trainer_undo_requested = false
+	if undone:
+		_undo_trainer_play(card, hand_index, was_supporter_turn, "at its first picker")
+		return
 
 	main.update_discard_pile_display(is_opponent)
 	main.refresh_hand_display(is_opponent)
@@ -1312,6 +1378,31 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 	
 	# Fix 2: Invalidate CPU evaluation cache — trainer cards can change board state
 	main.cpu_ai.invalidate_cpu_evaluation()
+
+func _open_trainer_undo(can_undo: bool) -> void:
+	main.trainer_undo_requested = false
+	main.trainer_undo_open = can_undo
+
+
+## TRAINER UNDO: puts a Trainer the player took back where it was in the hand, as if never played.
+func _undo_trainer_play(card: card_object, hand_index: int, was_supporter_turn: bool, when: String) -> void:
+	var discard = main.player_discard_pile
+	var hand = main.player_hand
+	if card in discard:
+		discard.erase(card)
+	card.current_location = "hand"
+	if card not in hand:
+		hand.insert(clampi(hand_index, 0, hand.size()) if hand_index >= 0 else hand.size(), card)
+	if "Supporter" in card.metadata.get("subtypes", []):
+		player_played_supporter_this_turn = was_supporter_turn
+	main.refresh_hand_display(false)
+	main.update_discard_pile_display(false)
+	main.display_pokemon(false)
+	main.display_pokemon(true)
+	main.cpu_ai.invalidate_cpu_evaluation()
+	main._log_match_message("You took back " + card.metadata.get("name", "") + ".")
+	print("TRAINER UNDO: ", card.metadata.get("name", ""), " taken back ", when)
+
 
 # OLD ISSUE 309: Chaos Gym tails — `stealer_is_opp` may resolve the wasted Trainer as if they had played it
 # (paying any costs themselves). Cards that are put into play (PlusPower, Defender, tools, Clefairy Doll,
@@ -1339,7 +1430,9 @@ func _chaos_gym_offer_steal(card: card_object, stealer_is_opp: bool) -> void:
 	await resolve_standard_trainer(card, stealer_is_opp)
 
 # Displays the trainer card animation overlay
-func show_trainer_card_played_animation(card: card_object, is_opponent: bool) -> void:
+## Returns true when the player took the card back on "You played X!" (allow_cancel only): the
+## showcase is cleared and the card does NOT fly anywhere - play_trainer_card puts it back.
+func show_trainer_card_played_animation(card: card_object, is_opponent: bool, allow_cancel: bool = false) -> bool:
 	var who = "Opponent" if is_opponent else "You"
 	var card_name = card.metadata.get("name", "Unknown")
 	
@@ -1356,9 +1449,14 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 	main.played_trainer_container.add_child(card_display)
 	card_display.load_card_image(card.uid, main.card_scales[1], card)
 	
-	# Show message
+	# Show message. TRAINER UNDO: B / Esc / Backspace / right-click here takes the card back.
+	main.msg_cancelled = false
+	main.msg_cancel_window = allow_cancel
 	await main.show_message(who + " played " + card_name + "!")
-	
+	var taken_back: bool = allow_cancel and main.msg_cancelled
+	main.msg_cancel_window = false
+	main.msg_cancelled = false
+
 	# FLIGHTS: the flight starts FROM THE SHOWCASE CARD — large, centre stage — not from the bottom-left
 	# of the hand box. Measured before it is freed.
 	var showcase_rect: Dictionary = {"position": card_display.global_position, "size": card_display.custom_minimum_size} \
@@ -1371,6 +1469,8 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 		main.played_trainer_container.remove_child(child)
 		child.queue_free()
 	main.set_card_showcase_visible(false)
+	if taken_back:
+		return true
 
 	# Animate card to appropriate destination: the large card lingers while the board comes back,
 	# then flies to the exact spot it ends up in (PLAY_HOLD_TIME).
@@ -1406,9 +1506,10 @@ func show_trainer_card_played_animation(card: card_object, is_opponent: bool) ->
 		if is_opponent and card.metadata.get("name", "") in HEAL_DURING_FLIGHT:
 			_flight_done = false
 			_run_flight_then_flag(hand_container_node, discard_node, card_texture, from_size, land, from_pos)
-			return
+			return false
 		await main.animate_card_a_to_b(hand_container_node, discard_node, 0.3, card_texture, from_size,
 			land["size"], land["position"], false, from_pos, main.PLAY_HOLD_TIME)
+	return false
 
 
 ## ISSUE #364: trainers whose effect plays during the flight to the discard (CPU only -- the player
@@ -2245,7 +2346,16 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 					await main._after_evolution(s2, pokemon, true)
 					return
 	else:
-		# Player: select Stage 2 card, then select matching Basic
+		# Player: select Stage 2 card, then select matching Basic.
+		# 2026-11-10: only the Stage 2s that HAVE a Basic to go on are offered. The play check passes if
+		# any one does, so picking one that didn't ended on "No valid Basic" with Breeder spent.
+		var may_evolve_now: Array = main.get_pokemon_that_may_evolve_now(false)
+		stage2_cards = stage2_cards.filter(func(s2): return may_evolve_now.any(
+			func(p): return main.is_basic_pokemon(p) and _basic_matches_stage2(p, s2)))
+		if stage2_cards.is_empty():
+			await main.show_message("No valid Basic Pokemon to evolve!")
+			if main._should_bail(): return
+			return
 		var s2_card = await main.card_ops.prompt_select_card(stage2_cards, "POKEMON BREEDER", "Select a Stage 2 Pokemon to play", "SELECT", false)
 		if main._should_bail(): return
 

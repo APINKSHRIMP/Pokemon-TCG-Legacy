@@ -257,17 +257,18 @@ const BGM_GYM_CHALLENGE_HALL             := BGM_DIR + "Gym Challenge Hall (BW2 N
 const BGM_GYM_CHALLENGE_HALL_FINAL       := BGM_DIR + "Gym Challenge Hall Final (BW2 Nimbasa City Gym Stage)" + BGM_EXT
 const BGM_FISH_SHOP                      := BGM_DIR + "FISH (RGR Summertown)" + BGM_EXT
 const BGM_WINDMILL                       := BGM_DIR + "Windmill (HGSS Ruins of Alph)" + BGM_EXT
-const BGM_CAFE                           := BGM_DIR + "Cafe (ORAS Oceanic Museum)" + BGM_EXT
+const BGM_CAFE                           := BGM_DIR + "Cafe (PMD Spindas cafe)" + BGM_EXT
 const BGM_CARD_MART                      := BGM_DIR + "Card Mart (ORAS Poke Mart)" + BGM_EXT
 const BGM_HOTEL                          := BGM_DIR + "Hotel (ORAS Lilycove City)" + BGM_EXT
-## The same file as the harbour's Evening track, so walking in at Evening does not restart it.
-const BGM_TOWN_HALL                      := BGM_HARBOUR_EVENING
+## Both floors. (Until 2026-11-10 this was the harbour's Evening track; that was the Cafe's before.)
+const BGM_TOWN_HALL                      := BGM_DIR + "Town Hall (ORAS Oceanic Museum)" + BGM_EXT
 const BGM_PLAYER_HOME_DAY                := BGM_DIR + "Player Home Day (PMDX File Select)" + BGM_EXT
 const BGM_PLAYER_HOME_NIGHT              := BGM_DIR + "Player Home Night (PMDX Personality Test)" + BGM_EXT
-## Only the Train Station plays this now.
-const BGM_SHOP_1                         := BGM_DIR + "Shop1 (PMD Spindas Cafe)" + BGM_EXT
-## The Rocket Mart and every shop screen.
+## The Train Station shares the Cafe's track.
+const BGM_SHOP_1                         := BGM_CAFE
+## Every shop screen (coin, pack, holo, cosmetic, bulk sell).
 const BGM_SHOP_2                         := BGM_DIR + "Rocket Mart and Shops (PMDX Kecleon Shop)" + BGM_EXT
+const BGM_ROCKET_MART                    := BGM_DIR + "RocketMart (Undertale Sans Theme)" + BGM_EXT
 ## Won a match: after the win jingle, until the rewards are cleared (Match_End_Outro).
 const BGM_VICTORY                        := BGM_DIR + "Victory (PMDX Happiness)" + BGM_EXT
 ## The Gym Plaza five-coin flipper, from paying up to walking away (MapManager).

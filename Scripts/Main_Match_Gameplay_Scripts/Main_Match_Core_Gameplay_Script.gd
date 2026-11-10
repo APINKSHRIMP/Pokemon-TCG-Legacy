@@ -41,7 +41,36 @@ func get_set_cards(set_prefix: String) -> Array:
 	return []
 
 func _should_bail() -> bool:
-	return game_is_over or not is_inside_tree()
+	# trainer_undo_requested: the player took a Trainer back at its first picker - every effect
+	# already returns at its next _should_bail() check, so the whole effect unwinds untouched and
+	# play_trainer_card (which clears the flag) puts the card back in the hand.
+	return game_is_over or not is_inside_tree() or trainer_undo_requested
+
+
+# ── TRAINER UNDO (2026-11-10) ────────────────────────────────────────────────────
+# A Trainer the player played by mistake can be taken back while it has done NOTHING and shown
+# NOTHING hidden. This game is PvE only: the CPU never reads what was declared, so taking a card
+# back costs it nothing.
+#   1. "You played X!" - B / Esc / Backspace / right-click cancels; the card goes back to the hand.
+#      (Not when a match-rule discard cost was paid or a coin was flipped for it first.)
+#   2. The effect's FIRST picker, if every card in it is public (hand, board, discard piles) and
+#      nothing has happened yet (no message, coin, draw or card movement): it gets a Cancel button,
+#      and Cancel takes the whole play back.
+#   3. A picker showing hidden cards (deck, prizes, the opponent's hand) has no Cancel at all - once
+#      the deck is seen the card is used. Card_Ops._undo_cancel_state() applies 2 and 3.
+var trainer_undo_open: bool = false        # the Trainer being resolved can still be taken back
+var trainer_undo_requested: bool = false   # its first public picker was cancelled
+var msg_cancel_window: bool = false        # the open message accepts cancel (the "You played" one)
+var msg_cancelled: bool = false
+var last_prompt_cancelled: bool = false    # the last trainer picker closed by Cancel, not by confirm
+var irrevocable_steps: int = 0             # coins flipped this match (the "You played" window reads it)
+
+## Something happened (a message, a coin, a draw, a card moving, a hidden picker): the Trainer
+## being resolved can no longer be taken back.
+func trainer_undo_commit(why: String) -> void:
+	if trainer_undo_open:
+		trainer_undo_open = false
+		print("TRAINER UNDO: closed (", why, ")")
 
 # There are different rulesets for burn and confusion depending on what generation/set is being played.
 # Additionally I personally felt base set confusion retreat rule is horrendous, so I have created a personal rule that doesn't give free retreat but doesn't force discard then coin flip
@@ -667,6 +696,8 @@ func show_enlarged_array_selection_mode(card_array: Array) -> void:
 
 	# ISSUE #83: bench viewing and the single-card preview are view-only — never show an action button
 	# (this removes the legacy "PLACE ON BENCH" that used to appear when viewing the player's bench).
+	# A picker opening over a view takes over: the view flags go, and its Select button stays.
+	_drop_view_if_picking()
 	if bench_view_active or pokemon_preview_active:
 		action_button.visible = false
 
@@ -2592,7 +2623,7 @@ func _player_can_act_now() -> bool:
 			_issue491_logged = true
 			print("ISSUE #491 FIX ACTIVE: no actions before the first turn starts")
 		return false
-	if card_selection_mode_enabled or power_menu_active:
+	if card_selection_mode_enabled or power_menu_active or copy_pick_active:
 		return false
 	if trainer_card_mode_active or trainer_discard_selection_active \
 			or trainer_deck_search_active or yes_no_prompt_active:
@@ -2657,6 +2688,100 @@ func _attack_row_reason(mon: card_object, attack: Dictionary, attack_name: Strin
 
 ## Rebuilds one side's action panel. Called from display_pokemon(), so it
 ## refreshes on every board change without a second hook.
+# ── COPY PICK (2026-11-10) ──────────────────────────────────────────────────────
+# A "choose an attack" effect (Metronome, Copy, Mirror Move, Psymimic...) shows its choices as
+# ROWS in the player's action panel, under the Pokemon's own attacks and Retreat. Metronome-style
+# attacks list what they could copy all the time (dead, refreshed with the board); once the effect
+# is choosing, those rows are the only thing on the whole screen that answers - mouse, keyboard
+# and pad (see _copy_pick_input and Board_Nav's "copy_pick" mode). Attack_Effects'
+# choose_attack_from_pool() drives it through begin_copy_pick / end_copy_pick.
+var copy_pick_active: bool = false
+var copy_pick_pool: Array = []
+## Attacks that copy one of the DEFENDING Pokemon's attacks / one of ANY opposing Pokemon's.
+const COPY_PREVIEW_DEFENDER := ["metronome", "mini-metronome", "copy"]
+const COPY_PREVIEW_ALL_OPP := ["super metronome"]
+
+## What `attack` (one of `mon`'s) would offer to copy right now, or [] if it is not that kind.
+func copy_preview_pool_for(mon: card_object, attack: Dictionary) -> Array:
+	var n := String(attack.get("name", "")).to_lower().strip_edges()
+	var opp_side: bool = not mon.is_owner_opp(self)
+	var raw: Array = []
+	if n in COPY_PREVIEW_DEFENDER:
+		var defender: card_object = opponent_active_pokemon if opp_side else player_active_pokemon
+		if defender != null:
+			raw = get_attacks_for_card(defender)
+	elif n in COPY_PREVIEW_ALL_OPP:
+		for p in card_ops.get_all_pokemon_in_play(opp_side):
+			raw.append_array(p.metadata.get("attacks", []))
+	return raw.filter(func(x): return not attack_effects.is_copy_attack(x))
+
+
+## Every attack any of `mon`'s copy attacks could offer, each name once.
+func copy_preview_pool_all(mon: card_object) -> Array:
+	var out: Array = []
+	var seen := {}
+	for a in get_attacks_for_card(mon):
+		for x in copy_preview_pool_for(mon, a):
+			var key := String(x.get("name", "")) + "|" + String(x.get("text", ""))
+			if not seen.has(key):
+				seen[key] = true
+				out.append(x)
+	return out
+
+
+func begin_copy_pick(pool: Array) -> void:
+	copy_pick_pool = pool.duplicate()
+	copy_pick_active = true
+	special_attack_selection_active = true
+	CardDisplay.input_blocked = true     # no card anywhere answers a click
+	if hand_drag != null:
+		hand_drag.clear_bar_selection()
+	print("COPY PICK: choosing from ", copy_pick_pool.size(), " attack(s) - everything else is locked")
+	_refresh_action_panels()
+
+
+func end_copy_pick() -> void:
+	copy_pick_active = false
+	copy_pick_pool = []
+	special_attack_selection_active = false
+	CardDisplay.input_blocked = false
+	_refresh_action_panels()
+
+
+## While a copy pick is up: a click lands only inside the player's action panel (where only the
+## copy rows are live); keys and pad go to Board_Nav's copy_pick mode. Escape / pad Start still
+## open the pause menu. True = the event is dealt with (main's _input stops).
+func _copy_pick_input(event: InputEvent) -> bool:
+	if event is InputEventMouseMotion:
+		return false
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if UIInput.is_inert_mouse_button(mb):
+			return false   # the wheel still scrolls a long panel
+		var inside: bool = _player_action_panel != null and is_instance_valid(_player_action_panel) \
+			and _player_action_panel.get_global_rect().has_point(mb.position)
+		if inside and mb.button_index == MOUSE_BUTTON_LEFT:
+			return true    # not consumed: the row button under it takes the click
+		get_viewport().set_input_as_handled()
+		return true
+	if UIInput.is_zoom_start(event) or UIInput.is_zoom_end(event):
+		return false       # reading a card is fine
+	if board_nav != null and board_nav.handle_input(event):
+		get_viewport().set_input_as_handled()
+		return true
+	if UIInput.is_pause(event) or (event is InputEventKey and (event as InputEventKey).keycode == KEY_ESCAPE):
+		return false       # the pause menu still opens
+	if event is InputEventKey or event is InputEventJoypadButton or event is InputEventJoypadMotion:
+		get_viewport().set_input_as_handled()
+		return true
+	return false
+
+
+func _copy_pick_menu_open() -> bool:
+	return (pause_menu != null and is_instance_valid(pause_menu)) \
+		or (forfeit_dialog != null and is_instance_valid(forfeit_dialog))
+
+
 func _build_action_panel(is_opponent: bool) -> void:
 	var holder: Control = _opp_action_panel if is_opponent else _player_action_panel
 	if holder == null or not is_instance_valid(holder):
@@ -2680,7 +2805,7 @@ func _build_action_panel(is_opponent: bool) -> void:
 				"kind": "power",
 				"text": String(ability.get("name", "Power")),
 				"enabled": live,
-				"action": func(): powers_and_bodies.activate_power(mon, ability),
+				"action": func(): await powers_and_bodies.activate_power(mon, ability),
 			})
 
 	# ── Attacks ──
@@ -2711,6 +2836,40 @@ func _build_action_panel(is_opponent: bool) -> void:
 			"action": func(): perform_attack(i),
 		})
 
+	var copy_rows: Array = []   # added after Retreat, so the panel reads attacks, Retreat, then copies
+	# ── Copy rows (2026-11-10) ── Metronome and every other "choose an attack" effect.
+	# Before it is used: the attacks a Metronome-style attack could copy, listed but dead.
+	# While it is choosing: those rows (the effect's real pool) are the ONLY live ones.
+	if not is_opponent:
+		if copy_pick_active:
+			for r in rows:
+				r["enabled"] = false
+				r["disabled_reason"] = ""
+			for idx in copy_pick_pool.size():
+				var pick: Dictionary = copy_pick_pool[idx]
+				copy_rows.append({
+					"kind": "copy",
+					"text": "Copy · " + String(pick.get("name", "Attack")),
+					"attack": pick,
+					"enabled": true,
+					"action": func(): special_attack_selected.emit(idx),
+				})
+		else:
+			var source_name := ""
+			for a in attacks:
+				if attack_effects.is_copy_attack(a) and not copy_preview_pool_for(mon, a).is_empty():
+					source_name = String(a.get("name", ""))
+					break
+			if source_name != "":
+				for pick in copy_preview_pool_all(mon):
+					copy_rows.append({
+						"kind": "copy",
+						"text": "Copy · " + String(pick.get("name", "Attack")),
+						"attack": pick,
+						"enabled": false,
+						"disabled_reason": "Use " + source_name + " first, then choose the attack to copy.",
+					})
+
 	# ── Retreat ── the opponent's panel has none: it is not your decision.
 	if not is_opponent:
 		# ISSUE #266: THE ROW IS GATED ON THE REAL RULE, NOT A SUBSET OF IT.
@@ -2735,6 +2894,7 @@ func _build_action_panel(is_opponent: bool) -> void:
 			"action": start_retreat,
 		})
 
+	rows.append_array(copy_rows)
 	_render_action_rows(holder, rows, is_opponent)
 
 
@@ -2858,8 +3018,20 @@ func _run_action_row(row: Dictionary) -> void:
 		await tutorial.show_block(tut_block)
 		return
 	set_action_rows_disabled(true)
-	if row.has("action"):
-		row["action"].call()
+	if not row.has("action"):
+		return
+	if String(row.get("kind", "")) == "power":
+		# A power that is refused or changes nothing (Step In with Dragonite Active, a Power
+		# Blocked message...) never redraws the board, so the rows it killed above stayed dead:
+		# attacks could not be pressed or even hovered. Rebuild them once the power is done -
+		# they come back in whatever state the board is now in.
+		await row["action"].call()
+		if _should_bail() or opponents_turn_active:
+			return
+		print("POWER ROW FIX ACTIVE: action rows rebuilt after ", row.get("text", "power"))
+		_refresh_action_panels()
+		return
+	row["action"].call()
 
 
 ## ISSUE #218: hard-disable every action row on both panels, this frame.
@@ -2992,7 +3164,7 @@ func _fill_action_row(btn: Button, row: Dictionary, enabled: bool) -> void:
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(name_lbl)
 
-	if kind == "attack":
+	if kind == "attack" or kind == "copy":
 		var dmg: String = String((row["attack"] as Dictionary).get("damage", ""))
 		if dmg != "":
 			var dmg_lbl := Label.new()
@@ -4327,6 +4499,7 @@ func fix_plurals(text: String) -> String:
 ## `log_it` false keeps a line out of the Caps Lock match log. `log_kind` tags the entry
 ## for the log's styling: "tutorial" for the tutorial's help messages.
 func show_message(message_text: String, log_it: bool = true, log_kind: String = "") -> void:
+	trainer_undo_commit("message")
 	await settle_after_draw()   # ISSUE #346
 	message_text = fix_plurals(message_text)   # ISSUE #389
 	if log_it:
@@ -4921,6 +5094,7 @@ func _anim_dest_size(to_node: Control, fallback: Vector2) -> Vector2:
 ## first, and it must), so the position has to be MEASURED BEFORE that and passed
 ## in - which is what _card_rect_now() is for.
 func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: float = 0.8, custom_texture: Texture2D = null, custom_size: Vector2 = Vector2(83, 113), target_size: Vector2 = Vector2.ZERO, target_pos_override: Vector2 = _ANIM_POS_SENTINEL, arrive_behind: bool = false, from_pos_override: Vector2 = _ANIM_POS_SENTINEL, hold_time: float = 0.0) -> void:
+	trainer_undo_commit("card moved")
 	# ISSUE #244: queue behind any flight already in the air.
 	while _anim_in_flight:
 		await get_tree().process_frame
@@ -5932,6 +6106,7 @@ func animate_card_into_hand(card: card_object, is_opponent: bool, from_node: Con
 func animate_card_out_of_hand(card: card_object, is_opponent: bool, from_rect: Dictionary,
 		to_node: Control, speed: float = 0.3, texture: Texture2D = null,
 		target_size: Vector2 = Vector2.ZERO, target_pos: Vector2 = _ANIM_POS_SENTINEL) -> void:
+	trainer_undo_commit("card moved")
 	var hand_container = opponent_hand_container if is_opponent else player_hand_container
 	var tex: Texture2D = texture
 	if tex == null:
@@ -7376,6 +7551,7 @@ func game_end_logic(loser_is_player: bool, is_draw: bool = false) -> void:
 
 # Draws one card from the top of the deck and adds it to the hand
 func draw_card_from_deck(is_opponent: bool, speed_multiplier: float = 1.0) -> card_object:
+	trainer_undo_commit("draw")
 	var deck = opponent_deck if is_opponent else player_deck
 	var hand = opponent_hand if is_opponent else player_hand
 	if deck.size() == 0:
@@ -7474,6 +7650,8 @@ func _esp_applies(flipper_is_opponent: bool) -> bool:
 # re-flip ALL of them once ("If you do, re-flip all the coins"); the CPU does when it got fewer heads
 # than average. Use this for every multi-coin attack a Sabrina Pokémon can use.
 func flip_coins_batch(n: int, flipper_is_opponent: bool) -> Array:
+	irrevocable_steps += 1
+	trainer_undo_commit("coin")
 	var res: Array = []
 	_esp_batch_depth += 1
 	for i in range(n):
@@ -7610,6 +7788,8 @@ func choose_heads_or_tails() -> bool:
 	return called_heads
 
 func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
+	irrevocable_steps += 1
+	trainer_undo_commit("coin")
 	# MATCH EFFECT: coin_flip_override — every flip forced to heads/tails (animation still plays)
 	var rule_override: String = match_effects.coin_override(flipper_is_opponent)
 	var result: bool = (rule_override == "heads") if rule_override != "" else (coin_future.pop_front() if not coin_future.is_empty() else (randi() % 2 == 0))
@@ -11863,7 +12043,8 @@ func handle_action_normal_card() -> void:
 				return
 			hide_selection_mode_display_main()
 			await trainer_effects.play_trainer_card(trainer_to_play, false)
-			if not game_is_over:
+			# TRAINER UNDO: a card taken back is in the hand again - it was never played.
+			if not game_is_over and trainer_to_play not in player_hand:
 				await tutorial.on_trainer_played(trainer_to_play)
 			# GYM1 — Tickling Machine / Minion of Team Rocket can force-end the player's turn
 			if player_turn_force_end:
@@ -11955,6 +12136,7 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 
 	elif trainer_pokemon_selection_active:
 		print("Trainer pokemon selection cancelled")
+		last_prompt_cancelled = true
 		selected_card_for_action = null
 		trainer_pokemon_selection_active = false
 		hide_selection_mode_display_main()
@@ -11963,6 +12145,7 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 	
 	elif trainer_deck_search_active:
 		print("Trainer deck search cancelled")
+		last_prompt_cancelled = true
 		selected_card_for_action = null
 		trainer_deck_search_active = false
 		hide_selection_mode_display_main()
@@ -11971,6 +12154,7 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 	
 	elif trainer_discard_selection_active:
 		print("Trainer discard selection cancelled")
+		last_prompt_cancelled = true
 		trainer_discard_selected.clear()
 		trainer_discard_selection_active = false
 		hide_selection_mode_display_main()
@@ -12029,6 +12213,13 @@ func array_container_clicked(event: InputEvent, card_array: Array) -> void:
 		if card_array == player_hand and InputDevice.last == InputDevice.MOUSE and not event.alt_pressed \
 				and turn_number > 0 and not opponents_turn_active:
 			return
+		# ALT+CLICK TO VIEW (2026-11-10): either Bench opens from the MOUSE only with Alt held, and only
+		# when the board is the player's (can_open_viewer_by_click). The keyboard / pad cursor passes a
+		# click marked "nav" and keeps its own rules (Board_Nav only acts when input is expected).
+		if (card_array == player_bench or card_array == opponent_bench) and not event.has_meta("nav"):
+			if not (event.alt_pressed and can_open_viewer_by_click()):
+				return
+			print("ALT-VIEW: Alt+click on a Bench -> bench view")
 		if card_array.size() > 0:
 			# ISSUE #83: viewing either bench is a VIEW (no "place on bench" action); clicking a card
 			# in it opens a single-card preview. Only flag it when we aren't already mid-action so it
@@ -12167,8 +12358,65 @@ func _first_card_display_in(node: Node) -> Control:
 			return found
 	return null
 
+## A real PICKER owns the screen: an effect, attach, evolve, retreat, KO replacement... asking the
+## player to choose. The bench view and the single-card viewer are NOT pickers - they only look.
+func _picker_active() -> bool:
+	return (trainer_pokemon_selection_active or trainer_deck_search_active
+		or trainer_discard_selection_active or trainer_reorder_active
+		or trainer_energy_selection_active or trainer_bench_token_discard_active
+		or forced_switch_selection_active or card_attach_mode_active or evolution_mode_active
+		or retreat_mode_active or retreat_bench_selection_active
+		or knockout_bench_selection_active or prize_card_selection_active
+		or damage_swap_mode_active or rain_dance_mode_active or energy_trans_mode_active
+		or defender_energy_discard_active or energy_type_selection_active
+		or special_attack_selection_active)
+
+
+## The rule: a card clicked in a SELECTABLE array is selected; only a card on a look-only screen
+## (the bench view, the viewer) opens the viewer. A view flag left on when a picker opens over it
+## (a bench power pressed inside the bench view, then its deck search) used to turn every pick
+## into "open the viewer" and hide the Select button - so a picker always drops the view flags.
+func _drop_view_if_picking() -> void:
+	if (bench_view_active or pokemon_preview_active) and _picker_active():
+		print("VIEW->PICKER FIX ACTIVE: view flags dropped, a picker owns the screen")
+		bench_view_active = false
+		pokemon_preview_active = false
+		pokemon_preview_target = null
+
+
+## A modal over the board (pause menu, its Options, the forfeit dialog, the match log, the
+## stadium detail) owns the mouse. Card nodes read clicks in _input - BEFORE any GUI - so without
+## this a click on a menu button sitting over the Active also clicked the Active underneath.
+## Cards INSIDE the overlay itself are not covered by it.
+func board_click_covered(card_node: Node) -> bool:
+	for layer in [pause_menu, options_overlay, forfeit_dialog]:
+		if layer != null and is_instance_valid(layer) and layer.visible and not layer.is_ancestor_of(card_node):
+			return true
+	if match_log_open and _match_log_layer != null and is_instance_valid(_match_log_layer) \
+			and not _match_log_layer.is_ancestor_of(card_node):
+		return true
+	if _stadium_overlay != null and is_instance_valid(_stadium_overlay) and _stadium_overlay.visible \
+			and not _stadium_overlay.is_ancestor_of(card_node):
+		return true
+	return false
+
+
+## ONE PRESS, ONE CARD (2026-11-10): every card node reads clicks in its own _input, so a single
+## press reaches every card under the pointer, one after another. A double-click on a card in the
+## large hand view PLAYS it from the first handler - the hand view closes and the board comes back
+## - and the very same press then reached the Active underneath, which opened its viewer. The first
+## card a press reaches is the only one it counts for.
+var _card_click_frame: int = -1
+
 # Called when a card in selection mode is clicked
 func this_card_clicked(clicked_card: card_object) -> void:
+	var frame := Engine.get_process_frames()
+	if frame == _card_click_frame:
+		print("ONE-PRESS FIX ACTIVE: second card on the same press ignored (",
+			clicked_card.metadata.get("name", "") if clicked_card != null else "", ")")
+		return
+	_card_click_frame = frame
+	_drop_view_if_picking()
 	# ISSUE #315: the second click of a double-click on a single-pick screen presses
 	# the action button instead of being handled as an ordinary (toggling) click.
 	if _is_double_click(clicked_card) and _double_click_confirm(clicked_card):
@@ -12235,6 +12483,14 @@ func _double_click_confirm(clicked_card: card_object) -> bool:
 	return true
 
 
+## ALT+CLICK TO VIEW: the viewer (an Active) and the bench view open from a mouse click only on the
+## player's own turn with the board free - no message, coin, effect, picker, animation, overlay or
+## turn change in progress. Exactly Hand_Drag's board_free(), the gate drag-to-play uses. (Shift's
+## enlarge-a-card preview is separate and still works at any time.)
+func can_open_viewer_by_click() -> bool:
+	return hand_drag != null and hand_drag.board_free()
+
+
 func _handle_card_click(clicked_card: card_object) -> void:
 	# Don't allow card selection if action button is hidden (view-only mode) or messagebox is being displayed
 	if msgbox_container.visible or coin_container.visible: return
@@ -12246,14 +12502,15 @@ func _handle_card_click(clicked_card: card_object) -> void:
 	if bench_view_active:
 		show_pokemon_preview(clicked_card)
 		return
-	# ISSUE #440 (retest 2): a plain click on EITHER Active, with no picking screen up, opens its
-	# viewer (Energy, tools, what it evolved / transformed from). Your own Active's click is first
-	# claimed by Hand_Drag on your free turn (it can become a retreat drag) and opens the same
-	# viewer on release; this covers the opponent's Active, and yours whenever Hand_Drag stands down.
+	# ALT+CLICK TO VIEW (2026-11-10): a plain click on either Active kept opening its viewer by
+	# accident (a click meant for something else, the second half of a double-click). The viewer
+	# now needs Alt held on the click - the same trick that opens the large hand - and only when
+	# the board is the player's to act on (can_open_viewer_by_click). A plain click does nothing.
 	if not card_selection_mode_enabled and clicked_card != null \
 			and (clicked_card == player_active_pokemon or clicked_card == opponent_active_pokemon):
-		print("ISSUE #440 FIX ACTIVE: Active clicked -> viewer (", clicked_card.metadata.get("name", ""), ")")
-		show_pokemon_preview(clicked_card)
+		if CardDisplay.last_click_alt and can_open_viewer_by_click():
+			print("ALT-VIEW: Alt+click on Active -> viewer (", clicked_card.metadata.get("name", ""), ")")
+			show_pokemon_preview(clicked_card)
 		return
 	if not action_button.visible: return
 
@@ -12807,6 +13064,11 @@ func _input(event: InputEvent) -> void:
 	# Placed after the preview branches so the log can't open underneath an open
 	# card preview, and BEFORE the message-box branch below so opening the log to
 	# re-read a message doesn't also dismiss the message you opened it for.
+	# COPY PICK: Metronome & co. are waiting for a copy row - nothing else on the screen answers.
+	if copy_pick_active and not msgbox_container.visible and not _copy_pick_menu_open():
+		if _copy_pick_input(event):
+			return
+
 	if UIInput.is_log_toggle(event):
 		_toggle_match_log()
 		get_viewport().set_input_as_handled()
@@ -12873,6 +13135,12 @@ func _input(event: InputEvent) -> void:
 	# otherwise be swallowed while a message is up.
 	# The event is consumed so Space/Enter can't also fire "ui_accept" on whatever
 	# button happens to hold focus behind the box.
+	# TRAINER UNDO: B / Esc / Backspace on "You played X!" takes the card back (see trainer_undo_open).
+	if msgbox_container.visible and msg_cancel_window and UIInput.is_cancel(event):
+		get_viewport().set_input_as_handled()
+		msg_cancelled = true
+		message_acknowledged.emit()
+		return
 	if msgbox_container.visible and UIInput.is_advance(event):
 		get_viewport().set_input_as_handled()
 		# The box types its text out a letter at a time, so the first press completes the line and
@@ -12971,6 +13239,12 @@ func _input(event: InputEvent) -> void:
 		if UIInput.is_inert_mouse_button(event):
 			return
 
+		# TRAINER UNDO: right-click on "You played X!" takes the card back.
+		if msgbox_container.visible and msg_cancel_window and event.button_index == MOUSE_BUTTON_RIGHT:
+			get_viewport().set_input_as_handled()
+			msg_cancelled = true
+			message_acknowledged.emit()
+			return
 		if msgbox_container.visible:
 			get_viewport().set_input_as_handled()
 			if _skip_msgbox_typing():

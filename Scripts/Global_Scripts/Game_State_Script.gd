@@ -311,6 +311,22 @@ const WINDOW_SIZE_OPTIONS := ["1280x720", "1920x1080", "1920x1200", "2560x1080",
 const DEFAULT_WINDOW_SIZE := "1920x1080"
 var window_size_setting: String = DEFAULT_WINDOW_SIZE
 
+## Fullscreen / borderless "Screen area": the SHAPE of the picture on the monitor. "native"
+## fills the monitor; any other "WxH" letterboxes the game to that shape (scaled to fit, black
+## bars on the sides that don't match) - e.g. 2560x1080 on a 32:9 monitor plays at 21:9 with
+## bars left and right. Not filtered by the monitor: a too-wide shape just bars top and bottom.
+## TWEAKABLE: the list (it follows WINDOW_SIZE_OPTIONS) and the default.
+const FULLSCREEN_SIZE_NATIVE := "native"
+const DEFAULT_FULLSCREEN_SIZE := FULLSCREEN_SIZE_NATIVE
+
+func fullscreen_size_options() -> Array:
+	return [FULLSCREEN_SIZE_NATIVE] + WINDOW_SIZE_OPTIONS
+
+var fullscreen_size_setting: String = DEFAULT_FULLSCREEN_SIZE
+
+## The design canvas (project.godot viewport size), the minimum every screen lays out for.
+const BASE_CANVAS := Vector2i(1920, 1080)
+
 func set_window_mode(choice: String, save: bool = true) -> void:
 	if not choice in WINDOW_MODE_OPTIONS:
 		push_warning("GameState: unknown window mode '" + choice + "'")
@@ -328,6 +344,43 @@ func set_window_size(choice: String, save: bool = true) -> void:
 	if save:
 		_save_setting_field("window_size", window_size_setting)
 	apply_display()
+
+func set_fullscreen_size(choice: String, save: bool = true) -> void:
+	if not choice in fullscreen_size_options():
+		push_warning("GameState: unknown fullscreen size '" + choice + "'")
+		return
+	fullscreen_size_setting = choice
+	if save:
+		_save_setting_field("fullscreen_size", fullscreen_size_setting)
+	apply_display()
+
+## The canvas stretch "expand" would give a monitor of this shape, so a letterboxed screen lays
+## out exactly as a real monitor of that shape would: wider than 16:9 keeps 1080 high and grows
+## wide, narrower keeps 1920 wide and grows tall. 2560x1080 -> 2560x1080, 3840x1080 -> 3840x1080,
+## 1920x1200 -> 1920x1200, 1280x720 / 2560x1440 -> 1920x1080.
+func _canvas_for_shape(shape: Vector2i) -> Vector2i:
+	if shape.x <= 0 or shape.y <= 0:
+		return BASE_CANVAS
+	var aspect := float(shape.x) / float(shape.y)
+	var base_aspect := float(BASE_CANVAS.x) / float(BASE_CANVAS.y)
+	if aspect >= base_aspect:
+		return Vector2i(roundi(BASE_CANVAS.y * aspect), BASE_CANVAS.y)
+	return Vector2i(BASE_CANVAS.x, roundi(BASE_CANVAS.x / aspect))
+
+## Fullscreen / borderless with a Screen area picked: the root keeps that shape (black bars).
+## Anything else: the project's own expand-to-the-window behaviour.
+func _apply_canvas_shape(letterbox: bool) -> void:
+	if not is_inside_tree():
+		return
+	# Godot re-emits root.size_changed when the stretch changes, so screens that follow the
+	# canvas (UIKit.on_screen_resized / follow_screen) re-lay themselves out on their own.
+	var root := get_tree().root
+	if letterbox:
+		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
+		root.content_scale_size = _canvas_for_shape(_parse_window_size(fullscreen_size_setting))
+	else:
+		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+		root.content_scale_size = BASE_CANVAS
 
 ## The windowed sizes that fit on the current monitor.
 ## ISSUE #456: measured against the WHOLE screen, not the usable rect - the taskbar made a 1080p
@@ -380,7 +433,8 @@ func apply_display() -> void:
 				var pos := whole.position + Vector2i((whole.size.x - want.x) / 2, maxi(0, deco.y))
 				DisplayServer.window_set_position(pos)
 				print("ISSUE #456 FIX ACTIVE: full-screen-sized window ", want, " placed at ", pos, " (title bar ", deco.y, "px)")
-	print("DISPLAY: ", window_mode_setting, " ", window_size_setting,
+	_apply_canvas_shape(window_mode_setting != "windowed" and fullscreen_size_setting != FULLSCREEN_SIZE_NATIVE)
+	print("DISPLAY: ", window_mode_setting, " ", window_size_setting, " screen area ", fullscreen_size_setting,
 		" -> canvas ", get_tree().root.get_visible_rect().size if is_inside_tree() else Vector2.ZERO)
 
 func _load_display() -> void:
@@ -389,6 +443,8 @@ func _load_display() -> void:
 	window_mode_setting = mode if mode in WINDOW_MODE_OPTIONS else DEFAULT_WINDOW_MODE
 	var wsize: String = str(data.get("window_size", DEFAULT_WINDOW_SIZE))
 	window_size_setting = wsize if wsize in WINDOW_SIZE_OPTIONS else DEFAULT_WINDOW_SIZE
+	var fsize: String = str(data.get("fullscreen_size", DEFAULT_FULLSCREEN_SIZE))
+	fullscreen_size_setting = fsize if fsize in fullscreen_size_options() else DEFAULT_FULLSCREEN_SIZE
 	# `-- --window=WxH` opens a plain window of that size for this run only (nothing is
 	# saved), so a screen SHAPE can be tested on any monitor: 1280x800 is 16:10, 1720x720
 	# is 21:9, 1920x540 is 32:9. Godot's own --windowed does not beat the project's

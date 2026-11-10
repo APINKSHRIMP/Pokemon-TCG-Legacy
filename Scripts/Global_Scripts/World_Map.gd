@@ -75,7 +75,7 @@ const CLUSTER_GAP   : float = 4.0    # screen px between blips sharing a buildin
 const CLUSTER_PER_ROW : int = 5      # a building's dots wrap into rows of this many
 
 const COL_PLAYER     := Color(1.0, 1.0, 1.0)
-const COL_OLLY       := Color(0.55, 0.85, 1.0)    # light blue
+const COL_OLLY       := Color(0.12, 0.28, 0.78)   # darker blue (the old shopkeeper blue, free since shopkeeper blips went)
 const COL_ELLIE      := Color(1.0, 0.50, 0.80)    # pink
 const COL_ALEXANDER  := Color(1.0, 0.88, 0.20)    # yellow
 # Opponents, three states (user spec 2026-11-07). Each dot cycles between its BASE colour and its

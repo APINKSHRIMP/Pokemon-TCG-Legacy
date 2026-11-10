@@ -7,5 +7,5 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Rocket_Mart.tscn"
 
 
 func get_scene_path() -> String:      return SCENE_PATH
-func get_bgm_path() -> String:        return SoundManagerScript.BGM_SHOP_2
+func get_bgm_path() -> String:        return SoundManagerScript.BGM_ROCKET_MART
 func get_map_data_name() -> String: return "Rocket_Mart"

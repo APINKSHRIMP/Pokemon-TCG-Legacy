@@ -130,7 +130,42 @@ func board_free() -> bool:
 
 # ── Input ────────────────────────────────────────────────────────────────────
 
+## Double-click guard: the second click of a double-click on a hand card belongs to that card.
+## If it lands anywhere else (the card moved, a play started, the board under it), it is
+## swallowed - press AND release - and plays the picked-up card if there still is one, so it
+## can never open the Active's viewer or click whatever sits underneath. TWEAKABLE: the slop.
+const DOUBLE_CLICK_SLOP_PX := 24.0
+var _last_hand_click_ms := -100000
+var _last_hand_click_pos := Vector2.ZERO
+var _swallow_release := false
+var _swallow_plays := false
+
+func _is_double_click_tail(mb: InputEventMouseButton) -> bool:
+	return Time.get_ticks_msec() - _last_hand_click_ms <= main.DOUBLE_CLICK_MS \
+		and mb.position.distance_to(_last_hand_click_pos) <= DOUBLE_CLICK_SLOP_PX
+
+
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT \
+			and not UIInput.is_inert_mouse_button(event as InputEventMouseButton) and main != null \
+			and GameState.autotest == null:
+		var b := event as InputEventMouseButton
+		if b.pressed and _is_double_click_tail(b):
+			var on_card: bool = not _busy and board_free() and not _hand_card_at(b.position).is_empty()
+			if not on_card:
+				_last_hand_click_ms = -100000
+				_swallow_release = true
+				_swallow_plays = bar_selected != null and not _busy and board_free()
+				print("DOUBLE-CLICK GUARD: second click off the hand card swallowed (plays: ", _swallow_plays, ")")
+				get_viewport().set_input_as_handled()
+				return
+		elif not b.pressed and _swallow_release:
+			_swallow_release = false
+			get_viewport().set_input_as_handled()
+			if _swallow_plays:
+				_swallow_plays = false
+				play_bar_selected()
+			return
 	if _busy:
 		return
 	if event is InputEventMouseMotion and not _press.is_empty():
@@ -230,20 +265,17 @@ func _on_release(mb: InputEventMouseButton) -> void:
 	if not board_free():
 		return
 	if press["kind"] == "hand":
+		# A first click arms the double-click guard; the second (the play) disarms it.
+		if press["card"] == bar_selected:
+			_last_hand_click_ms = -100000
+		else:
+			_last_hand_click_ms = Time.get_ticks_msec()
+			_last_hand_click_pos = mb.position
 		_click_hand_card(press["card"])
-	elif press["card"] in main.player_bench:
-		# The bench used to open its view on the press; it waits for the release now so
-		# the same press can become a retreat drag.
-		var fake := InputEventMouseButton.new()
-		fake.button_index = MOUSE_BUTTON_LEFT
-		fake.pressed = true
-		main.array_container_clicked(fake, main.player_bench)
-	elif press["card"] == main.player_active_pokemon:
-		# ISSUE #440 (retest): a plain click on your Active opens the same viewer the pad's A does
-		# (its energies and tools, and what it evolved / transformed from). The press is claimed
-		# above so it can become a retreat drag, which is why the card node never saw the click.
-		print("ISSUE #440 FIX ACTIVE: Active clicked -> Pokemon viewer")
-		main.show_pokemon_preview(press["card"])
+	# ALT+CLICK TO VIEW (2026-11-10): a PLAIN click on your Active or Bench no longer opens a view -
+	# it kept firing by accident. Alt+click does (Alt presses are never claimed here, see _on_press,
+	# so they reach the card / bench and the match's can_open_viewer_by_click gate). The press is
+	# still claimed so it can become a retreat drag.
 
 
 # ── Hit tests ────────────────────────────────────────────────────────────────

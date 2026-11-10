@@ -236,7 +236,7 @@ radius = 14.999512
 height = 61.99756
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_8pbd6"]
-size = Vector2(136.5, 51)
+size = Vector2(88, 53)
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_v1hrq"]
 radius = 8.004944
@@ -4005,6 +4005,7 @@ tile_map_data = PackedByteArray("AACRAOL/AAA3ABUAAACDAOL/AAA3ABUAAAA=")
 tile_set = ExtResource("2_bf13f")
 
 [node name="LampTop" type="TileMapLayer" parent="TILE_MAPS/CAFE" unique_id=594981610]
+z_index = 10
 position = Vector2(26, -71)
 tile_map_data = PackedByteArray("AACRAOD/AAA3ABMAAACRAOH/AAA3ABQAAACDAOD/AAA3ABMAAACDAOH/AAA3ABQAAAA=")
 tile_set = ExtResource("2_bf13f")
@@ -4082,14 +4083,32 @@ tile_set = ExtResource("2_bf13f")
 
 [node name="Bin" type="TileMapLayer" parent="TILE_MAPS/CAFE" unique_id=1958399710]
 position = Vector2(1, 0)
-tile_map_data = PackedByteArray("AACQAN3/AAAeAAoAAACQAN7/AAAeAAsAAACQAN//AAAeAAwAAAA=")
+tile_map_data = PackedByteArray("AACQAN7/AAAeAAsAAACQAN//AAAeAAwAAAA=")
+tile_set = ExtResource("2_bf13f")
+
+[node name="Bintop" type="TileMapLayer" parent="TILE_MAPS/CAFE" unique_id=1908307118]
+z_index = 10
+position = Vector2(1, 0)
+tile_map_data = PackedByteArray("AACQAN3/AAAeAAoAAAA=")
 tile_set = ExtResource("2_bf13f")
 
 [node name="Collision" type="StaticBody2D" parent="TILE_MAPS/CAFE" unique_id=322398544]
 z_index = 50
 
 [node name="Cafe" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=329237706]
-position = Vector2(2242.75, -553.5)
+position = Vector2(2221, -552)
+shape = SubResource("RectangleShape2D_8pbd6")
+
+[node name="Cafe3" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=710945892]
+position = Vector2(2265, -571)
+shape = SubResource("RectangleShape2D_8pbd6")
+
+[node name="Cafe5" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=418085750]
+position = Vector2(2265, -557)
+shape = SubResource("RectangleShape2D_8pbd6")
+
+[node name="Cafe4" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=829681444]
+position = Vector2(2217, -570)
 shape = SubResource("RectangleShape2D_8pbd6")
 
 [node name="Table2" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=187454815]
@@ -4106,6 +4125,18 @@ shape = SubResource("CapsuleShape2D_v1hrq")
 
 [node name="Table4" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=423451176]
 position = Vector2(2353.0005, -376)
+rotation = -1.5658952
+scale = Vector2(0.9999997, 0.9999997)
+shape = SubResource("CapsuleShape2D_v1hrq")
+
+[node name="Table8" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=469078304]
+position = Vector2(2196.9993, -516)
+rotation = -1.5658952
+scale = Vector2(0.9999997, 0.9999997)
+shape = SubResource("CapsuleShape2D_v1hrq")
+
+[node name="Table9" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=1306272718]
+position = Vector2(2229.9993, -516)
 rotation = -1.5658952
 scale = Vector2(0.9999997, 0.9999997)
 shape = SubResource("CapsuleShape2D_v1hrq")
@@ -4146,6 +4177,14 @@ shape = SubResource("RectangleShape2D_hro16")
 
 [node name="Chairs13" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=1076725097]
 position = Vector2(2277, -465)
+shape = SubResource("RectangleShape2D_hro16")
+
+[node name="Cafewall" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=2106225995]
+position = Vector2(2298, -530)
+shape = SubResource("RectangleShape2D_hro16")
+
+[node name="Cafewall2" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=729670821]
+position = Vector2(2304, -530)
 shape = SubResource("RectangleShape2D_hro16")
 
 [node name="Chairs14" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=318280537]
@@ -4206,6 +4245,10 @@ shape = SubResource("RectangleShape2D_a0lly")
 
 [node name="flowerbox30" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=258638163]
 position = Vector2(2079, -402)
+shape = SubResource("RectangleShape2D_a0lly")
+
+[node name="Bin" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=1552009078]
+position = Vector2(2313, -541)
 shape = SubResource("RectangleShape2D_a0lly")
 
 [node name="flowerbox31" type="CollisionShape2D" parent="TILE_MAPS/CAFE/Collision" unique_id=770557020]
@@ -4941,7 +4984,7 @@ metadata/target_scene = "res://Scenes/Map_Scenes/Hotel.tscn"
 metadata/spawn_side = "below"
 
 [node name="DoorArea_Cafe" type="CollisionShape2D" parent="Door Areas" unique_id=834152587]
-position = Vector2(2084, -516)
+position = Vector2(2085, -519)
 shape = SubResource("RectangleShape2D_gg651")
 metadata/target_scene = "res://Scenes/Map_Scenes/Cafe.tscn"
 metadata/spawn_side = "below"

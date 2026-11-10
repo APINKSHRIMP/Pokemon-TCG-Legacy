@@ -15733,7 +15733,18 @@ func choose_attack_from_pool(pool: Array, is_opponent: bool, cpu_rank_fn: Callab
 				best = atk
 		return best
 
-	# Player: show the pool as a temporary button list in the attack-button container
+	# Player (2026-11-10): the pool becomes rows in the action panel beside the Active - the only
+	# live input on the whole screen until one is picked (main.begin_copy_pick). The old temporary
+	# button list below is kept only as the fallback when there is no action panel to put them in.
+	if main._player_action_panel != null and is_instance_valid(main._player_action_panel) \
+			and main.player_active_pokemon != null:
+		var restore_blocker = main.opponent_blocker.visible
+		main.opponent_blocker.visible = false   # it covers the panel; main's _input does the blocking
+		main.begin_copy_pick(pool)
+		var pick_index: int = await main.special_attack_selected
+		main.end_copy_pick()
+		main.opponent_blocker.visible = restore_blocker
+		return pool[clampi(pick_index, 0, pool.size() - 1)]
 	main.special_attack_selection_active = true
 	main.buttons_only_blocker.visible = true
 	# ISSUE #3 FIX (Metronome regression) ACTIVE: opponent_blocker is a full-screen ColorRect with

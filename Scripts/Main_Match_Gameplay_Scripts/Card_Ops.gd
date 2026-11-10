@@ -819,6 +819,46 @@ func place_on_bench(pokemon: card_object, is_opponent: bool) -> bool:
 
 # ── Selection UI ──────────────────────────────────────────────────────────────────────────
 
+# ── TRAINER UNDO (2026-11-10) - see the block above main.trainer_undo_open ─────────────────
+## Does this pool show the player something hidden: their deck, any prizes, the opponent's hand?
+func _pool_hidden(pool: Array, search_mode: bool) -> bool:
+	if search_mode:
+		return true
+	for c in pool:
+		if c == null or not (c is card_object):
+			continue
+		if str(c.current_location) in ["deck", "prize", "set_aside", "secret_plan"]:
+			return true
+		if c in main.player_deck or c in main.opponent_deck or c in main.player_prize_cards \
+				or c in main.opponent_prize_cards or c in main.opponent_hand:
+			return true
+	return false
+
+
+## What Cancel means on this picker. Hidden cards shown: no Cancel (the card is used now). The first
+## public picker of a Trainer that has done nothing yet: Cancel, and it takes the play back.
+## Anything else: the caller's own `cancelable`. The autotest bot keeps the old behaviour.
+func _undo_cancel_state(pool: Array, cancelable: bool, search_mode: bool) -> Dictionary:
+	if GameState.autotest != null or main.opponents_turn_active:
+		return {"cancelable": cancelable, "undo": false}
+	if _pool_hidden(pool, search_mode):
+		main.trainer_undo_commit("hidden cards shown")
+		if cancelable:
+			print("HIDDEN-INFO FIX ACTIVE: no Cancel once the deck / prizes / opponent's hand are shown")
+		return {"cancelable": false, "undo": false}
+	if main.trainer_undo_open:
+		print("TRAINER UNDO: first picker is public - Cancel takes the Trainer back")
+		return {"cancelable": true, "undo": true}
+	return {"cancelable": cancelable, "undo": false}
+
+
+func _undo_after_prompt(undo: Dictionary, was_cancelled: bool, header: String) -> void:
+	main.trainer_undo_commit("picker answered")
+	if undo.get("undo", false) and was_cancelled:
+		print("TRAINER UNDO: cancelled at ", header, " - the Trainer goes back to the hand")
+		main.trainer_undo_requested = true
+
+
 # Show the enlarged card selection UI and wait for the player to pick one card from `pool`.
 # Returns the chosen card_object (or null if cancelled). Pass search_mode=true when searching
 # a deck (sets trainer_deck_search_active instead of trainer_pokemon_selection_active).
@@ -832,8 +872,12 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 		var own_in_play := func(c): return c == main.player_active_pokemon or c in main.player_bench
 		if dropped in pool and pool.all(own_in_play):
 			print("ISSUE #421 FIX ACTIVE: ", header, " answered by the drop on ", dropped.metadata.get("name", ""))
+			main.trainer_undo_commit("answered by a drop")
 			main.selected_card_for_action = dropped
 			return dropped
+	var undo := _undo_cancel_state(pool, cancelable, search_mode)
+	cancelable = undo["cancelable"]
+	main.last_prompt_cancelled = false
 	# opponent_blocker is only meant to be visible during the opponent's turn (see
 	# player_start_turn_checks/player_end_turn_checks). Remember its state instead of forcing it
 	# back on when the selection closes, otherwise using a power like Rain Dance or Metronome on
@@ -855,6 +899,7 @@ func prompt_select_card(pool: Array, header: String, hint: String, btn_text: Str
 	main.action_button.theme = main.theme_disabled
 	await main.trainer_target_selected
 	var sel = main.selected_card_for_action
+	_undo_after_prompt(undo, sel == null and main.last_prompt_cancelled, header)
 	if search_mode:
 		main.trainer_deck_search_active = false
 	else:
@@ -907,6 +952,12 @@ func prompt_select_cards(pool: Array, min_n: int, max_n: int, header: String, hi
 	min_n = clampi(min_n, 0, max_n)
 	if max_n == 0:
 		return []
+	# TRAINER UNDO: a validator with a required pick could reject everything - keep the caller's
+	# Cancel there so a hidden pool can never strand the player.
+	var undo := _undo_cancel_state(pool, cancelable, _search_mode)
+	if not (validator.is_valid() and min_n > 0):
+		cancelable = undo["cancelable"]
+	main.last_prompt_cancelled = false
 	var restore_opponent_blocker = main.opponent_blocker.visible
 	main.opponent_blocker.visible = false
 	main.trainer_discard_selected.clear()
@@ -924,6 +975,7 @@ func prompt_select_cards(pool: Array, min_n: int, max_n: int, header: String, hi
 	main.refresh_multi_select_labels()
 	await main.trainer_discard_selection_done
 	var chosen: Array = main.trainer_discard_selected.duplicate()
+	_undo_after_prompt(undo, main.last_prompt_cancelled, header)
 	main.trainer_discard_selected.clear()
 	main.trainer_discard_selection_active = false
 	main.trainer_discard_cards_min = -1

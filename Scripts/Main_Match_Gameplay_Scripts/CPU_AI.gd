@@ -1942,6 +1942,26 @@ func cpu_phase_retreat_second_pass(cpu_eval: Dictionary) -> void:
 	if main._should_bail(): return
 	
 # Scores each bench pokemon as a potential active replacement, returns the best choice
+## True when retreating into `incoming` trades one certain Knock Out for another: the Active is doomed
+## (the player's guaranteed lethal attack, or the poison tick) and `incoming` would be KO'd for sure by
+## the Defending Pokemon too - unless `incoming` can itself Knock Out the Defending Pokemon this turn.
+func _cpu_retreat_trades_doom_for_doom(incoming: card_object, cpu_eval: Dictionary) -> bool:
+	var active: card_object = main.opponent_active_pokemon
+	var foe: card_object = main.player_active_pokemon
+	if active == null or foe == null or incoming == null:
+		return false
+	var poison_kills: bool = active.is_poisoned and active.current_hp <= active.poison_damage
+	var active_doomed: bool = bool(cpu_eval.get("cpu_active_guaranteed_ko", false)) or poison_kills
+	if not active_doomed:
+		return false
+	if not _is_guaranteed_ko_by(incoming, foe):
+		return false
+	var ko_taker := _cpu_bench_ko_retreat_target()
+	if ko_taker != null and ko_taker == incoming:
+		return false   # it comes up and takes a prize first - worth it
+	return true
+
+
 func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 	# MATCH EFFECT: no_retreat — belt-and-braces guard for any direct callers
 	if main.match_effects.retreat_blocked(true) or main.tutorial.cpu_retreat_blocked():
@@ -1955,6 +1975,16 @@ func execute_cpu_retreat(cpu_eval: Dictionary) -> void:
 
 	if best_replacement == null:
 		print("CPU retreat failed: no valid bench replacement")
+		return
+
+	# 2026-11-10 (user): never swap one guaranteed Knock Out for another. Whatever reason asked for this
+	# retreat (save the doomed Active, high investment, lookahead...), if the Active is going down where
+	# it stands AND the Pokemon coming up is going down just the same, the retreat only burns Energy -
+	# stay put and spend the turn powering the Bench to hit back. The one exception: the newcomer can
+	# Knock Out the Defending Pokemon this turn, which still takes a prize.
+	if not main.tutorial.cpu_scripted() and _cpu_retreat_trades_doom_for_doom(best_replacement, cpu_eval):
+		print("CPU RETREAT VETO: ", main.opponent_active_pokemon.metadata.get("name", ""), " and ",
+			best_replacement.metadata.get("name", ""), " are both guaranteed Knock Outs - staying put")
 		return
 
 	# ECARD3 Mirage Stadium: any retreat attempt requires a coin flip — tails blocks it entirely
@@ -6089,9 +6119,16 @@ func _cpu_score_professor_oak(card: card_object) -> float:
 			continue
 		var subtypes = c.metadata.get("subtypes", [])
 		if "Stage 2" in subtypes: return -50.0
-		if "Stage 1" in subtypes:
-			var targets = main.get_valid_evolution_targets(c, true)
-			if targets.size() > 0: return -50.0 + (-20.0)
+		# 2026-11-10 (user): never Oak away an evolution the board can take THIS turn or NEXT - Stage 1
+		# onto a Basic in play, Stage 2 onto a Stage 1, a Basic onto its baby - even one that can't
+		# evolve until next turn (just benched, evolved this turn). It used to protect only cards with
+		# a target that may evolve right now, so a Stage 1 for the Basic benched this turn got discarded.
+		var from := String(c.metadata.get("evolvesFrom", ""))
+		if from != "":
+			for p in get_all_cpu_field_pokemon():
+				if p != null and String(p.metadata.get("name", "")) == from:
+					print("CPU: holding Professor Oak - ", c.metadata.get("name", ""), " evolves from ", from, " in play")
+					return -70.0
 	if hand.size() <= 1: return 90.0 + known_adj
 	if hand.size() <= 3: return 70.0 + known_adj
 	if hand.size() <= 4: return 40.0 + known_adj
@@ -8958,14 +8995,22 @@ func _cpu_score_draw_card(card: card_object) -> float:
 		"wipe":
 			score -= cpu_hand_loss_value(card)
 			if cpu_hand_is_stuck(card): score += 15.0
-			# ISSUE #398: _cpu_score_professor_oak's rule (dead code since #373 routed Oak here) - never wipe a
-			# hand holding an evolution that can go onto the board right now.
+			# ISSUE #398 / 2026-11-10 (user): never wipe away an evolution the board can take THIS turn or
+			# NEXT turn - a Stage 1 for a Basic in play, a Stage 2 for a Stage 1, a Basic for its baby - even
+			# when it can't go on until next turn (the Basic was benched or evolved this turn). It used to
+			# check only "can evolve right now" and only cost -40, so a Stage 1 for a just-benched Basic was
+			# discarded. Now it is a hard no.
+			var in_play: Array = []
+			for p in get_all_cpu_field_pokemon():
+				if p != null:
+					in_play.append(String(p.metadata.get("name", "")))
 			for c in main.opponent_hand:
-				if c != card and c.metadata.get("supertype", "") == "Pokémon" and not main.is_basic_pokemon(c) \
-						and not main.get_valid_evolution_targets(c, true).is_empty():
-					score -= 40.0
-					print("ISSUE #398 FIX ACTIVE: ", card.metadata.get("name", ""), " -40 - ", c.metadata.get("name", ""), " can evolve now")
-					break
+				if c == card or c.metadata.get("supertype", "") != "Pokémon":
+					continue
+				var from := String(c.metadata.get("evolvesFrom", ""))
+				if from != "" and from in in_play:
+					print("CPU OAK FIX: not wiping the hand - ", c.metadata.get("name", ""), " evolves from ", from, " in play")
+					return -100.0
 		"shuffle":
 			score -= cpu_hand_loss_value(card) * 0.7
 			if cpu_hand_is_stuck(card): score += 15.0

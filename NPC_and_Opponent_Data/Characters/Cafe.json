@@ -23,6 +23,19 @@
       "period": 4
     }
   },
-  "npcs": {},
-  "opponents": {}
+  "npcs": {
+    "Cafe Barista": {
+      "says": {
+        "meet": "Good [TIME] and welcome to Cafe Mieux!",
+        "repeat": "Good [TIME] and welcome to Cafe Mieux!"
+      },
+      "move": "idle_down",
+      "days": "1-12",
+      "times": "M,A",
+      "at": [40, 1]
+    }
+  },
+  "opponents": {
+
+  }
 }

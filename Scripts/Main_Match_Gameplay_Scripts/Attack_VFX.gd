@@ -458,6 +458,10 @@ func play_hit(attacker: card_object, defender: card_object, pend: Dictionary, da
 	if not _enabled():
 		await main.attack_hit_motion(attacker, defender, damage, weak, resisted, true)
 		return
+	# Scripted attacks: their own routine instead of a recipe (see DO THE WAVE below).
+	if str(pend["attack"].get("name", "")).to_lower() in WAVE_ATTACKS:
+		await play_do_the_wave(attacker, defender, react)
+		return
 	var recipe := recipe_for(attacker, pend["attack"])
 	if pend.has("hits"):
 		recipe = _apply_hits(recipe, int(pend["hits"]))   # ISSUE #385
@@ -587,6 +591,10 @@ func play_heal(card: card_object) -> void:
 ## The debugger: `name` exactly as the map has it, played with the attack's own type and cost, then its
 ## first Special Condition. Ignores reduce-motion so it can always be seen.
 func preview_attack(name: String, attacker: card_object, defender: card_object) -> void:
+	if name.to_lower() in WAVE_ATTACKS:
+		print("ATTACK VFX: preview '", name, "' -> scripted Do the Wave")
+		await play_do_the_wave(attacker, defender, {"damage": PREVIEW_DAMAGE})
+		return
 	var info: Dictionary = _map.get(name, {})
 	var recipe := recipe_by_name(name, str(info.get("type", "Colorless")), int(info.get("cost", 1)))
 	var react := {"damage": PREVIEW_DAMAGE} if bool(info.get("dmg", false)) else {}
@@ -1527,15 +1535,15 @@ func _screen_flash(ctx: _Ctx, colour: Color) -> void:
 	tw.tween_callback(ctx.jobs.finish)
 
 
-## Shakes the whole board (main) by up to `px`, then puts it back exactly where it was.
-func _screen_shake(ctx: _Ctx, px: float) -> void:
+## Shakes the whole board (main) by up to `px` for `base_time` seconds, then puts it back exactly where it was.
+func _screen_shake(ctx: _Ctx, px: float, base_time: float = SCREEN_SHAKE_TIME) -> void:
 	if not main is Control:
 		return
 	if _shake_users == 0:
 		_shake_base = main.position
 	_shake_users += 1
 	ctx.jobs.add()
-	var dur := GameState.match_time(SCREEN_SHAKE_TIME)
+	var dur := GameState.match_time(base_time)
 	var step := func(f: float) -> void:
 		if not is_instance_valid(main):
 			return
@@ -1968,6 +1976,247 @@ func _card_rect(card: card_object) -> Rect2:
 	if sz.x <= 1.0:
 		sz = Vector2(FALLBACK_CARD_W, FALLBACK_CARD_W * 1.385)
 	return Rect2(node.global_position, sz)
+
+
+# ============================================================
+# DO THE WAVE (2026-11-10) - scripted, replaces the old Surf recipe
+# ============================================================
+# 1) The attacker's Bench does a Mexican wave: each benched Pokémon jumps WAVE_HOPS times, the next
+#    one starting as the one before is about to start its second jump (they overlap).
+# 2) WAVE_PAUSE after the last jump lands, the whole Bench AND the Active lean in and charge the
+#    Defending Pokémon, all colliding at the same instant.
+# 3) The slam scales with how many joined in (0..5 benched): flash, board shake, knockback and the
+#    defender's Bench jolting all grow from a small bump (1 benched) to a huge smash (5).
+# All times are base seconds (GameState.match_time scales them). TWEAKABLE: every WAVE_* below.
+const WAVE_ATTACKS := ["do the wave"]
+const WAVE_HOP_PX := 28.0          # how high each jump goes
+const WAVE_HOP_TIME := 0.24        # one jump, up and back down
+const WAVE_HOPS := 3
+const WAVE_STAGGER := 0.2          # the next card's start, after this one's (just before its 2nd jump)
+const WAVE_PAUSE := 0.2            # after the last jump lands, before the charge
+const WAVE_WINDUP := 0.10          # lean back...
+const WAVE_WINDUP_PX := 14.0
+const WAVE_DART := 0.14            # ...charge in (everyone collides at the end of this)...
+const WAVE_RETURN := 0.34          # ...and bounce home
+const WAVE_LEAN := 0.3             # share of the angle to the defender each card tilts its top towards it
+const WAVE_BOUNCE_PX := 30.0       # extra rebound off the defender at full power
+const WAVE_KNOCK := [16.0, 130.0]  # defender knockback px: 1 benched .. 5 benched
+const WAVE_SPIN := [0.08, 0.45]    # defender's wobble (radians)
+const WAVE_REACT_TIME := [0.4, 0.85]
+const WAVE_SHAKE := [4.0, 32.0]    # board shake px
+const WAVE_SHAKE_TIME := [0.25, 0.75]
+const WAVE_FLASH := [0.12, 0.8]    # white flash alpha
+const WAVE_FLASH_TIME := [0.18, 0.55]
+const WAVE_BENCH_JOLT_FROM := 0.5  # power at/over which the defender's Bench jolts too
+const WAVE_BANG_FROM := 0.4        # power at/over which the bang plays over the hit thump
+# The wave's notes: every jump plays a short blip, each benched card one step further up this list
+# (semitones), so a full Bench rings out an arpeggiated chord before the charge. Default = a major
+# chord: root, 3rd, 5th, octave, 10th. A strict "+4 semitones each" would be [0, 4, 8, 12, 16]
+# (an augmented chord). TWEAKABLE: the steps, the clip, its volume.
+## Magikarp's Splash (Audio/SFX/Attacks): its FIRST hop only - loud for 0.3s, gone by 0.45s, the
+## second hop starts at 0.75s - cut at WAVE_NOTE_LEN with the usual fade.
+const WAVE_NOTE_CLIP := "Splash"
+const WAVE_NOTE_LEN := 0.4
+const WAVE_NOTE_STEPS := [0, 4, 7, 12, 16]
+const WAVE_NOTE_DB := -8.0
+
+
+static func _wave_lerp(pair: Array, t: float) -> float:
+	return lerpf(float(pair[0]), float(pair[1]), clampf(t, 0.0, 1.0))
+
+
+func play_do_the_wave(attacker: card_object, defender: card_object, react: Dictionary) -> void:
+	var fx = main.card_fx
+	if fx == null or attacker == null:
+		return
+	var bench: Array = _bench_of(attacker).filter(func(c): return c != null and _card_rect(c).size != Vector2.ZERO)
+	var n := bench.size()
+	var power := clampf(float(n) / 5.0, 0.0, 1.0)
+	print("DO THE WAVE: ", n, " benched, power ", snappedf(power, 0.01))
+	# 1) The wave.
+	if n > 0:
+		var hop_total := GameState.match_time(WAVE_HOP_TIME * WAVE_HOPS)
+		var stagger := GameState.match_time(WAVE_STAGGER)
+		for i in n:
+			_wave_hop_later(bench[i], stagger * float(i), hop_total)
+			_wave_notes_later(i, stagger * float(i), hop_total / float(WAVE_HOPS))
+		var wave_len := stagger * float(n - 1) + hop_total
+		# The attacker bounces the whole way through: up with the first benched card's first jump,
+		# down as the last one lands - whole jumps, each stretched a touch so it ends exactly on time.
+		var one_hop := hop_total / float(WAVE_HOPS)
+		var attacker_hops := maxi(WAVE_HOPS, int(round(wave_len / maxf(one_hop, 0.001))))
+		_wave_hop_later(attacker, 0.0, wave_len, attacker_hops)
+		if wave_len > 0.0:
+			await get_tree().create_timer(wave_len).timeout
+		if _bail():
+			return
+	await _wait(WAVE_PAUSE)
+	if _bail():
+		return
+	# 2) The charge: everyone at once.
+	var ctx := _make_ctx(attacker, defender, {"_id": "DoTheWave", "react": "knock", "element": "normal"}, react)
+	if ctx == null or defender == null or defender == attacker:
+		return
+	var d_rect := ctx.d_rect
+	var hitters: Array = [attacker]
+	hitters.append_array(bench)
+	var join := _Join.new()
+	for c in hitters:
+		join.add()
+		_wave_charge(c, d_rect, power, join)
+	await _wait(WAVE_WINDUP + WAVE_DART)
+	if _bail():
+		return
+	# 3) The slam.
+	_wave_impact(ctx, power)
+	await join.wait_all()
+	await ctx.jobs.wait_all()
+	_cleanup(ctx)
+
+
+## `card` jumps `hops` times (WAVE_HOPS for a benched card) across `total` real seconds, starting
+## `delay` real seconds from now.
+func _wave_hop_later(card: card_object, delay: float, total: float, hops: int = WAVE_HOPS) -> void:
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+		if _bail():
+			return
+	var hop := total / float(maxi(hops, 1))
+	var fn := func(e: Dictionary, f: float) -> void:
+		var t := f * total
+		var p := fmod(t, hop) / maxf(hop, 0.001)
+		var up := sin(PI * p)
+		e["offset"] = Vector2(0.0, -WAVE_HOP_PX * up)
+		# A little stretch in the air, a little squash on each landing.
+		var land := clampf(1.0 - p / 0.12, 0.0, 1.0) + clampf((p - 0.88) / 0.12, 0.0, 1.0)
+		e["scale"] = Vector2(1.0 - 0.03 * up + 0.05 * land, 1.0 + 0.05 * up - 0.06 * land)
+		e["z"] = 4
+	await main.card_fx.motion(card, total, fn)
+
+
+## Benched card `index`'s note, once at the start of each of its jumps (`hop` real seconds apart),
+## its pitch WAVE_NOTE_STEPS[index] semitones up, so the cards' notes overlap into a chord.
+func _wave_notes_later(index: int, delay: float, hop: float) -> void:
+	if not sfx_on() or not _sfx.has(WAVE_NOTE_CLIP):
+		return
+	var semis: float = float(WAVE_NOTE_STEPS[mini(index, WAVE_NOTE_STEPS.size() - 1)])
+	if index >= WAVE_NOTE_STEPS.size():
+		semis += 12.0 * float(index - WAVE_NOTE_STEPS.size() + 1)   # more than 5: carry on an octave up
+	var pitch := pow(2.0, semis / 12.0)
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+	for j in WAVE_HOPS:
+		if _bail():
+			return
+		# Shorter in real time as the pitch rises, so a higher note never runs into its second hop.
+		# A quick cut (_sfx_cut_at), not the long fade, or the second hop leaks in on the high notes.
+		var pl := _sfx_play(WAVE_NOTE_CLIP, 0.0, -1.0, WAVE_NOTE_DB, pitch)
+		if pl != null:
+			_sfx_cut_at(pl, WAVE_NOTE_LEN / maxf(pl.pitch_scale, 0.1))
+		if j < WAVE_HOPS - 1:
+			await get_tree().create_timer(maxf(hop, 0.01)).timeout
+
+
+## One card's lean-back, charge into the defender and bounce home. Every card's collision lands at
+## WAVE_WINDUP + WAVE_DART, whatever the distance it has to cover.
+func _wave_charge(card: card_object, d_rect: Rect2, power: float, join: _Join) -> void:
+	var r := _card_rect(card)
+	if r.size == Vector2.ZERO:
+		join.finish()
+		return
+	var v := d_rect.get_center() - r.get_center()
+	var dist := v.length()
+	var dir: Vector2 = v / dist if dist > 1.0 else Vector2.RIGHT
+	var reach: float = absf(dir.x) * (r.size.x + d_rect.size.x) / 2.0 + absf(dir.y) * (r.size.y + d_rect.size.y) / 2.0
+	var hit_at := dir * maxf(0.0, dist - reach + OVERLAP_PX)
+	# Lean the card's TOP towards the defender (straight up = 0).
+	var lean := wrapf(dir.angle() + PI / 2.0, -PI, PI) * WAVE_LEAN
+	var w := GameState.match_time(WAVE_WINDUP)
+	var d := GameState.match_time(WAVE_DART)
+	var back := GameState.match_time(WAVE_RETURN)
+	var total := w + d + back
+	var bounce := WAVE_BOUNCE_PX * power
+	var fn := func(e: Dictionary, f: float) -> void:
+		var t := f * total
+		e["z"] = 8
+		if t < w:
+			var p := sin(t / maxf(w, 0.001) * PI / 2.0)
+			e["offset"] = -dir * WAVE_WINDUP_PX * p
+			e["rot"] = lean * p
+		elif t < w + d:
+			var p := (t - w) / maxf(d, 0.001)
+			e["offset"] = (-dir * WAVE_WINDUP_PX).lerp(hit_at, p * p)
+			e["rot"] = lean
+			e["scale"] = Vector2(1.0 + 0.04 * p, 1.0 - 0.03 * p)
+		else:
+			var p := clampf((t - w - d) / maxf(back, 0.001), 0.0, 1.0)
+			e["offset"] = hit_at.lerp(Vector2.ZERO, _ease_out_back(p)) - dir * bounce * sin(p * PI)
+			e["rot"] = lerpf(lean, 0.0, p)
+			e["scale"] = Vector2.ONE
+	await main.card_fx.motion(card, total, fn)
+	join.finish()
+
+
+## The collision: sound, white flash, board shake, the defender knocked back (and its Bench jolted on
+## a big one) - all scaled by `power` (benched count / 5).
+func _wave_impact(ctx: _Ctx, power: float) -> void:
+	var damage := int(ctx.react.get("damage", 0))
+	var weak := bool(ctx.react.get("weak", false))
+	var resisted := bool(ctx.react.get("resisted", false))
+	# Sound: the hit thump (main's own damage sound stands down), plus a bang on the bigger slams.
+	_last_hit_sound = Time.get_ticks_msec() / 1000.0
+	var role := "hit_weak" if weak else ("hit_resist" if resisted else "hit")
+	_sfx_later(str(_sounds.get(role, "")), HIT_DELAY, HIT_DB, 1.0)
+	if power >= WAVE_BANG_FROM:
+		_sfx_play(TOSS_BANG_CLIP, 0.0, -1.0, HIT_DB + lerpf(-6.0, 2.0, power), lerpf(1.15, 0.8, power))
+	# White flash.
+	var flash := _overlay(Color(1, 1, 1, _wave_lerp(WAVE_FLASH, power)), FLASH_Z)
+	ctx.jobs.add()
+	var tw := flash.create_tween()
+	tw.tween_property(flash, "color:a", 0.0, GameState.match_time(_wave_lerp(WAVE_FLASH_TIME, power))).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(flash.queue_free)
+	tw.tween_callback(ctx.jobs.finish)
+	# Board shake.
+	_screen_shake(ctx, _wave_lerp(WAVE_SHAKE, power), _wave_lerp(WAVE_SHAKE_TIME, power))
+	# The defender's Bench feels it on the big ones.
+	var fx = main.card_fx
+	if fx != null and power >= WAVE_BENCH_JOLT_FROM:
+		var count := maxi(2, int(_wave_lerp(WAVE_SHAKE_TIME, power) / QUAKE_STEP))
+		for c in _bench_of(ctx.defender):
+			if c != null:
+				fx.jolt(c, QUAKE_PX * (1.0 + 2.0 * power), QUAKE_STEP, count)
+	if fx == null or damage <= 0 and not resisted:
+		return
+	# The defender: knocked back hard, wobbles, white then back to normal.
+	var mult: float = WEAK_MULT if weak else (RESIST_MULT if resisted else 1.0)
+	var kb := ctx.dir * _wave_lerp(WAVE_KNOCK, power) * mult
+	var spin := _wave_lerp(WAVE_SPIN, power) * (1.0 if ctx.dir.x >= 0.0 else -1.0)
+	var col: Color = FLASH_WEAK if weak else (FLASH_RESIST if resisted else FLASH_PLAIN)
+	var base_total := _wave_lerp(WAVE_REACT_TIME, power)
+	var total := GameState.match_time(base_total)
+	var out_t := 0.06 + 0.04 * power
+	var fn := func(e: Dictionary, f: float) -> void:
+		var t := f * base_total
+		if t < out_t:
+			var p := _ease_out(t / out_t)
+			e["offset"] = kb * p
+			e["rot"] = spin * p
+			e["scale"] = Vector2(1.0 - 0.08 * power * p, 1.0 + 0.06 * power * p)
+		else:
+			var p := clampf((t - out_t) / maxf(base_total - out_t, 0.001), 0.0, 1.0)
+			var settle := (1.0 - p) * cos(p * PI * 2.5)
+			e["offset"] = kb * maxf(settle, -0.25)
+			e["rot"] = spin * settle
+			e["scale"] = Vector2.ONE
+		e["tint"] = col if t < FLASH_IN else col.lerp(Color.WHITE, clampf((t - FLASH_IN) / FLASH_FADE, 0.0, 1.0))
+		e["z"] = 2
+	ctx.jobs.add()
+	_wave_react(ctx, total, fn)
+
+
+func _wave_react(ctx: _Ctx, total: float, fn: Callable) -> void:
+	await main.card_fx.motion(ctx.defender, total, fn)
+	ctx.jobs.finish()
 
 
 func _wait(seconds: float) -> void:

@@ -196,6 +196,7 @@ func _ready() -> void:
 		"tutorial_next_match": GameState.set_tutorial_next_match,
 		"window_mode":  GameState.set_window_mode,
 		"window_size":  GameState.set_window_size,
+		"fullscreen_size": GameState.set_fullscreen_size,
 	}
 
 	saved = _current_values()
@@ -362,6 +363,12 @@ func _build_rows() -> void:
 		if opt in fitting:
 			sizes.append([opt, String(opt).replace("x", " x ")])
 	_add_button_row(body, "window_size", "Window size", sizes, "(windowed mode only)", true)
+	# Fullscreen / Borderless only: the shape of the picture on the monitor. Anything but
+	# "Monitor" letterboxes - e.g. 2560 x 1080 on a 32:9 screen, black bars left and right.
+	var areas: Array = [[GameState.FULLSCREEN_SIZE_NATIVE, "Monitor"]]
+	for opt in GameState.WINDOW_SIZE_OPTIONS:
+		areas.append([opt, String(opt).replace("x", " x ")])
+	_add_button_row(body, "fullscreen_size", "Screen area", areas, "(black bars if smaller)", true)
 	_add_slider_row(body, "music_volume", "Music")
 	_add_slider_row(body, "sfx_volume", "Sound effects")
 	_add_slider_row(body, "cries_volume", "Cries")
@@ -573,6 +580,7 @@ func _current_values() -> Dictionary:
 		"overworld_clock": GameState.overworld_clock_setting,
 		"window_mode":   GameState.window_mode_setting,
 		"window_size":   GameState.window_size_setting,
+		"fullscreen_size": GameState.fullscreen_size_setting,
 		"tutorial_next_match": "on" if GameState.tutorial_option_locked() else GameState.tutorial_next_match_setting,
 	}
 
@@ -710,6 +718,9 @@ func _refresh_section(section: String) -> void:
 		if row.visible != windowed:
 			print("ISSUE #416 FIX ACTIVE: window size row ", "shown" if windowed else "hidden", " (", pending["window_mode"], ")")
 		row.visible = windowed
+		# The Screen area row is the other half: shown for Fullscreen / Borderless only.
+		if section_rows.has("fullscreen_size"):
+			(section_rows["fullscreen_size"] as Control).visible = not windowed
 
 
 ## Adds or removes the selection ring on one colour-theme button.

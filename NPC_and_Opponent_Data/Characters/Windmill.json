@@ -24,12 +24,13 @@
       "requires": "not flag: mewtwo_vanished",
       "move": "idle_down",
       "says": {
-        "meet": "...So. Someone finally found the way in. Do not look so surprised — I have been listening to your footsteps since the forest path. I have no interest in your words. Show me your cards instead.",
-        "repeat": "You came back. Then you already know how this ends... or perhaps you don't. Show me again.",
-        "first_win": "...Enough. You fight better than the ones who built me ever did. Take this — it was here long before the windmill was. Maybe it will mean more to you than it did to me.",
-        "rematch_win": "Again. There is something in you I have not finished measuring.",
-        "loss": "As expected. Strength is not something you can simply walk in and claim. Leave, and come back when you have earned it."
-      }
+        "meet": "................................................",
+        "repeat": "................................................",
+        "first_win": "................................................",
+        "rematch_win": "................................................",
+        "loss": "................................................"
+      },
+      "sleeve": "1_Default_Ancient"
     }
   }
 }

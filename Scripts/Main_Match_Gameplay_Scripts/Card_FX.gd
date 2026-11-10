@@ -418,6 +418,12 @@ func _sync(e: Dictionary) -> void:
 		return
 	g.visible = true
 	node.modulate.a = 0.0
+	# Remember every node made transparent, so _release can bring it back even if it is
+	# hidden (a search screen over the board) or was swapped out by a refresh meanwhile.
+	var hidden: Array = e.get("hidden_nodes", [])
+	if not node in hidden:
+		hidden.append(node)
+		e["hidden_nodes"] = hidden
 	if g.texture != node.texture:
 		g.texture = node.texture
 	g.size = node.size * node.get_global_transform().get_scale()
@@ -440,9 +446,16 @@ func _release(e: Dictionary) -> void:
 	if e["users"] > 0 or e["ko"]:
 		return
 	var card: card_object = e["card"]
-	var node := _node(card)
-	if node != null:
-		node.modulate.a = 1.0
+	# Restore WITHOUT _node()'s visibility test: a power that opens a screen at once (Evolutionary
+	# Light's deck search) ends its shake while the board is hidden, and the old visible-only
+	# lookup left the card at alpha 0 - in play and clickable but invisible.
+	for n in e.get("hidden_nodes", []):
+		if is_instance_valid(n):
+			(n as CanvasItem).modulate.a = 1.0
+	var node = main.find_card_ui_for_object(card) if main != null else null
+	if node != null and is_instance_valid(node):
+		(node as CanvasItem).modulate.a = 1.0
+	print("CARD_FX GHOST RELEASE: ", _name(card), " restored (", e.get("hidden_nodes", []).size(), " node(s))")
 	if is_instance_valid(e["ghost"]):
 		e["ghost"].queue_free()
 	_entries.erase(card.get_instance_id())

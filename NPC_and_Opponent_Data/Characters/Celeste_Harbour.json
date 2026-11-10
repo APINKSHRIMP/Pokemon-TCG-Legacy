@@ -147,7 +147,7 @@
       ]
     },
     "Bakery Lover": {
-      "at": [2134, 1470],
+      "at": [2419, 1461],
       "move": "idle_random",
       "says": {
         "meet": "I LOVE FRESH BREAD! It's always so warm and crispy if you get it here early enough. If you're here that must mean you love it as much as I do!! We should be best friends!!",
@@ -1802,6 +1802,60 @@
         }
       ],
       "at": [3290, 1510]
+    },
+    "Cafe Waiter": {
+      "says": {
+        "meet": "Are you looking for a table? Sit yourself at any that are free inside or outside and one of us will be right over!",
+        "repeat": "Are you looking for a table? Sit yourself at any that are free inside or outside and one of us will be right over!"
+      },
+      "move": "patrol_line",
+      "when": [
+        {
+          "days": "2",
+          "times": "A"
+        },
+        {
+          "days": "3-12",
+          "times": "M,A"
+        }
+      ],
+      "at": [1868, 1071]
+    },
+    "Cafe Waitress": {
+      "says": {
+        "meet": "Are you looking for a table? Sit yourself at any that are free inside or outside and one of us will be right over!",
+        "repeat": "Are you looking for a table? Sit yourself at any that are free inside or outside and one of us will be right over!"
+      },
+      "move": "patrol_line",
+      "days": "2-12",
+      "times": "E,N",
+      "at": [1868, 1072]
+    },
+    "Cafe Chef": {
+      "says": {
+        "meet": "Man, it's real hard work in a kitchen. Long grueling hours... hot... stood up all day. Sometimes you just need a 5 min breath of fresh air and a ciggy you know?",
+        "repeat": "Uh, don't smoke kid, and stay in culinary school..."
+      },
+      "move": "idle_random",
+      "when": [
+        {
+          "days": "2,6,10",
+          "times": "A"
+        },
+        {
+          "days": "3,7,11",
+          "times": "M"
+        },
+        {
+          "days": "4,8,12",
+          "times": "E"
+        },
+        {
+          "days": "5,9",
+          "times": "N"
+        }
+      ],
+      "at": [2094, 903]
     }
   },
   "opponents": {

@@ -27,6 +27,11 @@ static var zoom_active: bool = false
 # board while the log is still on screen.
 static var input_blocked: bool = false
 
+## Whether Alt was held on the click card_clicked is being emitted for, read off the click event
+## itself (Alt can read as "down" after an Alt-Tab ate its release). Alt+click on a Pokemon in play
+## is what opens its viewer (the match's _handle_card_click).
+static var last_click_alt: bool = false
+
 # ISSUE #439: a transformed Pokémon (Fossil Ditto's Transform) periodically shows the card
 # it REALLY is, fading in over the card it is copying. Phase-locked to the clock rather
 # than a tween, because the board rebuilds its card nodes constantly and a tween would
@@ -241,7 +246,14 @@ func _input(event: InputEvent) -> void:
 			# meant for whatever new array is now drawn over that same screen area.
 			if not is_visible_in_tree():
 				return
-			
+			# A menu over the board (pause, Options, forfeit, match log...) owns the click: this
+			# card is underneath it. See the match's board_click_covered().
+			var board := _board_owner()
+			if board != null and board.board_click_covered(self):
+				print("CARD CLICK GUARD: click under a menu ignored (", card_ref.metadata.get("name", "") if card_ref != null else "", ")")
+				return
+
+			last_click_alt = (event as InputEventMouseButton).alt_pressed
 			card_clicked.emit(card_ref)
 			# A double-click plays the card from inside that signal, and playing it rebuilds
 			# the hand -- this node can already be out of the tree, where get_tree() is null.
@@ -261,6 +273,16 @@ func _input(event: InputEvent) -> void:
 			# If in selection mode, consume the input so it doesn't propagate to other cards
 			if main_node.has_method("card_selection_mode_enabled") and main_node.card_selection_mode_enabled:
 				get_tree().get_root().set_input_as_handled()
+
+## The match screen this card sits on (the nearest ancestor that can say whether a menu covers
+## the board), or null outside a match - the deck builder, shops and so on.
+func _board_owner() -> Node:
+	var n: Node = get_parent()
+	while n != null:
+		if n.has_method("board_click_covered"):
+			return n
+		n = n.get_parent()
+	return null
 
 # On card load...
 func _ready() -> void:

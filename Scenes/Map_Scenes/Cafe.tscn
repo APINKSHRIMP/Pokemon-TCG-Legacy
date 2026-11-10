@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://cf4mqq3gi8m68"]
 
-[ext_resource type="Script" path="res://Scripts/Map_Scripts/Cafe.gd" id="1_svqxn"]
+[ext_resource type="Script" uid="uid://rgx65ntlgyws" path="res://Scripts/Map_Scripts/Cafe.gd" id="1_svqxn"]
 [ext_resource type="TileSet" uid="uid://cmw3joqql088p" path="res://Image_Assets/Map_Sheets/Tile_Sets/Cafe.tres" id="2_d3r31"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_ya3it"]
 
@@ -98,6 +98,7 @@ metadata/spawn_side = "above"
 
 [node name="NPCS" type="Node2D" parent="." unique_id=427928302]
 position = Vector2(121, 59)
+scale = Vector2(2, 2)
 
 [node name="Collision" type="StaticBody2D" parent="." unique_id=1628633344]
 
@@ -165,5 +166,10 @@ shape = SubResource("CapsuleShape2D_ya3it")
 
 [node name="Chair7" type="CollisionShape2D" parent="Collision" unique_id=341671962]
 position = Vector2(688, 39.000046)
+rotation = -1.5638148
+shape = SubResource("CapsuleShape2D_ya3it")
+
+[node name="Chair8" type="CollisionShape2D" parent="Collision" unique_id=1048584118]
+position = Vector2(703.99994, -8.999939)
 rotation = -1.5638148
 shape = SubResource("CapsuleShape2D_ya3it")

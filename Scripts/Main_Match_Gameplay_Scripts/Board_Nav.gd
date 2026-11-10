@@ -120,6 +120,9 @@ func _active() -> bool:
 
 
 func _mode_now() -> String:
+	# Metronome & co. choosing: only the live copy rows in the action panel (main.begin_copy_pick).
+	if main.copy_pick_active:
+		return "copy_pick"
 	if _coin_overlay() != null:
 		return "coins"
 	if main._stadium_overlay != null and is_instance_valid(main._stadium_overlay):
@@ -147,6 +150,7 @@ func _targets(mode: String) -> Array:
 		"coins":          return _coin_targets()
 		"stadium":        return _button_targets(main._stadium_overlay)
 		"attack_chooser": return _button_targets(main.attack_buttons_container)
+		"copy_pick":      return _button_targets(main._player_action_panel)   # live rows only = the copies
 		"yes_no":         return _answer_button_targets()
 		"selection":      return _selection_targets()
 	return _board_targets()
@@ -218,6 +222,7 @@ func _board_targets() -> Array:
 	var fake_click := InputEventMouseButton.new()
 	fake_click.button_index = MOUSE_BUTTON_LEFT
 	fake_click.pressed = true
+	fake_click.set_meta("nav", true)   # array_container_clicked: the cursor, not a mouse click (no Alt needed)
 
 	# The hands. Your hand's rect is the cards themselves, not the whole bar.
 	if not main.player_hand.is_empty() and main.player_hand_container.is_visible_in_tree():
@@ -645,6 +650,9 @@ func _on_cancel(event: InputEvent, mode: String) -> bool:
 		"attack_chooser":
 			main.hide_attack_buttons()
 			return true
+		"copy_pick":
+			# A copy has to be chosen: B / Backspace do nothing; Escape still opens the pause menu.
+			return not _is_escape(event)
 		"yes_no":
 			return false   # the match's yes/no branch answers NO
 		"selection":

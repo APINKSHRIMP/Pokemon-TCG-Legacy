@@ -4010,6 +4010,52 @@ func debug_add_time_points() -> void:
 		_refresh_time_visuals()
 
 
+## DEBUG: puts the clock at `hours` (8.0 .. 31.9; 22.98 = 10:59pm, 25.0 = 1am). Picks the slot that
+## hour falls in and the MOST whole time points that do not pass it, so the next point tips the clock
+## over: "10:59pm" on a 40-point day lands on 10:54pm (29 points), and one pack (+1) makes it 11pm.
+## Returns false if the hour is out of range. Reloads the map only if the slot changed.
+func debug_set_clock(hours: float) -> bool:
+	if hours < 8.0 or hours > GameState.CLOCK_LATEST_HOUR:
+		return false
+	var slot := GameState.clock_slot_at(hours)
+	var start: float = GameState.CLOCK_SLOT_START.get(slot, 8.0)
+	var target: int = GameState.time_points_to_advance()
+	var points := int(floor((hours - start) / GameState.CLOCK_HOURS_PER_SLOT * float(target) + 0.0001))
+	points = maxi(points, 0)
+	if slot != "Bedtime":
+		points = mini(points, target - 1)   # never reach the next slot's first point
+	_debug_set_slot_and_points(slot, points)
+	return true
+
+
+## DEBUG: the exact time points in the current slot. Enough to finish the slot moves time on under
+## the usual fade (with any spare carried over), like a real win would.
+func debug_set_time_points(points: int) -> void:
+	GameState.progress["time_points"] = maxi(points, 0)
+	GameState.save_progress()
+	print("DEBUG: time points = ", GameState.get_time_points(), " of ", GameState.time_points_to_advance())
+	if GameState.time_slot_change_due():
+		close_debug_menu()
+		_change_time_slot_under_fade()
+	else:
+		_refresh_time_visuals()
+
+
+func _debug_set_slot_and_points(slot: String, points: int) -> void:
+	var changed: bool = GameState.get_time() != slot
+	GameState.progress["time"] = slot
+	GameState.progress["time_points"] = points
+	GameState.save_progress()
+	print("DEBUG: clock set to ", slot, " + ", points, " points (", GameState.clock_hours(), "h)")
+	if changed:
+		var current := get_tree().current_scene
+		close_debug_menu()
+		if current != null:
+			_debug_reload_map_in_place(current)
+	else:
+		_refresh_time_visuals()
+
+
 func debug_start_test_match() -> void:
 	var current := get_tree().current_scene
 	close_debug_menu()

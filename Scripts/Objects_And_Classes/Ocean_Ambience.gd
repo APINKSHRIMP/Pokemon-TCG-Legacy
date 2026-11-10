@@ -38,7 +38,7 @@ const FAR_PX := 640.0        ## further than this is "nowhere near the water"
 
 ## TWEAKABLE: the levels, 0.0 - 1.0. far_quiet is both ends of OceanFar's curve.
 const LEVELS_DAY := {"far_quiet": 0.10, "far_peak": 0.40, "close_max": 0.50}
-const LEVELS_BEDTIME := {"far_quiet": 0.20, "far_peak": 0.80, "close_max": 0.90}
+const LEVELS_BEDTIME := {"far_quiet": 0.50, "far_peak": 0.80, "close_max": 0.90}   # far_quiet was 0.20 (2026-11-10: x2.5 - at night the sea carries further)
 
 ## TWEAKABLE: how fast a level may move, in level per second. Walking changes the target
 ## gradually anyway; this smooths arriving on the map and the start and end of a cast.
