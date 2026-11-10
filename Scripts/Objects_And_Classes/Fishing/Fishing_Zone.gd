@@ -158,6 +158,10 @@ func _process(delta: float) -> void:
 	_ambience.volume_db = linear_to_db(_ambience_level)
 
 
+## TWEAKABLE -- what the player says trying to cast from GameState.FISHING_LAST_HOUR (2am) on.
+const TOO_LATE_TEXT := "It's way too late to be fishing now, I really should head for home..."
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("ui_accept"):
 		return
@@ -179,6 +183,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	var blocked := FishingRods.fishing_blocked_reason(MapManager.get_map_data())
 	if blocked != "":
 		MapManager.show_interactable_message(blocked)
+		return
+	if GameState.fishing_too_late():
+		MapManager.show_interactable_message(TOO_LATE_TEXT)
 		return
 	MapManager.start_fishing(direction)
 

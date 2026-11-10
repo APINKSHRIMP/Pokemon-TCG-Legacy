@@ -60,6 +60,7 @@ func _announce_medal_of_elders() -> void:
 	if not is_inside_tree():
 		return
 	GameState.set_flag(GameState.MEDAL_OF_ELDERS_UNSEEN, false)
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gift_received)
 	MapManager._show_large_message_with_ok("You received the " + GameState.MEDAL_OF_ELDERS_LABEL)
 
 

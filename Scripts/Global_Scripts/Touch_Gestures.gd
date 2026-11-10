@@ -132,51 +132,18 @@ func _input(event: InputEvent) -> void:
 
 
 ## MOUSE POINTER ON TOUCH. A finger has no pointer, so the arrow left sitting where the last
-## tap landed is just clutter on a phone stream.
-##   AUTOMATIC: a real touch (InputEventScreenTouch) hides the pointer; the real mouse moving
-##     shows it again. Godot's own touch-made mouse events carry DEVICE_ID_EMULATION, so they
-##     never count as "the mouse moved".
-##   MANUAL: TOGGLE_TAPS quick presses in one spot flip it by hand - for a stream that sends
-##     the phone as a MOUSE (Moonlight trackpad mode), where no touch ever arrives. Once used,
-##     the automatic rule stands down until the game restarts.
-##   Every launch starts with the pointer showing (nothing is saved).
-const TOGGLE_TAPS := 5             # TWEAKABLE: presses to flip the pointer by hand
-const TOGGLE_GAP_MS := 400         # TWEAKABLE: most time between two of those presses
-const TOGGLE_MOVE := 40.0          # TWEAKABLE: px the presses may wander and still count
-
-var _manual_pointer := false       # the taps decided: the automatic rule is off
-var _tap_count := 0
-var _tap_last_ms := -100000
-var _tap_at := Vector2.ZERO
-
-
+## tap landed is just clutter on a phone stream. A real touch (InputEventScreenTouch) hides the
+## pointer; the real mouse moving shows it again. Godot's own touch-made mouse events carry
+## DEVICE_ID_EMULATION, so they never count as "the mouse moved".
 func _track_pointer_visibility(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
-		if (event as InputEventScreenTouch).pressed and not _manual_pointer:
+		if (event as InputEventScreenTouch).pressed:
 			_set_pointer_visible(false)
 		return
 	if event is InputEventMouseMotion:
-		if event.device != InputEvent.DEVICE_ID_EMULATION and not _manual_pointer \
+		if event.device != InputEvent.DEVICE_ID_EMULATION \
 				and (event as InputEventMouseMotion).relative.length() > 0.0:
 			_set_pointer_visible(true)
-		return
-	if not (event is InputEventMouseButton):
-		return
-	var mb := event as InputEventMouseButton
-	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
-		return
-	var now := Time.get_ticks_msec()
-	if now - _tap_last_ms > TOGGLE_GAP_MS or mb.position.distance_to(_tap_at) > TOGGLE_MOVE:
-		_tap_count = 0
-		_tap_at = mb.position
-	_tap_count += 1
-	_tap_last_ms = now
-	if _tap_count >= TOGGLE_TAPS:
-		_tap_count = 0
-		_manual_pointer = true
-		var show := Input.mouse_mode == Input.MOUSE_MODE_HIDDEN
-		print("TOUCH: ", TOGGLE_TAPS, " taps -> pointer ", "shown" if show else "hidden")
-		_set_pointer_visible(show)
 
 
 func _set_pointer_visible(show: bool) -> void:

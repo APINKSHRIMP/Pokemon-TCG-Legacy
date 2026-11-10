@@ -44,7 +44,7 @@ func set_time_of_day(time: String) -> void:
 	var east = $TREE_WALL_EAST_GROUP
 	east.get_node("SHADOW_VERTICAL").visible = not is_night
 
-	# Lamps come on at dusk; Time_Of_Day_Grade.LIGHT_ENERGY runs them dimmer at Evening.
+	# Lamps come on at dusk; Time_Of_Day_Grade.lights_strength() fades them up through Evening.
 	if not (is_night or time == "Evening"):
 		for lamp in find_children("ForestLamp*"):
 			lamp.get_node("PointLight2D2").visible = false

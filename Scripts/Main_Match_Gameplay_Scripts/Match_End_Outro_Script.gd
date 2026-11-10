@@ -862,6 +862,7 @@ func _hide_dialogue_message() -> void:
 func _show_gift_message(text: String) -> void:
 	if _gift_panel == null:
 		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_reward_received)
 	# Centring is the system variant's own job -- do not wrap in [center] here.
 	_gift_panel.set_body_text(text)
 	_gift_panel.visible = true
@@ -1302,25 +1303,14 @@ func transition_back_to_map() -> void:
 	click_enabled  = false
 
 	# Time advancement: enough points push Morning -> Afternoon -> Evening -> Night ->
-	# Bedtime. What scores and how much is GameState's TIME ADVANCE section. Bedtime never
-	# auto-advances; the player advances it by sleeping in bed. A story battle can hold the
-	# clock still and move it on itself (the café breakfast jumps to the afternoon once both
-	# its matches are played, won or lost).
+	# Bedtime, with spare points carried over. What scores and how much is GameState's TIME
+	# ADVANCE section. Bedtime never moves to another slot; the player leaves it by sleeping in
+	# bed. A story battle can hold the clock still and move it on itself (the café breakfast
+	# jumps to the afternoon once both its matches are played, won or lost).
 	var holds_clock: bool = bool(GameState.forced_opponent_overrides.get("no_time_advance", false))
 	if not holds_clock:
 		GameState.score_match_for_time(battle_won, _was_new_opponent, forfeited, series_results)
-	# ISSUE #441: fish points only ever get checked here -- at the end of a real match -- so
-	# fish alone never move time.
-	if not holds_clock and GameState.get_time_points() >= GameState.time_points_to_advance():
-		match GameState.get_time():
-			"Morning":
-				GameState.advance_time("Afternoon")
-			"Afternoon":
-				GameState.advance_time("Evening")
-			"Evening":
-				GameState.advance_time("Night")
-			"Night":
-				GameState.advance_time("Bedtime")
+		GameState.settle_time_points()
 
 	# A story battle's one-fight overrides end with the fight.
 	GameState.forced_opponent_overrides = {}

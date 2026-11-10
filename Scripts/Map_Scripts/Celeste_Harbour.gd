@@ -100,7 +100,8 @@ func _ready() -> void:
 	# the morning (no grade); every start now arrives at evening or night.
 	_setup_time_of_day_grade()
 	_scene_setup()
-	TimeOfDayGrade.style_lights(self, GameState.get_time())
+	TimeOfDayGrade.style_lights(self, GameState.clock_hours())
+	_add_clock(true)
 
 	_player.position = TAXI_END_POS
 	_player.lock_movement()
@@ -363,7 +364,7 @@ func _scene_setup():
 # Colours come from the time-of-day grade (BaseMapScene); this only handles what the time
 # switches on or off.
 func set_time_of_day(time: String) -> void:
-	# Lights come on at dusk; Time_Of_Day_Grade.LIGHT_ENERGY runs them dimmer at Evening.
+	# Lights come on at dusk; Time_Of_Day_Grade.lights_strength() fades them up through Evening.
 	if time == "Evening" or GameState.is_night_time(time):
 		$LIGHTS.visible = true
 		# Houses and shops have turned in by Bedtime; the street lights stay on.

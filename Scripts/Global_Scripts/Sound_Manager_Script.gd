@@ -76,14 +76,14 @@ const SFX_knockout_sound = preload("res://Audio/SFX/knockout_sound.ogg")
 const SFX_select_button = preload("res://Audio/SFX/select_button.ogg")
 ## ISSUE #447 / #454: the quiet blip - a menu cursor moving, a hand card pressed.
 const SFX_select_change = preload("res://Audio/SFX/Select_Change.ogg")
-## MATCH SFX OLD / NEW SWITCH (2026-11-06). true = the newer sounds picked from the Pokémon move
-## collection (Audio/SFX/Attacks) plus the louder, slightly slower draw / shuffle; false = the very first
-## match sounds the game shipped with. TWEAKABLE: flip it, or point any *_NEW path at another clip.
+## MATCH SFX OLD / NEW SWITCH (2026-11-06). true = the newer evolve / energy clips plus the louder,
+## slightly slower draw / shuffle; false = the very first match sounds the game shipped with.
+## TWEAKABLE: flip it, or point any *_NEW path at another clip.
 const USE_NEW_MATCH_SFX := true
 const SFX_EVOLVE_OLD := "res://Audio/SFX/evolve_sound.ogg"
-const SFX_EVOLVE_NEW := "res://Audio/SFX/Attacks/Transform.ogg"
+const SFX_EVOLVE_NEW := "res://Audio/SFX/Evolve.ogg"
 const SFX_ENERGY_OLD := "res://Audio/SFX/energy_sound.ogg"
-const SFX_ENERGY_NEW := "res://Audio/SFX/Attacks/Focus Energy.ogg"
+const SFX_ENERGY_NEW := "res://Audio/SFX/EnergyAttached.ogg"
 ## The draw / shuffle had no better replacement: the same clips at 0.9x speed (same pitch, WSOLA
 ## time-stretch) and louder (draw +8 dB - it was far quieter than every other SFX - shuffle +3 dB).
 const SFX_DRAW_OLD := "res://Audio/SFX/card_draw_sound.ogg"
@@ -119,10 +119,11 @@ const SFX_taxi_out   = preload("res://Audio/SFX/Taxi_out.ogg")
 # Celebration sting for the Gym Plaza coin flipper's five-heads win.
 const SFX_confetti_applause = preload("res://Audio/SFX/confetti applause.ogg")
 
-# The "you got something" sting. Plays under the big centred announcement for a
-# one-off story item -- Olly handing over the starter deck and the energy cards.
-# Pack openings and gift NPCs have their own reveal sequences and do not use it.
-const SFX_item_acquired = preload("res://Audio/SFX/ItemAcquired.ogg")
+# Overworld "You received..." notice and reveal: every MapManager gift, plus the two
+# notices with no gift overlay (Medal of Elders, TCG Tracker App).
+const SFX_gift_received = preload("res://Audio/SFX/GiftReceived.ogg")
+# End-of-match reward reveal (coin, card, costume, sleeve, pack), once per reward.
+const SFX_reward_received = preload("res://Audio/SFX/RewardReceived.ogg")
 
 # Phone call one-shots: Connecting as the phone rises into view, Disconnecting as the screen
 # slides back over the caller at hang-up. Played from PhoneCall.play().
@@ -379,7 +380,7 @@ func cry_length(species: String) -> float:
 
 
 # TWEAKABLE -- how loud a cry plays with the Cries slider at 100%. The slider scales down from here.
-const CRY_LEVEL := 0.75
+const CRY_LEVEL := 0.375
 
 # `species` is the sprite basename, e.g. "278_Wingull" -> res://Audio/Cries/278_Wingull.ogg.
 # Returns true if the cry started.

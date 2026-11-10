@@ -2536,6 +2536,7 @@ func _prepare_gift_display(gift_type: String, gift_value: String) -> void:
 #      computed values so the rect renders at exactly the size we want
 func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	_clear_gift_display()
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gift_received)
 
 	# Full-screen black 80%-alpha dim overlay sits behind everything gift-related
 	_gift_dim_overlay = ColorRect.new()
@@ -3348,6 +3349,7 @@ func _reveal_tracker_app() -> void:
 			_player.lock_movement()
 		if is_instance_valid(phone):
 			phone.release_hold()
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gift_received)
 	_show_large_message_with_ok(REGISTRAR_RECEIVED)
 
 
@@ -3996,12 +3998,16 @@ func debug_set_fish_coins(amount: int) -> void:
 	GameState.add_fish_coins(amount - GameState.get_fish_coins())
 	print("DEBUG: fish coins = ", GameState.get_fish_coins())
 
-## No reset, no reload. These are the points the outro reads to auto-advance time (see
-## GameState.time_points_to_advance), so taking them one win short and then winning a real
-## battle exercises the real path.
+## Takes the same path as a released fish: the hand and colour move on the spot, and reaching
+## the next slot blacks the screen out and rebuilds the map.
 func debug_add_time_points() -> void:
 	GameState.add_time_points(GameState.TIME_POINTS_FIRST_WIN)
 	print("DEBUG: time points = ", GameState.get_time_points(), " of ", GameState.time_points_to_advance())
+	if GameState.time_slot_change_due():
+		close_debug_menu()
+		_change_time_slot_under_fade()
+	else:
+		_refresh_time_visuals()
 
 
 func debug_start_test_match() -> void:
@@ -4046,10 +4052,64 @@ func start_fishing(direction: String) -> void:
 ## covers "Maximum X caught".
 func finish_fishing(call_delay: float = 0.0) -> void:
 	_fishing = null
+	# The fish has gone back or been sent, so its point counts from here. Enough points for a
+	# new slot rebuilds the map under a blackout, which rings any call itself afterwards.
+	if GameState.time_slot_change_due():
+		_change_time_slot_under_fade(call_delay)
+		return
 	cutscene_active = false
 	if _player != null and is_instance_valid(_player):
 		_player.unlock_movement()
+	_refresh_time_visuals()
 	ring_fish_shop_calls(call_delay)
+
+
+## Consumed by the next BaseMapScene._ready(), which fades the rebuilt map up out of black.
+var time_fade_in_pending: bool = false
+## TWEAKABLE -- seconds to fade to black before a time-slot change rebuilds the map.
+const TIME_FADE_OUT_SECONDS := 0.5
+
+
+## Blacks the screen out, moves the time slot on and rebuilds the map around the player, so
+## everyone and everything on it matches the new slot. `delay` lets floating labels finish.
+func _change_time_slot_under_fade(delay: float = 0.0) -> void:
+	cutscene_active = true
+	if _player != null and is_instance_valid(_player):
+		_player.lock_movement()
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+	var layer := CanvasLayer.new()
+	layer.layer = 90
+	var sheet := ColorRect.new()
+	sheet.color = Color(0, 0, 0, 0)
+	sheet.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(sheet)
+	get_tree().current_scene.add_child(layer)
+	var fade := sheet.create_tween()
+	fade.tween_property(sheet, "color:a", 1.0, TIME_FADE_OUT_SECONDS)
+	await fade.finished
+	GameState.settle_time_points()
+	time_fade_in_pending = true
+	reload_map_in_place()
+
+
+## Points were added while the map stayed loaded: rebuild under a blackout if they reach a new
+## slot, otherwise just nudge the colour and lights.
+func apply_time_on_map() -> void:
+	# A cast paused under the menu: finish_fishing() applies it once the fish has gone.
+	if is_fishing():
+		return
+	if GameState.time_slot_change_due():
+		_change_time_slot_under_fade()
+	else:
+		_refresh_time_visuals()
+
+
+func _refresh_time_visuals() -> void:
+	var map := get_tree().current_scene
+	if map != null and map.has_method("refresh_time_visuals"):
+		map.refresh_time_visuals()
 
 
 ## Rings every FISH milestone call that is due (FishShopCalls.pending), one after the

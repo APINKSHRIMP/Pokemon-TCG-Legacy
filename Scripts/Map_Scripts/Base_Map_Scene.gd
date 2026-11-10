@@ -21,6 +21,7 @@ extends Node2D
 # ============================================================
 
 const TimeOfDayGrade = preload("res://Scripts/Global_Scripts/Time_Of_Day_Grade.gd")
+const OverworldClock = preload("res://Scripts/Global_Scripts/Overworld_Clock.gd")
 ## Ocean_Ambience.GROUP. Spelled out, not preloaded: a preload here would compile that script
 ## (and the autoloads it names) in the middle of the autoloads compiling this one.
 const MAP_AMBIENCE_GROUP := "map_ambience"
@@ -209,6 +210,9 @@ func _apply_curtains(time: String) -> void:
 const WAKE_BGM_FADE_IN := 2.0
 
 func _ready():
+	# Time moves on as maps load too, so any points still waiting (a fish banked just before a
+	# quit, say) land before anything below reads the time.
+	GameState.settle_time_points()
 	var is_sleep_wakeup := GameState.sleep_wakeup_fade
 	GameState.sleep_wakeup_fade = false
 	if is_sleep_wakeup:
@@ -221,6 +225,12 @@ func _ready():
 	# Read now: MapManager.initialise() below consumes the battle-return flag.
 	var from_battle: bool = GameState.returning_from_battle
 	var came_outside: bool = uses_time_of_day() and GameState.last_map_was_interior
+	# Read now: both are cleared below. A door keeps the clock on screen across the fade; every
+	# other arrival slides it in.
+	var clock_slides_in: bool = from_battle or is_sleep_wakeup or GameState.use_spawn_position \
+			or GameState.reopen_menu_overlay or MapManager.time_fade_in_pending
+	var time_fade_in: bool = MapManager.time_fade_in_pending
+	MapManager.time_fade_in_pending = false
 
 	# For sleep: add a black overlay to the UI layer immediately so the scene is
 	# covered on the first rendered frame, then fade it out after setup completes.
@@ -239,7 +249,7 @@ func _ready():
 	_setup_time_of_day_grade()
 	_scene_setup()
 	if uses_time_of_day() or uses_interior_grade():
-		TimeOfDayGrade.style_lights(self, GameState.get_time(), not uses_time_of_day())
+		TimeOfDayGrade.style_lights(self, GameState.clock_hours())
 	if not uses_time_of_day():
 		_apply_curtains(GameState.get_time())
 
@@ -308,12 +318,14 @@ func _ready():
 	if came_outside:
 		CafeBreakfastCutscene.note_exterior_return()
 	GameState.last_map_was_interior = not uses_time_of_day()
-	# The clock moved since the player last saw a map (a match, or matches while indoors):
-	# the time-of-day banner, but only back from a match or on stepping outside.
+	_add_clock(clock_slides_in, CLOCK_WAKE_DELAY if is_sleep_wakeup else 0.0)
+	# The slot changed since the player last saw a map, however that happened: the banner.
 	var now_time := GameState.get_time()
-	if GameState.last_seen_time != "" and now_time != GameState.last_seen_time and (from_battle or came_outside):
-		TimeOfDayBanner.play(_ui_layer, now_time)
+	if GameState.last_seen_time != "" and now_time != GameState.last_seen_time:
+		TimeOfDayBanner.play(_ui_layer, now_time, OverworldClock.banner_rest_y(TimeOfDayBanner.REST_POS.y))
 	GameState.last_seen_time = now_time
+	if time_fade_in:
+		_play_time_fade_in()
 
 	await get_tree().process_frame
 	if _sleep_overlay != null:
@@ -625,6 +637,8 @@ func _close_menu_overlay() -> void:
 	# a map with no music of its own does not carry the menu theme out into the world.
 	SoundManagerScript.stop_bgm()
 	_start_map_bgm()   # ISSUE #417
+	# Packs opened from a menu over this map count towards the clock: same rule as a fish.
+	MapManager.apply_time_on_map()
 
 # ============================================================
 # SUB-MENU OVERLAYS (ISSUE #53)
@@ -700,11 +714,53 @@ func close_submenu_overlay(restore_menu: bool = true) -> void:
 func _setup_time_of_day_grade() -> void:
 	var interior := not uses_time_of_day()
 	if interior and not uses_interior_grade():
-		TimeOfDayGrade.apply_time("")
+		TimeOfDayGrade.apply_identity()
 		return
-	TimeOfDayGrade.apply_time(GameState.get_time(), interior)
+	TimeOfDayGrade.apply_clock(GameState.clock_hours(), GameState.get_time(), interior)
 	TimeOfDayGrade.grade_tree(self, self)
 	get_tree().node_added.connect(_on_node_added_grade)
+
+
+## The clock moved but the slot did not (a fish), so the map stays up: nudges the colour and the
+## lights to the new time. The clock itself keeps up by reading GameState.
+func refresh_time_visuals() -> void:
+	if not uses_time_of_day() and not uses_interior_grade():
+		return
+	TimeOfDayGrade.apply_clock(GameState.clock_hours(), GameState.get_time(), not uses_time_of_day())
+	TimeOfDayGrade.style_lights(self, GameState.clock_hours())
+
+
+# ============================================================
+# OVERWORLD CLOCK — see Overworld_Clock.gd
+# ============================================================
+
+## TWEAKABLE -- seconds after waking before the clock slides in (the morning fade-up is 1.5).
+const CLOCK_WAKE_DELAY := 1.5
+## TWEAKABLE -- seconds the map takes to fade up after a fish moved the time slot on.
+const TIME_FADE_IN_SECONDS := 0.6
+
+func _add_clock(slides_in: bool, delay: float = 0.0) -> void:
+	var clock := OverworldClock.new()
+	clock.start_hidden = slides_in
+	clock.start_delay = delay
+	_ui_layer.add_child(clock)
+
+
+## The second half of MapManager's time-slot blackout: the rebuilt map comes up out of black,
+## then any FISH milestone call that catch reached rings.
+func _play_time_fade_in() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 90
+	var sheet := ColorRect.new()
+	sheet.color = Color.BLACK
+	sheet.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(sheet)
+	add_child(layer)
+	var tween := sheet.create_tween()
+	tween.tween_property(sheet, "color:a", 0.0, TIME_FADE_IN_SECONDS)
+	tween.tween_callback(layer.queue_free)
+	tween.tween_callback(func(): MapManager.ring_fish_shop_calls())
 
 func _on_node_added_grade(node: Node) -> void:
 	if is_ancestor_of(node):

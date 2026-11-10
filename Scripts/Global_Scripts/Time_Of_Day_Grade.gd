@@ -3,13 +3,14 @@ extends RefCounted
 ## TIME-OF-DAY COLOUR GRADE
 ## Outdoor maps are drawn once, in Afternoon colours. Morning / Evening / Night / Bedtime are a colour
 ## grade (World_Time_Grade.gdshader) worn by every world CanvasItem, driven by four shader
-## globals this script writes. BaseMapScene wires it up: maps that return true from
+## globals this script writes. The colour follows the clock's hour, blending gradually between
+## each slot's peak (GRADE_PEAK_HOURS). BaseMapScene wires it up: maps that return true from
 ## uses_time_of_day() get the full grade; interiors (uses_interior_grade()) get the much
 ## softer INTERIOR_* version; menus and battles are left alone.
 ##
 ## Lights: a sheet "X.png" may have "X_Open_Lights.png" beside it -- same
 ## size and layout, transparent except lit windows / lamps. Every TileMapLayer drawing from
-## that sheet shows those pixels ungraded, at LIGHTS[time] strength. At Bedtime the shops
+## that sheet shows those pixels ungraded, at lights_strength() strength. At Bedtime the shops
 ## are shut, so "X_Closed_Lights.png" is drawn instead (same layout, fewer lit pixels:
 ## street lights on, shop windows off); a sheet without one keeps its open lights.
 ##
@@ -58,18 +59,19 @@ const GRADES := {
 		"curve": Vector3(0.277, 0.342, 0.225),
 	},
 	"Bedtime": {
-		# The late hours after Night: Night's grade with the blue row x1.21 (x1.10, then
-		# another x1.10); the extra darkness is BRIGHTNESS below.
+		# The late hours after Night: Night's grade with the blue row x1.33 (x1.10 three times);
+		# the extra darkness is BRIGHTNESS below.
 		"red":   Vector4(0.636, -0.140, -0.016, -0.086),
 		"green": Vector4(-0.128, 0.592, -0.062, -0.082),
-		"blue":  Vector4(0.020, 0.351, 0.670, -0.101),
+		"blue":  Vector4(0.022, 0.386, 0.737, -0.101),
 		"curve": Vector3(0.277, 0.342, 0.225),
 	},
 }
 
 ## TWEAKABLE -- how far each grade is pushed from Afternoon. 1.0 = as fitted; 1.4 = 40%
-## further (Morning, so it reads clearly different from Afternoon); 0.5 = halfway back.
-const STRENGTH := {"Morning": 1.4, "Afternoon": 1.0, "Evening": 1.0, "Night": 1.0, "Bedtime": 1.0}
+## further; 0.5 = halfway back. Morning is 1.6 (was 1.4): peak morning is more tinted now that
+## it is only that strong at 8am.
+const STRENGTH := {"Morning": 1.6, "Afternoon": 1.0, "Evening": 1.0, "Night": 1.0, "Bedtime": 1.0}
 
 ## TWEAKABLE -- overall brightness multiplier on top of the grade (0.85 = 15% darker).
 ## ISSUE #299: Evening back to 1.0 (it had been darkened to 0.85).
@@ -77,11 +79,23 @@ const STRENGTH := {"Morning": 1.4, "Afternoon": 1.0, "Evening": 1.0, "Night": 1.
 ## ISSUE #380: Night 10% lighter (0.85 x 1.1 = 0.935), Bedtime 10% darker (0.51 x 0.9 = 0.459).
 ## 2026-11-01: Morning 5% darker (0.95); Evening 15% darker (0.85); Night down to the old
 ## Bedtime level (0.459); Bedtime way darker (0.459 -> 0.25, ~45% down).
-const BRIGHTNESS := {"Morning": 0.95, "Afternoon": 1.0, "Evening": 0.85, "Night": 0.459, "Bedtime": 0.25}
+## 2026-11-09: peak Morning darker (0.95 -> 0.90), peak Bedtime darker (0.25 -> 0.20).
+const BRIGHTNESS := {"Morning": 0.90, "Afternoon": 1.0, "Evening": 0.85, "Night": 0.459, "Bedtime": 0.20}
 
-## TWEAKABLE -- how strongly the lights overlays show (0 = off, 1 = full). Above 1 the lit
-## pixels are fully shown AND brightened by that much (Bedtime 1.1 = 10% brighter).
-const LIGHTS := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.5, "Night": 1.0, "Bedtime": 1.1}
+## TWEAKABLE -- the hour each colour is at its peak, counted from midnight (26 = 2am). The
+## colour blends in a straight line between neighbours, and holds at the Bedtime peak after 2am.
+const GRADE_PEAK_HOURS := [
+	[8.0, "Morning"],
+	[14.0, "Afternoon"],
+	[18.0, "Evening"],
+	[22.0, "Night"],
+	[26.0, "Bedtime"],
+]
+
+## TWEAKABLE -- lights (sheets and PointLight2Ds, indoors and out) fade up between these hours,
+## then stay at full until the bed. 6pm is half strength.
+const LIGHTS_START_HOUR := 16.0
+const LIGHTS_PEAK_HOUR := 20.0
 
 ## Which lights sheet each time draws: "_Open_Lights.png" normally, "_Closed_Lights.png"
 ## once the shops have shut. A time not listed here uses the open sheet.
@@ -93,29 +107,24 @@ const CLOSED_LIGHTS_TIMES := ["Bedtime"]
 ## Indoors wears a much softer version of the same grade: a room has its own lighting, so
 ## dusk and night only take the edge off it instead of plunging it into blue. Interiors
 ## use the same lights sheets ("<sheet>_Open_Lights.png", "_Closed_Lights.png" at Bedtime)
-## for curtains drawn / windows gone dark / lamps lit, at INTERIOR_LIGHTS strength.
+## for curtains drawn / windows gone dark / lamps lit, on the same lights_strength() ramp.
 ##
 ## TWEAKABLE -- how much of the OUTDOOR colour tint reaches indoors (0 = none, 1 = the full
 ## outdoor tint). Only the hue shift; the darkening is INTERIOR_BRIGHTNESS below.
 ## ISSUE #488: tint and darkening both pushed ~25% stronger (tint was 0.25 / 0 / 0.3 / 0.3 / 0.35;
 ## brightness was 0.97 / 1.0 / 0.92 / 0.82 / 0.72 - the DARKENING, 1 - brightness, is what grew 25%).
-const INTERIOR_TINT := {"Morning": 0.3125, "Afternoon": 0.0, "Evening": 0.375, "Night": 0.375, "Bedtime": 0.4375}
-## TWEAKABLE -- indoor brightness multiplier (outdoors is 0.95 / 1.0 / 0.85 / 0.459 / 0.25).
-const INTERIOR_BRIGHTNESS := {"Morning": 0.9625, "Afternoon": 1.0, "Evening": 0.9, "Night": 0.775, "Bedtime": 0.65}
-## TWEAKABLE -- indoor lights-sheet strength (same meaning as LIGHTS).
-const INTERIOR_LIGHTS := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.5, "Night": 1.0, "Bedtime": 1.1}
-## TWEAKABLE -- indoor lamp (PointLight2D) strength per time (same meaning as LIGHT_ENERGY).
-## Lamps are hidden while this is 0, so a room's lamps only exist in the evening and later.
-const INTERIOR_LIGHT_ENERGY := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.45, "Night": 1.0, "Bedtime": 1.1}
+## 2026-11-09: tint and darkening both another 20% stronger with the gradual clock (tint was
+## 0.3125 / 0 / 0.375 / 0.375 / 0.4375; brightness was 0.9625 / 1.0 / 0.9 / 0.775 / 0.65).
+const INTERIOR_TINT := {"Morning": 0.375, "Afternoon": 0.0, "Evening": 0.45, "Night": 0.45, "Bedtime": 0.525}
+## TWEAKABLE -- indoor brightness multiplier (outdoors is 0.90 / 1.0 / 0.85 / 0.459 / 0.20).
+const INTERIOR_BRIGHTNESS := {"Morning": 0.955, "Afternoon": 1.0, "Evening": 0.88, "Night": 0.73, "Bedtime": 0.58}
 
 ## TWEAKABLE -- atlas cell size in px, used to undo Godot's tile-atlas padding.
 const TILE_PX := 16.0
 
 ## ---- PointLight2D styling (style_lights) ------------------------------------------
-## TWEAKABLE -- light strength per time. Lights are only switched on (by each map's
-## set_time_of_day) at Evening, Night and Bedtime; Evening is the dusk "just came on" level,
-## Bedtime 10% up on Night.
-const LIGHT_ENERGY := {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.45, "Night": 1.0, "Bedtime": 1.1}
+## Lights are only switched on (by each map's set_time_of_day) at Evening, Night and Bedtime;
+## their strength is lights_strength() below, the same ramp as the lights sheets.
 
 ## TWEAKABLE -- the round street / garden / harbour / prom glows (additive, radial
 ## gradient) are redrawn as a warm pool: a bright core easing smoothly out to nothing,
@@ -135,6 +144,9 @@ const POOL_SIZE := 1.4
 ## Resolution of the pool texture (higher = smoother gradient).
 const POOL_TEXTURE_PX := 256
 
+const LIGHT_WANTED_META := "tod_light_wanted"
+const LIGHT_FULL_ENERGY_META := "tod_light_full_energy"
+
 static var _pool_textures := {}   # old glow texture -> its pool replacement
 
 static var _world_material: ShaderMaterial = null
@@ -142,29 +154,60 @@ static var _sheet_materials := {}   # sheet path + lights suffix -> ShaderMateri
 static var _lights_suffix := OPEN_LIGHTS_SUFFIX   # set by apply_time, read when a tilemap is graded
 
 
-## Writes the four globals. Unknown / empty time = identity, lights off. `interior` uses
-## the softer INTERIOR_* tables instead of the outdoor ones.
-static func apply_time(time: String, interior: bool = false) -> void:
-	var g: Dictionary = GRADES.get(time, GRADES["Afternoon"])
+## Writes the four globals for a moment on the clock: the colour blended between the two
+## neighbouring peaks in GRADE_PEAK_HOURS. `slot` only picks the lights sheet (shops shut at
+## Bedtime). `interior` uses the softer INTERIOR_* tables. Cheap, and safe to call while a map
+## is on screen: nothing needs regrading, every material reads these globals.
+static func apply_clock(hours: float, slot: String, interior: bool = false) -> void:
+	var low: Array = GRADE_PEAK_HOURS[0]
+	var high: Array = GRADE_PEAK_HOURS[GRADE_PEAK_HOURS.size() - 1]
+	for i in GRADE_PEAK_HOURS.size() - 1:
+		if hours < float(GRADE_PEAK_HOURS[i + 1][0]):
+			low = GRADE_PEAK_HOURS[i]
+			high = GRADE_PEAK_HOURS[i + 1]
+			break
+	var t := clampf(inverse_lerp(float(low[0]), float(high[0]), hours), 0.0, 1.0)
+	if interior:
+		print("ISSUE #488 FIX ACTIVE: interior grade ", GameState.clock_label(hours), " between ", low[1], " and ", high[1])
+	var a := _resolved_grade(String(low[1]), interior)
+	var b := _resolved_grade(String(high[1]), interior)
+	var c: Vector3 = (a["curve"] as Vector3).lerp(b["curve"], t)
+	_lights_suffix = CLOSED_LIGHTS_SUFFIX if CLOSED_LIGHTS_TIMES.has(slot) else OPEN_LIGHTS_SUFFIX
+	RenderingServer.global_shader_parameter_set("tod_red", (a["red"] as Vector4).lerp(b["red"], t))
+	RenderingServer.global_shader_parameter_set("tod_green", (a["green"] as Vector4).lerp(b["green"], t))
+	RenderingServer.global_shader_parameter_set("tod_blue", (a["blue"] as Vector4).lerp(b["blue"], t))
+	RenderingServer.global_shader_parameter_set("tod_curve", Vector4(c.x, c.y, c.z, lights_strength(hours)))
+
+
+## No grade at all, lights off: a room that opts out of time of day.
+static func apply_identity() -> void:
+	var id: Dictionary = GRADES["Afternoon"]
+	_lights_suffix = OPEN_LIGHTS_SUFFIX
+	RenderingServer.global_shader_parameter_set("tod_red", id["red"])
+	RenderingServer.global_shader_parameter_set("tod_green", id["green"])
+	RenderingServer.global_shader_parameter_set("tod_blue", id["blue"])
+	RenderingServer.global_shader_parameter_set("tod_curve", Vector4(0.0, 0.0, 0.0, 0.0))
+
+
+## 0 before LIGHTS_START_HOUR, rising to 1 at LIGHTS_PEAK_HOUR, 1 from then until the bed.
+static func lights_strength(hours: float) -> float:
+	return clampf(inverse_lerp(LIGHTS_START_HOUR, LIGHTS_PEAK_HOUR, hours), 0.0, 1.0)
+
+
+## One slot's peak grade as final shader rows: pushed from identity by STRENGTH, then scaled
+## by BRIGHTNESS.
+static func _resolved_grade(time: String, interior: bool) -> Dictionary:
+	var g: Dictionary = GRADES[time]
 	var id: Dictionary = GRADES["Afternoon"]
 	var k: float = STRENGTH.get(time, 1.0)
 	var b: float = BRIGHTNESS.get(time, 1.0)
-	var lights: float = LIGHTS.get(time, 0.0)
 	if interior:
-		print("ISSUE #488 FIX ACTIVE: interior grade ", time, " tint ", INTERIOR_TINT.get(time, 0.0), " brightness ", INTERIOR_BRIGHTNESS.get(time, 1.0))
 		k *= INTERIOR_TINT.get(time, 0.0)
 		b = INTERIOR_BRIGHTNESS.get(time, 1.0)
-		lights = INTERIOR_LIGHTS.get(time, 0.0)
-	# Push away from identity by STRENGTH, then scale the whole output by BRIGHTNESS.
-	var rows := {}
+	var rows := {"curve": (g["curve"] as Vector3) * k * b}
 	for key in ["red", "green", "blue"]:
 		rows[key] = (id[key] + (g[key] - id[key]) * k) * b
-	var c: Vector3 = g["curve"] * k * b
-	_lights_suffix = CLOSED_LIGHTS_SUFFIX if CLOSED_LIGHTS_TIMES.has(time) else OPEN_LIGHTS_SUFFIX
-	RenderingServer.global_shader_parameter_set("tod_red", rows["red"])
-	RenderingServer.global_shader_parameter_set("tod_green", rows["green"])
-	RenderingServer.global_shader_parameter_set("tod_blue", rows["blue"])
-	RenderingServer.global_shader_parameter_set("tod_curve", Vector4(c.x, c.y, c.z, lights))
+	return rows
 
 
 ## Grades `root` and everything under it.
@@ -253,26 +296,32 @@ static func _sheet_path(tile_set: TileSet) -> String:
 	return atlas.texture.resource_path
 
 
-## Restyles and scales every PointLight2D under `root` for `time`. Called once per map load.
-## Lights are hidden outright while their energy is 0 (daytime). `interior` reads
-## INTERIOR_LIGHT_ENERGY instead of LIGHT_ENERGY.
-static func style_lights(root: Node, time: String, interior: bool = false) -> void:
-	var k: float = (INTERIOR_LIGHT_ENERGY if interior else LIGHT_ENERGY).get(time, 0.0)
+## Restyles and scales every PointLight2D under `root` for the time on the clock. Runs on map
+## load and again whenever the clock moves on a map that stays on screen (a fish), so each
+## light remembers its full strength and whether its map wanted it on. Lights are hidden
+## outright while the strength is 0.
+static func style_lights(root: Node, hours: float) -> void:
+	var k: float = lights_strength(hours)
 	for node in root.find_children("*", "PointLight2D", true, false):
 		var light := node as PointLight2D
+		if not light.has_meta(LIGHT_WANTED_META):
+			light.set_meta(LIGHT_WANTED_META, light.visible)
 		if k <= 0.0:
 			light.visible = false
 			continue
-		if _is_round_glow(light):
-			var old := light.color
-			var strength := maxf(old.r, maxf(old.g, old.b)) * old.a * light.energy
-			var old_tex := light.texture as GradientTexture2D
-			light.texture = _pool_for(old_tex)
-			# A light's size is its texture's pixel size x texture_scale: keep the footprint.
-			light.texture_scale *= float(old_tex.width) / float(POOL_TEXTURE_PX) * POOL_SIZE
-			light.color = POOL_COLOUR
-			light.energy = strength * POOL_ENERGY_SCALE
-		light.energy *= k
+		if not light.has_meta(LIGHT_FULL_ENERGY_META):
+			if _is_round_glow(light):
+				var old := light.color
+				var strength := maxf(old.r, maxf(old.g, old.b)) * old.a * light.energy
+				var old_tex := light.texture as GradientTexture2D
+				light.texture = _pool_for(old_tex)
+				# A light's size is its texture's pixel size x texture_scale: keep the footprint.
+				light.texture_scale *= float(old_tex.width) / float(POOL_TEXTURE_PX) * POOL_SIZE
+				light.color = POOL_COLOUR
+				light.energy = strength * POOL_ENERGY_SCALE
+			light.set_meta(LIGHT_FULL_ENERGY_META, light.energy)
+		light.energy = float(light.get_meta(LIGHT_FULL_ENERGY_META)) * k
+		light.visible = bool(light.get_meta(LIGHT_WANTED_META))
 
 
 static func _is_round_glow(light: PointLight2D) -> bool:

@@ -342,7 +342,7 @@ func _play_handover() -> void:
 			else:
 				SoundManagerScript.stop_bgm()
 			await say(_speaker, LINE_HARD_AFTER_PACKS)
-			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
+			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE)
 			await say_all(_speaker, LINES_HARD_BUILD)
 			_go_build_deck()
 			return
@@ -367,9 +367,7 @@ func _pick_deck() -> String:
 
 ## Cards flipped up with the big "You got..." notice. Returns once it is cleared.
 ## The energy cards fly up one after another (fly = true) rather than flipping.
-func _reveal_cards(text: String, card_ids: Array, with_sound: bool = true, fly: bool = true) -> void:
-	if with_sound:
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
+func _reveal_cards(text: String, card_ids: Array, fly: bool = true) -> void:
 	MapManager.show_card_reveal(text, card_ids, func(): line_advanced.emit(), fly)
 	await line_advanced
 	close_box()
@@ -377,7 +375,6 @@ func _reveal_cards(text: String, card_ids: Array, with_sound: bool = true, fly: 
 
 ## A deck box or pack fading up on the gift overlay with the big notice.
 func _reveal_art(text: String, art_id: String) -> void:
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
 	MapManager.show_pack_reveal(text, "res://Image_Assets/Packs/" + art_id + ".png",
 			func(): line_advanced.emit())
 	await line_advanced
@@ -393,7 +390,6 @@ func _gift_pack(text: String, art_id: String) -> void:
 	if GameState.progress.get(GIFT_DONE_KEY, false):
 		return
 	# ISSUE #361: the pack on the reveal glides into the opening's rect and opens from there.
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_item_acquired)
 	MapManager.show_pack_reveal(text, "res://Image_Assets/Packs/" + art_id + ".png",
 			func(): line_advanced.emit())
 	await line_advanced
@@ -494,7 +490,7 @@ func _play_after_battle() -> void:
 			# ISSUE #350: the deck builder walkthrough, Basic Starter Deck -> Better Deck.
 			await _deck_walkthrough("starter1_a", GameState.STARTER_DECK_BASIC, NEWBY_BETTER_DECK)
 			await say(_speaker, LINE_ENERGY_AFTER_BONUS)
-			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
+			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE)
 			await _say_coin_lines()
 			await say(_speaker, LINE_TOWN_HALL)
 			await say_all(_speaker, LINES_NEW_GOODBYE)
@@ -506,14 +502,14 @@ func _play_after_battle() -> void:
 			# ISSUE #350: "<pair> Starter Deck" -> "<pair> Deck", from the bonus pack's cards.
 			await _deck_walkthrough(bonus_art, pair + " Starter Deck", pair + " Deck")
 			await say(_speaker, LINE_ENERGY_AFTER_BONUS)
-			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
+			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE)
 			await _say_coin_lines()
 			await say(_speaker, LINE_TOWN_HALL)
 			await say_all(_speaker, LINES_RULES_GOODBYE)
 		"advanced":
 			await say(_speaker, LINE_GET_PACKS)
 			await say(_speaker, LINE_ENERGY_ADVANCED)
-			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE, false)
+			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE)
 			if GameState.get_familiarity() == GameState.FAMILIARITY_PLAYED:
 				await say_all(_speaker, LINES_CAFE_MORNING)
 			await say(_speaker, LINE_TOWN_HALL)

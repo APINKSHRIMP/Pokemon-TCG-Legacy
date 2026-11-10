@@ -1010,6 +1010,7 @@ func power_rain_dance(blastoise: card_object) -> void:
 		var energy = water_energies[0]
 		main.player_hand.erase(energy)
 		target.attached_energies.append(energy)
+		main.play_energy_attach_sfx()
 		main.refresh_hand_display(false)
 		main.display_active_pokemon_energies(false)
 		await main.show_message("Attached Water Energy to " + target.metadata.get("name", "") + "!")
@@ -1069,6 +1070,7 @@ func power_energy_trans(venusaur: card_object) -> void:
 		
 		source.attached_energies.erase(grass_energy)
 		dest.attached_energies.append(grass_energy)
+		main.play_energy_attach_sfx()
 		main.display_pokemon(false)   # ISSUE #400: same missing bench redraw as Gather Fire
 		main.display_active_pokemon_energies(false)
 		await main.show_message("Moved Grass Energy from " + source.metadata.get("name", "") + " to " + dest.metadata.get("name", "") + "!")
@@ -1203,6 +1205,7 @@ func _buzzap_attach_electrode(electrode: card_object, target: card_object, energ
 	electrode.is_electrode_energy = true
 	electrode.electrode_energy_type = energy_type
 	target.attached_energies.append(electrode)
+	main.play_energy_attach_sfx()
 	main.update_discard_pile_display(is_opp)
 	main.display_active_pokemon_energies(is_opp)
 	main.display_pokemon(is_opp)
@@ -2263,6 +2266,7 @@ func cpu_phase_activate_powers() -> void:
 			if main._should_bail(): return
 			src.attached_energies.erase(e_mv)
 			best_target.attached_energies.append(e_mv)
+			main.play_energy_attach_sfx()
 			main.display_pokemon(true)
 			main.display_active_pokemon_energies(true)
 			et_moves += 1
@@ -2647,6 +2651,7 @@ func cpu_phase_activate_powers() -> void:
 				if main._should_bail(): return
 				best_source.attached_energies.erase(best_energy)
 				charmander.attached_energies.append(best_energy)
+				main.play_energy_attach_sfx()
 				# ISSUE #400: redraw the BENCH too - a Benched Charmander didn't show its new Energy until
 				# the next full refresh - and drop the cached evaluation (the board just changed).
 				main.display_pokemon(true)
@@ -3474,6 +3479,7 @@ func power_gather_fire(pokemon: card_object) -> void:
 		if _is_basic_energy_of(e, "Fire"):
 			source.attached_energies.erase(e)
 			pokemon.attached_energies.append(e)
+			main.play_energy_attach_sfx()
 			break
 	
 	main.display_pokemon(false)   # ISSUE #400: the Benched Charmander's stack too
@@ -3763,6 +3769,7 @@ func power_energy_charge(magneton: card_object) -> void:
 		return
 	source.attached_energies.erase(moved)
 	magneton.attached_energies.append(moved)
+	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opp)
 	main.display_pokemon(is_opp)
 	await main.show_message("ENERGY CHARGE: MOVED LIGHTNING ENERGY TO " + magneton.metadata.get("name", "").to_upper() + "!")
@@ -4496,6 +4503,7 @@ func power_soak_up(bellsprout: card_object) -> void:
 					p.attached_energies.erase(e)
 					break
 			bellsprout.attached_energies.append(e)
+			main.play_energy_attach_sfx()
 			moved_count += 1
 		main.display_active_pokemon_energies(false)
 		main.display_pokemon(false)
@@ -4544,6 +4552,7 @@ func power_soak_up(bellsprout: card_object) -> void:
 			break
 		source.attached_energies.erase(moved)
 		bellsprout.attached_energies.append(moved)
+		main.play_energy_attach_sfx()
 		moved_count += 1
 		main.display_active_pokemon_energies(is_opp)
 		main.display_pokemon(is_opp)
@@ -5574,6 +5583,7 @@ func trigger_neo1_fire_boost(pokemon: card_object, is_opp: bool) -> void:
 		deck.erase(e)
 		e.current_location = "attached"
 		pokemon.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.display_active_pokemon_energies(is_opp)
 	main.update_deck_icon(is_opp)
@@ -5676,6 +5686,7 @@ func power_neo1_fire_recharge(pokemon: card_object) -> void:
 	discard.erase(energy)
 	energy.current_location = "attached"
 	target.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opp)
 	main.update_discard_pile_display(is_opp)
 	await main.show_message("FIRE RECHARGE! ATTACHED FIRE ENERGY TO " + target.metadata.get("name","").to_upper() + "!")
@@ -6519,6 +6530,7 @@ func check_magma_pool(retreating: card_object, new_active: card_object, is_oppon
 	retreating.attached_energies.erase(mp_e)
 	mp_e.current_location = "active"
 	new_active.attached_energies.append(mp_e)
+	main.play_energy_attach_sfx()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	await main.show_message("MAGMA POOL! MOVED " + mp_e.metadata.get("name","").to_upper() + " TO " + new_active.metadata.get("name","").to_upper() + "!")
@@ -6737,6 +6749,7 @@ func trigger_neo3_howl(entei: card_object, is_opponent: bool) -> void:
 			discard.erase(e)
 			e.current_location = "active" if t == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 			t.attached_energies.append(e)
+			main.play_energy_attach_sfx()
 			attached += 1
 		main.update_discard_pile_display(is_opponent)
 		main.display_pokemon(is_opponent)
@@ -6768,6 +6781,7 @@ func power_neo3_electromagnetic_power(pokemon: card_object) -> void:
 	if is_opponent:
 		var em_moves = r4_cpu_plan_energy_moves(sources, func(p): return p.attached_energies, -1, false, mags)
 		if em_moves.is_empty(): return
+		main.play_energy_attach_sfx()
 		main.display_pokemon(true)
 		main.display_active_pokemon_energies(true)
 		await main.show_message("ELECTROMAGNETIC POWER! MOVED " + str(em_moves.size()) + " ENERGY!")
@@ -6782,6 +6796,7 @@ func power_neo3_electromagnetic_power(pokemon: card_object) -> void:
 	src.attached_energies.erase(e)
 	e.current_location = "active" if dst == main.player_active_pokemon else "bench"
 	dst.attached_energies.append(e)
+	main.play_energy_attach_sfx()
 	main.display_pokemon(false)
 	main.display_active_pokemon_energies(false)
 	await main.show_message("ELECTROMAGNETIC POWER! MOVED " + e.metadata.get("name","").to_upper() + " TO " + dst.metadata.get("name","").to_upper() + "!")
@@ -6949,6 +6964,7 @@ func power_neo3_unown_yield(pokemon: card_object) -> void:
 	deck.erase(e)
 	e.current_location = "active" if t == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 	t.attached_energies.append(e)
+	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -7163,6 +7179,7 @@ func power_neo4_give(pokemon: card_object) -> void:
 	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	basic_e.current_location = "active" if target == own_active else "bench"
 	target.attached_energies.append(basic_e)
+	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -8418,6 +8435,7 @@ func power_ecard1_energy_connect(ampharos: card_object) -> void:
 		if energy == null: break
 		source.attached_energies.erase(energy)
 		active.attached_energies.append(energy)
+		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		main.display_pokemon(is_opponent)
 		await main.show_message("ENERGY CONNECT! " + energy.metadata.get("name","").to_upper() + " MOVED TO " + active.metadata.get("name","").to_upper() + "!")
@@ -8456,6 +8474,7 @@ func power_ecard1_harvest_bounty(venusaur: card_object) -> void:
 	hand.erase(chosen)
 	chosen.current_location = "active"
 	active.attached_energies.append(chosen)
+	main.play_energy_attach_sfx()
 	main.refresh_hand_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	await main.show_message("HARVEST BOUNTY! " + chosen.metadata.get("name","").to_upper() + " ATTACHED TO " + active.metadata.get("name","").to_upper() + "!")
@@ -8516,6 +8535,7 @@ func power_ecard1_heat_up(typhlosion: card_object) -> void:
 	deck.erase(energy)
 	energy.current_location = "bench"
 	target.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -8741,6 +8761,7 @@ func power_ecard1_plunge(poliwrath: card_object) -> void:
 	for e in active.attached_energies.duplicate():
 		active.attached_energies.erase(e)
 		poliwrath.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 	bench.erase(poliwrath)
 	bench.append(active)
 	active.current_location = "bench"
@@ -9395,6 +9416,7 @@ func power_ecard2_flower_supplement(bellossom: card_object) -> void:
 	hand.erase(energy)
 	energy.current_location = "bench"
 	target.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	main.refresh_hand_display(is_opponent)
 	main.display_pokemon(is_opponent)
 	await main.show_message("HEADS! " + energy.metadata.get("name","").to_upper() + " ATTACHED TO " + target.metadata.get("name","").to_upper() + "!")
@@ -9481,6 +9503,7 @@ func power_ecard2_super_dynamo(electrode: card_object) -> void:
 	discard.erase(energy)
 	energy.current_location = "active" if target.current_location == "active" else "bench"
 	target.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	main.update_discard_pile_display(is_opponent)
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -9588,6 +9611,7 @@ func power_ecard2_water_cyclone(kingdra: card_object) -> void:
 			if target == null: break
 		active.attached_energies.erase(energy)
 		target.attached_energies.append(energy)
+		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		main.display_pokemon(is_opponent)
 		await main.show_message("WATER CYCLONE! ENERGY MOVED TO " + target.metadata.get("name","").to_upper() + "!")
@@ -9668,6 +9692,7 @@ func power_ecard2_magnetic_flow(magneton: card_object) -> void:
 	pokemon_b.attached_energies.erase(energy_b)
 	pokemon_a.attached_energies.append(energy_b)
 	pokemon_b.attached_energies.append(energy_a)
+	main.play_energy_attach_sfx()
 	main.display_pokemon(not is_opponent)
 	main.display_active_pokemon_energies(not is_opponent)
 	await main.show_message("HEADS! ENERGY SWAPPED BETWEEN " + pokemon_a.metadata.get("name","").to_upper() + " AND " + pokemon_b.metadata.get("name","").to_upper() + "!")
@@ -9819,6 +9844,7 @@ func power_ecard2_strange_tentacles(tentacruel: card_object) -> void:
 	opp_discard.erase(chosen)
 	chosen.current_location = "active"
 	defender.attached_energies.append(chosen)
+	main.play_energy_attach_sfx()
 	main.display_pokemon(not is_opponent)
 	main.display_active_pokemon_energies(not is_opponent)
 	main.update_discard_pile_display(not is_opponent)
@@ -9876,6 +9902,7 @@ func power_ecard2_miracle_shift(togetic: card_object) -> void:
 	discard.erase(new_energy)
 	new_energy.current_location = target.current_location
 	target.attached_energies.append(new_energy)
+	main.play_energy_attach_sfx()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -10428,6 +10455,7 @@ func power_ecard3_energy_jump(alakazam: card_object) -> void:
 	alakazam.power_used_this_turn = true
 	source.attached_energies.erase(energy)
 	target.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	await main.show_message("ENERGY JUMP! MOVED TO " + target.metadata.get("name","").to_upper() + "!")
@@ -10758,6 +10786,7 @@ func trigger_ecard3_energy_recharge(arcanine: card_object, is_opponent: bool) ->
 		if chosen == null: break
 		discard.erase(chosen)
 		arcanine.attached_energies.append(chosen)
+		main.play_energy_attach_sfx()
 		attached_n += 1
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -10827,6 +10856,7 @@ func trigger_ecard3_manipulate(gengar: card_object, is_opponent: bool) -> void:
 		if e == null: break
 		discard.erase(e)
 		chosen.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 		attached_n += 1
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -10936,6 +10966,7 @@ func trigger_ecard3_attract_energy(magneton: card_object, is_opponent: bool) -> 
 			for e in p.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e)).duplicate():
 				p.attached_energies.erase(e)
 				magneton.attached_energies.append(e)
+				main.play_energy_attach_sfx()
 				moved += 1
 	else:
 		var do_it = await main.trainer_effects.gym1_prompt_yes_no(magneton, "ATTRACT ENERGY", "Move basic Energy from your other Pokemon onto Magneton?", "YES", "NO")
@@ -10954,6 +10985,7 @@ func trigger_ecard3_attract_energy(magneton: card_object, is_opponent: bool) -> 
 			if e == null: continue
 			source.attached_energies.erase(e)
 			magneton.attached_energies.append(e)
+			main.play_energy_attach_sfx()
 			moved += 1
 	if moved > 0:
 		main.display_active_pokemon_energies(is_opponent)
@@ -11087,6 +11119,7 @@ func power_ex1_firestarter(blaziken: card_object) -> void:
 	main.player_discard_pile.erase(chosen)
 	chosen.current_location = "attached"
 	target.attached_energies.append(chosen)
+	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(false)
 	main.update_discard_pile_display(false)
 	await main.show_message("FIRESTARTER! ATTACHED " + chosen.metadata.get("name","").to_upper() + " TO " + target.metadata.get("name","").to_upper() + "!")
@@ -11112,6 +11145,7 @@ func cpu_ex1_firestarter(blaziken: card_object) -> void:
 	await main.show_message("FIRESTARTER! A FIRE ENERGY WAS ATTACHED TO "
 		+ target.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
+	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(true)
 	main.update_discard_pile_display(true)
 	print("CPU POWER: Firestarter")
@@ -11195,6 +11229,7 @@ func power_ex1_psy_shadow(gardevoir: card_object) -> void:
 	main.player_deck.erase(chosen)
 	chosen.current_location = "attached"
 	target.attached_energies.append(chosen)
+	main.play_energy_attach_sfx()
 	main.player_deck.shuffle()
 	main.display_active_pokemon_energies(false)
 	main.update_deck_icon(false)
@@ -11244,6 +11279,7 @@ func _r4_cpu_psy_shadow_finish(target: card_object) -> void:
 	await main.show_message("PSY SHADOW! A PSYCHIC ENERGY WAS ATTACHED TO "
 		+ target.metadata.get("name","").to_upper() + ", PUTTING 2 DAMAGE COUNTERS ON IT!")
 	if main._should_bail(): return
+	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(true)
 	main.update_deck_icon(true)
 	main.display_hp_circles_above_align(target, true)
@@ -11284,6 +11320,7 @@ func power_ex1_water_call(swampert: card_object) -> void:
 	main.player_hand.erase(chosen)
 	chosen.current_location = "attached"
 	target.attached_energies.append(chosen)
+	main.play_energy_attach_sfx()
 	main.refresh_hand_display(false)
 	main.display_active_pokemon_energies(false)
 	await main.show_message("WATER CALL! ATTACHED " + chosen.metadata.get("name","").to_upper() + " TO " + target.metadata.get("name","").to_upper() + "!")
@@ -11305,6 +11342,7 @@ func cpu_ex1_water_call(swampert: card_object) -> void:
 	await main.show_message("WATER CALL! A WATER ENERGY WAS ATTACHED TO "
 		+ target.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
+	main.play_energy_attach_sfx()
 	main.refresh_hand_display(true)
 	main.display_active_pokemon_energies(true)
 	print("CPU POWER: Water Call")
@@ -12166,6 +12204,7 @@ func power_ex3_call_for_power(dragonite: card_object) -> void:
 				break
 		chosen.current_location = "attached"
 		dragonite.attached_energies.append(chosen)
+		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		main.display_pokemon(is_opponent)
 	await main.show_message("CALL FOR POWER! MOVED ENERGY TO DRAGONITE EX!")
@@ -12219,6 +12258,7 @@ func cpu_ex3_call_for_power(dragonite: card_object) -> void:
 			+ (" ENERGY WAS" if moved == 1 else " ENERGY WERE") + " MOVED TO "
 			+ dragonite.metadata.get("name","").to_upper() + "!")
 		if main._should_bail(): return
+		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(true)
 		main.display_pokemon(true)
 		print("CPU POWER: Call for Power")
@@ -12394,6 +12434,7 @@ func power_ex4_energy_move(pokemon: card_object, team: String, max_move: int) ->
 		var cpu_moves = r4_cpu_plan_energy_moves(cpu_src, func(p): return _ex4_energy_pool(p, basic_only), max_move, true)
 		if cpu_moves.is_empty(): return
 		pokemon.power_used_this_turn = true
+		main.play_energy_attach_sfx()
 		main.display_pokemon(true)
 		main.display_active_pokemon_energies(true)
 		await main.show_message("MOVED " + str(cpu_moves.size()) + " ENERGY TO " + cpu_moves[0]["to"].metadata.get("name","").to_upper() + "!")
@@ -12435,6 +12476,7 @@ func power_ex4_energy_move(pokemon: card_object, team: String, max_move: int) ->
 	for e in to_move:
 		source.attached_energies.erase(e)
 		dest.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 	main.display_pokemon(false)
 	main.display_active_pokemon_energies(false)
 	await main.show_message("MOVED " + str(to_move.size()) + " ENERGY TO " + dest.metadata.get("name","").to_upper() + "!")
@@ -12470,6 +12512,7 @@ func power_ex4_overheat(camerupt: card_object) -> void:
 	discard.erase(chosen)
 	chosen.current_location = "attached"
 	camerupt.attached_energies.append(chosen)
+	main.play_energy_attach_sfx()
 	camerupt.current_hp = max(0, camerupt.current_hp - 20)
 	main.display_active_pokemon_energies(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -12522,6 +12565,7 @@ func power_ex4_auxiliary_light(lanturn: card_object) -> void:
 	hand.erase(chosen)
 	chosen.current_location = "attached"
 	lanturn.attached_energies.append(chosen)
+	main.play_energy_attach_sfx()
 	lanturn.current_hp = max(0, lanturn.current_hp - 20)
 	main.refresh_hand_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -12798,6 +12842,7 @@ func check_ex5_energy_grounding(pokemon: card_object, attacker: card_object, is_
 	pokemon.attached_energies.erase(basic_e)
 	basic_e.current_location = "attached"
 	lanturn.attached_energies.append(basic_e)
+	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_pokemon_opp)
 	main.display_pokemon(is_pokemon_opp)
 	await main.show_message("ENERGY GROUNDING! A BASIC ENERGY WAS MOVED TO LANTURN!")
@@ -12853,6 +12898,7 @@ func power_ex5_metal_juncture(metagross: card_object) -> void:
 		if main.opponent_active_pokemon == null: return
 		var mj_moves = r4_cpu_plan_energy_moves(main.opponent_bench, func(p): return p.attached_energies.filter(func(e): return "Metal" in main.get_energy_provided_by_card(e) and "Basic" in e.metadata.get("subtypes", [])), -1, false, [main.opponent_active_pokemon])
 		if mj_moves.is_empty(): return
+		main.play_energy_attach_sfx()
 		main.display_pokemon(true)
 		main.display_active_pokemon_energies(true)
 		await main.show_message("METAL JUNCTURE! MOVED " + str(mj_moves.size()) + " METAL ENERGY TO THE ACTIVE POKEMON!")
@@ -12880,6 +12926,7 @@ func power_ex5_metal_juncture(metagross: card_object) -> void:
 	if metal == null: return
 	source.attached_energies.erase(metal)
 	active.attached_energies.append(metal)
+	main.play_energy_attach_sfx()
 	main.display_pokemon(false)
 	main.display_active_pokemon_energies(false)
 	await main.show_message("METAL JUNCTURE! MOVED A METAL ENERGY TO YOUR ACTIVE!")
@@ -12923,6 +12970,7 @@ func power_ex5_crush_draw(walrein: card_object) -> void:
 			if target == null: target = walrein
 	top.current_location = "attached"
 	target.attached_energies.append(top)
+	main.play_energy_attach_sfx()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -13444,6 +13492,7 @@ func power_ex6_energy_rain(blastoise: card_object) -> void:
 			main.opponent_hand.erase(er_e)
 			er_e.current_location = "attached"
 			er_t.attached_energies.append(er_e)
+			main.play_energy_attach_sfx()
 			er_t.current_hp = max(0, er_t.current_hp - 10)
 			er_n += 1
 		if er_n > 0:
@@ -13472,6 +13521,7 @@ func power_ex6_energy_rain(blastoise: card_object) -> void:
 		hand.erase(e)
 		e.current_location = "attached"
 		target.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 		target.current_hp = max(0, target.current_hp - 10)
 		main.refresh_hand_display(false)
 		main.display_active_pokemon_energies(false)
@@ -13534,6 +13584,7 @@ func power_ex6_extra_energy_bomb(electrode: card_object) -> void:
 		discard.erase(e)
 		e.current_location = "attached"
 		target.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 		attached += 1
 	main.display_active_pokemon_energies(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -13666,6 +13717,7 @@ func trigger_ex6_legendary_ascent(bird: card_object, is_opponent: bool) -> void:
 		if is_opponent:
 			var others2 = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return p != bird)
 			moved = r4_cpu_plan_energy_moves(others2, la_pool_fn, -1, false, [bird]).size()
+			if moved > 0: main.play_energy_attach_sfx()
 		else:
 			# MULTI-SELECT: "any number" on one screen
 			var la_pool: Array = []
@@ -13681,6 +13733,7 @@ func trigger_ex6_legendary_ascent(bird: card_object, is_opponent: bool) -> void:
 						p.attached_energies.erase(la_e)
 						break
 				bird.attached_energies.append(la_e)
+				main.play_energy_attach_sfx()
 				moved += 1
 				main.display_pokemon(false)
 				main.display_active_pokemon_energies(false)
@@ -13779,6 +13832,7 @@ func power_ex7_darkness_navigation(pokemon: card_object) -> void:
 	deck.erase(chosen)
 	chosen.current_location = "attached"
 	pokemon.attached_energies.append(chosen)
+	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.display_active_pokemon_energies(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -13799,6 +13853,7 @@ func power_ex7_dark_trance(pokemon: card_object) -> void:
 		# OLD ISSUE 349: the CPU never used it. Shared Energy-move planner (Darkness Energy nobody needs -> where it helps).
 		var dt_moves = r4_cpu_plan_energy_moves(main.card_ops.get_all_pokemon_in_play(true), func(p): return p.attached_energies.filter(func(e): return "Darkness" in main.get_energy_provided_by_card(e)), -1)
 		if not dt_moves.is_empty():
+			main.play_energy_attach_sfx()
 			main.display_active_pokemon_energies(true)
 			main.display_pokemon(true)
 			await main.show_message("DARK TRANCE! MOVED " + str(dt_moves.size()) + " DARKNESS ENERGY!")
@@ -13834,6 +13889,7 @@ func power_ex7_dark_trance(pokemon: card_object) -> void:
 			continue
 		src.attached_energies.erase(dark_e)
 		dst.attached_energies.append(dark_e)
+		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		main.display_pokemon(is_opponent)
 		await main.show_message("DARK TRANCE! MOVED A DARKNESS ENERGY!")
@@ -14479,6 +14535,7 @@ func power_ex8_super_connectivity(metagross: card_object) -> void:
 	discard.erase(chosen)
 	chosen.current_location = "attached"
 	active.attached_energies.append(chosen)
+	main.play_energy_attach_sfx()
 	active.current_hp = max(0, active.current_hp - 10)
 	main.display_active_pokemon_energies(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -15071,6 +15128,7 @@ func trigger_ex8_dragon_boost(rayquaza: card_object, is_opponent: bool) -> void:
 		var from_p = chosen_entry["from"]
 		from_p.attached_energies.erase(e)
 		rayquaza.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	await main.show_message("DRAGON BOOST! MOVED ENERGY TO RAYQUAZA EX!")
@@ -15168,6 +15226,7 @@ func power_ex9_water_cyclone(swampert: card_object) -> void:
 			if wc_t == null: wc_t = bench[0]
 			wc_a.attached_energies.erase(e)
 			wc_t.attached_energies.append(e)
+			main.play_energy_attach_sfx()
 			wc_moved += 1
 		if wc_moved > 0:
 			main.display_active_pokemon_energies(true)
@@ -15198,6 +15257,7 @@ func power_ex9_water_cyclone(swampert: card_object) -> void:
 		if target == null: return
 		pick_holder.attached_energies.erase(pick_energy)
 		target.attached_energies.append(pick_energy)
+		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		main.display_pokemon(is_opponent)
 		await main.show_message("WATER CYCLONE! MOVED WATER ENERGY TO " + target.metadata.get("name","").to_upper() + "!")
@@ -15471,6 +15531,7 @@ func power_ex10_makeover(smeargle: card_object) -> void:
 		main.opponent_discard_pile.erase(mk["in"])
 		mk["in"].current_location = "attached"
 		mk_p.attached_energies.append(mk["in"])
+		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(true)
 		main.display_pokemon(true)
 		main.update_discard_pile_display(true)
@@ -15510,6 +15571,7 @@ func power_ex10_makeover(smeargle: card_object) -> void:
 	discard.erase(new_e)
 	new_e.current_location = "attached"
 	holder.attached_energies.append(new_e)
+	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opp)
 	main.display_pokemon(is_opp)
 	main.update_discard_pile_display(is_opp)
@@ -15578,6 +15640,7 @@ func power_ex10_nurture_and_heal(meganium: card_object) -> void:
 	hand.erase(e)
 	e.current_location = "attached"
 	target.attached_energies.append(e)
+	main.play_energy_attach_sfx()
 	await main.card_ops.heal_pokemon(target, 10, is_opp)
 	if main._should_bail(): return
 	main.refresh_hand_display(is_opp)
@@ -15795,6 +15858,7 @@ func trigger_ex10_bursting_up(typhlosion: card_object, is_opponent: bool) -> voi
 		deck.erase(e)
 		e.current_location = "attached"
 		target.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 		attached += 1
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -16037,6 +16101,7 @@ func check_exp_all(pokemon: card_object, attacker: card_object, is_pokemon_opp: 
 	pokemon.attached_energies.erase(e)
 	e.current_location = "bench"
 	holder.attached_energies.append(e)
+	main.play_energy_attach_sfx()
 	holder.attached_cards.erase(tool)
 	tool.current_location = "discard"
 	(main.opponent_discard_pile if is_pokemon_opp else main.player_discard_pile).append(tool)
@@ -16083,6 +16148,7 @@ func check_ex10_golden_wing(pokemon: card_object, attacker: card_object, is_poke
 			if target == null: break
 		pokemon.attached_energies.erase(e)
 		target.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 		moved += 1
 	if moved > 0:
 		main.display_active_pokemon_energies(is_pokemon_opp)
@@ -16226,6 +16292,7 @@ func power_ex11_delta_charge(dragonite: card_object) -> void:
 	discard.erase(energy)
 	energy.current_location = "bench"
 	target.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	main.update_discard_pile_display(is_opp)
 	main.display_pokemon(is_opp)
 	main.display_active_pokemon_energies(is_opp)
@@ -16260,6 +16327,7 @@ func power_ex11_energy_jump(gardevoir: card_object) -> void:
 		var ej = r4_cpu_plan_energy_moves(main.card_ops.get_all_pokemon_in_play(true), func(p): return p.attached_energies, 1)
 		if ej.is_empty(): return
 		gardevoir.power_used_this_turn = true
+		main.play_energy_attach_sfx()
 		main.display_pokemon(true)
 		main.display_active_pokemon_energies(true)
 		await main.show_message("ENERGY JUMP! MOVED AN ENERGY TO " + ej[0]["to"].metadata.get("name","").to_upper() + "!")
@@ -16288,6 +16356,7 @@ func power_ex11_energy_jump(gardevoir: card_object) -> void:
 	src.attached_energies.erase(energy)
 	energy.current_location = "active" if dst == main.player_active_pokemon else "bench"
 	dst.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	main.display_pokemon(is_opp)
 	main.display_active_pokemon_energies(is_opp)
 	await main.show_message("ENERGY JUMP! MOVED AN ENERGY BETWEEN YOUR POKEMON!")
@@ -16356,6 +16425,7 @@ func power_ex11_metal_navigation(starmie: card_object) -> void:
 	deck.erase(energy)
 	energy.current_location = "active" if starmie == main.player_active_pokemon or starmie == main.opponent_active_pokemon else "bench"
 	starmie.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.update_deck_icon(is_opp)
 	main.display_pokemon(is_opp)
@@ -16397,6 +16467,7 @@ func power_ex11_crush_draw(tyranitar: card_object) -> void:
 	deck.erase(top)
 	top.current_location = "active" if target == main.player_active_pokemon or target == main.opponent_active_pokemon else "bench"
 	target.attached_energies.append(top)
+	main.play_energy_attach_sfx()
 	main.update_deck_icon(is_opp)
 	main.display_pokemon(is_opp)
 	main.display_active_pokemon_energies(is_opp)
@@ -16521,6 +16592,7 @@ func trigger_ex11_delta_switch(mewtwo: card_object, is_opponent: bool) -> void:
 		var ds_others = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return p != mewtwo)
 		var ds = r4_cpu_plan_energy_moves(ds_others, func(p): return p.attached_energies.filter(func(e): return "Basic" in e.metadata.get("subtypes", [])), -1, false, ds_others)
 		if not ds.is_empty():
+			main.play_energy_attach_sfx()
 			main.display_pokemon(true)
 			main.display_active_pokemon_energies(true)
 			await main.show_message("DELTA SWITCH! MOVED " + str(ds.size()) + " BASIC ENERGY!")
@@ -16549,6 +16621,7 @@ func trigger_ex11_delta_switch(mewtwo: card_object, is_opponent: bool) -> void:
 		src.attached_energies.erase(energy)
 		energy.current_location = "active" if dst == main.player_active_pokemon else "bench"
 		dst.attached_energies.append(energy)
+		main.play_energy_attach_sfx()
 		main.display_pokemon(is_opponent)
 		main.display_active_pokemon_energies(is_opponent)
 
@@ -17018,6 +17091,7 @@ func power_ex12_reactive_shift(delcatty: card_object) -> void:
 		var rs = r4_cpu_plan_energy_moves(main.card_ops.get_all_pokemon_in_play(true), func(p): return p.attached_energies.filter(func(e): return e.metadata.get("name","") == "React Energy"), 1)
 		if rs.is_empty(): return
 		delcatty.power_used_this_turn = true
+		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(true)
 		main.display_pokemon(true)
 		await main.show_message("REACTIVE SHIFT! MOVED A REACT ENERGY!")
@@ -17045,6 +17119,7 @@ func power_ex12_reactive_shift(delcatty: card_object) -> void:
 	src.attached_energies.erase(react)
 	react.current_location = "active" if dst == main.player_active_pokemon else "bench"
 	dst.attached_energies.append(react)
+	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opp)
 	main.display_pokemon(is_opp)
 	await main.show_message("REACTIVE SHIFT! MOVED A REACT ENERGY!")
@@ -17164,6 +17239,7 @@ func power_ex12_reactive_generator(huntail: card_object) -> void:
 	deck.erase(e)
 	e.current_location = "active" if huntail == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon) else "bench"
 	huntail.attached_energies.append(e)
+	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.update_deck_icon(is_opp)
 	main.display_active_pokemon_energies(is_opp)
@@ -17321,6 +17397,7 @@ func trigger_ex12_emerge_charge(flygon: card_object, is_opponent: bool) -> void:
 		discard.erase(e)
 		e.current_location = "active" if flygon == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 		flygon.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 		attached += 1
 	if attached > 0:
 		main.update_discard_pile_display(is_opponent)
@@ -17401,6 +17478,7 @@ func check_ex12_reactive_recharge(pokemon: card_object, attacker: card_object, i
 		var dst_is_opp = dst.is_owner_opp(main)
 		react.current_location = "active" if dst == (main.opponent_active_pokemon if dst_is_opp else main.player_active_pokemon) else "bench"
 		dst.attached_energies.append(react)
+		main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_pokemon_opp)
 	main.display_pokemon(is_pokemon_opp)
 	await main.show_message("REACTIVE RECHARGE! MOVED MAGNETON'S REACT ENERGY!")
@@ -17546,6 +17624,7 @@ func power_ex13_delta_supply(flygon: card_object) -> void:
 	hand.erase(energy)
 	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon) else "bench"
 	target.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	main.refresh_hand_display(is_opp)
 	main.display_active_pokemon_energies(is_opp)
 	main.display_pokemon(is_opp)
@@ -18039,6 +18118,7 @@ func power_ex14_energy_recycle(swampert: card_object) -> void:
 		discard.erase(e)
 		e.current_location = "attached"
 		target.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 		attached += 1
 	main.update_discard_pile_display(is_opp)
 	main.display_active_pokemon_energies(is_opp)
@@ -18098,6 +18178,7 @@ func trigger_ex14_peal_of_thunder(charizard: card_object, is_opponent: bool) -> 
 			look.erase(e)
 			e.current_location = "attached"
 			attach_target.attached_energies.append(e)
+			main.play_energy_attach_sfx()
 	# Discard the rest of the looked-at cards.
 	for c in look:
 		deck.erase(c)
@@ -18679,6 +18760,7 @@ func power_ex15_extra_boost(altaria: card_object) -> void:
 	hand.erase(energy)
 	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon) else "bench"
 	target.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	main.refresh_hand_display(is_opp)
 	main.display_active_pokemon_energies(is_opp)
 	main.display_pokemon(is_opp)
@@ -18757,6 +18839,7 @@ func power_ex15_fellow_boost(latias: card_object) -> void:
 	hand.erase(energy)
 	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opp else main.player_active_pokemon) else "bench"
 	target.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	main.refresh_hand_display(is_opp)
 	main.display_active_pokemon_energies(is_opp)
 	main.display_pokemon(is_opp)

@@ -7,8 +7,8 @@ extends RefCounted
 #   TimeOfDayBanner.play(ui_layer, GameState.get_time())
 # A small rounded panel (the message box's shape) with a drawn icon and the slot's
 # name. It fades in moving down from above the top-left corner, sits there, then
-# fades out moving back up and frees itself. BaseMapScene plays it when the clock
-# has moved since the player last saw it -- back from a match, or stepping outside.
+# fades out moving back up and frees itself. BaseMapScene plays it on any map load
+# where the time slot has changed since the player last saw a map.
 # ============================================================
 
 ## TWEAKABLE — the look, per slot: panel colour and what it says.
@@ -21,6 +21,7 @@ const STYLE := {
 }
 
 ## TWEAKABLE — where it rests (screen px from the top-left), sizes and timings (seconds).
+## REST_POS.x is the left edge of the WIDEST sign; shorter ones centre on the same column.
 const REST_POS := Vector2(28.0, 28.0)
 const DROP_FROM := 70.0          # starts this far above its resting spot
 const DELAY := 0.6               # after the map loads, so the scene fade-in is done first
@@ -35,9 +36,48 @@ const BORDER := 3
 const LAYER_Z := 50
 
 
-static func play(ui_layer: Node, time_name: String) -> void:
+## Measured once: the width of the widest sign ("Afternoon").
+static var _widest_width: float = -1.0
+
+
+## The column the clock and every sign centre on: the middle of the widest sign when it sits
+## REST_POS.x from the left edge of the screen.
+static func centre_x(ui_layer: Node) -> float:
+	if _widest_width < 0.0:
+		_widest_width = 0.0
+		for time_name in STYLE:
+			var probe := _build_panel(time_name)
+			ui_layer.add_child(probe)
+			_widest_width = maxf(_widest_width, probe.get_combined_minimum_size().x)
+			ui_layer.remove_child(probe)
+			probe.queue_free()
+	return REST_POS.x + _widest_width * 0.5
+
+
+## `rest_y`: how far down the screen it settles. BaseMapScene passes a spot just below the clock.
+## It always sits centred on centre_x(), whatever its own width.
+static func play(ui_layer: Node, time_name: String, rest_y: float = REST_POS.y) -> void:
 	if ui_layer == null or not is_instance_valid(ui_layer):
 		return
+	var column: float = centre_x(ui_layer)
+	var panel := _build_panel(time_name)
+	ui_layer.add_child(panel)
+	var rest_pos := Vector2(column - panel.get_combined_minimum_size().x * 0.5, rest_y)
+	panel.position = rest_pos - Vector2(0.0, DROP_FROM)
+	panel.modulate.a = 0.0
+
+	var tween := panel.create_tween()
+	tween.tween_interval(DELAY)
+	tween.tween_property(panel, "position:y", rest_pos.y, IN_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(panel, "modulate:a", 1.0, IN_TIME)
+	print("ISSUE #478 FIX ACTIVE: time banner holds ", HOLD_TIME, "s")
+	tween.tween_interval(HOLD_TIME)
+	tween.tween_property(panel, "position:y", rest_pos.y - DROP_FROM, OUT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(panel, "modulate:a", 0.0, OUT_TIME)
+	tween.tween_callback(panel.queue_free)
+
+
+static func _build_panel(time_name: String) -> PanelContainer:
 	var style: Dictionary = STYLE.get(time_name, STYLE["Morning"])
 	var bg: Color = style["bg"]
 	var ink: Color = UIKit.ink_on(bg)
@@ -78,20 +118,7 @@ static func play(ui_layer: Node, time_name: String) -> void:
 	UIKit.set_label(label, "title", String(style["text"]), "field_fg", FONT_SIZE)
 	label.add_theme_color_override("font_color", ink)
 	row.add_child(label)
-
-	ui_layer.add_child(panel)
-	panel.position = REST_POS - Vector2(0.0, DROP_FROM)
-	panel.modulate.a = 0.0
-
-	var tween := panel.create_tween()
-	tween.tween_interval(DELAY)
-	tween.tween_property(panel, "position:y", REST_POS.y, IN_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(panel, "modulate:a", 1.0, IN_TIME)
-	print("ISSUE #478 FIX ACTIVE: time banner holds ", HOLD_TIME, "s")
-	tween.tween_interval(HOLD_TIME)
-	tween.tween_property(panel, "position:y", REST_POS.y - DROP_FROM, OUT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tween.parallel().tween_property(panel, "modulate:a", 0.0, OUT_TIME)
-	tween.tween_callback(panel.queue_free)
+	return panel
 
 
 ## The little picture on the left: a sun, a sun on the horizon, a crescent moon, or a

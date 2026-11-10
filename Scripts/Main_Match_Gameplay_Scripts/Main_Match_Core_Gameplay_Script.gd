@@ -6030,9 +6030,21 @@ func play_evolution_effect(pokemon: card_object) -> void:
 	await get_tree().create_timer(GameState.match_time(1)).timeout
 	particles.queue_free()
 	
+var _energy_attach_sfx_frame: int = -1
+
+## The energy-attach sound, for every effect that attaches or moves an Energy. Several attached in
+## the same frame (a whole stack moving in one loop) sound once instead of stacking into one loud hit.
+## CPU dry runs that try an Energy on and take it back must NOT call this.
+func play_energy_attach_sfx() -> void:
+	var frame := Engine.get_process_frames()
+	if frame == _energy_attach_sfx_frame:
+		return
+	_energy_attach_sfx_frame = frame
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_energy_sound)
+
 # Plays a one-shot upward particle burst when energy is attached to a pokemon
 func play_energy_attached_effect(pokemon: card_object, energy_card: card_object) -> void:
-	SoundManagerScript.play_sfx(SoundManagerScript.SFX_energy_sound)
+	play_energy_attach_sfx()
 	var loc = get_pokemon_screen_location(pokemon)
 	if loc.is_empty():
 		print("WARNING: play_energy_attached_effect - could not locate pokemon: ", pokemon.metadata["name"])

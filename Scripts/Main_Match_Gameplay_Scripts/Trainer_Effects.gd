@@ -5838,6 +5838,7 @@ func gym2_effect_blaine(is_opponent: bool) -> void:
 		hand.erase(fire)
 		fire.current_location = "active" if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 		target.attached_energies.append(fire)
+		main.play_energy_attach_sfx()
 	# Consume the energy-played-this-turn slot and mark Blaine as used
 	# MATCH EFFECT: extra_energy_per_turn — flag only set once the per-turn limit is reached
 	if is_opponent:
@@ -5961,6 +5962,7 @@ func gym2_effect_sabrina(is_opponent: bool) -> void:
 	for e in source.attached_energies:
 		e.current_location = dest_loc
 		dest.attached_energies.append(e)
+		main.play_energy_attach_sfx()
 	source.attached_energies.clear()
 	main.display_active_pokemon_energies(is_opponent)
 	await main.show_message("SABRINA — ENERGIES MOVED FROM " + source.metadata.get("name", "").to_upper() + " TO " + dest.metadata.get("name", "").to_upper() + "!")
@@ -9152,6 +9154,7 @@ func effect_ecard2_energy_switch(is_opponent: bool) -> void:
 	if target == null: return
 	source.attached_energies.erase(energy)
 	target.attached_energies.append(energy)
+	main.play_energy_attach_sfx()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	await main.show_message("ENERGY SWITCH! MOVED TO " + target.metadata.get("name","").to_upper() + "!")
@@ -10788,6 +10791,7 @@ func effect_ex7_pow_hand_extension(is_opponent: bool) -> void:
 			if dest == null: dest = opp_bench[0]
 		defender.attached_energies.erase(energy)
 		dest.attached_energies.append(energy)
+		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(not is_opponent)
 		main.display_pokemon(not is_opponent)
 		await main.show_message("POW! HAND EXTENSION! MOVED AN ENERGY!")

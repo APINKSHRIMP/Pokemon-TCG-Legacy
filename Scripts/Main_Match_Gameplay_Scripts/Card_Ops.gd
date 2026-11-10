@@ -447,6 +447,7 @@ func attach_energy_from_pile_animated(energy: card_object, target: card_object, 
 		var tw_out := icon.create_tween()
 		tw_out.tween_property(icon, "modulate", glow_from, GameState.scaled_duration(DECK_GLOW_OUT, GameState.card_match_animation_speed))
 	if main._should_bail(): return
+	main.play_energy_attach_sfx()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 

@@ -704,6 +704,7 @@ func _generate_pack_cards(set_id: String) -> Array:
 		standard_number += 1
 		GameState.progress["packs_opened_standard"] = standard_number
 	GameState.save_progress()
+	GameState.add_pack_opened_time()
 
 	# ── Weighted pack ───────────────────────────────────────────
 	# The Weighed Pack Seller's discounted stock: still 10 cards, but the rare slot becomes a

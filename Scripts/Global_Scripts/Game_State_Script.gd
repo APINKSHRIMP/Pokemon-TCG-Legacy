@@ -10,8 +10,11 @@ var current_opponent_name: String = ""
 ## tell "just stepped outside" (the café reminder count, the time-of-day banner).
 var last_map_was_interior: bool = false
 ## Runtime only: the time of day the player last saw a map in. "" until the first map loads.
-## BaseMapScene shows TimeOfDayBanner when this differs after a match or on stepping outside.
+## BaseMapScene shows TimeOfDayBanner when this differs on any map load.
 var last_seen_time: String = ""
+## Where the overworld clock's hand last was, so it can sweep forward to the new time when a
+## map loads (back from a match, say). -1 = nothing shown yet this session. Not saved.
+var last_seen_clock_hours: float = -1.0
 
 ## How an opponent's name reads on the battle screens: a trailing " 2" / " 3" that only
 ## tells repeat encounters apart ("Ellie 3", "Olly 2") is dropped, underscores become spaces.
@@ -271,6 +274,23 @@ func set_board_labels(choice: String, save: bool = true) -> void:
 
 func board_labels_on() -> bool:
 	return board_labels_setting == "on"
+
+# "Overworld clock": shows or hides the clock in the corner of the overworld. The clock
+# keeps time either way; this only decides whether it is drawn.
+const OVERWORLD_CLOCK_OPTIONS := ["off", "on"]
+const DEFAULT_OVERWORLD_CLOCK := "on"
+var overworld_clock_setting: String = DEFAULT_OVERWORLD_CLOCK
+
+func set_overworld_clock(choice: String, save: bool = true) -> void:
+	if not choice in OVERWORLD_CLOCK_OPTIONS:
+		push_warning("GameState: unknown overworld clock choice '" + choice + "'")
+		return
+	overworld_clock_setting = choice
+	if save:
+		_save_setting_field("overworld_clock", overworld_clock_setting)
+
+func overworld_clock_on() -> bool:
+	return overworld_clock_setting == "on"
 
 # ─── Display ─────────────────────────────────────────────────────────────────
 # "Display mode" and "Window size". The game lays itself out on a canvas that is
@@ -555,6 +575,9 @@ func _load_animation_speed() -> void:
 
 	var labels: String = str(data.get("board_labels", DEFAULT_BOARD_LABELS))
 	set_board_labels(labels if labels in BOARD_LABELS_OPTIONS else DEFAULT_BOARD_LABELS, false)
+
+	var clock_choice: String = str(data.get("overworld_clock", DEFAULT_OVERWORLD_CLOCK))
+	set_overworld_clock(clock_choice if clock_choice in OVERWORLD_CLOCK_OPTIONS else DEFAULT_OVERWORLD_CLOCK, false)
 
 	var tut: String = str(data.get("tutorial_next_match", "off"))
 	set_tutorial_next_match(tut if tut in TUTORIAL_NEXT_MATCH_OPTIONS else "off", false)
@@ -1191,6 +1214,9 @@ func _copy_seed_folder(seed_folder: String, dest_folder: String):
 func load_slot(slot: int) -> void:
 	current_slot = clampi(slot, 1, SAVE_SLOT_COUNT)
 	_save_setting_field("last_slot", current_slot)
+	# Another save's clock: no banner or hand sweep from the slot played before it.
+	last_seen_time = ""
+	last_seen_clock_hours = -1.0
 
 	# The guide is cached in memory like `progress` is, so the same rule applies:
 	# drop the cache or the next catch writes the other slot's record into this one.
@@ -1730,10 +1756,14 @@ func has_saved_deck() -> bool:
 # ============================================================
 # TIME ADVANCE — the points that move the clock on
 # ============================================================
-# Every slot has a points target (time_points_to_advance). Matches and fish add points, and
-# the outro checks the target at the end of each match, so fish alone never move the clock.
-# Reaching the target moves one slot on and any spare points are thrown away. Bedtime itself
-# never advances; only the bed moves the clock on from there.
+# Every slot has a points target (time_points_to_advance). Matches, fish and opened packs add points.
+# settle_time_points() moves the slot on once the target is reached and CARRIES any spare points
+# into the next slot. It runs at the end of a match (outro), when a caught fish is let go
+# (MapManager.finish_fishing) and on every map load (BaseMapScene._ready). Bedtime never moves to
+# another slot; points still run the clock on through the small hours until the bed.
+#
+# The clock face: a slot is 4 hours, so a 40-point slot is 10 points an hour. Days 1 and 2 have
+# shorter slots, which makes each point worth more of the hand (clock_hours).
 #
 # Days 1 and 2: only a FIRST win scores. Everything else scores nothing.
 # Day 3 on: see the TIME_POINTS values below.
@@ -1756,6 +1786,7 @@ const TIME_POINTS_REMATCH_WIN := 6
 const TIME_POINTS_LOSS := 4
 const TIME_POINTS_FORFEIT := 3              # 14 forfeits a slot
 const TIME_POINTS_FISH := 1
+const TIME_POINTS_PACK := 1                 # each pack opened, weighted or not
 const TIME_POINTS_SERIES_NEW_GAME_WIN := 10 # each game won in a best of 3 against a new opponent
 const TIME_POINTS_SERIES_GAME_WIN := 6      # each game won in a best of 3 against a beaten opponent
 const TIME_POINTS_SERIES_GAME_LOSS := 4     # each game lost in a best of 3
@@ -1777,6 +1808,77 @@ func get_time_points() -> int:
 func add_time_points(amount: int) -> void:
 	progress["time_points"] = get_time_points() + amount
 	save_progress()
+
+
+## From day 3, like fish. Pack screens are off the map, so a slot change lands as the map comes back.
+func add_pack_opened_time() -> void:
+	if every_match_advances_time():
+		add_time_points(TIME_POINTS_PACK)
+
+
+## True when enough points have built up to move into the next slot.
+func time_slot_change_due() -> bool:
+	return get_time() != "Bedtime" and get_time_points() >= time_points_to_advance()
+
+
+## Moves through as many slots as the points pay for and keeps what is left over. Returns true
+## if the slot changed. A big best of 3 at the end of a slot lands part-way into the next one.
+func settle_time_points() -> bool:
+	var moved := false
+	while time_slot_change_due():
+		var spare: int = get_time_points() - time_points_to_advance()
+		advance_time()   # zeroes the points, so they go back on afterwards
+		progress["time_points"] = spare
+		moved = true
+	if moved:
+		save_progress()
+	return moved
+
+
+# ---- The clock face -----------------------------------------------------------------------
+## The hour each slot starts, counted from midnight of the day it began: 24 = 12am, 26 = 2am.
+const CLOCK_SLOT_START := {"Morning": 8.0, "Afternoon": 12.0, "Evening": 16.0, "Night": 20.0, "Bedtime": 24.0}
+const CLOCK_HOURS_PER_SLOT := 4.0
+## TWEAKABLE -- the latest the clock can show (7:54am), so it never runs into the 8am wake-up.
+const CLOCK_LATEST_HOUR := 31.9
+## TWEAKABLE -- no casting from this hour on (26 = 2am).
+const FISHING_LAST_HOUR := 26.0
+
+
+## The time right now in hours (9.8 = 9:48am, 25.0 = 1am). The slot and points alone decide
+## it, so the clock can never disagree with the slot.
+func clock_hours() -> float:
+	var time := get_time()
+	var start: float = CLOCK_SLOT_START.get(time, 8.0)
+	var hours: float = start + CLOCK_HOURS_PER_SLOT * float(get_time_points()) / float(time_points_to_advance())
+	if time == "Bedtime":
+		return minf(hours, CLOCK_LATEST_HOUR)
+	return minf(hours, start + CLOCK_HOURS_PER_SLOT)
+
+
+## The slot an hour value falls in. The clock uses this while its hand sweeps past a boundary.
+static func clock_slot_at(hours: float) -> String:
+	if hours >= 24.0:
+		return "Bedtime"
+	if hours >= 20.0:
+		return "Night"
+	if hours >= 16.0:
+		return "Evening"
+	if hours >= 12.0:
+		return "Afternoon"
+	return "Morning"
+
+
+## "8am", "12pm", "12am", "1am". The digital time only ever shows the whole hour.
+static func clock_label(hours: float) -> String:
+	var hour: int = int(floor(hours)) % 24
+	var suffix := "am" if hour < 12 else "pm"
+	var shown: int = hour % 12
+	return "%d%s" % [12 if shown == 0 else shown, suffix]
+
+
+func fishing_too_late() -> bool:
+	return clock_hours() >= FISHING_LAST_HOUR
 
 
 ## True from day 3, when fish and every match result start to score.
@@ -2156,7 +2258,8 @@ func get_date() -> int:
 
 ## Sets the time to a specific value. Pass an empty string to auto-step.
 ## Auto-step: Morning -> Afternoon -> Evening -> Night -> Bedtime -> Morning (and increment date).
-## Resets time_points to 0 on every time change.
+## Resets time_points to 0: a forced jump (the bed, a story beat) lands exactly on the slot's
+## first hour. settle_time_points() is what carries spare points across a normal change.
 func advance_time(new_time: String = "") -> void:
 	if new_time == "":
 		# Auto-step to next time period
@@ -2385,7 +2488,8 @@ func add_fish_caught(amount: int = 1) -> void:
 	_load_nature_guide()
 	_nature_guide["fish_caught"] = get_fish_caught() + amount
 	save_nature_guide()
-	# ISSUE #441: from day 3 a fish adds a little toward the time slot.
+	# ISSUE #441: from day 3 a fish adds a little toward the time slot. It takes effect when the
+	# fish is let go (MapManager.finish_fishing); the clock is hidden until then anyway.
 	if every_match_advances_time():
 		add_time_points(TIME_POINTS_FISH * amount)
 

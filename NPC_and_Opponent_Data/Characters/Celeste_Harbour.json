@@ -440,7 +440,7 @@
       }
     },
     "Giovanni": {
-      "at": [920, 890],
+      "at": [917, 488],
       "days": "3-8",
       "times": "N",
       "move": "idle_up",
@@ -1197,10 +1197,10 @@
           }
         },
         {
-          "at": [2880, 3110],
+          "at": [2056, 3103],
           "days": "3-8",
           "times": "N",
-          "move": "idle_right",
+          "move": "random_wander",
           "says": {
             "meet": "I've been working all day I'm absolutely shattered.",
             "repeat": "Most passengers went back to the ship earlier but I saw some shady characters actually getting off."
