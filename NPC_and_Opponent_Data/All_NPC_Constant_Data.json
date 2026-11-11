@@ -1019,6 +1019,16 @@
       "sprite": "Cook",
       "message_colour": "white",
       "friendly_name": "Cafe Chef"
+    },
+    "Olly 3": {
+      "sprite": "1Olly_Jeans_Bag",
+      "message_colour": "dark_blue",
+      "friendly_name": "Olly"
+    },
+    "Olly 4": {
+      "sprite": "1Olly_Jeans_Bag",
+      "message_colour": "dark_blue",
+      "friendly_name": "Olly"
     }
   },
   "opponents": {
@@ -1042,12 +1052,12 @@
     },
     "Bad Dude Paul": {
       "coin_reward": "Muk Purple",
-      "music": "REPLACEMUSIC",
+      "music": "Dark_battle_2 (PTCG2 Colorless Altar A Dark Dwelling)",
       "deck": "Bad Guys",
       "prize_cards": 4,
       "costume_reward": "ROUGHNECK",
       "sprite": "Roughneck",
-      "cash_reward": "90",
+      "cash_reward": "130",
       "message_colour": "grey"
     },
     "Bad Dude Wayne": {
@@ -1074,7 +1084,7 @@
       "coin_reward": "Pikachu Gold",
       "sprite": "Tuber_F",
       "music": "Jolly_battle 2 (Pinball Catchem Evolution in Red Field)",
-      "cash_reward": "65",
+      "cash_reward": "80",
       "deck": "Pika And Friends",
       "message_colour": "light_pink"
     },
@@ -1112,7 +1122,7 @@
       "prize_cards": 4,
       "costume_reward": "BUGCATCHER",
       "sprite": "BugCatcher",
-      "cash_reward": "90",
+      "cash_reward": "95",
       "message_colour": "dark_green"
     },
     "Bug Catcher Frankie": {
@@ -1327,7 +1337,7 @@
       "coin_reward": "Magmar Red",
       "sprite": "FireBreather",
       "music": "Medium_Battle 3 (PMDX Thunderwave Cave)",
-      "cash_reward": "90",
+      "cash_reward": "110",
       "deck": "Hot Air",
       "message_colour": "dark_red"
     },
@@ -1336,7 +1346,7 @@
       "coin_reward": "Ponyta Red",
       "sprite": "FireBreather",
       "music": "Medium Battle (PMD Mt. Bristle)",
-      "cash_reward": "90",
+      "cash_reward": "110",
       "deck": "Quadrapedal Firestarters",
       "message_colour": "dark_red"
     },
@@ -1344,8 +1354,8 @@
       "prize_cards": 4,
       "coin_reward": "Magikarp Gold",
       "sprite": "Fisher_M",
-      "music": "REPLACEMUSIC",
-      "cash_reward": "45",
+      "music": "Easy_battle (PMD beach cave)",
+      "cash_reward": "65",
       "deck": "Fishy Fish",
       "message_colour": "dark_blue"
     },
@@ -1362,8 +1372,8 @@
       "prize_cards": 4,
       "coin_reward": "Squirtle Blue",
       "sprite": "Fisher_M3",
-      "music": "REPLACEMUSIC",
-      "cash_reward": "65",
+      "music": "Calm Battle 3 (PMDEoS Drenched Bluff)",
+      "cash_reward": "90",
       "deck": "Seavolutions",
       "message_colour": "dark_blue"
     },
@@ -1388,11 +1398,11 @@
     "Gambler Mick": {
       "coin_reward": "Farfetchd Silver",
       "card_reward": "base1-27, base1-27",
-      "music": "REPLACEMUSIC",
+      "music": "weird_battle (PTCG Imakuma)",
       "deck": "You Win Some N Lose Some",
       "prize_cards": 2,
       "sprite": "Gambler",
-      "cash_reward": "45",
+      "cash_reward": "75",
       "message_colour": "light_red"
     },
     "Gambler Victor": {
@@ -1560,7 +1570,7 @@
       "coin_reward": "Geodude Gold",
       "sprite": "Hiker",
       "music": "Medium_Battle 3 (PMDX Thunderwave Cave)",
-      "cash_reward": "90",
+      "cash_reward": "110",
       "deck": "Rocks N Stones",
       "message_colour": "orange"
     },
@@ -1578,7 +1588,7 @@
       "coin_reward": "Nidoking Purple",
       "sprite": "Jogger",
       "music": "REPLACEMUSIC",
-      "cash_reward": "90",
+      "cash_reward": "110",
       "deck": "Nido Nido Meow",
       "message_colour": "aqua"
     },
@@ -1666,7 +1676,7 @@
       "deck": "Art Assistants",
       "prize_cards": 2,
       "sprite": "Artist_M",
-      "cash_reward": "45",
+      "cash_reward": "70",
       "message_colour": "lilac"
     },
     "Pikachu Fan Cami": {
@@ -1761,7 +1771,7 @@
     "Psychic Brienne": {
       "coin_reward": "Mewtwo Purple",
       "card_reward": "basep-3, basep-14",
-      "music": "REPLACEMUSIC",
+      "music": "Tense Battle 2 (PMDX Buried Relic)",
       "deck": "Meditation Meditation",
       "prize_cards": 6,
       "sprite": "Psychic_F",
@@ -1875,8 +1885,8 @@
       "prize_cards": 2,
       "coin_reward": "Drowzee Gold",
       "sprite": "Youngster3",
-      "music": "REPLACEMUSIC",
-      "cash_reward": "45",
+      "music": "Simple_battle (PTCG2 Mr Ishiharas Villa)",
+      "cash_reward": "55",
       "deck": "Status Infliction",
       "message_colour": "light_blue"
     },
@@ -1913,7 +1923,7 @@
       "coin_reward": "Poliwag Blue",
       "sprite": "Swimmer_F2",
       "music": "REPLACEMUSIC",
-      "cash_reward": "90",
+      "cash_reward": "105",
       "deck": "Whirlgong",
       "message_colour": "light_blue"
     },
@@ -1931,7 +1941,7 @@
       "coin_reward": "Tentacool Blue",
       "sprite": "Swimmer_M",
       "music": "Calm Battle 2 (PMD Crystal_Cave)",
-      "cash_reward": "90",
+      "cash_reward": "100",
       "deck": "I See Sea",
       "message_colour": "dark_blue"
     },
@@ -2006,7 +2016,7 @@
       "deck": "Basic Pokemon Barrage",
       "prize_cards": 2,
       "sprite": "Youngster2",
-      "cash_reward": "45",
+      "cash_reward": "50",
       "message_colour": "light_blue"
     },
     "Youngster Milo": {
@@ -2061,7 +2071,7 @@
       "deck": "Reduce Reuse Recycle",
       "music": "Simple_battle (PTCG2 Mr Ishiharas Villa)",
       "prize_cards": 4,
-      "cash_reward": "100",
+      "cash_reward": "105",
       "coin_reward": "Slowpoke Pink"
     },
     "Alexander 3": {

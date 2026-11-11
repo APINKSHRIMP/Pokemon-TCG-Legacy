@@ -75,9 +75,15 @@ const CLUSTER_GAP   : float = 4.0    # screen px between blips sharing a buildin
 const CLUSTER_PER_ROW : int = 5      # a building's dots wrap into rows of this many
 
 const COL_PLAYER     := Color(1.0, 1.0, 1.0)
-const COL_OLLY       := Color(0.12, 0.28, 0.78)   # darker blue (the old shopkeeper blue, free since shopkeeper blips went)
-const COL_ELLIE      := Color(1.0, 0.50, 0.80)    # pink
-const COL_ALEXANDER  := Color(1.0, 0.88, 0.20)    # yellow
+# Olly / Ellie / Alexander, two states (user spec 2026-11-10). READY = battleable right now, or
+# waiting to be (the café trio before their cutscene matches): deep, saturated, dark. DONE = already
+# battled under that name, or standing as an NPC / shopkeeper: light and washed out, like a beaten opponent.
+const COL_OLLY            := Color(0.05, 0.16, 0.72)   # deep blue
+const COL_ELLIE           := Color(0.82, 0.06, 0.48)   # deep pink
+const COL_ALEXANDER       := Color(0.85, 0.62, 0.0)    # deep yellow / gold
+const COL_OLLY_DONE       := Color(0.66, 0.72, 0.86)   # pale grey-blue
+const COL_ELLIE_DONE      := Color(0.92, 0.76, 0.85)   # pale grey-pink
+const COL_ALEXANDER_DONE  := Color(0.92, 0.88, 0.70)   # pale grey-yellow
 # Opponents, three states (user spec 2026-11-07). Each dot cycles between its BASE colour and its
 # PEAK as it glows: never battled goes DARKER, battled-but-unbeaten goes LIGHTER, beaten goes paler
 # still, towards white/grey. "Battled" = any finished match on their head-to-head record.
@@ -93,6 +99,7 @@ const COL_FOG        := Color(0.03, 0.04, 0.07, 1.0)
 ## Story characters, matched on their message-box name (friendly_name), falling back to the
 ## tracking name - so "Fish Shop Alexander" and "Ellie 2" both count.
 const STORY_COLOURS := {"Olly": COL_OLLY, "Ellie": COL_ELLIE, "Alexander": COL_ALEXANDER}
+const STORY_DONE_COLOURS := {"Olly": COL_OLLY_DONE, "Ellie": COL_ELLIE_DONE, "Alexander": COL_ALEXANDER_DONE}
 
 ## Blips never sit on these picture colours (trees, then water). The traces are a hair off the real
 ## maps in places, so an outdoor blip landing on one is nudged to the nearest other pixel, up to
@@ -837,7 +844,11 @@ func _blip_for(a: Dictionary, _is_interior: bool) -> Dictionary:
 	var story := _story_name(String(a["name"]), String(a.get("friendly", "")))
 	var phase := randf()
 	if story != "":
-		return {"kind": "story", "colour": STORY_COLOURS[story], "radius": STORY_RADIUS, "phase": phase}
+		# Dark while they are an opponent you have not played yet under this name (Olly, Olly 2,
+		# Ellie 3, Alexander 3...); pale once played, or when they are an NPC / shopkeeper.
+		var ready: bool = a["is_opponent"] and not _has_played(String(a["name"]))
+		var col: Color = STORY_COLOURS[story] if ready else STORY_DONE_COLOURS[story]
+		return {"kind": "story", "colour": col, "radius": STORY_RADIUS, "phase": phase}
 	# Only opponents and the three story characters are shown, indoors and out: no NPC or
 	# shopkeeper dots. An opponent who is not battleable right now (an Elder busy as an NPC, a
 	# beaten "Defeated" stand-in) is an NPC in the cast, so it never reaches this point.
@@ -849,12 +860,18 @@ func _blip_for(a: Dictionary, _is_interior: bool) -> Dictionary:
 	if GameState.has_beaten_opponent(opp):
 		base = COL_OPP_BEATEN_BASE
 		peak = COL_OPP_BEATEN_PEAK
-	else:
-		var record: Array = GameState.get_opponent_record(opp)
-		if int(record[0]) + int(record[1]) > 0:
-			base = COL_OPP_MET_BASE
-			peak = COL_OPP_MET_PEAK
+	elif _has_played(opp):
+		base = COL_OPP_MET_BASE
+		peak = COL_OPP_MET_PEAK
 	return {"kind": "opponent", "colour": base, "peak": peak, "radius": DOT_RADIUS, "phase": phase}
+
+
+## Any finished match against this opponent name: beaten, or on their head-to-head record.
+func _has_played(opp: String) -> bool:
+	if GameState.has_beaten_opponent(opp):
+		return true
+	var record: Array = GameState.get_opponent_record(opp)
+	return int(record[0]) + int(record[1]) > 0
 
 
 func _story_name(tracking: String, friendly: String) -> String:

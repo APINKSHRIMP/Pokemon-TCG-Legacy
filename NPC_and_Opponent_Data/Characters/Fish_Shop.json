@@ -13,11 +13,11 @@
     "",
     "WHO IS BEHIND THE COUNTER. Exactly one of Olly / Alexander at every time slot. The",
     "calendar mirrors Celeste Harbour's (authored through day 8, days 5-8 loop for ever):",
-    "  day 1 Olly M,A  Alexander E,N | 2 Olly all day, no Alexander (bank holiday) | 3 Olly M,E  Alexander A,N",
+    "  Olly always opens and runs Morning + Afternoon; Alexander always has Evening + Night.",
+    "  Day 1 is the exception: Olly all day (Ellie and Alexander are away on day 1).",
     "  Day 2 Morning: Olly only once flag cafe_olly_gone is up (he is at the cafe until then,",
     "  and BaseMapScene._locked_door_text keeps the FISH door locked until he has been played).",
-    "  4 Alexander M,A,E  Olly N | 5 Olly M,A  Alexander E,N | 6 Alexander M,E  Olly A,N",
-    "  7 Olly M,E  Alexander A,N | 8 Alexander M,E  Olly A,N",
+    "  Day 2 Afternoon Alexander is card shopping with Ellie (Card Mart), then takes over that evening.",
     "Both share shop_id 'fish_shop'. What they SAY is not here: it is milestone-driven,",
     "in Scripts/Objects_And_Classes/Fishing/Fish_Shop_Dialogue.gd. 'at' puts them centred",
     "on the Desk collision with their feet on its top edge (MART/NPCS is at (121, 59))."
@@ -36,15 +36,10 @@
       "at": [107.5, -30.5],
       "move": "idle_down",
       "when": [
-        { "days": "1", "times": "M,A" },
+        { "days": "1", "times": "M,A,E,N" },
         { "days": "2", "times": "M", "requires": "flag: cafe_olly_gone" },
-        { "days": "2", "times": "A,E,N" },
-        { "days": "3", "times": "M,E" },
-        { "days": "4", "times": "N" },
-        { "days": "5", "times": "M,A" },
-        { "days": "6", "times": "A,N" },
-        { "days": "7", "times": "M,E" },
-        { "days": "8", "times": "A,N" }
+        { "days": "2-8", "times": "A" },
+        { "days": "3-8", "times": "M" }
       ],
       "says": {
         "meet": "Hey [NAME]! I hope the waters are treating you well! Do you need any FISH gear?"
@@ -60,13 +55,7 @@
       "at": [107.5, -30.5],
       "move": "idle_down",
       "when": [
-        { "days": "1", "times": "E,N" },
-        { "days": "3", "times": "A,N" },
-        { "days": "4", "times": "M,A,E" },
-        { "days": "5", "times": "E,N" },
-        { "days": "6", "times": "M,E" },
-        { "days": "7", "times": "A,N" },
-        { "days": "8", "times": "M,E" }
+        { "days": "2-8", "times": "E,N" }
       ],
       "says": {
         "meet": "Hey [NAME], do you need anything?"

@@ -109,6 +109,7 @@ func _ready():
 			current_facing = rf
 			animated_sprite.play("idle_" + rf)
 	set_process(false)
+	_setup_fishing_rod()
 	# ISSUE #474 / #483: the opponent just battled comes back held on the spot it was fought on, facing
 	# the player (MapManager._face_battled_opponent turns it), and only goes back to its wander / patrol
 	# once the player has stepped out of its interaction range - and never sooner than BATTLE_HOLD_MIN.
@@ -124,6 +125,7 @@ var _battle_hold: bool = false
 var _battle_hold_t: float = 0.0
 
 func _start_battle_hold() -> void:
+	_set_fishing_paused(true)
 	_battle_hold = true
 	_battle_hold_t = 0.0
 	velocity = Vector2.ZERO
@@ -153,6 +155,65 @@ func _process(delta: float) -> void:
 	set_process(false)
 	print("ISSUE #483 FIX ACTIVE: ", name, " released from the post-battle hold after ", snappedf(_battle_hold_t, 0.1), "s")
 	resume_movement()
+
+
+# ── Fishing characters ───────────────────────────────────────────────────────
+# A character with `"fishing": true` in its data holds a rod in the same pose the
+# player's rod rests in while waiting for a bite. Only while they face the way their
+# idle_<dir> pattern pins them, and never while somebody is talking to them: talking
+# (pause_and_face), freezing and the post-battle hold all put it away, and it comes
+# back when they turn back to the water (_on_restore_facing, ~1 s after the talk ends).
+var fishing: bool = false
+var _fishing_rod: Sprite2D = null
+var _fishing_paused: bool = false
+
+## The direction this character fishes in -- the one its pattern pins. "" = a pattern
+## with no home direction, which never shows a rod.
+func _fishing_dir() -> String:
+	match movement_pattern:
+		"idle_down", "idle_down_random":   return "down"
+		"idle_up", "idle_up_random":       return "up"
+		"idle_left", "idle_left_random":   return "left"
+		"idle_right", "idle_right_random": return "right"
+	return ""
+
+
+## Builds the rod exactly as Fishing_Minigame._build_rod / _apply_rod place the
+## player's, at its rest (cast-out) angle. The rod's z is absolute, as the player's is,
+## so it clears the harbour railings a fisher stands behind.
+func _setup_fishing_rod() -> void:
+	var dir := _fishing_dir()
+	if not fishing:
+		return
+	if dir == "":
+		push_warning("%s has fishing: true but pattern \"%s\" has no fishing direction -- no rod shown"
+				% [name, movement_pattern])
+		return
+	var vertical := dir == "up" or dir == "down"
+	_fishing_rod = Sprite2D.new()
+	_fishing_rod.texture = FishingArt.rod_texture(vertical)
+	_fishing_rod.centered = false
+	_fishing_rod.offset = -FishingArt.rod_pivot(vertical)
+	_fishing_rod.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_fishing_rod.z_as_relative = false
+	_fishing_rod.z_index = FishingMinigame.ROD_Z
+	_fishing_rod.position = FishingMinigame.HAND_OFFSET.get(dir, Vector2.ZERO)
+	var s: float = FishingMinigame.ROD_SCALE
+	_fishing_rod.scale = Vector2(-s if dir == "left" else s, s)
+	_fishing_rod.rotation_degrees = float(FishingMinigame.ROD_REST_ANGLE.get(dir, 0.0))
+	add_child(_fishing_rod)
+	_refresh_fishing_rod()
+
+
+func _set_fishing_paused(paused: bool) -> void:
+	_fishing_paused = paused
+	_refresh_fishing_rod()
+
+
+func _refresh_fishing_rod() -> void:
+	if _fishing_rod == null or not is_instance_valid(_fishing_rod):
+		return
+	_fishing_rod.visible = not _fishing_paused and current_facing == _fishing_dir()
 
 # ============================================================
 # MOVEMENT HELPERS
@@ -441,6 +502,7 @@ func _on_direction_timer_timeout():
 			var glance_dir: String = dirs[randi() % 2]
 			current_facing = glance_dir
 			animated_sprite.play("idle_" + glance_dir)
+			_refresh_fishing_rod()
 			if _glance_timer != null and is_instance_valid(_glance_timer) \
 					and _glance_timer.timeout.is_connected(_on_glance_end):
 				_glance_timer.timeout.disconnect(_on_glance_end)
@@ -458,12 +520,14 @@ func _on_glance_end():
 	var primary := _primary_dir_for_pattern()
 	current_facing = primary
 	animated_sprite.play("idle_" + primary)
+	_refresh_fishing_rod()
 	direction_timer.wait_time = randf_range(2.0, 15.0)
 	direction_timer.start()
 
 # `target_position` must be a GLOBAL position — this actor lives under the map's NPCS/OPPONENTS
 # container, which is offset from the origin in some scenes, so local positions are not comparable.
 func pause_and_face(target_position: Vector2):
+	_set_fishing_paused(true)
 	velocity = Vector2.ZERO
 	set_physics_process(false)
 	direction_timer.stop()
@@ -487,6 +551,7 @@ func pause_and_face(target_position: Vector2):
 # ISSUE #56: hard-stop this actor in place (no re-facing) so it can't keep wandering during the
 # fade-out after a battle is accepted. Mirrors pause_and_face's freezing without turning the sprite.
 func freeze():
+	_set_fishing_paused(true)
 	velocity = Vector2.ZERO
 	set_physics_process(false)
 	_is_wandering = false
@@ -528,6 +593,7 @@ func resume_movement():
 			var primary := _primary_dir_for_pattern()
 			current_facing = primary
 			animated_sprite.play("idle_" + primary)
+			_set_fishing_paused(false)
 			direction_timer.wait_time = randf_range(2.0, 15.0)
 			direction_timer.start()
 
@@ -540,3 +606,5 @@ func _on_restore_facing():
 		"idle_up":    animated_sprite.play("idle_up");    current_facing = "up"
 		"idle_left":  animated_sprite.play("idle_left");  current_facing = "left"
 		"idle_right": animated_sprite.play("idle_right"); current_facing = "right"
+	# Back to the water: the rod comes back out.
+	_set_fishing_paused(false)

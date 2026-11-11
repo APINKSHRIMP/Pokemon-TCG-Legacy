@@ -56,11 +56,11 @@
 	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
 	"lines": [
 	  "Hey! Wow the tournament finished really early, I thought you'd be back way later.",
-	  "I bet it was fun at least! I'm so jealous I couldn't get tickets for it but Alexander couldn't watch the shop for me.",
-	  "I think I can see you, I only just got back myself actually.",
+	  "I bet it was fun at least! I'm so jealous I couldn't get tickets for it but El and Alexander are away today so I had to keep the shop open.",
+	  "I think I can see you from here actually.",
 	  "Don't worry, I managed to get the last of the starter sets from the card shop on my lunch and was able to snag you one too!",
 	  "He didn't have any packs left in stock and said he won't have any in until tomorrow.",
-	  "I was going to bring the decks round tomorrow but in that case I'll come round now!",
+	  "I was going to bring the decks round tomorrow but in that case I'll come round now! I'll just lock the shop up quickly.",
 	  "I'll meet you at yours, just gimme a sec"
 	]
   },
@@ -86,7 +86,7 @@
 	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
 	"lines": [
 	  "Hey! Well that did end up being a late one then. I'm guessing the tournament must have overran?",
-	  "I bet it was fun at least! I'm so jealous I couldn't get tickets for it but Alexander couldn't watch the shop for me tonight.",
+	  "I bet it was fun at least! I'm so jealous I couldn't get tickets for it, I was stuck running the shop all day.",
 	  "I think I can see you, I only just got back myself actually, ended up staying a little late.",
 	  "Don't worry, I managed to get the last of the decks from the card shop on my lunch and was able to snag you one too!",
 	  "He didn't have any more Jungle or Fossil in today but was hoping to get some in tomorrow.",
@@ -120,7 +120,7 @@
 	"battle_sprite": "1Ellie_Hoodie", "mouth": [500, 300], "mouth_width": 26,
 	"lines": [
 	  "Hey! Me, Olly and Alexander went out for breakfast at Café Mieux this morning if you're interested?",
-	  "Alexander has the day off because it's bank holiday but Ol is still opening the shop anyway.",
+	  "Alexander's off until he takes over the shop tonight. It's bank holiday but Ol is still opening up this afternoon anyway.",
 	  "We all got some better cards from the card mart so we've been trying to play all morning.",
 	  "Before you get here, call in at the Card Mart and get yourself some new packs!",
 	  "Make sure your deck is the best it can be and we can battle when you get here!",

@@ -1041,7 +1041,9 @@ func _on_editor_confirmed(draft: Dictionary) -> void:
 			"at_owner": -1, "move_owner": -1,
 		}
 
-	var actor := MapManager.spawn_editor_actor(entry, section, at)
+	# Respawn as the KIND it was edited as -- an "npcs" character whose rule made it an
+	# opponent today has to come back as an opponent.
+	var actor := MapManager.spawn_editor_actor(entry, str(draft.get("constants_section", section)), at)
 	if actor == null:
 		_flash("[color=red]could not spawn %s[/color]" % name)
 		return
@@ -1239,11 +1241,15 @@ func _apply_draft(doc: Dictionary, constants: Dictionary, draft: Dictionary) -> 
 	var removals: Array = draft.get("remove", [])
 	if constant_fields.is_empty() and removals.is_empty():
 		return remap
-	if not (constants.get(section) is Dictionary):
-		constants[section] = {}
-	if not (constants[section].get(name) is Dictionary):
-		constants[section][name] = {}
-	var body: Dictionary = constants[section][name]
+	# The constants block follows the kind the character was edited as, not the map-file
+	# section: Psychic Brienne lives under "npcs" but her deck/music/sleeve are opponent
+	# constants.
+	var const_section: String = str(draft.get("constants_section", section))
+	if not (constants.get(const_section) is Dictionary):
+		constants[const_section] = {}
+	if not (constants[const_section].get(name) is Dictionary):
+		constants[const_section][name] = {}
+	var body: Dictionary = constants[const_section][name]
 	for field in constant_fields:
 		body[field] = constant_fields[field]
 

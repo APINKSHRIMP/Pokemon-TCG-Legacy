@@ -56,7 +56,10 @@ static func centre_x(ui_layer: Node) -> float:
 
 ## `rest_y`: how far down the screen it settles. BaseMapScene passes a spot just below the clock.
 ## It always sits centred on centre_x(), whatever its own width.
-static func play(ui_layer: Node, time_name: String, rest_y: float = REST_POS.y) -> void:
+## `clock`: the overworld clock, if it is switched on. The banner then hands itself to the clock
+## once it has landed, and the two slide away TOGETHER: the clock stays up for at least HOLD_TIME
+## and the banner stays as long as the clock does. Without one it leaves after HOLD_TIME.
+static func play(ui_layer: Node, time_name: String, rest_y: float = REST_POS.y, clock: Node = null) -> void:
 	if ui_layer == null or not is_instance_valid(ui_layer):
 		return
 	var column: float = centre_x(ui_layer)
@@ -71,8 +74,22 @@ static func play(ui_layer: Node, time_name: String, rest_y: float = REST_POS.y) 
 	tween.tween_property(panel, "position:y", rest_pos.y, IN_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(panel, "modulate:a", 1.0, IN_TIME)
 	print("ISSUE #478 FIX ACTIVE: time banner holds ", HOLD_TIME, "s")
+	if clock != null and is_instance_valid(clock) and GameState.overworld_clock_on():
+		tween.tween_callback(Callable(clock, "hold_banner").bind(panel, HOLD_TIME))
+		return
 	tween.tween_interval(HOLD_TIME)
-	tween.tween_property(panel, "position:y", rest_pos.y - DROP_FROM, OUT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_callback(leave.bind(panel))
+
+
+## Slide a banner back up and free it. The clock calls this as it slides away itself (which can
+## be for the pause menu, so this runs while paused).
+static func leave(panel: Control) -> void:
+	if panel == null or not is_instance_valid(panel) or panel.has_meta("leaving"):
+		return
+	panel.set_meta("leaving", true)
+	var tween := panel.create_tween()
+	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tween.tween_property(panel, "position:y", panel.position.y - DROP_FROM, OUT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(panel, "modulate:a", 0.0, OUT_TIME)
 	tween.tween_callback(panel.queue_free)
 

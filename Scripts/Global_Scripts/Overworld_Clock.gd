@@ -9,9 +9,16 @@ extends Control
 ## ICON change sharply at the slot boundary, on purpose: the world's colour is gradual now, so
 ## this is the player's clear sign of which time SLOT they are in.
 ##
-## BaseMapScene adds one to the map's UI layer on load. It hides itself for menus, fishing,
-## cutscenes and match transitions by sliding up off the top of the screen as it fades, which
-## also gives cutscenes a visible start and end. Shops are separate scenes, so they have no clock.
+## BaseMapScene adds one to the map's UI layer on load. It is NOT always on (2026-11-10): it
+## only PEEKS in for PEEK_SECONDS, then slides away again. A peek is triggered by
+##   - the time changing (a fish, a match, shop pack-buying -- anything that moves the clock,
+##     caught live or on the map load after another scene moved it),
+##   - coming back from a battle (even one that held the clock),
+##   - the pause menu closing.
+## The countdown only runs once the clock is on screen and the hand has finished sweeping, so
+## a big jump is always seen to the end. Even while peeking it hides for menus, fishing,
+## cutscenes and match transitions. A door hands any peek still running on to the next map.
+## Shops are separate scenes, so they have no clock.
 ##
 ## Used via preload (no class_name):
 ##   const OverworldClock = preload("res://Scripts/Global_Scripts/Overworld_Clock.gd")
@@ -35,6 +42,9 @@ const POP_TIME := 0.3
 const BANNER_GAP := 8.0
 ## TWEAKABLE -- how far below the centre the digital time starts, in art pixels.
 const TEXT_DROP := 5
+## TWEAKABLE -- how long a peek keeps the clock on screen (seconds), counted from when it has
+## slid in and the hand has stopped moving.
+const PEEK_SECONDS := 2.5
 
 const ART_DIR := "res://Image_Assets/Clock/"
 const ART_PX := 52
@@ -51,6 +61,13 @@ const SIZE_PX := ART_PX * DISPLAY_SCALE
 ## clock in place so it just stays on screen across the fade.
 var start_hidden: bool = false
 var start_delay: float = 0.0
+## Set before add_child: peek as soon as the map is up (BaseMapScene: back from a battle).
+var peek_on_start: bool = false
+
+## Peek time left, carried across a door so walking through one mid-peek does not cut it short.
+static var _carried_peek: float = 0.0
+var _peek_left: float = 0.0
+var _menu_was_open: bool = false
 
 var _textures := {}
 var _hours: float = 8.0
@@ -59,6 +76,10 @@ var _frame: int = -1
 var _label: String = ""
 var _showing: bool = false
 var _tween: Tween = null
+## The time-slot banner under the clock (TimeOfDayBanner hands it over once it has landed).
+## The clock stays up while _banner_hold runs, and the banner goes when the clock goes.
+var _banner: Control = null
+var _banner_hold: float = 0.0
 
 
 ## How far down the time-slot banner rests: just below the clock, when the clock is switched on.
@@ -86,19 +107,72 @@ func _ready() -> void:
 	# Carries on from where the player last saw it, so the hand sweeps forward after a match.
 	_set_hours(last if last >= 0.0 and last <= now else now, false)
 
-	_showing = not start_hidden and _should_show()
+	# A door (start_hidden false) carries on the peek the last map was showing.
+	if not start_hidden:
+		_peek_left = _carried_peek
+	# The time moved while the player was away (a match, a shop, a night's sleep).
+	if peek_on_start or (last >= 0.0 and not is_equal_approx(last, now)):
+		peek()
+	_menu_was_open = _menu_open()
+
+	_showing = not start_hidden and _should_show() and _peek_left > 0.0
 	position.x = TimeOfDayBanner.centre_x(get_parent()) - SIZE_PX * 0.5
 	position.y = REST_Y if _showing else _hidden_y()
 	modulate.a = 1.0 if _showing else 0.0
 
 
+## Show the clock for PEEK_SECONDS (restarts the countdown if it is already up).
+func peek() -> void:
+	_peek_left = PEEK_SECONDS
+
+
+## TimeOfDayBanner: the banner has landed under the clock. Keep the clock up for at least `hold`
+## seconds (or longer, if its own peek runs longer), then the two slide away together.
+func hold_banner(panel: Control, hold: float) -> void:
+	_release_banner()
+	_banner = panel
+	_banner_hold = hold
+	peek()
+
+
+func _release_banner() -> void:
+	if _banner != null and is_instance_valid(_banner):
+		TimeOfDayBanner.leave(_banner)
+	_banner = null
+
+
 func _process(delta: float) -> void:
 	start_delay = maxf(0.0, start_delay - delta)
-	var want: bool = start_delay <= 0.0 and _should_show()
+	var target: float = GameState.clock_hours()
+
+	# Triggers: the pause menu closing, and the time being anything but what is drawn. The
+	# second one re-fires every frame of a sweep, which is what holds the countdown off until
+	# the hand arrives. (While hidden -- fishing, say -- the hand waits, so the change is
+	# still pending when the clock is next allowed out.)
+	var menu_open := _menu_open()
+	if _menu_was_open and not menu_open:
+		peek()
+	_menu_was_open = menu_open
+	if not is_equal_approx(target, _hours):
+		peek()
+
+	if _showing and not _sliding():
+		_peek_left = maxf(0.0, _peek_left - delta)
+	if _banner != null:
+		if not is_instance_valid(_banner):
+			_banner = null
+		else:
+			_banner_hold = maxf(0.0, _banner_hold - delta)
+			_peek_left = maxf(_peek_left, _banner_hold)
+	_carried_peek = _peek_left
+
+	var want: bool = start_delay <= 0.0 and _should_show() and _peek_left > 0.0
 	if want != _showing:
 		_slide(want)
+	# Never shown at all while the banner was up (a menu open the whole time, say): it goes alone.
+	if _banner != null and not _showing and _banner_hold <= 0.0:
+		_release_banner()
 
-	var target: float = GameState.clock_hours()
 	if not GameState.overworld_clock_on() or target < _hours or _reduce_motion():
 		if target != _hours:
 			_set_hours(target, false)
@@ -113,14 +187,18 @@ func _should_show() -> bool:
 		return false
 	if MapManager.cutscene_active or MapManager.is_fishing():
 		return false
-	# Both the pause menu and the phone map pause the overworld; only the menu hides the clock.
-	if MapManager.overworld_paused and not WorldMap.is_open():
+	if _menu_open():
 		return false
 	if MatchTransition.is_active() or MatchTransition.is_returning():
 		return false
 	# Celeste Harbour's taxi arrival runs on its own flag rather than MapManager's.
 	var map := get_tree().current_scene
 	return map == null or map.get("_cutscene_active") != true
+
+
+## Both the pause menu and the phone map pause the overworld; only the menu counts.
+func _menu_open() -> bool:
+	return MapManager.overworld_paused and not WorldMap.is_open()
 
 
 func _hidden_y() -> float:
@@ -137,6 +215,8 @@ func _sliding() -> bool:
 
 func _slide(show_it: bool) -> void:
 	_showing = show_it
+	if not show_it:
+		_release_banner()
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 	var time: float = SLIDE_IN_TIME if show_it else SLIDE_OUT_TIME

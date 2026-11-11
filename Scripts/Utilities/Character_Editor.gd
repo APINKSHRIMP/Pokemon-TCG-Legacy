@@ -100,13 +100,18 @@ const CONSTANT_FIELDS_OPP := ["sprite", "message_colour", "deck", "music",
 ## Optional fields that can legitimately be emptied. An empty box writes nothing
 ## rather than an empty string, so without this list clearing a reward in edit mode
 ## would look like it worked and leave the old value in the file.
-const CLEARABLE_FIELDS_NPC := ["gift_type", "gift_value"]
+const CLEARABLE_FIELDS_NPC := ["gift_type", "gift_value", "fishing"]
 const CLEARABLE_FIELDS_OPP := ["coin_reward", "card_reward", "pack_reward",
-		"costume_reward", "match_format", "sleeve_reward"]
+		"costume_reward", "match_format", "sleeve_reward", "fishing"]
 
 var _map_data: String = ""
 var _mode: int = Mode.NEW
+## What the form edits as -- "npcs" or "opponents" -- and which block of the constants
+## file it reads and writes.
 var _section: String = "npcs"
+## Where the character lives in the MAP file. Usually the same as _section; differs for a
+## character switched by a `"kind"` when-rule (an NPC by day who battles at night).
+var _file_section: String = "npcs"
 var _actor: Node2D = null
 
 ## The raw character body from the map file, and which `when` rule produced the
@@ -191,13 +196,16 @@ func _load_existing() -> bool:
 	if _actor == null or not is_instance_valid(_actor) or not _actor.has_meta("source"):
 		return false
 	var src: Dictionary = _actor.get_meta("source", {})
-	_section = str(src.get("section", "npcs"))
+	_file_section = str(src.get("section", "npcs"))
+	# The form (and the constants block) follows what the actor IS on screen, which a
+	# `"kind"` when-rule can make different from where it lives in the map file.
+	_section = str(src.get("spawned_as", _file_section))
 	_existing_name = str(src.get("name", ""))
 	_rule_index = int(src.get("rule", -1))
 	var doc := CharacterSchedule.load_map(_map_data)
-	var character = doc.get(_section, {}).get(_existing_name)
+	var character = doc.get(_file_section, {}).get(_existing_name)
 	if not (character is Dictionary):
-		push_error("CharacterEditor: %s/%s not found in %s" % [_section, _existing_name, _map_data])
+		push_error("CharacterEditor: %s/%s not found in %s" % [_file_section, _existing_name, _map_data])
 		return false
 	_character_raw = character
 	# The character's own name is not "taken" as far as it is concerned.
@@ -438,6 +446,7 @@ func _build_kind_choice() -> void:
 
 func _choose_kind(section: String) -> void:
 	_section = section
+	_file_section = section
 	_root.queue_free()
 	_root = null
 	_build_form()
@@ -462,6 +471,11 @@ func _make_backdrop() -> Control:
 
 func _is_opponent() -> bool:
 	return _section == "opponents"
+
+
+## Being edited as a different kind from the map-file section it lives in.
+func _kind_switched() -> bool:
+	return _section != _file_section
 
 
 func _build_form() -> void:
@@ -643,6 +657,14 @@ func _build_identity(col: VBoxContainer) -> void:
 	loop.button_pressed = true
 	_w["loop"] = loop
 	_add_row(col, "Loop", loop)
+
+	# Holds a rod facing the way their idle_<dir> pattern pins them; puts it away while
+	# talked to. See WorldObjectBase._setup_fishing_rod.
+	var fishing := CheckBox.new()
+	fishing.text = "is fishing (rod out; needs an idle up/down/left/right pattern)"
+	fishing.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	_w["fishing"] = fishing
+	_add_row(col, "Fishing", fishing)
 
 
 func _build_opponent_battle(col: VBoxContainer) -> void:
@@ -1240,6 +1262,7 @@ func _load_values_into_form() -> void:
 
 	_load_schedule()
 	_w["loop"].button_pressed = bool(_character_raw.get("loop", true))
+	_w["fishing"].button_pressed = bool(body.get("fishing", false))
 
 	_w["meet"].text = str(says.get("meet", ""))
 	_w["repeat"].text = str(says.get("repeat", ""))
@@ -1401,6 +1424,9 @@ func _collect_values() -> Dictionary:
 	var v: Dictionary = {}
 	v["sprite"] = _asset_value("sprite")
 	v["message_colour"] = _option_value(_w["message_colour"], DEFAULT_MESSAGE_COLOUR)
+	# Only written when ticked; unticking clears it (it is in both CLEARABLE lists).
+	if _w["fishing"].button_pressed:
+		v["fishing"] = true
 
 	var says: Dictionary = {}
 	for key in ["meet", "repeat", "first_win", "rematch_win", "loss"]:
@@ -1467,6 +1493,12 @@ func _build_draft() -> Dictionary:
 				target = "constants"
 		elif _mode == Mode.EDIT and _overridden_in_rule(field):
 			target = "rule"
+		elif _mode == Mode.EDIT and _kind_switched() and _rule_index >= 0 \
+				and not _character_raw.has(field):
+			# Edited as the other kind (Brienne the opponent, living under "npcs"): a
+			# new map-file field -- a sleeve, say -- belongs to the rule that makes them
+			# that kind, not to the defaults every NPC appearance inherits too.
+			target = "rule"
 		match target:
 			"constants": to_constants[field] = values[field]
 			"rule":      to_rule[field] = values[field]
@@ -1483,7 +1515,9 @@ func _build_draft() -> Dictionary:
 	# characters has one. The placement tool's R key rewrites it through the normal
 	# path afterwards, which targets the same place.
 	if _mode == Mode.NEW:
-		to_character["move"] = "idle_random" if _is_opponent() else "idle_down"
+		# A fisher needs a pinned direction to hold the rod in, so never idle_random.
+		to_character["move"] = "idle_random" if _is_opponent() and not values.has("fishing") \
+				else "idle_down"
 
 	# Anything optional that used to have a value and no longer does is removed
 	# outright, wherever it lives -- clearing a reward has to actually clear it.
@@ -1496,7 +1530,10 @@ func _build_draft() -> Dictionary:
 				to_remove.append(field)
 
 	return {
-		"section": _section,
+		# Map-file section (where the character lives) vs the kind it is edited as,
+		# which is also the constants block and what the actor respawns as.
+		"section": _file_section,
+		"constants_section": _section,
 		"name": name,
 		"is_new": _mode == Mode.NEW,
 		"rule_index": _rule_index if _mode == Mode.EDIT else -1,
@@ -1572,7 +1609,8 @@ func _build_entry(name: String, values: Dictionary, removals: Array = []) -> Dic
 	# whatever it was walking with -- the placement tool's R key is the only thing
 	# that changes a movement pattern.
 	if not entry.has("pattern"):
-		entry["pattern"] = "idle_random" if _is_opponent() else "idle_down"
+		entry["pattern"] = "idle_random" if _is_opponent() and not values.has("fishing") \
+				else "idle_down"
 	return entry
 
 

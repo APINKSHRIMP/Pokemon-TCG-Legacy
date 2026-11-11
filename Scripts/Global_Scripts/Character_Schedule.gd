@@ -438,8 +438,12 @@ static func cast_for(map_name: String, day: int, time_of_day: String,
 			# The placement tool edits the field where it LIVES, so moving a character
 			# whose rules only describe *when* they appear moves them everywhere,
 			# instead of fragmenting one shared position into a per-rule copy.
+			# `section` is where the character LIVES in the file; `spawned_as` is what this
+			# rule made it today -- an "npcs" character whose rule says "kind": "opponent"
+			# (Psychic Brienne at night) spawns as an opponent, and the editor must open the
+			# opponent form for it.
 			built["_source"] = {
-				"section": section, "name": name, "rule": rule_index,
+				"section": section, "spawned_as": target, "name": name, "rule": rule_index,
 				"at_owner": rule_index if _rule_sets(character, rule_index, "at") else -1,
 				"move_owner": rule_index if _rule_sets(character, rule_index, "move") else -1,
 			}

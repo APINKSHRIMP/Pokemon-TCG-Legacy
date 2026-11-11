@@ -1024,6 +1024,7 @@ func _configure_opponent_node(opp: Node, entry: Dictionary) -> void:
 	opp.message_colour   = entry.get("message_colour", "")
 	opp.movement_pattern = entry.get("pattern", "idle_random")
 	opp.interact_facing  = entry.get("interact_facing", "")
+	opp.fishing          = bool(entry.get("fishing", false))
 	opp.patrol_distance  = entry.get("patrol_distance", 100.0)
 	opp.patrol_speed     = entry.get("patrol_speed", 60.0)
 	opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
@@ -1093,6 +1094,7 @@ func _configure_npc_node(npc: Node, entry: Dictionary, is_shop: bool) -> void:
 	npc.patrol_axis      = entry.get("patrol_axis", "horizontal")
 	npc.wander_radius    = entry.get("wander_radius", 200.0)
 	npc.interact_facing  = entry.get("interact_facing", "")
+	npc.fishing          = bool(entry.get("fishing", false))
 
 	# Both node types carry a shop_id: the shopkeeper uses it to look up shops.json, and a
 	# service NPC whose stock is data-driven (the sleeve seller) uses it to look up its own

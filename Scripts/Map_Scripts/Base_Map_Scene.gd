@@ -25,6 +25,8 @@ const OverworldClock = preload("res://Scripts/Global_Scripts/Overworld_Clock.gd"
 ## Ocean_Ambience.GROUP. Spelled out, not preloaded: a preload here would compile that script
 ## (and the autoloads it names) in the middle of the autoloads compiling this one.
 const MAP_AMBIENCE_GROUP := "map_ambience"
+## The clock _add_clock put up; the time-slot banner leaves when it does.
+var _clock: Control = null
 
 @onready var _player: CharacterBody2D = $Player
 @onready var _ui_layer: CanvasLayer = $UILAYER
@@ -318,11 +320,11 @@ func _ready():
 	if came_outside:
 		CafeBreakfastCutscene.note_exterior_return()
 	GameState.last_map_was_interior = not uses_time_of_day()
-	_add_clock(clock_slides_in, CLOCK_WAKE_DELAY if is_sleep_wakeup else 0.0)
+	_add_clock(clock_slides_in, CLOCK_WAKE_DELAY if is_sleep_wakeup else 0.0, from_battle)
 	# The slot changed since the player last saw a map, however that happened: the banner.
 	var now_time := GameState.get_time()
 	if GameState.last_seen_time != "" and now_time != GameState.last_seen_time:
-		TimeOfDayBanner.play(_ui_layer, now_time, OverworldClock.banner_rest_y(TimeOfDayBanner.REST_POS.y))
+		TimeOfDayBanner.play(_ui_layer, now_time, OverworldClock.banner_rest_y(TimeOfDayBanner.REST_POS.y), _clock)
 	GameState.last_seen_time = now_time
 	if time_fade_in:
 		_play_time_fade_in()
@@ -739,11 +741,15 @@ const CLOCK_WAKE_DELAY := 1.5
 ## TWEAKABLE -- seconds the map takes to fade up after a fish moved the time slot on.
 const TIME_FADE_IN_SECONDS := 0.6
 
-func _add_clock(slides_in: bool, delay: float = 0.0) -> void:
+## `peek`: show it straight away (back from a battle) even if the time did not move -- a
+## time change peeks on its own. Otherwise it stays hidden until something triggers it.
+func _add_clock(slides_in: bool, delay: float = 0.0, peek: bool = false) -> void:
 	var clock := OverworldClock.new()
 	clock.start_hidden = slides_in
 	clock.start_delay = delay
+	clock.peek_on_start = peek
 	_ui_layer.add_child(clock)
+	_clock = clock
 
 
 ## The second half of MapManager's time-slot blackout: the rebuilt map comes up out of black,

@@ -108,7 +108,7 @@ const LINES_PICK_DECK := [
 const TEXT_CONFIRM_PICK := "Are you sure it's the %s that you want?"
 const TEXT_GOT_DECK := "You got the %s!"
 const LINES_PICKED_BEFORE_MATCH := [
-	"Alexander is covering the shop for me so I've got some time now if you do?",
+	"I can't stay long because I've got to get back to the shop, but I've got time for a quick match if you do?",
 	"Let's have a match right now!",
 ]
 const LINES_HARD_PACKS := [
@@ -153,12 +153,12 @@ const LINES_COIN := [
 # After the battle, win or loss, just before his goodbye: the Town Hall registration nudge.
 const LINE_TOWN_HALL := "From tomorrow the Town Hall is offering a cheap official registration service so make sure you check out the Town Hall in the morning."
 const LINES_NEW_GOODBYE := [
-	"I've really gotta shoot off and get the shop open. El has gone out for the day and is back tonight, Alexander is covering the shop for me this evening but I don't know what he's doing otherwise.",
+	"I've really gotta shoot off and get the shop open. El and Alexander have gone away for the day so it's just me running it today.",
 	"If you're still interested in fishing then you should swing by and I'll hook you up with a rod!",
 	"Catch ya later.",
 ]
 const LINES_RULES_GOODBYE := [
-	"Alexander is covering the shop for me so if you still want to fish then you should swing by and pick up that rod from him.",
+	"I'd better get back and open the shop back up, I only locked it up quickly. If you still want to fish then you should swing by and I'll hook you up with a rod!",
 	"Catch ya later.",
 ]
 const LINE_GET_PACKS := "I'm going to get some packs from the card mart later, I need to make my deck stronger! You should go and get some packs from the card mart too."
@@ -167,7 +167,7 @@ const LINE_ENERGY_ADVANCED := "I also got a load of each energy card so we'll ne
 # after the energy, before the goodbye. He is not at the café himself for this save.
 const LINES_CAFE_MORNING := [
 	"El and Alexander have just gone for breakfast at Café Mieux. I got them each a deck too.",
-	"I gave Alexander the day off because it's a bank holiday. A lot of stuff's closed today but I've got stuff to do so I'll be open.",
+	"Alexander's got the day off until he takes over the shop from me this evening. A lot of stuff's closed today for the bank holiday but I've got stuff to do so I'll be open.",
 	# ISSUE #356: the Card Mart nudge. Olly isn't at the café himself, so "get there" not "get here".
 	"Before you get there, call in at the Card Mart and get yourself some new packs!",
 	"Make sure your deck is the best it can be, they'll want to battle when you get there!",

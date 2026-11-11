@@ -1008,7 +1008,8 @@
             "first_win": "I have to focus more. Take these cards to help you focus more too.",
             "rematch_win": "I'll focus harder.",
             "loss": "I manifested the win."
-          }
+          },
+          "sleeve": "Mewtwo_Silhouette"
         },
         {
           "at": [2880, 3110],
@@ -1723,7 +1724,8 @@
       "move": "idle_down",
       "days": "1",
       "times": "M,A",
-      "at": [-1033, 800]
+      "at": [-1028, 809],
+      "fishing": true
     },
     "Fisher 2": {
       "says": {
@@ -1856,6 +1858,28 @@
         }
       ],
       "at": [2094, 903]
+    },
+    "Olly 3": {
+      "says": {
+        "meet": "Hey! I've always got the evenings to fish with Alexander looking after the shop for me now.",
+        "repeat": "It's great having time to fish!"
+      },
+      "move": "idle_down",
+      "days": "1",
+      "times": "E",
+      "at": [-877, 805],
+      "fishing": true
+    },
+    "Olly 4": {
+      "fishing": true,
+      "says": {
+        "meet": "Nothing beats fishing at night, it's so quiet and peaceful...",
+        "repeat": "El doesn't like me staying up and out late so I don't get to fish late this often..."
+      },
+      "move": "idle_down",
+      "days": "3",
+      "times": "N",
+      "at": [-602, 2736]
     }
   },
   "opponents": {
@@ -1893,7 +1917,8 @@
         "first_win": "Heh you're pretty tough, you wanna join our gang?",
         "rematch_win": "Now they're DEFINITELY going to kick me out of the cool guy biker gang...",
         "loss": "Heh heh heh, too easy."
-      }
+      },
+      "sleeve": "Ariados"
     },
     "Bad Dude Wayne": {
       "at": [420, 1270],
@@ -2072,7 +2097,8 @@
           "days": "4,8",
           "times": "M"
         }
-      ]
+      ],
+      "sleeve": "Caterpie"
     },
     "Bug Catcher Frankie": {
       "at": [2295, 2160],
@@ -2257,7 +2283,9 @@
           "days": "5-6",
           "times": "M,A"
         }
-      ]
+      ],
+      "sleeve": "1_Default_English",
+      "fishing": true
     },
     "Fisherman Gary": {
       "at": [-840, 2735],
@@ -2303,7 +2331,9 @@
           "days": "3-4,7-8",
           "times": "M"
         }
-      ]
+      ],
+      "sleeve": "Gyarados_2",
+      "fishing": true
     },
     "Gambler Mick": {
       "at": [-620, 2510],
@@ -2332,7 +2362,8 @@
           "days": "4,8",
           "times": "M"
         }
-      ]
+      ],
+      "sleeve": "1_Default_English"
     },
     "Garden Manager Louis": {
       "at": [-710, 2020],
@@ -2492,7 +2523,8 @@
           "days": "4,8",
           "times": "A,E"
         }
-      ]
+      ],
+      "sleeve": "Pokeball_Pink"
     },
     "Painter Jericho": {
       "at": [-565, 2372],
@@ -2652,7 +2684,8 @@
           "days": "4,8",
           "times": "A"
         }
-      ]
+      ],
+      "sleeve": "Azurill"
     },
     "Swimmer Melissa": {
       "at": [490, 2590],
