@@ -217,12 +217,14 @@ static func to_entry(name: String, body: Dictionary) -> Dictionary:
 			entry["pattern"] = move["pattern"]
 		if move.has("speed"):
 			entry["patrol_speed"] = move["speed"]
-		if move.has("distance"):
-			entry["patrol_distance"] = move["distance"]
-		if move.has("axis"):
-			entry["patrol_axis"] = move["axis"]
+		if move.get("steps") is Array:
+			entry["route_steps"] = move["steps"]
+		if move.has("mode"):
+			entry["route_mode"] = move["mode"]
 		if move.has("radius"):
 			entry["wander_radius"] = move["radius"]
+		if move.get("box") is Array:
+			entry["wander_box"] = move["box"]
 
 	var says = body.get("says")
 	if says is Dictionary:

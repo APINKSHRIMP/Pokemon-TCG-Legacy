@@ -17,7 +17,7 @@ const FIELD_GUIDE_DIR := "res://Image_Assets/Pokemon_Sprites/Field_Guide_Sprites
 ## Every template, in the order the editor lists them. A template is a behaviour
 ## script; adding one means a script, an entry here, and a line in
 ## OverworldPokemonSpawner.TEMPLATE_SCRIPTS.
-const TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "skittish", "burying", "surfacing", "static", "fish_tank", "fishing_spot"]
+const TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "skittish", "burying", "surfacing", "static", "walker", "fish_tank", "fishing_spot"]
 
 const TEMPLATE_LABELS := {
 	"flyer": "Flying (overhead, map-wide)",
@@ -27,6 +27,7 @@ const TEMPLATE_LABELS := {
 	"burying": "Burying",
 	"surfacing": "Surfacing",
 	"static": "Static / patrol",
+	"walker": "Walker (drawn route)",
 	"fish_tank": "Fish tank",
 	"fishing_spot": "Fishing spot (water to cast into)",
 }
@@ -39,6 +40,7 @@ const TEMPLATE_DESCRIPTIONS := {
 	"burying": "Every INTERVAL seconds, CHANCE% to pop out of the ground with a dirt burst, stay UP TIME seconds, then burrow back down.",
 	"surfacing": "Every INTERVAL seconds, CHANCE% to surface out of the water (blue depth tint, splash), drift a couple dozen pixels, then submerge. Give it a water area with V (4 corners) and it surfaces anywhere inside, swims towards the furthest edge, then submerges.",
 	"static": "Rolled once per map load. Collision, stands still or walks an existing pattern (idle cycle, patrol line, patrol square). Space to talk.",
+	"walker": "Rolled once per map load. Collision. Walks a route you draw in the placement tool -- select its spawn point and press E, then walk and press Q to drop points; pauses, idle patterns, speeds and loop / ping-pong / random are on the right-hand panel, the same as an NPC route. Stops while the player is in its way. Space to talk.",
 	"fish_tank": "An aquarium. Unlike every other template this one spawns EVERY species in its table (Count each) at once, inside the swim area you draw with V, and it ignores the time of day -- one table per tank. They cruise left and right at their own Swim speed, spinning round at the glass, drifting very slowly up and down, and turning round when two of them bump nose to nose. Bubbles rise from their mouths to the surface every few seconds.",
 	"fishing_spot": "A patch of water that can be fished. It spawns nothing at all: what it holds is the water rectangle a hooked fish fights inside (draw it with V, 4 corners) and one table per time of day of what bites there. A cast always rolls exactly ONE fish from the table of the spot NEAREST the player, so two spots on the same map fish differently. An empty table means nothing bites at that time and the bait is stolen. The six numbers after Scale are the fight, and they belong to the SPECIES -- the same on every spot, map and time of day.",
 }
@@ -52,10 +54,10 @@ const NON_SPAWNING_TEMPLATES := ["fishing_spot"]
 ## ones that actually put a Pokémon out -- anything the player can see, flying overhead
 ## or sitting in a tree, has the same small chance of calling out. Take a name out of
 ## this list to silence that template; nothing else needs to change.
-const CRY_TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "skittish", "burying", "surfacing", "static", "fish_tank"]
+const CRY_TEMPLATES := ["flyer", "bug_tree", "swinging_bug", "skittish", "burying", "surfacing", "static", "walker", "fish_tank"]
 
 ## Rolled once when the map loads. Everything else rolls on a repeating timer.
-const ONE_SHOT_TEMPLATES := ["bug_tree", "swinging_bug", "skittish", "static"]
+const ONE_SHOT_TEMPLATES := ["bug_tree", "swinging_bug", "skittish", "static", "walker"]
 const TIMED_TEMPLATES := ["burying", "surfacing"]
 
 ## Which knobs the editor shows per template.

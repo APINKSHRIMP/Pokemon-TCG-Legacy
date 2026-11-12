@@ -21,12 +21,90 @@ const TEMPLATE_COLOURS := {
 	"fish_tank": Color(0.3, 0.95, 0.85),
 	"fishing_spot": Color(0.2, 0.45, 0.95),
 	"static": Color(0.9, 0.45, 0.9),
+	"walker": Color(1.0, 0.55, 0.75),
 }
 
 var point: Dictionary = {}
 ## Corners picked so far while the placement tool is capturing this point's water area
 ## (world positions), drawn as dots. Not saved.
 var pending_corners: Array = []
+
+const RouteRunner := preload("res://Scripts/Objects_And_Classes/Route_Runner.gd")
+
+
+# ── route host (walker template) ──────────────────────────────────────────────
+# A walker's route is drawn on its MARKER with the same keys as an NPC's: the placement
+# tool and its overlay talk to anything with this little API. Positions here are in the
+# marker's parent space, the same space `at` is in. The route lives in the point's
+# `route` block, so editing it edits the working copy of the spawn file directly, and
+# the Pokémon out on the map is handed the new steps at once.
+
+var movement_pattern: String:
+	get: return "route" if is_walker() else ""
+
+var route_anchor: Vector2:
+	get: return position
+
+var route_steps: Array:
+	get: return _route_block().get("steps", []) if _route_block().get("steps") is Array else []
+
+var route_mode: String:
+	get: return str(_route_block().get("mode", "loop"))
+
+var patrol_speed: float:
+	get: return float(_route_block().get("speed", 40.0))
+	set(value):
+		_ensure_route_block()["speed"] = roundi(value)
+		var walker := _live_walker()
+		if walker != null:
+			walker.speed = value
+
+var _route_nodes: Array:
+	get: return RouteRunner.build_nodes(route_steps)
+
+
+func is_walker() -> bool:
+	return str(point.get("template", "")) == "walker"
+
+
+func route_node_position(i: int) -> Vector2:
+	var nodes := _route_nodes
+	if i < 0 or i >= nodes.size():
+		return route_anchor
+	return route_anchor + (nodes[i]["pos"] as Vector2)
+
+
+func route_current_node() -> int:
+	var walker := _live_walker()
+	return walker.route_current_node() if walker != null else 0
+
+
+func set_route(steps: Array, mode: String) -> void:
+	var block := _ensure_route_block()
+	block["steps"] = steps.duplicate(true)
+	block["mode"] = mode
+	var walker := _live_walker()
+	if walker != null:
+		walker.route.set_steps(steps, mode)
+	queue_redraw()
+
+
+func _route_block() -> Dictionary:
+	return point.get("route", {}) if point.get("route") is Dictionary else {}
+
+
+func _ensure_route_block() -> Dictionary:
+	if not (point.get("route") is Dictionary):
+		point["route"] = {"speed": 40, "mode": "loop", "steps": []}
+	return point["route"]
+
+
+func _live_walker() -> Node:
+	var spawner := get_parent() as OverworldPokemonSpawner
+	if spawner == null:
+		return null
+	var pokemon := spawner.live_pokemon(str(point.get("id", "")))
+	return pokemon if pokemon != null and "route" in pokemon else null
 
 
 func _ready() -> void:

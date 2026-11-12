@@ -28,6 +28,13 @@ extends Node
 #                       duplicate first appears (use with --replay to pin down a CARD DUPLICATED find)
 #   --reset-coverage    start the cumulative coverage file from zero
 #   --reset-usage       start the cumulative CPU-usage tally from zero (the old cpu_usage.json is archived with a date)
+#   --opponent=NAME     with --real: only that opponent (the placement tool's DECK TEST)
+#   --vs=benchmark|PATH with --real: the bot's decks -- every starter deck in turn (the difficulty benchmark),
+#                       or one deck file (res:// or user:// path)
+#   --per=N             with --real and no --opponent: N matches against EVERY real opponent in turn
+#   --rate              at the end, write each opponent's CPU win rate to Opponent_Ratings.json
+#                       (only a --vs=benchmark run sets their stars)
+#   --progress=PATH     after every match write {done, total, opponent} there; at the end {finished: true}
 #   --replay=RUN:N      replay match N of an earlier run exactly (same decks + seed), e.g.
 #                       --replay=2026-10-09T11-17-10:16   (RUN is the folder name under autotest/runs/)
 #
@@ -86,6 +93,13 @@ var opt_worker := "0"              # --worker=<id>: keeps parallel jobs' scratch
 # the CPU on its normal AI and Autotest_Tutorial_Bot making the player's scripted moves. Writes
 # the board at every player turn to tutorial_newby.txt, to check the CPU follows the script.
 var opt_tutorial := ""
+var opt_opponent := ""             # --opponent=NAME: --real against this one opponent only
+var opt_vs := ""                   # --vs=benchmark|PATH: the bot's decks for --real
+var opt_per := 0                   # --per=N: N matches per real opponent
+var opt_rate := false              # --rate: record win rates in Opponent_Ratings.json
+var opt_progress_path := ""        # --progress=PATH: a progress file for the placement tool
+const STARTER_DECK_DIR := "res://Player_Data/Starter_Decks/"
+const OpponentRatings := preload("res://Scripts/Global_Scripts/Opponent_Ratings.gd")
 var replay_record: Dictionary = {}
 var replay_run := ""
 var replay_prior_events: Array = []   # events of the matches before the replayed one (to rebuild its coverage)
@@ -212,6 +226,7 @@ func _ready() -> void:
 	_load_cards()
 	if opt_real:
 		_load_real_entries()
+		_apply_rating_options()
 	_load_coverage()
 	if FileAccess.file_exists(OUT_DIR + "cpu_usage.json"):
 		var cu = JSON.parse_string(FileAccess.get_file_as_string(OUT_DIR + "cpu_usage.json"))
@@ -276,6 +291,11 @@ func _parse_args() -> void:
 			"bot": opt_bot_smart = (v == "smart")
 			"stress": opt_stress = true
 			"tutorial": opt_tutorial = v
+			"opponent": opt_opponent = v
+			"vs": opt_vs = v
+			"per": opt_per = int(v)
+			"rate": opt_rate = true
+			"progress": opt_progress_path = v
 			"stack":
 				opt_stack = v.to_lower()
 				opt_cards = [opt_stack]
@@ -315,6 +335,7 @@ func _run_all() -> void:
 		get_tree().quit()
 		return
 	_write_summary()
+	_record_ratings()
 	print("AUTOTEST: done — see ", ProjectSettings.globalize_path(run_dir + "summary.txt"))
 	OS.remove_logger(_logger)
 	GameState.autotest = null
@@ -377,10 +398,17 @@ func _play_match(i: int) -> void:
 			opt_sets = keep_sets
 			opp_data = {"name": "GEN " + era}
 		elif opt_real and not real_entries.is_empty():
-			var entry: Dictionary = real_entries[(match_seed if opt_tune else i) % real_entries.size()]
+			var entry_i: int = (match_seed if opt_tune else i) % real_entries.size()
+			if opt_per > 0:
+				entry_i = int(i / opt_per) % real_entries.size()
+			var entry: Dictionary = real_entries[entry_i]
 			o_deck = _read_deck_file(AssetLookup.deck_path(entry["deck"]))
 			opp_data = real_opponent_data_for(entry)
-			p_deck = _read_deck_file(player_deck_files[rng.randi() % player_deck_files.size()]) if not player_deck_files.is_empty() else _build_deck(rng)
+			if opt_vs != "" and not player_deck_files.is_empty():
+				# Rating runs: every opposing deck in turn, so a short run is still a fair sample.
+				p_deck = _read_deck_file(player_deck_files[i % player_deck_files.size()])
+			else:
+				p_deck = _read_deck_file(player_deck_files[rng.randi() % player_deck_files.size()]) if not player_deck_files.is_empty() else _build_deck(rng)
 		elif opt_tutorial == "newby":
 			p_deck = _read_deck_file("res://Player_Data/Starter_Decks/Basic Starter Deck.json")
 			o_deck = _read_deck_file("res://NPC_and_Opponent_Data/Opponent_Deck_Data/Basic Battle Deck.json")
@@ -476,6 +504,8 @@ func _play_match(i: int) -> void:
 		_append_line(run_dir + "matches.jsonl", JSON.stringify(rec))
 		_write_match_log(i + 1, rec)
 	print("AUTOTEST: match %d -> %s after %d turns, %d problem(s)" % [i + 1, match_result, turns, match_problems.size()])
+	if opt_progress_path != "":
+		_write_json(opt_progress_path, {"done": i + 1, "total": opt_matches, "opponent": current_opponent_label})
 	if opt_tutorial != "":
 		tutorial_note("RESULT: %s after %d turns" % [match_result, turns])
 		tutorial_note("--- every message of the match ---")
@@ -1114,6 +1144,41 @@ func _timing_and_oracle_report() -> PackedStringArray:
 		for x in slow.slice(0, 10):
 			s.append("   %6.0f ms  %s" % [x[0], x[1]])
 	return s
+
+
+## --opponent / --vs / --per, applied once the real opponents are loaded.
+func _apply_rating_options() -> void:
+	if opt_opponent != "":
+		var wanted := opt_opponent.strip_edges().to_lower()
+		real_entries = real_entries.filter(func(e): return String(e["label"]).strip_edges().to_lower() == wanted)
+		if real_entries.is_empty():
+			push_error("AUTOTEST: --opponent=%s is not a real opponent with a deck" % opt_opponent)
+	if opt_vs == "benchmark":
+		player_deck_files = []
+		var dir := DirAccess.open(STARTER_DECK_DIR)
+		if dir != null:
+			for f in dir.get_files():
+				if f.ends_with(".json"):
+					player_deck_files.append(STARTER_DECK_DIR + f)
+		player_deck_files.sort()
+	elif opt_vs != "":
+		player_deck_files = [opt_vs]
+	if opt_per > 0 and opt_opponent == "":
+		opt_matches = opt_per * real_entries.size()
+	print("AUTOTEST: rating options -- %d opponent(s), %d opposing deck(s), %d matches" % [real_entries.size(), player_deck_files.size(), opt_matches])
+
+
+## --rate: each opponent's CPU win rate goes into Opponent_Ratings.json. Only a benchmark
+## run (every starter deck) sets their stars; a run against one chosen deck is kept apart.
+func _record_ratings() -> void:
+	var results: Dictionary = {}
+	if opt_rate:
+		var vs_label := "benchmark" if opt_vs == "benchmark" else opt_vs.get_file().trim_suffix(".json")
+		for label in balance:
+			var b: Dictionary = balance[label]
+			results[label] = OpponentRatings.record(String(label), int(b["cpu_wins"]), int(b["games"]), vs_label)
+	if opt_progress_path != "":
+		_write_json(opt_progress_path, {"finished": true, "done": opt_matches, "total": opt_matches, "results": results})
 
 
 func _write_balance_report() -> void:

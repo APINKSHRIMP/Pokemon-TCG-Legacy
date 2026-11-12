@@ -1861,8 +1861,31 @@ func get_time_points() -> int:
 	return int(progress.get("time_points", 0))
 
 
+## Nothing scores on the café morning (fish, packs, anything): see score_cafe_morning_battle().
 func add_time_points(amount: int) -> void:
+	if CafeBreakfastCutscene.is_active():
+		return
 	progress["time_points"] = get_time_points() + amount
+	save_progress()
+
+
+# ---- The café morning (day 2, every start but Expert) -----------------------------------------
+## TWEAKABLE -- what each Olly / Ellie / Alexander match is worth on the café morning, won or lost.
+## Olly + Ellie + Alexander = 30 = the whole day-2 slot. The slot itself never moves on points
+## that morning: the café jumps to the afternoon once Ellie's and Alexander's matches are played
+## (with or without Olly's), with the points zeroed.
+const TIME_POINTS_CAFE_BATTLE := 10
+const CAFE_MORNING_BATTLERS := ["Olly", "Ellie", "Alexander"]
+
+## The outro's scoring call for a finished match on the café morning: Olly (outside the house on
+## "played", or at the café), Ellie or Alexander score TIME_POINTS_CAFE_BATTLE, anyone else nothing.
+## Writes the points directly - add_time_points() is shut that morning.
+func score_cafe_morning_battle() -> void:
+	if not CafeBreakfastCutscene.is_active():
+		return
+	if not (battle_display_name(current_opponent_name) in CAFE_MORNING_BATTLERS):
+		return
+	progress["time_points"] = mini(get_time_points() + TIME_POINTS_CAFE_BATTLE, time_points_to_advance())
 	save_progress()
 
 
@@ -1872,8 +1895,11 @@ func add_pack_opened_time() -> void:
 		add_time_points(TIME_POINTS_PACK)
 
 
-## True when enough points have built up to move into the next slot.
+## True when enough points have built up to move into the next slot. Never on the café morning:
+## only the café scene moves that morning on, straight to the afternoon with the points zeroed.
 func time_slot_change_due() -> bool:
+	if CafeBreakfastCutscene.is_active():
+		return false
 	return get_time() != "Bedtime" and get_time_points() >= time_points_to_advance()
 
 

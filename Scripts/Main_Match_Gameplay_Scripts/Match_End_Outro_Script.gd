@@ -1307,8 +1307,12 @@ func transition_back_to_map() -> void:
 	# ADVANCE section. Bedtime never moves to another slot; the player leaves it by sleeping in
 	# bed. A story battle can hold the clock still and move it on itself (the café breakfast
 	# jumps to the afternoon once both its matches are played, won or lost).
+	# The café morning (day 2) has its own flat rule: +10 for Olly, Ellie or Alexander, won or lost,
+	# and the slot never moves on points (GameState.score_cafe_morning_battle).
 	var holds_clock: bool = bool(GameState.forced_opponent_overrides.get("no_time_advance", false))
-	if not holds_clock:
+	if CafeBreakfastCutscene.is_active():
+		GameState.score_cafe_morning_battle()
+	elif not holds_clock:
 		GameState.score_match_for_time(battle_won, _was_new_opponent, forfeited, series_results)
 		GameState.settle_time_points()
 

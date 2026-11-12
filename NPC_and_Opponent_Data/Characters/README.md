@@ -53,7 +53,7 @@ Which section a character sits in decides whether they're battleable. There's no
 | `at` | `[x, y]` position |
 | `days` | `"3-6"` range · `"1,3,5"` list · `"2-8/2"` every other · `"4"` one day |
 | `times` | `M` Morning · `A` Afternoon · `E` Evening · `N` Night · `B` Bedtime. Combine: `"M,A"`. **Bedtime is opt-in**: no `times` means M,A,E,N, so only a character that lists `B` is out after Night |
-| `move` | bare pattern name, or `{ pattern, speed, distance, axis, radius }` |
+| `move` | bare pattern name, `{ pattern: "random_wander", speed, radius }` (or `box: [w, h]` instead of `radius` to wander in a rectangle centred on `at`), or a route (below) |
 | `says` | `meet` · `repeat` · `first_win` · `rematch_win` · `loss` |
 | `requires` | a gate — see below |
 | `loop` | `false` for story characters that must never repeat |
@@ -135,6 +135,9 @@ The first rule sets nothing — it just means *"also here, exactly as described 
   "at": [-150, 1710],
   "loop": false,
   "move": { "pattern": "random_wander", "radius": 65, "speed": 30.0 },
+  // or a route: offsets from `at`, walked in order. Draw it in-game: F tool, E on the character.
+  "move": { "pattern": "route", "speed": 60, "mode": "loop",   // or "pingpong", or "random" (any point next)
+            "steps": [ {"to": [120, 0]}, {"wait": 2, "idle": "idle_left"}, {"to": [120, 80], "speed": 120} ] },
   "says": { "meet": "Oh hello there neighbour!...", "repeat": "..." },
   "when": [
     { "days": "1", "times": "M,A" },

@@ -193,6 +193,8 @@ func _build_world_column(col: VBoxContainer) -> void:
 	_heading(col, "BATTLE")
 	col.add_child(_button("START TEST MATCH", func(): MapManager.debug_start_test_match()))
 	col.add_child(_note("You and the opponent both use the deck saved as \"TEST\"."))
+	col.add_child(_button("RATE ALL OPPONENTS (%d games each)" % RATE_ALL_GAMES, _rate_all_opponents))
+	col.add_child(_note("Runs in the background: every opponent's real CPU and deck against the smart bot playing each starter deck. The win rate sets their difficulty stars (unless set by hand in the character editor). Progress shows bottom-right. Takes a while: about 3 seconds a game."))
 
 
 func _build_placement_column(col: VBoxContainer) -> void:
@@ -398,6 +400,19 @@ func _apply_cheat(code: String) -> void:
 	_armed_code = ""
 	var message := CheatManager.apply_code(code)
 	_say(message if message != "" else "%s did nothing." % code)
+
+
+## TWEAKABLE: games per opponent for RATE ALL OPPONENTS.
+const RATE_ALL_GAMES := 10
+const DeckTestRunner := preload("res://Scripts/Utilities/Deck_Test_Runner.gd")
+
+func _rate_all_opponents() -> void:
+	var runner = DeckTestRunner.instance()
+	var problem: String = runner.rate_all(RATE_ALL_GAMES)
+	if problem != "":
+		_say(problem, WARN_COLOUR)
+	else:
+		_say("Rating every opponent in the background — progress bottom-right.")
 
 
 # ============================================================

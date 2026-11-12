@@ -12,8 +12,8 @@ extends CharacterBody2D
 #   "idle_cycle"          - cycles walk frames (e.g. swimmers)
 #   "idle_down/up/left/right" - locked facing direction
 #   "idle_down/up/left/right_random" - primary dir with occasional glances
-#   "patrol_line"         - walks back and forth on one axis
-#   "patrol_square"       - walks in a square loop
+#   "route"               - walks a drawn route of points, with pauses and idle
+#                           patterns between them (see ROUTE below)
 #   "random_wander"       - short walks in random directions within a radius
 # ============================================================
 
@@ -21,15 +21,21 @@ var sprite: String = ""
 
 # Movement config — set by MapManager before add_child
 var movement_pattern: String = "idle_random"
-var patrol_distance: float = 100.0
+## Walking speed (px/s) for routes and wanderers. A route leg may override it.
 var patrol_speed: float = 60.0
-var patrol_axis: String = "horizontal"
 var wander_radius: float = 200.0
+## Half the width / height of a wanderer's BOX, centred on its home; ZERO = it wanders
+## in the circle of wander_radius instead. Data writes the whole size: `box: [w, h]`.
+var wander_box: Vector2 = Vector2.ZERO
+## The route's steps, as authored in the character file's `move.steps` (offsets from
+## the character's `at`). See ROUTE below.
+var route_steps: Array = []
+## "loop" (after the last point, walk back to the start and go again) or
+## "pingpong" (walk the points back in reverse, then forwards again) or
+## "random" (after each point, walk straight to any other point of the route).
+var route_mode: String = "loop"
 
 # Internal movement state
-var patrol_direction_vec: Vector2 = Vector2.ZERO
-var patrol_step: int = 0
-var distance_walked: float = 0.0
 var current_facing: String = "down"
 var _restore_timer: SceneTreeTimer = null
 var _glance_timer: SceneTreeTimer = null
@@ -65,8 +71,9 @@ var player_block_distance: float = 30.0
 
 const DIRECTIONS   = ["up", "down", "left", "right"]
 const DIR_VECTORS  = {"up": Vector2.UP, "down": Vector2.DOWN, "left": Vector2.LEFT, "right": Vector2.RIGHT}
-const SQUARE_ORDER = ["down", "right", "up", "left"]
 const WANDER_PROXIMITY_BUFFER: float = 30.0
+## TWEAKABLE: the shortest wander step worth taking (world px) when a step is cut to fit.
+const WANDER_MIN_STEP: float = 4.0
 # ISSUE #82: patterns whose facing is dictated by the pattern itself, so a captured facing must never
 # override them on respawn.
 const FIXED_FACING_PATTERNS = ["idle_cycle", "idle_left", "idle_right", "idle_up", "idle_down"]
@@ -265,27 +272,29 @@ func _wander_proximity_escape() -> Vector2:
 ## MapManager snapshots this next to the position so a restored actor carries on
 ## from where it stopped instead of restarting the leg from its new spot.
 func capture_movement_state() -> Dictionary:
-	return {
-		"distance_walked": distance_walked,
-		"patrol_step": patrol_step,
-		"patrol_direction_vec": patrol_direction_vec,
-		"wander_origin": _wander_origin,
-	}
+	var state := {"wander_origin": _wander_origin}
+	state.merge(_route.capture())
+	return state
 
 
 func apply_movement_state(state: Dictionary) -> void:
-	distance_walked = state.get("distance_walked", distance_walked)
-	patrol_step = state.get("patrol_step", patrol_step)
-	patrol_direction_vec = state.get("patrol_direction_vec", patrol_direction_vec)
 	if state.has("wander_origin"):
 		_wander_origin = state["wander_origin"]
+	if movement_pattern == "route" and state.has("route_anchor"):
+		_route.apply(state)
+		_show_route_frame()
+
+
+func _connect_direction_timer() -> void:
+	if not direction_timer.timeout.is_connected(_on_direction_timer_timeout):
+		direction_timer.timeout.connect(_on_direction_timer_timeout)
 
 
 func _init_movement():
 	match movement_pattern:
 		"idle_random":
 			direction_timer.wait_time = randf_range(1.0, 4.0)
-			direction_timer.timeout.connect(_on_direction_timer_timeout)
+			_connect_direction_timer()
 			direction_timer.start()
 		"idle_cycle":
 			current_facing = "down"
@@ -303,25 +312,15 @@ func _init_movement():
 			current_facing = primary
 			animated_sprite.play("idle_" + primary)
 			direction_timer.wait_time = randf_range(2.0, 15.0)
-			direction_timer.timeout.connect(_on_direction_timer_timeout)
+			_connect_direction_timer()
 			direction_timer.start()
-		"patrol_line":
-			distance_walked = 0.0
-			if patrol_axis == "horizontal":
-				patrol_direction_vec = Vector2.RIGHT
-				current_facing = "right"
-			else:
-				patrol_direction_vec = Vector2.DOWN
-				current_facing = "down"
-		"patrol_square":
-			distance_walked = 0.0
-			patrol_step = 0
-			patrol_direction_vec = DIR_VECTORS[SQUARE_ORDER[0]]
-			current_facing = SQUARE_ORDER[0]
+		"route":
+			route_anchor = position
+			_restart_route()
 		"random_wander":
 			_wander_origin = position
 			direction_timer.wait_time = randf_range(1.0, 4.0)
-			direction_timer.timeout.connect(_on_direction_timer_timeout)
+			_connect_direction_timer()
 			direction_timer.start()
 
 # ============================================================
@@ -360,18 +359,10 @@ func refresh_bubble():
 
 func _physics_process(delta):
 	match movement_pattern:
-		"patrol_line":
-			if _is_player_blocking():
-				velocity = Vector2.ZERO
-				animated_sprite.play("idle_" + current_facing)
+		"route":
+			# false = standing (a pause, or held by the player being in the way).
+			if not _process_route(delta):
 				return
-			_process_patrol_line(delta)
-		"patrol_square":
-			if _is_player_blocking():
-				velocity = Vector2.ZERO
-				animated_sprite.play("idle_" + current_facing)
-				return
-			_process_patrol_square(delta)
 		"random_wander":
 			if _is_player_blocking():
 				velocity = Vector2.ZERO
@@ -407,29 +398,171 @@ func _physics_process(delta):
 			and get_slide_collision_count() > 0 \
 			and get_real_velocity().length() < patrol_speed * 0.3:
 		_abort_blocked_wander()
+	# A route leg that has stopped making progress (walked into a wall or another
+	# character) gives up on that point after RouteRunner.STUCK_TIME rather than walking
+	# on the spot forever. It warns once per point so the route can be redrawn.
+	if movement_pattern == "route":
+		var target: int = _route.i
+		if _route.check_stuck(delta, get_real_velocity().length(), patrol_speed):
+			push_warning("%s: route point %d is blocked from where it was walking -- skipped it. Redraw that leg."
+					% [name, target])
 
-func _process_patrol_line(delta):
-	velocity = patrol_direction_vec * patrol_speed
-	distance_walked += patrol_speed * delta
-	animated_sprite.play("walk_" + current_facing)
-	if distance_walked >= patrol_distance:
-		distance_walked = 0.0
-		patrol_direction_vec = -patrol_direction_vec
-		if patrol_direction_vec.x > 0:   current_facing = "right"
-		elif patrol_direction_vec.x < 0: current_facing = "left"
-		elif patrol_direction_vec.y > 0: current_facing = "down"
-		else:                            current_facing = "up"
+# ============================================================
+# ROUTE
+# ============================================================
+# `move: {"pattern": "route", "speed": 60, "mode": "loop", "steps": [...]}`
+# The walking itself lives in Route_Runner.gd, shared with the walker Pokémon template,
+# so a route is walked the same way by both. See that file for the step format.
 
-func _process_patrol_square(delta):
-	velocity = patrol_direction_vec * patrol_speed
-	distance_walked += patrol_speed * delta
-	animated_sprite.play("walk_" + current_facing)
-	if distance_walked >= patrol_distance:
-		distance_walked = 0.0
-		patrol_step = (patrol_step + 1) % 4
-		var dir_name = SQUARE_ORDER[patrol_step]
-		patrol_direction_vec = DIR_VECTORS[dir_name]
-		current_facing = dir_name
+const RouteRunner := preload("res://Scripts/Objects_And_Classes/Route_Runner.gd")
+const ROUTE_IDLES := RouteRunner.IDLES
+
+var _route = RouteRunner.new()
+
+## The route's start point (the character's `at`), in the container's space.
+var route_anchor: Vector2:
+	get: return _route.anchor
+	set(value): _route.anchor = value
+
+## Points the route stops at, for the debug overlay and the placement tool.
+var _route_nodes: Array:
+	get: return _route.nodes
+
+
+## Where node `i` is, in the container's space.
+func route_node_position(i: int) -> Vector2:
+	return _route.node_position(i)
+
+
+## Index of the node this character is walking to or pausing at (for the debug overlay).
+func route_current_node() -> int:
+	return _route.i
+
+
+func _restart_route() -> void:
+	_route.setup(route_steps, route_mode, _route.anchor)
+	_show_route_frame()
+
+
+## One physics step of the route. Returns true when the character is walking and the
+## caller should move_and_slide().
+func _process_route(delta: float) -> bool:
+	velocity = _route.tick(delta, position, _is_player_blocking(), patrol_speed)
+	if _route.snap_to is Vector2:
+		position = _route.snap_to
+	_show_route_frame()
+	return velocity != Vector2.ZERO
+
+
+func _show_route_frame() -> void:
+	current_facing = _route.facing
+	animated_sprite.play(("walk_" if _route.walk_anim else "idle_") + current_facing)
+
+
+
+# ============================================================
+# LIVE EDITING (the F placement tool)
+# ============================================================
+
+## Switch to another movement pattern on the spot, as if it had spawned with it.
+## The character's home (route start / wander centre / where it stands) is kept.
+func apply_pattern(pattern: String) -> void:
+	var home := home_position()
+	_stop_movement_timers()
+	_is_wandering = false
+	velocity = Vector2.ZERO
+	position = home
+	movement_pattern = pattern
+	animated_sprite.play("idle_" + current_facing)
+	_init_movement()
+	set_physics_process(true)
+
+
+## Replace the route and carry on along it. The node it was heading for is kept where
+## it still exists, so an edit doesn't snap the character back to the start.
+func set_route(steps: Array, mode: String) -> void:
+	route_steps = steps.duplicate(true)
+	route_mode = mode
+	if movement_pattern != "route":
+		return
+	_route.set_steps(route_steps, route_mode)
+	_show_route_frame()
+
+
+## Where the character "lives": the start of its route, the centre of its wander,
+## or simply where it stands. This is what a save writes as `at`.
+func home_position() -> Vector2:
+	match movement_pattern:
+		"route":         return route_anchor
+		"random_wander": return _wander_origin
+	return position
+
+
+## Move the character's home (and with it a whole route or wander circle) to `pos`.
+## A route starts over from its first point.
+func set_home(pos: Vector2) -> void:
+	position = pos
+	route_anchor = pos
+	_wander_origin = pos
+	if movement_pattern == "route":
+		_restart_route()
+
+
+func wander_origin() -> Vector2:
+	return _wander_origin
+
+
+## The `move` value a save writes for this character's current movement.
+func get_move_value() -> Variant:
+	match movement_pattern:
+		"route":
+			var move := {"pattern": "route", "speed": patrol_speed, "mode": route_mode,
+					"steps": route_steps.duplicate(true)}
+			return move
+		"random_wander":
+			if wander_box != Vector2.ZERO:
+				return {"pattern": "random_wander", "box": [roundi(wander_box.x * 2.0), roundi(wander_box.y * 2.0)],
+						"speed": patrol_speed}
+			return {"pattern": "random_wander", "radius": wander_radius, "speed": patrol_speed}
+	return movement_pattern
+
+
+## The spawn-entry fields that describe this character's movement as it is now, so a
+## respawn (after the character editor) keeps live, unsaved movement edits.
+func movement_entry_fields() -> Dictionary:
+	return {
+		"pattern": movement_pattern, "patrol_speed": patrol_speed,
+		"wander_radius": wander_radius, "wander_box": [wander_box.x * 2.0, wander_box.y * 2.0],
+		"route_steps": route_steps.duplicate(true), "route_mode": route_mode,
+	}
+
+
+## Is `p` inside the area this wanderer may walk in: its box when it has one, else its circle.
+func in_wander_area(p: Vector2) -> bool:
+	if wander_box != Vector2.ZERO:
+		var d := (p - _wander_origin).abs()
+		return d.x <= wander_box.x and d.y <= wander_box.y
+	return p.distance_to(_wander_origin) <= wander_radius
+
+
+## The wander box as a whole width / height, read from data ([w, h]); [0, 0] = a circle.
+static func box_half_extents(value: Variant) -> Vector2:
+	if value is Array and value.size() >= 2:
+		return Vector2(absf(float(value[0])), absf(float(value[1]))) * 0.5
+	return Vector2.ZERO
+
+
+func _stop_movement_timers() -> void:
+	if direction_timer != null and is_instance_valid(direction_timer):
+		direction_timer.stop()
+	if _glance_timer != null and is_instance_valid(_glance_timer) \
+			and _glance_timer.timeout.is_connected(_on_glance_end):
+		_glance_timer.timeout.disconnect(_on_glance_end)
+	_glance_timer = null
+	if _restore_timer != null and is_instance_valid(_restore_timer) \
+			and _restore_timer.timeout.is_connected(_on_restore_facing):
+		_restore_timer.timeout.disconnect(_on_restore_facing)
+	_restore_timer = null
 
 func _process_random_wander(delta):
 	if not _is_wandering:
@@ -471,15 +604,23 @@ func _pick_wander_target():
 		var escape: Vector2 = _blocked_dir
 		_blocked_dir = Vector2.ZERO
 		var escape_candidate: Vector2 = position + escape * step
-		if escape_candidate.distance_to(_wander_origin) <= wander_radius:
+		if in_wander_area(escape_candidate):
 			_wander_target = escape_candidate
 			_is_wandering = true
 			return
 	var dirs = [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]
 	dirs.shuffle()
 	for dir in dirs:
-		var candidate = position + dir * step
-		if candidate.distance_to(_wander_origin) <= wander_radius:
+		# A step that would leave the area is shortened to fit, so a small circle or a
+		# thin box still gets walked in rather than standing still.
+		var fit: float = step
+		var candidate = position + dir * fit
+		for _try in 4:
+			if in_wander_area(candidate):
+				break
+			fit *= 0.5
+			candidate = position + dir * fit
+		if fit >= WANDER_MIN_STEP and in_wander_area(candidate):
 			_wander_target = candidate
 			_is_wandering = true
 			return
@@ -578,11 +719,12 @@ func resume_movement():
 			direction_timer.start()
 		"idle_cycle":
 			animated_sprite.play("walk_down")
-		"patrol_line", "patrol_square":
-			if patrol_direction_vec.x > 0:   current_facing = "right"
-			elif patrol_direction_vec.x < 0: current_facing = "left"
-			elif patrol_direction_vec.y > 0: current_facing = "down"
-			else:                            current_facing = "up"
+		"route":
+			# Mid-pause: turn back to the pause's own facing (talking turned them).
+			var face: String = _route.pause_facing()
+			if face != "":
+				_route.facing = face
+			_show_route_frame()
 		"random_wander":
 			direction_timer.wait_time = randf_range(2.0, 5.0)
 			direction_timer.start()

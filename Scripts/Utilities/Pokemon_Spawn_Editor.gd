@@ -1247,6 +1247,9 @@ func _build_draft() -> Dictionary:
 			point["speed"] = int(_speed.value)
 		if pattern == "patrol_line":
 			point["axis"] = _option_value(_axis_opt)
+	# A walker's route is drawn in the world (E in the placement tool), not here -- keep it.
+	if _template == "walker" and _original.get("route") is Dictionary:
+		point["route"] = (_original["route"] as Dictionary).duplicate(true)
 	if _is_tank():
 		# The one point template with no time-of-day tables at all.
 		point["fish_table"] = _clean_tank_rows()

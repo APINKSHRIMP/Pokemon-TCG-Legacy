@@ -95,14 +95,19 @@ const CONSTANT_FIELDS_NPC := ["friendly_name", "sprite", "message_colour",
 		"gift_type", "gift_value"]
 const CONSTANT_FIELDS_OPP := ["sprite", "message_colour", "deck", "music",
 		"prize_cards", "cash_reward", "coin_reward", "card_reward", "pack_reward",
-		"costume_reward", "match_format"]
+		"costume_reward", "match_format", "stars"]
 
 ## Optional fields that can legitimately be emptied. An empty box writes nothing
 ## rather than an empty string, so without this list clearing a reward in edit mode
 ## would look like it worked and leave the old value in the file.
 const CLEARABLE_FIELDS_NPC := ["gift_type", "gift_value", "fishing"]
 const CLEARABLE_FIELDS_OPP := ["coin_reward", "card_reward", "pack_reward",
-		"costume_reward", "match_format", "sleeve_reward", "fishing"]
+		"costume_reward", "match_format", "sleeve_reward", "fishing", "stars"]
+
+## The Difficulty dropdown. Index 0 = auto (the deck test decides, Opponent_Ratings.gd);
+## 1-5 set it by hand; 6, 7 and 8 are the secret orange, red and purple stars.
+const STAR_CHOICES := ["auto (deck test)", "1 star", "2 stars", "3 stars", "4 stars", "5 stars",
+		"6 -- orange (Card Elders)", "7 -- red (gym leaders)", "8 -- purple (secret: Mewtwo)"]
 
 var _map_data: String = ""
 var _mode: int = Mode.NEW
@@ -614,6 +619,15 @@ func _build_identity(col: VBoxContainer) -> void:
 	_w["unique_key"] = key_label
 	_add_row(col, "Unique key", key_label)
 
+	# Renaming rewrites the key EVERYWHERE: every map file, the constants file, every
+	# `beaten:` / `met:` gate and the difficulty ratings (the placement tool does it on
+	# confirm). Scripts that name the character in code are listed, not edited.
+	if _mode == Mode.EDIT:
+		var rename := _make_line_edit("New unique key -- leave empty to keep it.....", 60)
+		rename.text_changed.connect(func(_t: String): _revalidate())
+		_w["rename_to"] = rename
+		_add_row(col, "Rename to", rename)
+
 	var colour := OptionButton.new()
 	colour.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	for key in MessageBoxTheme.THEMES:
@@ -725,6 +739,15 @@ func _build_opponent_battle(col: VBoxContainer) -> void:
 	bo3.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	_w["match_format"] = bo3
 	_add_row(col, "Match format", bo3)
+
+	# Shown as stars on the challenge box. Auto = the placement tool's DECK TEST.
+	var stars := OptionButton.new()
+	stars.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	stars.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for choice in STAR_CHOICES:
+		stars.add_item(choice)
+	_w["stars"] = stars
+	_add_row(col, "Difficulty", stars)
 
 	_w["sleeve"] = _add_asset_row(col, "Sleeve", AssetPickerOverlay.Kind.SLEEVE)
 
@@ -1258,7 +1281,7 @@ func _load_values_into_form() -> void:
 	# constants file, the target of every `beaten:` / `met:` gate, and the key the
 	# save file records progress under. Changing one side and not the others is how
 	# the migration made every NPC lose its sprite.
-	_w["unique_key"].text = _existing_name + "     (renaming is not supported here)"
+	_w["unique_key"].text = _existing_name + "     (Rename to, below, changes it everywhere)"
 
 	_load_schedule()
 	_w["loop"].button_pressed = bool(_character_raw.get("loop", true))
@@ -1272,6 +1295,7 @@ func _load_values_into_form() -> void:
 		_select_music(str(body.get("music", "")))
 		_w["prize_cards"].value = int(body.get("prize_cards", DEFAULT_PRIZE_CARDS))
 		_w["match_format"].button_pressed = str(body.get("match_format", "")) == "best_of_3"
+		_w["stars"].select(clampi(int(body.get("stars", 0)), 0, STAR_CHOICES.size() - 1))
 		_set_asset(_w["sleeve"], str(body.get("sleeve", "")))
 		var granted := str(body.get("sleeve_reward", ""))
 		_w["sleeve_reward"].button_pressed = granted != ""
@@ -1362,6 +1386,14 @@ func _on_name_changed() -> void:
 	_revalidate()
 
 
+## The key typed into Rename to, or "" when it is not being renamed.
+func _rename_target() -> String:
+	if not _w.has("rename_to"):
+		return ""
+	var typed: String = _w["rename_to"].text.strip_edges()
+	return "" if typed == _existing_name else typed
+
+
 func _typed_name() -> String:
 	if _is_opponent():
 		return _w["name"].text.strip_edges()
@@ -1378,6 +1410,9 @@ func _problems() -> Array:
 	# with no slots would never appear anywhere.
 	if _slots.is_empty():
 		out.append("days & times")
+	var rename_to := _rename_target()
+	if rename_to != "" and _taken_names.has(rename_to.to_lower()):
+		out.append("a new key nobody else has (\"%s\" is taken)" % rename_to)
 	if _is_opponent():
 		if _w["deck"].text.strip_edges() == "":
 			out.append("deck")
@@ -1451,6 +1486,8 @@ func _collect_values() -> Dictionary:
 		v["sleeve"] = _asset_value("sleeve")
 		if _w["match_format"].button_pressed:
 			v["match_format"] = "best_of_3"
+		if _w["stars"].selected > 0:
+			v["stars"] = _w["stars"].selected
 		if _w["sleeve_reward"].button_pressed:
 			v["sleeve_reward"] = _asset_value("sleeve")
 	else:
@@ -1548,6 +1585,7 @@ func _build_draft() -> Dictionary:
 			"group": _owner_rules.duplicate(),
 		},
 		"entry": _build_entry(name, values, to_remove),
+		"rename_to": _rename_target(),
 	}
 
 

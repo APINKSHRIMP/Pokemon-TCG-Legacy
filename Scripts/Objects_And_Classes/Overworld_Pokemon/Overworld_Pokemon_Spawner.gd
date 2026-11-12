@@ -25,6 +25,9 @@ extends Node2D
 
 const GROUP := "pokemon_spawner"
 
+## The walker template is preloaded rather than named by class_name (the class-cache trap).
+const WalkerScript := preload("res://Scripts/Objects_And_Classes/Overworld_Pokemon/Pokemon_Walker.gd")
+
 ## Template name -> a fresh node of its behaviour script, or null for an unknown
 ## name. (A match, not a const Dictionary: class names are not constant expressions.)
 static func make_pokemon(template: String) -> OverworldPokemon:
@@ -36,6 +39,7 @@ static func make_pokemon(template: String) -> OverworldPokemon:
 		"burying":      return PokemonBurrower.new()
 		"surfacing":    return PokemonSurfacer.new()
 		"static":       return PokemonStatic.new()
+		"walker":       return WalkerScript.new()
 		"fish_tank":    return PokemonFishTank.new()
 	return null
 
@@ -157,7 +161,7 @@ func apply_doc(new_doc: Dictionary) -> void:
 	clear_pokemon()
 	doc = new_doc
 	_timers.clear()
-	var time_name: String = GameState.get_time()
+	var time_name: String = _time_now()
 	var one_shots: Array = []
 	for point in doc.get("spawn_points", []):
 		if not (point is Dictionary):
@@ -223,7 +227,7 @@ func _remove_pokemon(pokemon) -> void:
 
 
 func _process(delta: float) -> void:
-	var time_name: String = GameState.get_time()
+	var time_name: String = _time_now()
 	for point in doc.get("spawn_points", []):
 		if not (point is Dictionary):
 			continue
@@ -291,7 +295,7 @@ func respawn_point(id: String) -> void:
 	var point := OverworldPokemonData.find_point(doc, id)
 	if point.is_empty() or OverworldPokemonData.NON_SPAWNING_TEMPLATES.has(str(point.get("template", ""))):
 		return
-	var config := _config_for(point, GameState.get_time())
+	var config := _config_for(point, _time_now())
 	if preview or OverworldPokemonData.roll(float(config.get("chance", 0))):
 		_spawn_at(point, config)
 
@@ -496,7 +500,7 @@ func _on_pokemon_gone(pokemon: OverworldPokemon, id: String) -> void:
 		var point := OverworldPokemonData.find_point(doc, id)
 		if not point.is_empty():
 			_timers[id] = PREVIEW_RESPAWN_DELAY if preview \
-					else _interval(OverworldPokemonData.time_table(point.get("tables"), GameState.get_time()))
+					else _interval(OverworldPokemonData.time_table(point.get("tables"), _time_now()))
 
 
 # ============================================================
@@ -752,6 +756,20 @@ func hide_markers() -> void:
 
 func get_markers() -> Array:
 	return _markers.filter(func(m): return is_instance_valid(m))
+
+
+## Placement tool preview: spawn as if it were this time of day ("" = the real clock).
+var debug_time_override: String = ""
+
+
+func _time_now() -> String:
+	return debug_time_override if debug_time_override != "" else GameState.get_time()
+
+
+## The Pokémon spawn point `id` has out right now, or null.
+func live_pokemon(id: String) -> OverworldPokemon:
+	var pokemon = _live.get(id)
+	return pokemon if pokemon != null and is_instance_valid(pokemon) else null
 
 
 func find_marker(id: String) -> PokemonSpawnMarker:

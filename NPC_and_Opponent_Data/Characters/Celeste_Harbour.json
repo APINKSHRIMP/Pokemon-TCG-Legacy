@@ -2,7 +2,7 @@
   "_help": [
     "days    : '3-6' range | '1,3,5' list | '2-8/2' every other | '4' one day",
     "times   : M=Morning A=Afternoon E=Evening N=Night B=Bedtime. Combine: 'M,A' or 'M,A,E,N'. No times = M,A,E,N: Bedtime must be listed",
-    "move    : bare pattern name, or {pattern, speed, distance, axis, radius}",
+    "move    : bare pattern name, or {pattern, speed, radius} / {pattern, speed, box: [w, h]} for random_wander, or {pattern: route, speed, mode: loop|pingpong, steps: [{to: [dx, dy], speed?} | {wait: s, idle?}]} (draw routes with E in the F placement tool)",
     "requires: 'beaten: NAME' | 'met: NAME' | 'flag: NAME', any prefixed with 'not '.",
     "          Compound gates use the longhand object form.",
     "when    : optional rule list, evaluated TOP TO BOTTOM, FIRST MATCH WINS.",
@@ -176,10 +176,14 @@
       "days": "1",
       "times": "M,A,E,N",
       "move": {
-        "axis": "horizontal",
-        "distance": 210,
-        "pattern": "patrol_square",
-        "speed": 120
+        "pattern": "route",
+        "speed": 120,
+        "mode": "loop",
+        "steps": [
+          {"to": [0, 210]},
+          {"to": [210, 210]},
+          {"to": [210, 0]}
+        ]
       },
       "says": {
         "meet": "how the hell did you manage to speak to me??",
@@ -191,10 +195,12 @@
       "days": "1",
       "times": "M,A,E,N",
       "move": {
-        "axis": "horizontal",
-        "distance": 210,
-        "pattern": "patrol_line",
-        "speed": 120
+        "pattern": "route",
+        "speed": 120,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [210, 0]}
+        ]
       },
       "says": {
         "meet": "cheating isn't cool.",
@@ -480,10 +486,12 @@
     "Jogger": {
       "at": [-500, 2020],
       "move": {
-        "axis": "horizontal",
-        "distance": 2700,
-        "pattern": "patrol_line",
-        "speed": 130
+        "pattern": "route",
+        "speed": 130,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [2700, 0]}
+        ]
       },
       "says": {
         "meet": "*huff* *huff* I'm trying to beat my personal best again today so I can't stop and talk!!",
@@ -597,10 +605,12 @@
       "days": "3-8",
       "times": "N",
       "move": {
-        "axis": "horizontal",
-        "distance": 100,
-        "pattern": "patrol_line",
-        "speed": 150
+        "pattern": "route",
+        "speed": 150,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [100, 0]}
+        ]
       },
       "requires": "not met: Koga",
       "says": {
@@ -917,8 +927,8 @@
       ]
     },
     "Old Lady On Bench": {
-      "at": [-827, 1962],
-      "move": "idle_down",
+      "at": [-1190, 1474],
+      "move": "idle_left",
       "says": {
         "meet": "Hello! I'm not very good at the Pokemon card game so I gave my cards to my Grandson. He always says 'Weaknesses' and 'Resistances' are key Grandma, but I never understood it myself!.",
         "repeat": "If you always pay attention to a Pokemon's Weaknesses and Resistances then you'll always have a good chance of winning I believe. You can always buy new cards from the Card Mart and hope you get some good ones!"
@@ -1111,10 +1121,12 @@
     "Sailor Working On Dock": {
       "at": [690, 2680],
       "move": {
-        "axis": "vertical",
-        "distance": 200,
-        "pattern": "patrol_line",
-        "speed": 80
+        "pattern": "route",
+        "speed": 80,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [0, 200]}
+        ]
       },
       "says": {
         "meet": "*huff* I knew I'd be busy with the SS Anne arriving but *huff* I didn't think I'd be THIS busy....",
@@ -1139,10 +1151,12 @@
           "days": "2",
           "times": "M,A,E",
           "move": {
-            "axis": "horizontal",
-            "distance": 500,
-            "pattern": "patrol_line",
-            "speed": 80
+            "pattern": "route",
+            "speed": 80,
+            "mode": "pingpong",
+            "steps": [
+              {"to": [500, 0]}
+            ]
           },
           "says": {
             "meet": "*huff* *huff* it's a hard graft looking after this dock. We don't have enough hard workers... Here, take this uniform. I have a lot spare because nobody wants to help out around here.",
@@ -1154,10 +1168,12 @@
           "days": "2",
           "times": "N",
           "move": {
-            "axis": "horizontal",
-            "distance": 500,
-            "pattern": "patrol_line",
-            "speed": 40
+            "pattern": "route",
+            "speed": 40,
+            "mode": "pingpong",
+            "steps": [
+              {"to": [500, 0]}
+            ]
           },
           "says": {
             "meet": "I'm normally finished by now, but with the SS Anne arriving tomorrow there's still too much work to do.",
@@ -1173,10 +1189,12 @@
     "Sailor Working On SS Anne": {
       "at": [2150, 3150],
       "move": {
-        "axis": "horizontal",
-        "distance": 40,
-        "pattern": "patrol_line",
-        "speed": 60
+        "pattern": "route",
+        "speed": 60,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [40, 0]}
+        ]
       },
       "says": {
         "meet": "The SS Anne will be sailing for a long time. ",
@@ -1191,10 +1209,12 @@
           "days": "3-8",
           "times": "E",
           "move": {
-            "axis": "horizontal",
-            "distance": 40,
-            "pattern": "patrol_line",
-            "speed": 40
+            "pattern": "route",
+            "speed": 40,
+            "mode": "pingpong",
+            "steps": [
+              {"to": [40, 0]}
+            ]
           }
         },
         {
@@ -1533,10 +1553,12 @@
     "Woman Walking Neighbourhood": {
       "at": [1500, 2510],
       "move": {
-        "axis": "horizontal",
-        "distance": 280,
-        "pattern": "patrol_line",
-        "speed": 30
+        "pattern": "route",
+        "speed": 30,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [280, 0]}
+        ]
       },
       "says": {
         "meet": "Hello! I'm getting my daily steps in like I do every day, but I decided to do it on the beach instead today.",
@@ -1562,10 +1584,12 @@
           "days": "2",
           "times": "M,A",
           "move": {
-            "axis": "horizontal",
-            "distance": 2600,
-            "pattern": "patrol_line",
-            "speed": 50
+            "pattern": "route",
+            "speed": 50,
+            "mode": "pingpong",
+            "steps": [
+              {"to": [2600, 0]}
+            ]
           },
           "says": {
             "meet": "Hello! Nice to meet you, I live in the neighbourhood at number 11. I've just going for my morning walk to get my daily steps in!",
@@ -1810,7 +1834,25 @@
         "meet": "Are you looking for a table? Sit yourself at any that are free inside or outside and one of us will be right over!",
         "repeat": "Are you looking for a table? Sit yourself at any that are free inside or outside and one of us will be right over!"
       },
-      "move": "patrol_line",
+      "move": {
+        "pattern": "route",
+        "speed": 60,
+        "mode": "random",
+        "steps": [
+          {"wait": 1, "idle": "idle_up"},
+          {"to": [0, 12]},
+          {"wait": 1, "idle": "idle_down"},
+          {"to": [112, -4]},
+          {"wait": 1, "idle": "idle_up"},
+          {"to": [112, 16]},
+          {"wait": 1, "idle": "idle_down"},
+          {"to": [224, -1]},
+          {"wait": 1, "idle": "idle_up"},
+          {"to": [224, 16]},
+          {"wait": 1, "idle": "idle_down"},
+          {"to": [-1, 1], "speed": 70}
+        ]
+      },
       "when": [
         {
           "days": "2",
@@ -1821,14 +1863,20 @@
           "times": "M,A"
         }
       ],
-      "at": [1868, 1071]
+      "at": [1896, 1065]
     },
     "Cafe Waitress": {
       "says": {
         "meet": "Are you looking for a table? Sit yourself at any that are free inside or outside and one of us will be right over!",
         "repeat": "Are you looking for a table? Sit yourself at any that are free inside or outside and one of us will be right over!"
       },
-      "move": "patrol_line",
+      "move": {
+        "pattern": "route",
+        "mode": "pingpong",
+        "steps": [
+          {"to": [100, 0]}
+        ]
+      },
       "days": "2-12",
       "times": "E,N",
       "at": [1868, 1072]
@@ -1880,6 +1928,56 @@
       "days": "3",
       "times": "N",
       "at": [-602, 2736]
+    },
+    "Harbour Florist": {
+      "says": {
+        "meet": "I help tend to all the flowers in the harbour.",
+        "repeat": "I've always loved gardening so it's a dream job for me."
+      },
+      "move": {
+        "pattern": "random_wander",
+        "box": [274, 106],
+        "speed": 60
+      },
+      "when": [
+        {
+          "days": "2,11",
+          "times": "M,E"
+        },
+        {
+          "days": "3,5",
+          "times": "A"
+        },
+        {
+          "days": "4",
+          "times": "N"
+        },
+        {
+          "days": "6",
+          "times": "M"
+        },
+        {
+          "days": "7",
+          "times": "A,E"
+        },
+        {
+          "days": "8",
+          "times": "M,N"
+        },
+        {
+          "days": "9",
+          "times": "M,A"
+        },
+        {
+          "days": "10",
+          "times": "E,N"
+        },
+        {
+          "days": "12",
+          "times": "A,N"
+        }
+      ],
+      "at": [2497, 1727]
     }
   },
   "opponents": {
@@ -2076,10 +2174,12 @@
     "Bug Catcher Alex": {
       "at": [1625, 2180],
       "move": {
-        "axis": "vertical",
-        "distance": 140,
-        "pattern": "patrol_line",
-        "speed": 20
+        "pattern": "route",
+        "speed": 20,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [0, 140]}
+        ]
       },
       "says": {
         "meet": "Some people hate bugs but I love them! Do you love bugs too?",
@@ -2288,7 +2388,7 @@
       "fishing": true
     },
     "Fisherman Gary": {
-      "at": [-840, 2735],
+      "at": [-841, 2735],
       "move": "idle_down",
       "says": {
         "meet": "I joined my buddies here to fish today but we were actually catching sooo much that they ended up leaving!",
@@ -2299,14 +2399,16 @@
       },
       "when": [
         {
-          "days": "6",
-          "times": "M,A,E"
-        },
-        {
           "days": "4,8",
           "times": "A,E"
+        },
+        {
+          "days": "6",
+          "times": "M,E"
         }
-      ]
+      ],
+      "sleeve": "Qwilfish",
+      "fishing": true
     },
     "Fisherman John": {
       "at": [-840, 2735],
@@ -2336,7 +2438,7 @@
       "fishing": true
     },
     "Gambler Mick": {
-      "at": [-620, 2510],
+      "at": [-781, 1969],
       "move": "idle_random",
       "says": {
         "meet": "All I need is a bit of luck, I let that decide my fate. If I battle enough then I'm bound to win some of them at least.",
@@ -2407,7 +2509,7 @@
       ]
     },
     "Guitarist Howard": {
-      "at": [2515, 1210],
+      "at": [3478, 1047],
       "move": "idle_left",
       "says": {
         "meet": "We're the Toxtricity Rockers, we're a duo that's pretty big in Johto.",
@@ -2428,7 +2530,7 @@
       ]
     },
     "Guitarist Jonesy": {
-      "at": [2480, 1210],
+      "at": [3439, 1046],
       "move": "idle_right",
       "says": {
         "meet": "We're in a band and we're currently touring. We're just passing through to our next gig so having a quick jam here.",
@@ -2633,10 +2735,12 @@
     "Schoolboy Adam": {
       "at": [-850, 2250],
       "move": {
-        "axis": "vertical",
-        "distance": 200,
-        "pattern": "patrol_line",
-        "speed": 60
+        "pattern": "route",
+        "speed": 60,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [0, 200]}
+        ]
       },
       "says": {
         "meet": "I'm trying out some new techniques using statuses. If we battle I'll show you how good they are.",
@@ -2711,10 +2815,12 @@
     "Swimmer Todd": {
       "at": [-398, 2591],
       "move": {
-        "axis": "horizontal",
-        "distance": 250,
-        "pattern": "patrol_line",
-        "speed": 50
+        "pattern": "route",
+        "speed": 50,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [250, 0]}
+        ]
       },
       "says": {
         "meet": "I'm training for a Quadrathlon. It's a 1000m Swim, Bike, Run and then 100 TCG matches!",
@@ -2821,10 +2927,10 @@
       ]
     },
     "Youngster Joey": {
-      "at": [-800, 2020],
+      "at": [-1259, 1432],
       "move": {
         "pattern": "random_wander",
-        "radius": 65,
+        "box": [138, 282],
         "speed": 60
       },
       "says": {

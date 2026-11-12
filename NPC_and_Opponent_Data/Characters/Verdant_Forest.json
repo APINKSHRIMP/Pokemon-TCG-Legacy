@@ -2,7 +2,7 @@
   "_help": [
     "days    : '3-6' range | '1,3,5' list | '2-8/2' every other | '4' one day",
     "times   : M=Morning A=Afternoon E=Evening N=Night B=Bedtime. Combine: 'M,A' or 'M,A,E,N'. No times = M,A,E,N: Bedtime must be listed",
-    "move    : bare pattern name, or {pattern, speed, distance, axis, radius}",
+    "move    : bare pattern name, or {pattern, speed, radius} / {pattern, speed, box: [w, h]} for random_wander, or {pattern: route, speed, mode: loop|pingpong, steps: [{to: [dx, dy], speed?} | {wait: s, idle?}]} (draw routes with E in the F placement tool)",
     "requires: 'beaten: NAME' | 'met: NAME' | 'flag: NAME', any prefixed with 'not '.",
     "          Compound gates use the longhand object form.",
     "when    : optional rule list, evaluated TOP TO BOTTOM, FIRST MATCH WINS.",
@@ -179,11 +179,16 @@
       ]
     },
     "Clown Glenn": {
-      "at": [584, 477],
+      "at": [488, 479],
       "move": {
-        "distance": 100,
-        "pattern": "patrol_square",
-        "speed": 80
+        "pattern": "route",
+        "speed": 80,
+        "mode": "loop",
+        "steps": [
+          {"to": [0, 100]},
+          {"to": [100, 100]},
+          {"to": [100, 0]}
+        ]
       },
       "says": {
         "meet": "Why do clowns often have stiff necks?....",
@@ -235,10 +240,12 @@
     "Doctor Mortimor": {
       "at": [-8, 1658],
       "move": {
-        "axis": "horizontal",
-        "distance": 3100,
-        "pattern": "patrol_line",
-        "speed": 30
+        "pattern": "route",
+        "speed": 30,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [3100, 0]}
+        ]
       },
       "says": {
         "meet": "I'm a pretty good Doctor but the work is stressful so I like to take a walk in the forest to clear my head in the evening.",
@@ -795,10 +802,12 @@
     "Ninjaboy Sasuke": {
       "at": [2682, 8],
       "move": {
-        "axis": "horizontal",
-        "distance": 240,
-        "pattern": "patrol_line",
-        "speed": 90
+        "pattern": "route",
+        "speed": 90,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [240, 0]}
+        ]
       },
       "says": {
         "meet": "I love climbing the trees around here, it's good practice for my ninja skills.",
@@ -998,11 +1007,12 @@
     "Pikachu Fan Leaf": {
       "at": [-248, 655],
       "move": {
-        "axis": "vertical",
-        "distance": 350,
-        "pattern": "patrol_line",
-        "radius": 65,
-        "speed": 50
+        "pattern": "route",
+        "speed": 50,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [0, 350]}
+        ]
       },
       "requires": "not beaten: Pikachu Fan Leaf",
       "says": {
@@ -1344,10 +1354,12 @@
     "Police Constable Floyd": {
       "at": [1000, 1050],
       "move": {
-        "axis": "horizontal",
-        "distance": 1520,
-        "pattern": "patrol_line",
-        "speed": 60
+        "pattern": "route",
+        "speed": 60,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [1520, 0]}
+        ]
       },
       "says": {
         "meet": "Because we've just reopened the forest, my boss wants us to keep a patrol to keep an eye out for any trouble.",
@@ -1370,10 +1382,12 @@
     "Police Sergeant Douglas": {
       "at": [1108, 1673],
       "move": {
-        "axis": "horizontal",
-        "distance": 2800,
-        "pattern": "patrol_line",
-        "speed": 40
+        "pattern": "route",
+        "speed": 40,
+        "mode": "pingpong",
+        "steps": [
+          {"to": [2800, 0]}
+        ]
       },
       "says": {
         "meet": "You better not be up to anything. I'm the searge round ere. I'm keeping my eyes out for anything that aint right.",
@@ -1593,9 +1607,14 @@
     "Swimmer Bibi": {
       "at": [2970, 998],
       "move": {
-        "distance": 68,
-        "pattern": "patrol_square",
-        "speed": 40
+        "pattern": "route",
+        "speed": 40,
+        "mode": "loop",
+        "steps": [
+          {"to": [0, 68]},
+          {"to": [68, 68]},
+          {"to": [68, 0]}
+        ]
       },
       "says": {
         "meet": "I much prefer cold fresh water swimming rather than the beach.",

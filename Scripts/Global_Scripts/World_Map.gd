@@ -75,15 +75,20 @@ const CLUSTER_GAP   : float = 4.0    # screen px between blips sharing a buildin
 const CLUSTER_PER_ROW : int = 5      # a building's dots wrap into rows of this many
 
 const COL_PLAYER     := Color(1.0, 1.0, 1.0)
-# Olly / Ellie / Alexander, two states (user spec 2026-11-10). READY = battleable right now, or
-# waiting to be (the café trio before their cutscene matches): deep, saturated, dark. DONE = already
-# battled under that name, or standing as an NPC / shopkeeper: light and washed out, like a beaten opponent.
-const COL_OLLY            := Color(0.05, 0.16, 0.72)   # deep blue
-const COL_ELLIE           := Color(0.82, 0.06, 0.48)   # deep pink
-const COL_ALEXANDER       := Color(0.85, 0.62, 0.0)    # deep yellow / gold
-const COL_OLLY_DONE       := Color(0.66, 0.72, 0.86)   # pale grey-blue
-const COL_ELLIE_DONE      := Color(0.92, 0.76, 0.85)   # pale grey-pink
-const COL_ALEXANDER_DONE  := Color(0.92, 0.88, 0.70)   # pale grey-yellow
+# Olly / Ellie / Alexander, two states (user spec 2026-11-11). Each dot cycles BASE -> PEAK like an
+# opponent's. READY = battleable right now, or waiting to be (the café trio before their cutscene
+# matches): saturated, glowing towards black. DONE = already battled under that name, or standing as
+# an NPC / shopkeeper: a little lighter and less saturated, glowing towards white.
+const COL_OLLY            := Color(0.05, 0.16, 0.72)   # deep blue...
+const COL_ELLIE           := Color(0.82, 0.06, 0.48)   # deep pink...
+const COL_ALEXANDER       := Color(0.85, 0.62, 0.0)    # deep yellow / gold...
+const COL_OLLY_PEAK       := Color(0.01, 0.03, 0.22)   # ...glowing to near-black
+const COL_ELLIE_PEAK      := Color(0.26, 0.01, 0.14)
+const COL_ALEXANDER_PEAK  := Color(0.27, 0.18, 0.0)
+const COL_OLLY_DONE       := Color(0.36, 0.48, 0.86)   # lighter, softer blue...
+const COL_ELLIE_DONE      := Color(0.90, 0.42, 0.68)   # lighter, softer pink...
+const COL_ALEXANDER_DONE  := Color(0.93, 0.76, 0.32)   # lighter, softer gold...
+const COL_STORY_DONE_PEAK := Color(1.0, 1.0, 1.0)      # ...all glowing to white
 # Opponents, three states (user spec 2026-11-07). Each dot cycles between its BASE colour and its
 # PEAK as it glows: never battled goes DARKER, battled-but-unbeaten goes LIGHTER, beaten goes paler
 # still, towards white/grey. "Battled" = any finished match on their head-to-head record.
@@ -99,6 +104,7 @@ const COL_FOG        := Color(0.03, 0.04, 0.07, 1.0)
 ## Story characters, matched on their message-box name (friendly_name), falling back to the
 ## tracking name - so "Fish Shop Alexander" and "Ellie 2" both count.
 const STORY_COLOURS := {"Olly": COL_OLLY, "Ellie": COL_ELLIE, "Alexander": COL_ALEXANDER}
+const STORY_PEAKS := {"Olly": COL_OLLY_PEAK, "Ellie": COL_ELLIE_PEAK, "Alexander": COL_ALEXANDER_PEAK}
 const STORY_DONE_COLOURS := {"Olly": COL_OLLY_DONE, "Ellie": COL_ELLIE_DONE, "Alexander": COL_ALEXANDER_DONE}
 
 ## Blips never sit on these picture colours (trees, then water). The traces are a hair off the real
@@ -432,13 +438,13 @@ func _build_hints() -> void:
 	_legend_panel = _hint_panel()
 	_hints.add_child(_legend_panel)
 	_legend_panel.resized.connect(_place_hints)
-	# Each row: [base colour, peak colour (null = the story glow: lightened), text]. Rows in a
+	# Each row: [base colour, peak colour (null = just lighten as it glows), text]. Rows in a
 	# section pulse one after another (phase steps of a third).
 	var body := _hint_body(_legend_panel, "Favourites")
 	_legend_rows(_hint_grid(body), [
-		[COL_OLLY, null, "Olly"],
-		[COL_ELLIE, null, "Ellie"],
-		[COL_ALEXANDER, null, "Alexander"],
+		[COL_OLLY, COL_OLLY_PEAK, "Olly"],
+		[COL_ELLIE, COL_ELLIE_PEAK, "Ellie"],
+		[COL_ALEXANDER, COL_ALEXANDER_PEAK, "Alexander"],
 	])
 	body.add_child(_hint_heading("Opponents"))
 	_legend_rows(_hint_grid(body), [
@@ -848,7 +854,8 @@ func _blip_for(a: Dictionary, _is_interior: bool) -> Dictionary:
 		# Ellie 3, Alexander 3...); pale once played, or when they are an NPC / shopkeeper.
 		var ready: bool = a["is_opponent"] and not _has_played(String(a["name"]))
 		var col: Color = STORY_COLOURS[story] if ready else STORY_DONE_COLOURS[story]
-		return {"kind": "story", "colour": col, "radius": STORY_RADIUS, "phase": phase}
+		var peak_col: Color = STORY_PEAKS[story] if ready else COL_STORY_DONE_PEAK
+		return {"kind": "story", "colour": col, "peak": peak_col, "radius": STORY_RADIUS, "phase": phase}
 	# Only opponents and the three story characters are shown, indoors and out: no NPC or
 	# shopkeeper dots. An opponent who is not battleable right now (an Elder busy as an NPC, a
 	# beaten "Defeated" stand-in) is an NPC in the cast, so it never reaches this point.
@@ -1012,7 +1019,7 @@ func _draw_blips() -> void:
 			continue
 		var colour: Color = b["colour"]
 		match String(b["kind"]):
-			"opponent":
+			"opponent", "story":
 				colour = colour.lerp(Color(b["peak"]), wave * 0.5 + 0.5)
 			_:
 				colour = colour.lightened(0.18 * (wave * 0.5 + 0.5))

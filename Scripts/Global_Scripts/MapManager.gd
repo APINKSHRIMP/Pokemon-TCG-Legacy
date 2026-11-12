@@ -846,6 +846,11 @@ func _actor_key(actor_name: String) -> String:
 
 
 func _assign_actor_position(actor: Node2D, actor_name: String, default_pos: Vector2) -> void:
+	# Placement tool preview: authored positions, and no pos_key -- these actors belong to
+	# a day / time that is not the real one, so they must never be snapshotted into it.
+	if _debug_authored_spawn:
+		actor.position = default_pos
+		return
 	var key := _actor_key(actor_name)
 	actor.position = _actor_positions.get(key, default_pos)
 	actor.set_meta("pos_key", key)
@@ -1025,10 +1030,11 @@ func _configure_opponent_node(opp: Node, entry: Dictionary) -> void:
 	opp.movement_pattern = entry.get("pattern", "idle_random")
 	opp.interact_facing  = entry.get("interact_facing", "")
 	opp.fishing          = bool(entry.get("fishing", false))
-	opp.patrol_distance  = entry.get("patrol_distance", 100.0)
 	opp.patrol_speed     = entry.get("patrol_speed", 60.0)
-	opp.patrol_axis      = entry.get("patrol_axis", "horizontal")
+	opp.route_steps      = (entry.get("route_steps", []) as Array).duplicate(true)
+	opp.route_mode       = str(entry.get("route_mode", "loop"))
 	opp.wander_radius    = entry.get("wander_radius", 200.0)
+	opp.wander_box       = WorldObjectBase.box_half_extents(entry.get("wander_box"))
 	opp.restrictions     = entry.get("restrictions", {})
 	opp.match_effects    = entry.get("match_effects", [])
 	opp.match_format     = entry.get("match_format", "")
@@ -1089,10 +1095,11 @@ func _configure_npc_node(npc: Node, entry: Dictionary, is_shop: bool) -> void:
 	npc.gift_type        = entry.get("gift_type", "")
 	npc.gift_value       = entry.get("gift_value", "")
 	npc.movement_pattern = entry.get("pattern", "idle_down")
-	npc.patrol_distance  = entry.get("patrol_distance", 100.0)
 	npc.patrol_speed     = entry.get("patrol_speed", 60.0)
-	npc.patrol_axis      = entry.get("patrol_axis", "horizontal")
+	npc.route_steps      = (entry.get("route_steps", []) as Array).duplicate(true)
+	npc.route_mode       = str(entry.get("route_mode", "loop"))
 	npc.wander_radius    = entry.get("wander_radius", 200.0)
+	npc.wander_box       = WorldObjectBase.box_half_extents(entry.get("wander_box"))
 	npc.interact_facing  = entry.get("interact_facing", "")
 	npc.fishing          = bool(entry.get("fishing", false))
 
@@ -1106,6 +1113,47 @@ func _configure_npc_node(npc: Node, entry: Dictionary, is_shop: bool) -> void:
 	if not is_shop:
 		npc.required_costume   = entry.get("required_costume", "")
 		npc.costume_match_text = entry.get("costume_match_text", "")
+
+## Placement-tool preview in progress: spawn at authored spots, skip the position cache
+## and the returning-from-battle respawn.
+var _debug_authored_spawn: bool = false
+
+## Debug tooling (PlacementTool's day / time preview, and its refresh after a save):
+## throw away every scheduled character on the map -- anything carrying a `source` meta;
+## generated crowds and cutscene actors are left alone -- and spawn the cast of `day` /
+## `time_of_day` instead, from the files on disk, everyone on their authored spot. For
+## the REAL day and time the slot's remembered positions are forgotten first (they were
+## snapshotted before the edits), so the actors are tracked again exactly as on a fresh
+## map load.
+func debug_respawn_cast(day: int, time_of_day: String) -> void:
+	if _opponents_container == null or not is_instance_valid(_opponents_container):
+		return
+	for child in _opponents_container.get_children():
+		if child.has_meta("source"):
+			_opponents_container.remove_child(child)
+			child.queue_free()
+	var cast: Dictionary = CharacterSchedule.cast_for(_map_data, day, time_of_day, evaluate_condition)
+	var cast_owner: Node = _player.get_parent() if _player != null else null
+	if cast_owner != null and cast_owner.has_method("adjust_cast"):
+		cast = cast_owner.adjust_cast(cast)
+	var real := day == GameState.get_date() and time_of_day == GameState.get_time()
+	if real:
+		var prefix := "%s|%d|%s|" % [_map_data, day, time_of_day]
+		for cache in [_actor_positions, _actor_facings, _actor_movement]:
+			for key in (cache as Dictionary).keys():
+				if str(key).begins_with(prefix):
+					cache.erase(key)
+	_debug_authored_spawn = not real
+	# The tool may just have written All_NPC_Constant_Data.json (a new character's sprite
+	# lives there), so read it again rather than spawn from the copy cached at boot.
+	_constant_data_loaded = false
+	var was_returning: bool = GameState.returning_from_battle
+	GameState.returning_from_battle = false
+	_load_and_spawn_opponents(cast.get("opponents", []))
+	_load_and_spawn_npcs(cast.get("npcs", []))
+	GameState.returning_from_battle = was_returning
+	_debug_authored_spawn = false
+
 
 ## Instantiate a single NPC entry dict into the current opponents container.
 ## Skips condition evaluation — intended for programmatically built entries
@@ -1479,6 +1527,29 @@ func _hide_modifiers_box() -> void:
 	if _modifiers_box != null and is_instance_valid(_modifiers_box):
 		_modifiers_box.queue_free()
 	_modifiers_box = null
+	if _stars_row != null and is_instance_valid(_stars_row):
+		_stars_row.queue_free()
+	_stars_row = null
+
+
+## The opponent's difficulty stars on their Yes/No challenge (Difficulty_Stars.gd). Nothing
+## is shown for an opponent with no rating yet. Built after _show_modifiers_box(), which
+## clears both.
+const DIFFICULTY_STARS_SCRIPT := "res://Scripts/Global_Scripts/Difficulty_Stars.gd"
+const OpponentRatings := preload("res://Scripts/Global_Scripts/Opponent_Ratings.gd")
+var _stars_row: Control = null
+
+func _show_difficulty_stars() -> void:
+	if current_opponent == null or not message_panel.visible or not message_panel.is_choice_mode():
+		return
+	_load_constant_data()
+	var name: String = current_opponent.opponent_name
+	var stars: int = OpponentRatings.stars_for(name, _opponent_constants.get(name, {}))
+	if stars <= 0:
+		return
+	_stars_row = load(DIFFICULTY_STARS_SCRIPT).new()
+	_stars_row.setup(message_panel, stars)
+	message_panel.add_child(_stars_row)
 
 # ------------------------------------------------------------
 # SPEECH EMOTES
@@ -1889,6 +1960,7 @@ func _on_player_interact(opponent: Node):
 		return
 	await _show_message_with_choices(opponent.get_greeting_text())
 	_show_modifiers_box()
+	_show_difficulty_stars()
 
 func _on_yes_pressed():
 	await _flush_after_emote()
@@ -2003,10 +2075,11 @@ func _on_yes_pressed():
 			"cash_reward":    current_opponent.cash_reward,
 			"position":       current_opponent.position,
 			"pattern":        current_opponent.movement_pattern,
-			"patrol_distance": current_opponent.patrol_distance,
 			"patrol_speed":   current_opponent.patrol_speed,
-			"patrol_axis":    current_opponent.patrol_axis,
+			"route_steps":    current_opponent.route_steps,
+			"route_mode":     current_opponent.route_mode,
 			"wander_radius":  current_opponent.wander_radius,
+			"wander_box":     [current_opponent.wander_box.x * 2.0, current_opponent.wander_box.y * 2.0],
 			"restrictions":   current_opponent.restrictions,
 			"match_effects":  current_opponent.match_effects,
 			"match_format":   current_opponent.match_format,
