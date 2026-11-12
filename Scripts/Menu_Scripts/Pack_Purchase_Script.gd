@@ -706,7 +706,7 @@ func _begin_opening_sequence() -> void:
 	add_child(temp_overlay)
 
 	var source_rect : Rect2     = _get_drawn_texture_rect(selected_pack_rect)
-	var target_rect : Rect2     = PackOpeningManager.get_pack_target_rect()
+	var target_rect : Rect2     = PackOpeningManager.get_pack_target_rect(selected_pack_rect.texture)
 	var pack_tex    : Texture2D = selected_pack_rect.texture
 
 	var anim_pack := TextureRect.new()
@@ -720,7 +720,7 @@ func _begin_opening_sequence() -> void:
 
 	selected_pack_rect.visible = false
 
-	var move_time : float = GameState.pack_time(0.35)
+	var move_time : float = PackOpeningManager.open_time(0.35)
 	var move_tw := create_tween()
 	move_tw.set_parallel(true)
 	move_tw.tween_property(anim_pack, "position", target_rect.position, move_time) \

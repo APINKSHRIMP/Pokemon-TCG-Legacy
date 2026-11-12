@@ -110,7 +110,6 @@ const ROUTE_TEMPLATES := {
 		{"wait": 2.0, "idle": "idle_down_random"}, {"to": [8, 0]}, {"wait": 2.0, "idle": "idle_down_random"}]},
 }
 
-const HUD_FONT_SIZE := 20
 const NUDGE_SMALL := 1.0
 const NUDGE_LARGE := 10.0
 
@@ -122,9 +121,9 @@ const NUDGE_LARGE := 10.0
 enum Mode { EDIT, NEW, FLYERS, FISH }
 
 ## The clickable button bar along the bottom of the screen.
-## Eleven buttons: 11 x 155 + 10 x 12 = 1825px, inside the 1872px between the margins.
-const BUTTON_FONT_SIZE := 18
-const BUTTON_SIZE := Vector2(155, 56)
+## TWEAKABLE: button text size and smallest button (they grow to fit their words).
+const BUTTON_FONT_SIZE := 17
+const BUTTON_SIZE := Vector2(96, 48)
 ## A water area smaller than this (world px) either way is refused -- four clicks on
 ## nearly the same spot.
 const REGION_MIN_SIZE := 8.0
@@ -400,6 +399,15 @@ func _input(event: InputEvent) -> void:
 		return
 	if not (event is InputEventKey and event.pressed and not event.is_echo()):
 		return
+	# The key guide: ? (Shift + /) or F1 opens it; while it is up, any key just closes it.
+	if _help != null and is_instance_valid(_help):
+		_toggle_help()
+		get_viewport().set_input_as_handled()
+		return
+	if (event.keycode == KEY_SLASH or event.keycode == KEY_F1) and not _form_open():
+		_toggle_help()
+		get_viewport().set_input_as_handled()
+		return
 	# The character editor is full of text boxes and takes its own keys. This runs
 	# first, so without standing down entirely, typing a G into a dialogue line would
 	# also grab whoever is selected out in the world.
@@ -519,7 +527,7 @@ func _jump_to_selected() -> void:
 func _toggle_jump_on_cycle() -> void:
 	_jump_on_cycle = not _jump_on_cycle
 	_update_hud()
-	_flash("[color=aqua]jump while cycling %s[/color]" % ("ON — Tab takes you to each one" if _jump_on_cycle else "off — Tab only looks"))
+	_flash("[color=aqua]Jump with Tab is %s.[/color]" % ("on: Tab now takes you to each one" if _jump_on_cycle else "off: Tab just looks"))
 
 
 ## Left click in the world: select the character or spawn point under the cursor (the
@@ -577,7 +585,7 @@ func _toggle_grab() -> void:
 func _clone_spawn_point() -> void:
 	var marker := _selected() as PokemonSpawnMarker
 	if marker == null:
-		_flash("[color=orange]select a Pokémon spawn point to clone (Tab), then C[/color]")
+		_flash("[color=orange]Select a Pokémon spawn point first (click it or Tab), then press C.[/color]")
 		return
 	if _player == null or not is_instance_valid(_player):
 		return
@@ -605,7 +613,7 @@ func _clone_spawn_point() -> void:
 	_rebuild_markers(str(copy["id"]))
 	_grab()
 	_update_hud()
-	_flash("[color=lime]%s cloned as %s — walk it to its spot and G to drop, C for another, Enter to save[/color]"
+	_flash("[color=lime]Copied %s as %s. Walk it to its spot and press G to put it down. C makes another, Enter saves.[/color]"
 			% [str(source.get("id", "?")), str(copy["id"])])
 
 
@@ -617,9 +625,9 @@ func _toggle_forced_spawns() -> void:
 	if _spawner != null and is_instance_valid(_spawner):
 		_spawner.set_preview(_forced_spawns, _pk_doc)
 	_update_hud()
-	_flash("[color=aqua]%s[/color]" % ("FORCED spawns — every spawn point out, a flock every %.1fs, species in turn"
+	_flash("[color=aqua]%s[/color]" % ("Showing ALL spawns: every spawn point is out, and a flock flies over every %.1f s."
 			% OverworldPokemonSpawner.PREVIEW_FLYER_INTERVAL if _forced_spawns
-			else "RANDOM spawns — real chances, rates and timers (from your unsaved edits)"))
+			else "Showing REAL spawns: the actual chances and timers (including your unsaved edits)."))
 
 
 ## Delete and the DELETE button: remove the spawn point being HELD, with no form. Only
@@ -628,11 +636,11 @@ func _toggle_forced_spawns() -> void:
 ## path anywhere in the tool, so this is spawn points only.
 func _delete_held() -> void:
 	if not _grabbed:
-		_flash("[color=orange]grab a spawn point first (G), then Delete[/color]")
+		_flash("[color=orange]Pick up a spawn point first (G), then press Del.[/color]")
 		return
 	var marker := _selected() as PokemonSpawnMarker
 	if marker == null:
-		_flash("[color=orange]only Pokémon spawn points can be deleted here[/color]")
+		_flash("[color=orange]Only Pokémon spawn points can be deleted this way.[/color]")
 		return
 	var id := str(marker.point.get("id", ""))
 	# Let go without _drop(): there is nothing left to record a position for.
@@ -647,7 +655,7 @@ func _delete_held() -> void:
 	_rebuild_markers("")
 	_preview_point(id)
 	_update_hud()
-	_flash("[color=orange]%s deleted — Enter to write, F to discard[/color]" % id)
+	_flash("[color=orange]%s deleted. Enter saves this, F undoes it.[/color]" % id)
 
 
 ## V and the REGION button. Not capturing: start capturing the selected surfacing point's
@@ -658,7 +666,7 @@ func _region_step() -> void:
 	if _region_capture_id == "":
 		var marker := _selected() as PokemonSpawnMarker
 		if marker == null or not OverworldPokemonData.REGION_TEMPLATES.has(str(marker.point.get("template", ""))):
-			_flash("[color=orange]select a surfacing point, fish tank or fishing spot (Tab), then V to draw its water[/color]")
+			_flash("[color=orange]Select a surfacing point, fish tank or fishing spot first, then press V to mark its water.[/color]")
 			return
 		if _grabbed:
 			_drop()
@@ -670,7 +678,7 @@ func _region_step() -> void:
 	if _region_corners.size() < 4:
 		_refresh_capture_marker()
 		_update_hud()
-		_flash("[color=aqua]corner %d/4 set — walk to the next corner and press V[/color]" % _region_corners.size())
+		_flash("[color=aqua]Corner %d of 4 marked. Walk to the next corner and press V.[/color]" % _region_corners.size())
 		return
 	_finish_region_capture()
 
@@ -687,7 +695,7 @@ func _start_region_capture(id: String) -> void:
 	_preview_point(id)
 	_refresh_capture_marker()
 	_update_hud()
-	_flash("[color=aqua]%s: walk to a corner of the water and press V (4 corners). Esc cancels.[/color]" % id)
+	_flash("[color=aqua]Marking water for %s: walk to each of its 4 corners and press V. Esc cancels.[/color]" % id)
 
 
 func _finish_region_capture() -> void:
@@ -699,7 +707,7 @@ func _finish_region_capture() -> void:
 		_region_corners.clear()
 		_refresh_capture_marker()
 		_update_hud()
-		_flash("[color=orange]that area is too thin — pick the 4 corners again (V), or Esc to cancel[/color]")
+		_flash("[color=orange]That area is too thin. Mark the 4 corners again (V), or Esc to cancel.[/color]")
 		return
 	point["region"] = region
 	var centre := rect.get_center()
@@ -711,7 +719,7 @@ func _finish_region_capture() -> void:
 	_rebuild_markers(id)
 	_preview_point(id)
 	_update_hud()
-	_flash("[color=lime]%s water area set (%d x %d) — Enter to save, V again to redo it[/color]"
+	_flash("[color=lime]Water for %s marked (%d x %d). Enter saves it, V redoes it.[/color]"
 			% [id, roundi(rect.size.x), roundi(rect.size.y)])
 
 
@@ -727,7 +735,7 @@ func _cancel_region_capture() -> void:
 	_rebuild_markers(id)
 	_preview_point(id)
 	_update_hud()
-	_flash("[color=orange]water area capture cancelled[/color]")
+	_flash("[color=orange]Water marking cancelled.[/color]")
 
 
 func _refresh_capture_marker() -> void:
@@ -747,7 +755,7 @@ func _request_close() -> void:
 		_cancel_region_capture()
 		return
 	if has_unsaved_changes():
-		_flash("[color=orange]unsaved changes — SAVE (Enter) first, or F to discard and close[/color]")
+		_flash("[color=orange]You have unsaved changes. Press Enter to save them, or F to close and throw them away.[/color]")
 	else:
 		_close()
 
@@ -867,7 +875,7 @@ func _cycle_pattern() -> void:
 	_record(actor)
 	_update_hud()
 	if next == "route" and actor is WorldObjectBase and actor.route_steps.is_empty():
-		_flash("[color=aqua]route with no points yet — press E to draw it[/color]")
+		_flash("[color=aqua]This route has no points yet. Press E to draw it.[/color]")
 
 
 func _record(actor: Node2D) -> void:
@@ -965,10 +973,10 @@ func _route_edit_toggle() -> void:
 		return
 	var actor := _selected()
 	if not _is_route_host(actor):
-		_flash("[color=orange]select a character or a walker Pokémon's spawn point (Tab), then E to draw its route[/color]")
+		_flash("[color=orange]Select a character (or a walking Pokémon's spawn point) first, then press E.[/color]")
 		return
 	if actor is WorldObjectBase and not actor.has_meta("source") and not _is_draft(actor):
-		_flash("[color=orange]%s was generated at runtime — it has no file entry to give a route[/color]" % _name_of(actor))
+		_flash("[color=orange]%s is made up on the fly by the game, so there is nothing saved to give a route to.[/color]" % _name_of(actor))
 		return
 	if _grabbed:
 		_drop()
@@ -979,7 +987,7 @@ func _route_edit_toggle() -> void:
 	_route_actor = actor
 	_route_sel = actor.route_steps.size() - 1
 	_update_hud()
-	_flash("[color=aqua]drawing %s's route — walk somewhere and press Q to add a point, E when done[/color]" % _name_of(actor))
+	_flash("[color=aqua]Drawing %s's route. Walk somewhere and press Q to add a point. E when done.[/color]" % _name_of(actor))
 
 
 func _end_route_edit() -> void:
@@ -1028,7 +1036,7 @@ func _route_input(event: InputEventKey) -> bool:
 		# Keys that act on whoever is selected would act on someone else mid-route.
 		KEY_R, KEY_C, KEY_V, KEY_P, KEY_M, KEY_MINUS, KEY_EQUAL, KEY_N, KEY_L, \
 				KEY_BRACKETLEFT, KEY_BRACKETRIGHT, KEY_BACKSLASH:
-			_flash("[color=orange]finish the route first (E)[/color]")
+			_flash("[color=orange]Finish the route first (E).[/color]")
 		_:
 			return false
 	return true
@@ -1073,7 +1081,7 @@ func _route_add_point() -> void:
 	if not _route_valid() or not _player_ok():
 		return
 	_route_insert_point(_route_local(_player.global_position).round())
-	_flash("[color=lime]point added — walk on and Q for the next, + PAUSE for a stop here (or hold Z and walk)[/color]")
+	_flash("[color=lime]Point added. Walk on and press Q for the next, or use + Pause on the right for a stop here.[/color]")
 
 
 ## A walk point at `local_pos` (route space), after the picked step, which it becomes.
@@ -1167,7 +1175,7 @@ func _route_delete_step() -> void:
 	if not _route_valid():
 		return
 	if _route_sel < 0:
-		_flash("[color=orange]the start point can't be deleted — move it with X, or G to carry the whole route[/color]")
+		_flash("[color=orange]The start point can't be deleted. Move it with X, or press G to carry the whole route.[/color]")
 		return
 	var steps := _route_steps_copy()
 	steps.remove_at(_route_sel)
@@ -1205,7 +1213,7 @@ func route_apply_template(template_name: String) -> void:
 	var steps: Array = (t["steps"] as Array).duplicate(true)
 	_route_sel = steps.size() - 1
 	_route_apply(steps, str(t["mode"]))
-	_flash("[color=lime]route set to \"%s\" — adjust it, or F to discard[/color]" % template_name)
+	_flash("[color=lime]Route set to \"%s\". Adjust it, or F to throw it away.[/color]" % template_name)
 
 
 # ── hold Z to record ──────────────────────────────────────────────────────────
@@ -1257,7 +1265,7 @@ func _rec_begin() -> void:
 	if pos.distance_to(_rec_corner) >= REC_MIN_SEGMENT:
 		_route_insert_point(pos)
 		_rec_corner = pos
-	_flash("[color=aqua]RECORDING — walk the route; stand still for a pause; let go of Z to stop[/color]")
+	_flash("[color=aqua]Recording. Walk the route, stand still for a pause, let go of Z to stop.[/color]")
 
 
 func _rec_end() -> void:
@@ -1270,7 +1278,7 @@ func _rec_end() -> void:
 	elif pos.distance_to(_rec_corner) >= REC_MIN_SEGMENT:
 		_route_insert_point(pos)
 	_rec_paused = false
-	_flash("[color=lime]recorded — %d step(s) in the route now[/color]" % _route_actor.route_steps.size())
+	_flash("[color=lime]Recorded. The route has %d steps now.[/color]" % _route_actor.route_steps.size())
 
 
 func _route_move_step(direction: int) -> void:
@@ -1370,7 +1378,7 @@ func _selected_wanderer() -> WorldObjectBase:
 func _wander_radius_to_player() -> void:
 	var actor := _selected_wanderer()
 	if actor == null:
-		_flash("[color=orange]Q: select a wanderer (random_wander) to set its radius, or E to draw a route[/color]")
+		_flash("[color=orange]Q sets a wanderer's area. Select someone who wanders first, or press E to draw a route instead.[/color]")
 		return
 	if not _player_ok():
 		return
@@ -1431,7 +1439,7 @@ func _set_facing(dir: String) -> void:
 		return
 	var actor := _selected()
 	if not (actor is WorldObjectBase) or dir == "":
-		_flash("[color=orange]select a character (Tab), then Alt+arrow to face them that way[/color]")
+		_flash("[color=orange]Select a character first, then Alt + arrow turns them.[/color]")
 		return
 	var pattern := ("idle_%s_random" % dir) if actor.movement_pattern == "idle_" + dir else "idle_" + dir
 	actor.apply_pattern(pattern)
@@ -1465,10 +1473,10 @@ func _clone_selected() -> void:
 		_clone_spawn_point()
 		return
 	if not (actor is WorldObjectBase) or not actor.has_meta("source"):
-		_flash("[color=orange]select a character or spawn point (Tab), then C to clone it[/color]")
+		_flash("[color=orange]Select a character or spawn point first, then press C to copy it.[/color]")
 		return
 	if _is_draft(actor):
-		_flash("[color=orange]save %s first (Enter), then clone them[/color]" % _name_of(actor))
+		_flash("[color=orange]Save %s first (Enter), then copy them.[/color]" % _name_of(actor))
 		return
 	if _grabbed:
 		_drop()
@@ -1479,7 +1487,7 @@ func _clone_selected() -> void:
 	var new_name: String = CastDataOps.unique_name(name, _draft_names())
 	var draft: Dictionary = CastDataOps.clone_draft(_map_data, section, spawned_as, name, new_name)
 	if draft.is_empty():
-		_flash("[color=red]%s is not in %s.json — save first?[/color]" % [name, _map_data])
+		_flash("[color=red]%s isn't in %s.json yet. Save first?[/color]" % [name, _map_data])
 		return
 	var entry := _clone_entry(draft, int(src.get("rule", -1)), spawned_as)
 	var at := _container.to_local(_player.global_position) if _player_ok() else actor.position
@@ -1496,7 +1504,7 @@ func _clone_selected() -> void:
 	_grab()
 	_update_hud()
 	var note := "" if (draft["dropped"] as Array).is_empty() else " (left off the copy, coins are one-per-giver: %s)" % ", ".join(draft["dropped"])
-	_flash("[color=lime]cloned %s as \"%s\"%s — G to put them down, Enter to save, M to change them after[/color]" % [name, new_name, note])
+	_flash("[color=lime]Copied %s as \"%s\"%s. G puts them down, Enter saves, M edits them.[/color]" % [name, new_name, note])
 
 
 ## The spawn entry for a clone, resolved the way the map resolves its source today.
@@ -1538,7 +1546,7 @@ func _delete_key() -> void:
 	if _delete_armed != name or now - _delete_armed_at > int(DELETE_CONFIRM_SECONDS * 1000.0):
 		_delete_armed = name
 		_delete_armed_at = now
-		_flash("[color=orange]Delete %s ENTIRELY (map file + constants, deck kept)? Press Delete again[/color]" % name)
+		_flash("[color=orange]Delete %s for good? Press Del again within 3 seconds. (Their deck file is kept.)[/color]" % name)
 		return
 	_delete_armed = ""
 	_delete_character(actor)
@@ -1561,7 +1569,7 @@ func _delete_character(actor: Node2D) -> void:
 		actor.queue_free()
 		_refresh_actors()
 		_update_hud()
-		_flash("[color=orange]%s removed (it was never saved)[/color]" % name)
+		_flash("[color=orange]%s removed. It was never saved.[/color]" % name)
 		return
 	if has_unsaved_changes():
 		_drafts.erase(key)
@@ -1578,8 +1586,8 @@ func _delete_character(actor: Node2D) -> void:
 	if not gates.is_empty():
 		notes.append("%d gate(s) still name them: %s" % [gates.size(), ", ".join(gates.slice(0, 4))])
 		print("PlacementTool: gates still naming %s: %s" % [name, gates])
-	_flash("[color=orange]%s deleted from %s.json%s[/color]" % [name, _map_data,
-			"" if notes.is_empty() else " — " + "; ".join(notes)])
+	_flash("[color=orange]%s deleted from %s.json.%s[/color]" % [name, _map_data,
+			"" if notes.is_empty() else " Note: " + "; ".join(notes) + "."])
 
 
 ## The panel's MOVE TO MAP: the selected character leaves this map's file for another
@@ -1598,7 +1606,7 @@ func move_selected_to_map(target_map: String) -> void:
 		_flash("[color=red]%s[/color]" % problem)
 		return
 	_refresh_cast()
-	_flash("[color=lime]%s moved to %s — go there, open this tool and Tab to them to place them[/color]" % [name, target_map])
+	_flash("[color=lime]%s moved to %s. Go there and open this tool to put them in place.[/color]" % [name, target_map])
 
 
 ## N: a random filler NPC at the player, on the day and time being shown.
@@ -1622,7 +1630,7 @@ func _add_filler() -> void:
 	_record(actor)
 	_grab()
 	_update_hud()
-	_flash("[color=lime]filler \"%s\" (%s) for day %d %s — G to put down, N for another, Enter to save, M to edit[/color]"
+	_flash("[color=lime]Added filler NPC \"%s\" (%s) for day %d, %s. G puts them down, N adds another, Enter saves.[/color]"
 			% [draft["name"], draft["constants"]["sprite"], day, _preview_time])
 
 
@@ -1701,17 +1709,15 @@ func preview_slot(day: int, time_of_day: String, select_name: String = "") -> vo
 		_spawner.debug_time_override = "" if _is_real_slot() else _preview_time
 		_spawner.set_preview(_forced_spawns, _pk_doc)
 	_refresh_cast(select_name)
-	_flash("[color=aqua]showing %s[/color]" % _slot_text())
+	_flash("[color=aqua]Now showing %s.[/color]" % _slot_text())
 
 
 func _slot_text() -> String:
 	var cal: Dictionary = CharacterSchedule.load_map(_map_data).get("calendar", {})
 	var looped := CharacterSchedule.resolve_day(cal, _preview_day)
-	var text := "Day %d %s" % [_preview_day, _preview_time]
+	var text := "Day %d, %s" % [_preview_day, _preview_time]
 	if looped != _preview_day:
-		text += " (the loop plays day %d here — edits change day %d)" % [looped, looped]
-	if not _is_real_slot():
-		text += "   [real: Day %d %s]" % [_real_day, _real_time]
+		text += " (a repeat of day %d)" % looped
 	return text
 
 
@@ -1723,7 +1729,7 @@ func _toggle_ghosts() -> void:
 	else:
 		ghosts = []
 	_update_hud()
-	_flash("[color=aqua]ghosts %s[/color]" % ("ON — faded: where they stand at other days / times" if _ghosts_on else "off"))
+	_flash("[color=aqua]Other times' spots %s.[/color]" % ("on: the faded figures show where people stand at other times" if _ghosts_on else "off"))
 
 
 ## Every spot a character on this map stands at, at any OTHER day / time than the one
@@ -1819,14 +1825,14 @@ func _cycle_fast_forward() -> void:
 	_ff_index = (_ff_index + 1) % FAST_FORWARD_SPEEDS.size()
 	Engine.time_scale = FAST_FORWARD_SPEEDS[_ff_index]
 	_update_hud()
-	_flash("[color=aqua]world speed x%d[/color]" % roundi(Engine.time_scale))
+	_flash("[color=aqua]World speed x%d.[/color]" % roundi(Engine.time_scale))
 
 
 ## The panel's DECK TEST: the selected opponent's CPU and deck against the smart bot.
 func run_deck_test() -> void:
 	var actor := _selected()
 	if not ("opponent_name" in actor) or str(actor.opponent_name) == "":
-		_flash("[color=orange]select an opponent (Tab) to deck-test[/color]")
+		_flash("[color=orange]Select an opponent first to test their deck.[/color]")
 		return
 	var runner = DeckTestRunner.instance()
 	var problem: String = runner.test_opponent(str(actor.opponent_name), deck_test_vs, deck_test_games)
@@ -1835,7 +1841,36 @@ func run_deck_test() -> void:
 		return
 	if not runner.finished.is_connected(_on_deck_test_finished):
 		runner.finished.connect(_on_deck_test_finished)
-	_flash("[color=aqua]deck test started in the background — progress bottom-right[/color]")
+	_flash("[color=aqua]Deck test started. It runs in the background; progress is bottom-right.[/color]")
+
+
+## Bumped on every set_opponent_constant() write, so the side panel knows to redraw.
+var constants_revision: int = 0
+
+## The side panel's star picker and NO RETREAT toggle: write one field of an opponent's
+## All_NPC_Constant_Data.json entry straight to disk (value null = remove it). Saved at once,
+## no Enter needed. A later character-editor save keeps it -- that save re-reads the file
+## and only writes the fields the form owns.
+func set_opponent_constant(opponent: String, key: String, value: Variant) -> void:
+	var consts: Dictionary = CastDataOps.read_json(CONSTANTS_PATH)
+	if consts.is_empty():
+		_flash("[color=red]Couldn't read All_NPC_Constant_Data.json.[/color]")
+		return
+	if not (consts.get("opponents") is Dictionary):
+		consts["opponents"] = {}
+	if not (consts["opponents"].get(opponent) is Dictionary):
+		consts["opponents"][opponent] = {}
+	var body: Dictionary = consts["opponents"][opponent]
+	if value == null:
+		body.erase(key)
+	else:
+		body[key] = value
+	if not _write_json(CONSTANTS_PATH, consts):
+		return
+	OpponentRatings.invalidate()
+	MapManager._constant_data_loaded = false   # the challenge box reads its own cached copy
+	constants_revision += 1
+	_update_hud()
 
 
 func _on_deck_test_finished(_results: Dictionary) -> void:
@@ -1860,7 +1895,7 @@ func _open_editor(mode: int) -> void:
 	if mode == CharacterEditor.Mode.EDIT:
 		actor = _selected()
 		if actor == null:
-			_flash("[color=orange]nothing selected — Tab to pick a character, then M[/color]")
+			_flash("[color=orange]Select someone first (click them or Tab), then press M.[/color]")
 			return
 		if actor is PokemonSpawnMarker:
 			_open_pokemon_editor(actor.point)
@@ -1868,7 +1903,7 @@ func _open_editor(mode: int) -> void:
 		if not actor.has_meta("source"):
 			# Dynamically generated actors (the gym crowd) are spawned without
 			# provenance, so there is no file entry to edit.
-			_flash("[color=orange]%s was generated at runtime — it has no file entry to edit[/color]"
+			_flash("[color=orange]%s is made up on the fly by the game, so there is nothing saved to edit.[/color]"
 				% _name_of(actor))
 			return
 	if _grabbed:
@@ -1965,7 +2000,7 @@ func _on_editor_pokemon_chosen() -> void:
 func _select_first_fishing_spot() -> void:
 	var spots := OverworldPokemonData.fishing_spots(_pk_doc)
 	if spots.is_empty():
-		_flash("[color=orange]no fishing spot on this map yet — make one with NEW NPC / OPPONENT / POKÉMON, template \"Fishing spot\"[/color]")
+		_flash("[color=orange]This map has no fishing spot yet. Add one from the debug menu: New NPC / opponent / Pokémon, template \"Fishing spot\".[/color]")
 		return
 	var spot: Dictionary = spots[0]
 	if _player != null and is_instance_valid(_player):
@@ -1985,7 +2020,7 @@ func _on_editor_flyers_chosen() -> void:
 func _open_pokemon_editor(point: Dictionary, flyers: bool = false) -> void:
 	if _spawner == null or not is_instance_valid(_spawner):
 		_thaw_player_after_form()
-		_flash("[color=orange]this map has no Pokémon spawner (it has no character file)[/color]")
+		_flash("[color=orange]This map can't have Pokémon spawns (it has no character file).[/color]")
 		return
 	if _grabbed:
 		_drop()
@@ -2029,12 +2064,12 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 		_rebuild_markers("")
 		_preview_point(original_id)
 		_update_hud()
-		_flash("[color=orange]%s deleted — Enter to write, F to discard[/color]" % original_id)
+		_flash("[color=orange]%s deleted. Enter saves this, F undoes it.[/color]" % original_id)
 		return
 
 	if bool(draft.get("is_new", true)):
 		if _player == null or not is_instance_valid(_player):
-			_flash("[color=red]no player to place %s at[/color]" % id)
+			_flash("[color=red]Can't find the player to put %s next to.[/color]" % id)
 			return
 		point["at"] = [roundi(_player.global_position.x), roundi(_player.global_position.y)]
 		points.append(point)
@@ -2081,7 +2116,7 @@ func _on_pokemon_editor_confirmed(draft: Dictionary) -> void:
 		_look_at_selection()
 	_update_hud()
 	var also := "" if linked_updates == 0 else " (and %d linked clone%s)" % [linked_updates, "" if linked_updates == 1 else "s"]
-	_flash("[color=lime]%s%s ready — Enter to write Pokemon/Spawns/%s.json[/color]" % [id, also, _map_data])
+	_flash("[color=lime]%s%s ready. Enter saves it to Pokemon/Spawns/%s.json.[/color]" % [id, also, _map_data])
 
 
 ## Flyer tables. SAVE: write the spawn file straight away and leave the form open.
@@ -2224,7 +2259,7 @@ func _on_editor_confirmed(draft: Dictionary) -> void:
 		existing.queue_free()
 	else:
 		if _player == null or not is_instance_valid(_player):
-			_flash("[color=red]no player to place %s at[/color]" % name)
+			_flash("[color=red]Can't find the player to put %s next to.[/color]" % name)
 			return
 		at = _container.to_local(_player.global_position)
 		entry["_source"] = {
@@ -2236,7 +2271,7 @@ func _on_editor_confirmed(draft: Dictionary) -> void:
 	# opponent today has to come back as an opponent.
 	var actor := MapManager.spawn_editor_actor(entry, str(draft.get("constants_section", section)), at)
 	if actor == null:
-		_flash("[color=red]could not spawn %s[/color]" % name)
+		_flash("[color=red]Couldn't create %s.[/color]" % name)
 		return
 	# Before _refresh_actors(), which only stamps this meta on an actor that has none.
 	if was_pattern != "":
@@ -2255,7 +2290,7 @@ func _on_editor_confirmed(draft: Dictionary) -> void:
 		_record(actor)
 		_grab()
 		_update_hud()
-		_flash("[color=lime]%s ready — place them, then Enter to write it to %s.json[/color]" % [name, _map_data])
+		_flash("[color=lime]%s is ready. Put them where you want, then Enter saves them to %s.json.[/color]" % [name, _map_data])
 		return
 	_look_at_selection()
 	_update_hud()
@@ -2268,7 +2303,7 @@ func _on_editor_confirmed(draft: Dictionary) -> void:
 	# since where they end up is not decided yet. Any other unsaved moves on this map
 	# go out in the same write -- _save() writes everything pending.
 	if _grabbed:
-		_flash("[color=lime]%s ready — drop them, then Enter to write it to %s.json[/color]" % [name, _map_data])
+		_flash("[color=lime]%s is ready. Put them down (G), then Enter saves them to %s.json.[/color]" % [name, _map_data])
 		return
 	_save()
 
@@ -2285,7 +2320,7 @@ func _save() -> void:
 		_drop()
 		_update_hud()
 	if _pending.is_empty() and _drafts.is_empty() and not _pk_dirty:
-		_flash("[color=orange]nothing to save — move an actor first[/color]")
+		_flash("[color=orange]Nothing to save yet.[/color]")
 		print("PlacementTool: save requested with no pending changes")
 		return
 	# Pokémon spawns live in their own file, so they are written first and on their
@@ -2296,19 +2331,19 @@ func _save() -> void:
 			return
 		pokemon_saved = true
 		if _pending.is_empty() and _drafts.is_empty():
-			_flash("[color=lime]saved Pokémon spawns to Pokemon/Spawns/%s.json[/color]" % _map_data)
+			_flash("[color=lime]Saved. Pokémon spawns written to Pokemon/Spawns/%s.json.[/color]" % _map_data)
 			print("PlacementTool: saved Pokémon spawns -> " + OverworldPokemonData.spawn_path(_map_data))
 			_after_save()
 			return
 	var path := CharacterSchedule.DIR + _map_data + ".json"
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
-		_flash("[color=red]cannot open %s[/color]" % path)
+		_flash("[color=red]Couldn't open %s.[/color]" % path)
 		return
 	var doc = JSON.parse_string(file.get_as_text())
 	file.close()
 	if not (doc is Dictionary):
-		_flash("[color=red]%s is not valid JSON[/color]" % path)
+		_flash("[color=red]%s has a mistake in it (not valid JSON).[/color]" % path)
 		return
 
 	# Characters first: a new character's entry has to exist in `doc` before the
@@ -2322,12 +2357,12 @@ func _save() -> void:
 	if not _drafts.is_empty():
 		var cfile := FileAccess.open(CONSTANTS_PATH, FileAccess.READ)
 		if cfile == null:
-			_flash("[color=red]cannot open %s[/color]" % CONSTANTS_PATH)
+			_flash("[color=red]Couldn't open %s.[/color]" % CONSTANTS_PATH)
 			return
 		var parsed = JSON.parse_string(cfile.get_as_text())
 		cfile.close()
 		if not (parsed is Dictionary):
-			_flash("[color=red]All_NPC_Constant_Data.json is not valid JSON[/color]")
+			_flash("[color=red]All_NPC_Constant_Data.json has a mistake in it (not valid JSON).[/color]")
 			return
 		constants = parsed
 		for key in _drafts:
@@ -2379,11 +2414,14 @@ func _save() -> void:
 	_pending.clear()
 	_drafts.clear()
 	CharacterSchedule.invalidate(_map_data)
-	var summary := "saved %d move(s)" % written
+	var bits: Array = []
+	if written > 0:
+		bits.append("%d move%s" % [written, "" if written == 1 else "s"])
 	if characters_written > 0:
-		summary += " and %d character(s), incl. All_NPC_Constant_Data.json" % characters_written
+		bits.append("%d character%s" % [characters_written, "" if characters_written == 1 else "s"])
 	if pokemon_saved:
-		summary += ", plus Pokémon spawns"
+		bits.append("Pokémon spawns")
+	var summary := "Saved " + (" and ".join(bits) if not bits.is_empty() else "everything")
 	var select_name := ""
 	for pair in _pending_renames:
 		var result: Dictionary = _ops.rename_everywhere(str(pair[0]), str(pair[1]))
@@ -2391,10 +2429,10 @@ func _save() -> void:
 			summary += ". RENAME FAILED: " + str(result["error"])
 			continue
 		select_name = str(pair[1])
-		summary += ". Renamed %s -> %s in %s" % [pair[0], pair[1], ", ".join(result.get("files", []))]
+		summary += ". Renamed %s to %s in %s" % [pair[0], pair[1], ", ".join(result.get("files", []))]
 		var code: Array = result.get("code_hits", [])
 		if not code.is_empty():
-			summary += " — scripts still say \"%s\": %s" % [pair[0], ", ".join(code)]
+			summary += ". These scripts still use the old name \"%s\": %s" % [pair[0], ", ".join(code)]
 		print("PlacementTool: renamed %s -> %s; files %s; scripts naming the old name: %s"
 				% [pair[0], pair[1], result.get("files", []), code])
 	_pending_renames.clear()
@@ -2402,7 +2440,7 @@ func _save() -> void:
 	# every actor's record of which rule it came from is fresh (a schedule edit can move
 	# rules about, and a later move would otherwise land on the wrong one).
 	_refresh_cast(select_name)
-	_flash("[color=lime]%s to %s.json[/color]" % [summary, _map_data])
+	_flash("[color=lime]%s (%s.json).[/color]" % [summary, _map_data])
 	print("PlacementTool: %s -> %s" % [summary, path])
 	_after_save()
 
@@ -2510,7 +2548,7 @@ func _write_json(path: String, doc: Dictionary) -> bool:
 	text = _compact_pairs(text)
 	var out := FileAccess.open(path, FileAccess.WRITE)
 	if out == null:
-		_flash("[color=red]cannot write %s[/color]" % path)
+		_flash("[color=red]Couldn't save %s.[/color]" % path)
 		return false
 	out.store_string(text + "\n")
 	out.close()
@@ -2535,7 +2573,7 @@ func _write_registry(registry: Dictionary) -> bool:
 	lines.append("}")
 	var out := FileAccess.open(OverworldPokemonData.REGISTRY_PATH, FileAccess.WRITE)
 	if out == null:
-		_flash("[color=red]cannot write %s[/color]" % OverworldPokemonData.REGISTRY_PATH)
+		_flash("[color=red]Couldn't save %s.[/color]" % OverworldPokemonData.REGISTRY_PATH)
 		return false
 	out.store_string("\n".join(lines) + "\n")
 	out.close()
@@ -2610,18 +2648,46 @@ func _compact_pairs(text: String) -> String:
 # HUD
 # ============================================================
 
+## The HUD is three things, all inside one full-screen root that never takes clicks:
+##   - a small card top-left: who is selected and what a save would change,
+##   - a toast under it for one-off messages (_flash), which fades on its own,
+##   - the button bar along the bottom.
+## Every key is listed on the ? / F1 key guide (_help) rather than crammed into the card.
+## TWEAKABLE: HUD card width, toast time on screen.
+const HUD_WIDTH := 480.0
+const TOAST_SECONDS := 4.0
+
+var _ui_root: Control = null
+var _toast: RichTextLabel = null
+var _toast_tween: Tween = null
+var _help: Control = null
+
+
 func _build_hud() -> void:
+	_ui_root = Control.new()
+	_ui_root.theme = DebugFormTheme.build()
+	_ui_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_root.focus_mode = Control.FOCUS_NONE
+	add_child(_ui_root)
+
+	var left := VBoxContainer.new()
+	left.position = Vector2(20, 20)
+	left.custom_minimum_size = Vector2(HUD_WIDTH, 0)
+	left.add_theme_constant_override("separation", 8)
+	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_root.add_child(left)
+
 	_panel = PanelContainer.new()
-	_panel.position = Vector2(24, 24)
-	_panel.custom_minimum_size = Vector2(620, 0)
+	_panel.add_theme_stylebox_override("panel", DebugFormTheme.card_style(14))
 	# Never take focus or swallow clicks -- a focused Control eats the arrow keys.
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.focus_mode = Control.FOCUS_NONE
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.72)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(12)
-	_panel.add_theme_stylebox_override("panel", style)
+	left.add_child(_panel)
+	var inner := VBoxContainer.new()
+	inner.add_theme_constant_override("separation", 8)
+	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_panel.add_child(inner)
 
 	_label = RichTextLabel.new()
 	_label.bbcode_enabled = true
@@ -2629,48 +2695,84 @@ func _build_hud() -> void:
 	_label.scroll_active = false
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_label.focus_mode = Control.FOCUS_NONE
-	_label.custom_minimum_size = Vector2(596, 0)
-	_label.add_theme_font_size_override("normal_font_size", HUD_FONT_SIZE)
-	_label.add_theme_font_size_override("bold_font_size", HUD_FONT_SIZE)
-	_panel.add_child(_label)
-	add_child(_panel)
+	_label.custom_minimum_size = Vector2(HUD_WIDTH - 28, 0)
+	_label.add_theme_font_size_override("normal_font_size", 17)
+	_label.add_theme_font_size_override("bold_font_size", 17)
+	inner.add_child(_label)
+
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 6)
+	foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	foot.add_child(DebugFormTheme.key_cap("?"))
+	var foot_text := DebugFormTheme.hint("all keys and what they do")
+	foot.add_child(foot_text)
+	inner.add_child(foot)
+
+	var toast_card := PanelContainer.new()
+	toast_card.add_theme_stylebox_override("panel", DebugFormTheme.card_style(10))
+	toast_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast_card.visible = false
+	left.add_child(toast_card)
+	_toast = RichTextLabel.new()
+	_toast.bbcode_enabled = true
+	_toast.fit_content = true
+	_toast.scroll_active = false
+	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast.add_theme_font_size_override("normal_font_size", 17)
+	_toast.custom_minimum_size = Vector2(HUD_WIDTH - 20, 0)
+	toast_card.add_child(_toast)
 
 
-## Clickable versions of the keys, along the bottom-left of the screen. Every button
-## is FOCUS_NONE: a focused button eats the arrow keys the player walks with, and
-## Space / Enter would press it again.
+## The button bar along the bottom: the same as the keys, for clicking. Grouped by what
+## they act on, with the save / close pair on the far right.
 func _build_buttons() -> void:
 	var bar := HBoxContainer.new()
-	bar.theme = DebugFormTheme.build()
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_theme_constant_override("separation", 12)
-	add_child(bar)
-	_add_button(bar, "< PREV", func(): _step_selection(-1))
-	_add_button(bar, "NEXT >", func(): _step_selection(1))
-	_grab_button = _add_button(bar, "GRAB", _toggle_grab)
-	_add_button(bar, "CLONE", _clone_selected)
-	_add_button(bar, "DELETE", _delete_key)
-	_spawns_button = _add_button(bar, "FORCED SPAWNS", _toggle_forced_spawns)
-	_region_button = _add_button(bar, "REGION", _region_step)
-	_route_button = _add_button(bar, "ROUTE", _route_edit_toggle)
-	_add_button(bar, "EDIT NPC", func(): _open_editor(CharacterEditor.Mode.EDIT))
-	_add_button(bar, "SAVE", _save)
-	_add_button(bar, "CLOSE", _request_close)
-	bar.position = Vector2(BUTTON_BAR_MARGIN, 1080 - BUTTON_BAR_MARGIN - BUTTON_SIZE.y)
+	bar.add_theme_constant_override("separation", 8)
+	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bar.offset_left = BUTTON_BAR_MARGIN
+	bar.offset_right = -BUTTON_BAR_MARGIN
+	bar.offset_top = -BUTTON_BAR_MARGIN - BUTTON_SIZE.y
+	bar.offset_bottom = -BUTTON_BAR_MARGIN
+	bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_ui_root.add_child(bar)
+	_add_button(bar, "< Prev", func(): _step_selection(-1), "Shift + Tab")
+	_add_button(bar, "Next >", func(): _step_selection(1), "Tab")
+	_add_gap(bar)
+	_grab_button = _add_button(bar, "Grab", _toggle_grab, "G")
+	_add_button(bar, "Clone", _clone_selected, "C")
+	_add_button(bar, "Edit details", func(): _open_editor(CharacterEditor.Mode.EDIT), "M")
+	_add_button(bar, "Delete", _delete_key, "Del (twice for a character)", "DangerButton")
+	_add_gap(bar)
+	_route_button = _add_button(bar, "Draw route", _route_edit_toggle, "E")
+	_region_button = _add_button(bar, "Water area", _region_step, "V")
+	_spawns_button = _add_button(bar, "Spawns: all", _toggle_forced_spawns, "P")
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(spacer)
+	_add_button(bar, "Keys", _toggle_help, "? or F1")
+	_add_button(bar, "Save", _save, "Enter", "PrimaryButton")
+	_add_button(bar, "Close", _request_close, "Esc")
 
 
-func _add_button(parent: Control, text: String, action: Callable) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.focus_mode = Control.FOCUS_NONE
+func _add_button(parent: Control, text: String, action: Callable, key: String = "",
+		variation: String = "") -> Button:
+	var button := DebugFormTheme.button(text, action, key, variation, BUTTON_FONT_SIZE)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	button.custom_minimum_size = BUTTON_SIZE
-	button.add_theme_font_size_override("font_size", BUTTON_FONT_SIZE)
-	button.pressed.connect(action)
 	parent.add_child(button)
 	return button
 
 
-## Which days and times a save would rewrite for this actor.
+func _add_gap(parent: Control) -> void:
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(14, 0)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(gap)
+
+
+## Which days and times a save would change for this actor, in plain words.
 ##
 ## The save edits the matched rule in place, so the blast radius is that rule's
 ## whole schedule -- not just the day you happen to be standing on. A rule reading
@@ -2678,12 +2780,12 @@ func _add_button(parent: Control, text: String, action: Callable) -> Button:
 ## when repositioning someone, but it has to be visible before you press Enter.
 func _scope_text(actor: Node) -> String:
 	if actor is PokemonSpawnMarker:
-		return "%s spawn point in Pokemon/Spawns/%s.json" % [str(actor.point.get("template", "?")), _map_data]
+		return "This %s spawn point, on every day." % str(actor.point.get("template", "?")).replace("_", " ")
 	var src: Dictionary = actor.get_meta("source", {})
 	var doc := CharacterSchedule.load_map(_map_data)
 	var character = doc.get(str(src.get("section", "")), {}).get(str(src.get("name", "")))
 	if not (character is Dictionary):
-		return "this character"
+		return "Just this character."
 	# The position is edited where it LIVES, which is not always the rule that
 	# matched: a character whose rules only say when they appear keeps one shared
 	# position, so the edit lands on the defaults and moves them everywhere.
@@ -2691,14 +2793,42 @@ func _scope_text(actor: Node) -> String:
 	if owner < 0:
 		var rules = character.get("when")
 		if rules is Array and not rules.is_empty():
-			return "this character on every day (one shared position)"
-		return "days %s, %s" % [str(character.get("days", "*")), str(character.get("times", "*"))]
+			return "Every day they appear (they have one shared spot)."
+		return "%s, %s." % [_days_words(character.get("days", "*")), _times_words(character.get("times", "*"))]
 	var rules_any = character.get("when")
 	if rules_any is Array and owner < rules_any.size():
 		var scope: Dictionary = rules_any[owner]
-		return "when-rule #%d only — days %s, %s" % [
-			owner, str(scope.get("days", "*")), str(scope.get("times", "*"))]
-	return "this character"
+		return "Only %s, %s (they stand somewhere else on other days)." % [
+			_days_words(scope.get("days", "*")), _times_words(scope.get("times", "*"))]
+	return "Just this character."
+
+
+static func _days_words(days: Variant) -> String:
+	var s := str(days).strip_edges()
+	if s == "" or s == "*":
+		return "every day"
+	return ("day " if not ("," in s or "-" in s) else "days ") + s.replace(",", ", ")
+
+
+static func _times_words(times: Variant) -> String:
+	var s := str(times).strip_edges()
+	if s == "" or s == "*":
+		return "all day"
+	return s.replace(",", ", ").to_lower()
+
+
+## A movement pattern in plain words.
+static func _pattern_words(pattern: String) -> String:
+	match pattern:
+		"idle_down": return "stands facing down"
+		"idle_up": return "stands facing up"
+		"idle_left": return "stands facing left"
+		"idle_right": return "stands facing right"
+		"idle_random": return "stands and looks around"
+		"idle_cycle": return "walks on the spot"
+		"random_wander": return "wanders about"
+		"route": return "walks a route"
+	return pattern.replace("_", " ")
 
 
 ## Tint whoever is selected so it is obvious which actor the keys are driving.
@@ -2710,76 +2840,242 @@ func _apply_selection_tint() -> void:
 		_tinted.modulate = Color(1.0, 0.75, 0.35) if _grabbed else Color(0.55, 1.0, 0.65)
 
 
+func _hex(c: Color) -> String:
+	return "#" + c.to_html(false)
+
+
 func _update_hud() -> void:
 	_apply_selection_tint()
 	if _grab_button != null:
-		_grab_button.text = "DROP" if _grabbed else "GRAB"
+		_grab_button.text = "Drop" if _grabbed else "Grab"
+		_grab_button.theme_type_variation = "ToggleOnButton" if _grabbed else ""
 	if _spawns_button != null:
-		_spawns_button.text = "FORCED SPAWNS" if _forced_spawns else "RANDOM SPAWNS"
+		_spawns_button.text = "Spawns: all" if _forced_spawns else "Spawns: random"
+		_spawns_button.tooltip_text = ("All: every Pokemon spawn shows, to check placement.\n" +
+				"Random: real chances, to see how often they really appear.\nShortcut key: P")
 	if _region_button != null:
-		_region_button.text = ("CORNER %d/4" % (_region_corners.size() + 1)) if _region_capture_id != "" else "REGION"
+		_region_button.text = ("Corner %d of 4" % (_region_corners.size() + 1)) if _region_capture_id != "" else "Water area"
+		_region_button.theme_type_variation = "ToggleOnButton" if _region_capture_id != "" else ""
 	if _route_button != null:
-		_route_button.text = "ROUTE DONE" if _route_valid() else "ROUTE"
+		_route_button.text = "Finish route" if _route_valid() else "Draw route"
+		_route_button.theme_type_variation = "ToggleOnButton" if _route_valid() else ""
 	if _route_panel != null and is_instance_valid(_route_panel):
 		_route_panel.refresh()
 	if _label == null:
 		return
-	var actor := _selected()
+	var dim := _hex(DebugFormTheme.INK_DIM)
+	var head := _hex(DebugFormTheme.HEADING)
+	var warn := _hex(DebugFormTheme.WARN)
+	var good := _hex(DebugFormTheme.SUCCESS)
+	var accent := _hex(DebugFormTheme.FOCUS_BORDER)
 	var lines: Array = []
-	lines.append("[b]PLACEMENT MODE[/b]   %s   [%d actor(s)]   [color=aqua]noclip[/color]"
-		% [_map_data, _actors.size()])
+
+	# Where and when.
+	var when := "Day %d, %s" % [_preview_day, _preview_time]
+	if _is_real_slot():
+		lines.append("[color=%s][b]PLACEMENT TOOL[/b][/color]   [color=%s]%s  ·  %s[/color]"
+			% [head, dim, _map_data.replace("_", " "), when])
+	else:
+		lines.append("[color=%s][b]PLACEMENT TOOL[/b][/color]   [color=%s]%s[/color]"
+			% [head, dim, _map_data.replace("_", " ")])
+		lines.append("[color=%s]Previewing %s[/color]  [color=%s](really Day %d, %s.  \\ goes back)[/color]"
+			% [warn, when, dim, _real_day, _real_time])
+	var cal: Dictionary = CharacterSchedule.load_map(_map_data).get("calendar", {})
+	var looped := CharacterSchedule.resolve_day(cal, _preview_day)
+	if looped != _preview_day:
+		lines.append("[color=%s]Day %d repeats day %d's cast, so edits change day %d.[/color]"
+			% [dim, _preview_day, looped, looped])
+
+	# Who is selected.
+	var actor := _selected()
+	lines.append("")
 	if actor == null:
-		lines.append("[color=gray]no actor selected -- Tab to cycle[/color]")
+		lines.append("[color=%s]Nobody selected. Click someone, or press Tab.[/color]" % dim)
 	else:
 		var src: Dictionary = actor.get_meta("source", {})
+		var kind := "Opponent" if str(src.get("section", "")) == "opponents" else "NPC"
+		if actor is PokemonSpawnMarker:
+			kind = "Pokemon spawn"
 		var away := 0.0
 		if _player != null and is_instance_valid(_player):
 			away = actor.global_position.distance_to(_player.global_position)
-		lines.append("[%d/%d] [b]%s[/b]   [color=gray](%s, %dpx away)[/color]"
-			% [_index + 1, _actors.size(), _name_of(actor),
-			   src.get("section", "?"), roundi(away)])
-		# Saving rewrites the rule that matched TODAY, in place -- it does not split
-		# the day out. So a rule covering days 8,12 moves the actor on both. Spell
-		# that out before the save rather than after.
-		lines.append("[color=aqua]edit applies to: %s[/color]" % _scope_text(actor))
-		lines.append("at [%d, %d]   pattern: %s%s"
-			% [roundi(actor.position.x), roundi(actor.position.y),
-			   actor.movement_pattern if "movement_pattern" in actor else "-",
-			   "   [color=yellow]<< GRABBED[/color]" if _grabbed else ""])
-	var dirty := _pending.size()
-	var drafted := _drafts.size()
-	var dirty_text := "%d unsaved move(s)" % dirty
-	if drafted > 0:
-		dirty_text += ", %d new/edited character(s)" % drafted
+		lines.append("[font_size=24][b]%s[/b][/font_size]" % _name_of(actor).trim_prefix("Pokémon spawn: "))
+		var facts := "%s  ·  %d of %d on this map  ·  %d px away" % [kind, _index + 1, _actors.size(), roundi(away)]
+		lines.append("[color=%s]%s[/color]" % [dim, facts])
+		if "movement_pattern" in actor:
+			var pw := _pattern_words(str(actor.movement_pattern))
+			lines.append("%s.  [color=%s]At %d, %d.[/color]" % [pw.left(1).to_upper() + pw.substr(1),
+				dim, roundi(actor.position.x), roundi(actor.position.y)])
+		# Saving rewrites the rule that matched TODAY, in place -- it does not split the day
+		# out. So a rule covering days 8,12 moves the actor on both. Say so before the save.
+		lines.append("[color=%s]Moves apply to:[/color] %s" % [dim, _scope_text(actor)])
+		if _grabbed:
+			lines.append("[color=%s][b]Carrying them.[/b] Walk to the new spot, then G to put them down.[/color]" % warn)
+
+	# Unsaved work.
+	lines.append("")
+	var parts: Array = []
+	if _pending.size() > 0:
+		parts.append("%d moved" % _pending.size())
+	if _drafts.size() > 0:
+		parts.append("%d new or edited" % _drafts.size())
 	if _pk_dirty:
-		dirty_text += ", Pokémon spawns edited"
-	lines.append("[color=%s]%s[/color]%s"
-		% ["orange" if has_unsaved_changes() else "gray", dirty_text,
-		   "   [color=aqua]CTRL: player held still, arrows nudge[/color]" if _ctrl_held else ""])
-	var view := "[color=%s]%s[/color]" % ["gray" if _is_real_slot() else "yellow", _slot_text()]
+		parts.append("Pokemon spawns changed")
+	if has_unsaved_changes():
+		lines.append("[color=%s][b]Unsaved:[/b] %s.[/color]  [color=%s]Enter saves.[/color]" % [warn, ", ".join(parts), dim])
+	else:
+		lines.append("[color=%s]All changes saved.[/color]" % good)
+
+	# Modes that are on.
+	var modes: Array = []
 	if _ghosts_on:
-		view += "   [color=aqua]ghosts on[/color]"
+		modes.append("other times' spots shown (H)")
 	if _ff_index > 0:
-		view += "   [color=yellow]world x%d[/color]" % roundi(FAST_FORWARD_SPEEDS[_ff_index])
+		modes.append("world speed x%d (Y)" % roundi(FAST_FORWARD_SPEEDS[_ff_index]))
 	if _jump_on_cycle:
-		view += "   [color=aqua]Tab jumps[/color]"
-	lines.append(view)
+		modes.append("Tab jumps to them (Shift+J)")
+	if _ctrl_held:
+		modes.append("Ctrl held: arrows nudge 1 px")
+	if not modes.is_empty():
+		lines.append("[color=%s]On: %s[/color]" % [accent, ",  ".join(modes)])
+
 	if _route_valid():
-		lines.append("[color=yellow]DRAWING ROUTE[/color] [color=gray]Q add point here  hold Z + walk to record  X move picked point here  T go to picked point  Tab pick step  Del delete step  Alt+arrows pause facing  Ctrl+arrows nudge point  G carry whole route  E / Esc done[/color]")
+		lines.append("")
+		lines.append("[color=%s][b]DRAWING A ROUTE[/b][/color]" % warn)
+		lines.append("[color=%s]Q[/color] add a point where you stand   [color=%s]hold Z[/color] + walk to record" % [accent, accent])
+		lines.append("[color=%s]X[/color] move the picked point here   [color=%s]Del[/color] remove it" % [accent, accent])
+		lines.append("[color=%s]E[/color] or [color=%s]Esc[/color] when done.  Pauses and speeds: the panel on the right." % [accent, accent])
 		if _rec_on:
-			lines.append("[color=red]● RECORDING[/color] [color=gray]stand still for a pause, let go of Z to stop[/color]")
-	lines.append("[color=gray]Tab / click select  J jump to them (Shift+J: Tab jumps)  G grab  C clone  Del delete (twice for a character)  Alt+arrows face  R pattern  E route  Q / - / = wander size  M edit  N filler NPC[/color]")
-	lines.append("[color=gray][ ] time  Shift+[ ] day  \\ today  H ghosts  L cast list  Y speed  P forced/random spawns  V water area  Ctrl+arrows nudge[/color]")
-	lines.append("[color=gray]Enter save  Esc close  F close and discard  (or the buttons along the bottom)[/color]")
+			lines.append("[color=#ff5a5a]● RECORDING[/color]  [color=%s]stand still to add a pause, let go of Z to stop[/color]" % dim)
 	if _mode == Mode.NEW:
-		lines.append("[color=aqua]NEW: place it, then SAVE — the create screen opens again for the next one[/color]")
+		lines.append("")
+		lines.append("[color=%s]Adding new characters: put this one where you want, then Save. The create screen opens again for the next.[/color]" % accent)
 	_label.text = "\n".join(lines)
 
 
+## A one-off message (saved, refused, what changed). Shows under the HUD card and fades
+## after TOAST_SECONDS. Messages may use [color=...] BBCode.
 func _flash(message: String) -> void:
 	_update_hud()
-	if _label != null:
-		_label.text += "\n" + message
+	if _toast == null:
+		return
+	var card := _toast.get_parent() as Control
+	# The messages name bright BBCode colours; show them in the theme's calmer ones.
+	for pair in [["lime", DebugFormTheme.SUCCESS], ["aqua", DebugFormTheme.FOCUS_BORDER],
+			["orange", DebugFormTheme.WARN], ["red", Color(1.0, 0.45, 0.45)], ["yellow", DebugFormTheme.HEADING]]:
+		message = message.replace("[color=%s]" % pair[0], "[color=%s]" % _hex(pair[1]))
+	_toast.text = message
+	card.visible = true
+	card.modulate.a = 1.0
+	if _toast_tween != null and _toast_tween.is_valid():
+		_toast_tween.kill()
+	_toast_tween = card.create_tween()
+	_toast_tween.tween_interval(TOAST_SECONDS)
+	_toast_tween.tween_property(card, "modulate:a", 0.0, 0.5)
+	_toast_tween.tween_callback(func(): card.visible = false)
+
+
+# ============================================================
+# KEY GUIDE (? / F1 / the Keys button)
+# ============================================================
+
+## Every key, grouped by job, in a card in the middle of the screen. Any key or click closes it.
+const HELP_GROUPS := [
+	["Pick someone", [
+		["Click", "select whoever is under the mouse"],
+		["Tab / Shift + Tab", "next / previous character"],
+		["J", "jump to whoever is selected"],
+		["Shift + J", "also jump each time you press Tab"],
+	]],
+	["Move them", [
+		["G", "pick up / put down (then walk them there)"],
+		["Ctrl + arrows", "nudge 1 px  (add Shift for 10 px)"],
+		["Alt + arrows", "which way they face (again: glance about)"],
+		["R", "change how they move (stand, wander, route...)"],
+	]],
+	["Wanderers and routes", [
+		["Q", "wander area reaches to where you stand"],
+		["- / =", "smaller / bigger wander area  (Shift: fine)"],
+		["E", "draw or edit a route (then Q, X, hold Z...)"],
+	]],
+	["Add and remove", [
+		["M", "edit details: name, deck, rewards, dialogue"],
+		["C", "clone the selected character or spawn point"],
+		["N", "add a random filler NPC here"],
+		["Del", "delete (press twice for a character)"],
+	]],
+	["See other times", [
+		["[ / ]", "previous / next time of day"],
+		["Shift + [ / Shift + ]", "previous / next day"],
+		["\\", "back to the real day and time"],
+		["H", "show where everyone stands at other times"],
+		["L", "cast list: who is here, every day and time"],
+		["Y", "speed the world up  (x1, x2, x4, x8)"],
+	]],
+	["Pokemon spawns", [
+		["P", "show all spawns / real random chances"],
+		["V", "mark a water area: press, then a corner x4"],
+	]],
+	["Finish", [
+		["Enter", "save everything"],
+		["Esc", "close (asks first if anything is unsaved)"],
+		["F", "close and throw away unsaved changes"],
+	]],
+]
+
+
+func _toggle_help() -> void:
+	if _help != null and is_instance_valid(_help):
+		_help.queue_free()
+		_help = null
+		return
+	_help = ColorRect.new()
+	_help.color = Color(0, 0, 0, 0.55)
+	_help.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_help.mouse_filter = Control.MOUSE_FILTER_STOP
+	_help.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed:
+			_toggle_help())
+	# On the tool itself, added last, so it covers the side panel too.
+	_help.theme = _ui_root.theme
+	add_child(_help)
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_help.add_child(centre)
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", DebugFormTheme.card_style(22))
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	centre.add_child(card)
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 14)
+	card.add_child(outer)
+	var title := Label.new()
+	title.text = "Placement tool keys"
+	title.add_theme_font_size_override("font_size", 26)
+	outer.add_child(title)
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 36)
+	outer.add_child(cols)
+	var columns: Array = []
+	for i in 2:
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 6)
+		col.custom_minimum_size = Vector2(560, 0)
+		cols.add_child(col)
+		columns.append(col)
+	# Fill the left column first, then the right, keeping each group whole.
+	var split := 4
+	for g in HELP_GROUPS.size():
+		var col: VBoxContainer = columns[0 if g < split else 1]
+		if col.get_child_count() > 0:
+			var gap := Control.new()
+			gap.custom_minimum_size = Vector2(0, 6)
+			col.add_child(gap)
+		col.add_child(DebugFormTheme.heading(str(HELP_GROUPS[g][0])))
+		for entry in HELP_GROUPS[g][1]:
+			col.add_child(DebugFormTheme.key_row(str(entry[0]), str(entry[1]), 175.0))
+	outer.add_child(DebugFormTheme.hint("The buttons along the bottom do the same things.  Press any key or click to close this."))
 
 
 func has_unsaved_changes() -> bool:

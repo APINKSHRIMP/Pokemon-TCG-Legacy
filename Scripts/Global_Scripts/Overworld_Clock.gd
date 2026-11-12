@@ -33,6 +33,9 @@ const SLIDE_IN_TIME := 0.45
 const SLIDE_OUT_TIME := 0.3
 ## TWEAKABLE -- how fast the hand sweeps forward to a new time, in clock hours per second.
 const SWEEP_HOURS_PER_SECOND := 1.5
+## TWEAKABLE -- the hand only sweeps when the time SLOT changes, and then only this last stretch
+## (clock hours; one hand frame = 0.1h, so 0.3 = three little steps). Same-slot changes just snap.
+const SLOT_CHANGE_SWEEP_HOURS := 0.3
 ## TWEAKABLE -- a big jump speeds the hand up so the sweep never drags on much past this (seconds).
 const SWEEP_MAX_SECONDS := 1.0
 ## TWEAKABLE -- the little pop when the face changes colour at a slot boundary.
@@ -181,10 +184,16 @@ func _process(delta: float) -> void:
 	if _banner != null and not _showing and _banner_hold <= 0.0:
 		_release_banner()
 
-	if not GameState.overworld_clock_on() or target < _hours or _reduce_motion():
+	# 2026-11-12 (user request): the hand only animates when the time SLOT changes, and then only
+	# the last few steps (SLOT_CHANGE_SWEEP_HOURS). A change inside the same slot just shows the
+	# hand at the new time -- snapped now, even while hidden, so it is already there on peek.
+	var same_slot: bool = GameState.clock_slot_at(target) == GameState.clock_slot_at(_hours)
+	if not GameState.overworld_clock_on() or target < _hours or _reduce_motion() or same_slot:
 		if target != _hours:
 			_set_hours(target, false)
 	elif _hours < target and _showing and not _sliding():
+		if _hours < target - SLOT_CHANGE_SWEEP_HOURS:
+			_set_hours(target - SLOT_CHANGE_SWEEP_HOURS, true)
 		var speed: float = maxf(SWEEP_HOURS_PER_SECOND, (target - _hours) / SWEEP_MAX_SECONDS)
 		_set_hours(move_toward(_hours, target, speed * delta), true)
 	GameState.last_seen_clock_hours = _hours

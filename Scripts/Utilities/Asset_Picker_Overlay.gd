@@ -124,7 +124,7 @@ func _build_ui() -> void:
 	dim.add_child(title)
 
 	_filter_edit = LineEdit.new()
-	_filter_edit.placeholder_text = "Filter by name....."
+	_filter_edit.placeholder_text = "Type to search by name"
 	_filter_edit.position = Vector2(MARGIN, 66)
 	_filter_edit.size = Vector2(560, 40)
 	_filter_edit.add_theme_font_size_override("font_size", FONT_SIZE)
@@ -169,7 +169,8 @@ func _build_ui() -> void:
 	dim.add_child(_outline)
 
 	_confirm_btn = Button.new()
-	_confirm_btn.text = "CONFIRM"
+	_confirm_btn.text = "Choose"
+	_confirm_btn.theme_type_variation = "PrimaryButton"
 	_confirm_btn.position = Vector2(1920 / 2 - 330, 1080 - FOOTER_H + 12)
 	_confirm_btn.size = Vector2(320, 56)
 	_confirm_btn.add_theme_font_size_override("font_size", FONT_SIZE)
@@ -178,7 +179,7 @@ func _build_ui() -> void:
 	dim.add_child(_confirm_btn)
 
 	var cancel_btn := Button.new()
-	cancel_btn.text = "CANCEL"
+	cancel_btn.text = "Cancel"
 	cancel_btn.position = Vector2(1920 / 2 + 10, 1080 - FOOTER_H + 12)
 	cancel_btn.size = Vector2(320, 56)
 	cancel_btn.add_theme_font_size_override("font_size", FONT_SIZE)
@@ -188,12 +189,12 @@ func _build_ui() -> void:
 
 func _title_text() -> String:
 	match _kind:
-		Kind.SPRITE:  return "CHOOSE AN OVERWORLD SPRITE"
-		Kind.COIN:    return "CHOOSE A COIN"
-		Kind.SLEEVE:  return "CHOOSE A SLEEVE"
-		Kind.COSTUME: return "CHOOSE A COSTUME"
-		Kind.POKEMON: return "CHOOSE A POKÉMON"
-	return "CHOOSE"
+		Kind.SPRITE:  return "Choose an overworld sprite"
+		Kind.COIN:    return "Choose a coin"
+		Kind.SLEEVE:  return "Choose a sleeve"
+		Kind.COSTUME: return "Choose a costume"
+		Kind.POKEMON: return "Choose a Pokémon"
+	return "Choose"
 
 
 func _columns() -> int:

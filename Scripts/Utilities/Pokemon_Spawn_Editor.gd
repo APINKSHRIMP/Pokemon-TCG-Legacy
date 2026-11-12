@@ -227,7 +227,7 @@ func _build() -> void:
 	var right := _column(columns, RIGHT_COLUMN_WIDTH)
 
 	# ---- left: template + spawn settings ----
-	_heading(left, "TEMPLATE")
+	_heading(left, "Kind of spawn")
 	_template_opt = OptionButton.new()
 	_template_opt.fit_to_longest_item = false
 	_template_opt.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
@@ -254,7 +254,7 @@ func _build() -> void:
 	_desc.add_theme_color_override("font_color", Color(0.8, 0.84, 0.92))
 	left.add_child(_desc)
 
-	_heading(left, "SPAWNING")
+	_heading(left, "How often")
 	# Which of the four time-of-day tables the chance, interval and species list below
 	# belong to. Every template has four.
 	_time_opt = OptionButton.new()
@@ -333,17 +333,17 @@ func _build() -> void:
 	_rows["in_tank"] = _add_row(left, "In fish tank", _in_tank)
 
 	# ---- right: species table ----
-	_heading(right, "SPECIES TABLE")
+	_heading(right, "Which Pokémon")
 	var add_row := HBoxContainer.new()
 	add_row.add_theme_constant_override("separation", 12)
 	var add_template := Button.new()
-	add_template.text = "ADD FROM TEMPLATE"
+	add_template.text = "Add one usually found here"
 	add_template.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	add_template.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_template.pressed.connect(func(): _open_picker(false))
 	add_row.add_child(add_template)
 	var add_any := Button.new()
-	add_any.text = "ADD ANY POKÉMON"
+	add_any.text = "Add any Pokémon"
 	add_any.tooltip_text = "Any of the sprites. One not yet in this template is added to it in Overworld_Pokemon.json on save."
 	add_any.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	add_any.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -371,16 +371,17 @@ func _build() -> void:
 
 	if not _is_new:
 		var delete_btn := Button.new()
-		delete_btn.text = "DELETE POINT"
+		delete_btn.text = "Delete point"
+		delete_btn.theme_type_variation = "DangerButton"
 		delete_btn.position = Vector2(1140, FOOTER_TOP)
 		delete_btn.size = Vector2(240, FOOTER_HEIGHT)
 		delete_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-		delete_btn.add_theme_color_override("font_color", Color(0.75, 0.1, 0.1))
 		delete_btn.pressed.connect(_delete)
 		_root.add_child(delete_btn)
 
 	_confirm_btn = Button.new()
-	_confirm_btn.text = "CONFIRM"
+	_confirm_btn.text = "Done"
+	_confirm_btn.theme_type_variation = "PrimaryButton"
 	_confirm_btn.position = Vector2(1400, FOOTER_TOP)
 	_confirm_btn.size = Vector2(220, FOOTER_HEIGHT)
 	_confirm_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
@@ -388,7 +389,7 @@ func _build() -> void:
 	_root.add_child(_confirm_btn)
 
 	_cancel_btn = Button.new()
-	_cancel_btn.text = "CANCEL"
+	_cancel_btn.text = "Cancel"
 	_cancel_btn.position = Vector2(1640, FOOTER_TOP)
 	_cancel_btn.size = Vector2(220, FOOTER_HEIGHT)
 	_cancel_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
@@ -405,11 +406,13 @@ func _column(parent: Control, width: int) -> VBoxContainer:
 
 
 func _heading(col: VBoxContainer, text: String) -> void:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_size_override("font_size", FORM_FONT_SIZE + 3)
-	label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4))
-	col.add_child(label)
+	if col.get_child_count() > 0:
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 8)
+		col.add_child(gap)
+	var heading := DebugFormTheme.heading(text)
+	heading.get_child(0).add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	col.add_child(heading)
 
 
 func _add_row(col: VBoxContainer, label_text: String, control: Control) -> HBoxContainer:
@@ -485,22 +488,22 @@ func _on_template_changed() -> void:
 	var is_static := _template == "static"
 	var is_fishing := _is_fishing()
 	if is_flyer:
-		_title.text = "FLYER TABLES  —  %s" % _map_data
+		_title.text = "Flying Pokémon:  %s" % _map_data.replace("_", " ")
 	elif _is_new:
-		_title.text = "NEW POKÉMON SPAWN  —  %s" % _map_data
+		_title.text = "New Pokémon spawn:  %s" % _map_data.replace("_", " ")
 	else:
-		_title.text = "EDIT POKÉMON SPAWN  —  %s" % str(_original.get("id", "?"))
+		_title.text = "Pokémon spawn:  %s" % str(_original.get("id", "?"))
 		var linked := _group_size()
 		if linked > 1:
 			_title.text += "   (linked: edits apply to all %d)" % linked
 	# Flyer tables have no position to place, so SAVE writes straight away and the
 	# screen stays up; a spawn point is still handed to the tool to be placed.
-	_confirm_btn.text = "SAVE" if is_flyer else "CONFIRM"
-	_cancel_btn.text = "CLOSE" if is_flyer else "CANCEL"
+	_confirm_btn.text = "Save" if is_flyer else "Done"
+	_cancel_btn.text = "Close" if is_flyer else "Cancel"
 	if is_flyer:
-		_scope.text = "SAVE writes Pokemon/Spawns/%s.json straight away and keeps this screen open" % _map_data
+		_scope.text = "Save writes this map's spawn file straight away and keeps this screen open."
 	else:
-		_scope.text = "Confirm hands this to the placement tool — Enter there writes Pokemon/Spawns/%s.json" % _map_data
+		_scope.text = "Done puts it on the map. Press Enter in the placement tool to save it."
 	_desc.text = OverworldPokemonData.TEMPLATE_DESCRIPTIONS.get(_template, "")
 	if is_flyer:
 		_chance_label.text = "Chance per roll"
@@ -691,7 +694,7 @@ func _open_picker(any: bool) -> void:
 	if not any:
 		only = _template_species()
 		if only.is_empty():
-			_status.text = "No Pokémon are assigned to this template yet — use ADD ANY POKÉMON."
+			_status.text = "No Pokémon here yet. Use Add any Pokémon."
 			return
 	var in_table: Dictionary = {}
 	for row in _table:
@@ -1300,7 +1303,7 @@ func _confirm() -> void:
 ## The placement tool's answer to save_requested.
 func notify_saved(ok: bool) -> void:
 	if not ok:
-		_status.text = "Could not write Pokemon/Spawns/%s.json — see the output log." % _map_data
+		_status.text = "Couldn't save Pokemon/Spawns/%s.json. The output log says why." % _map_data
 		_status.add_theme_color_override("font_color", Color(1.0, 0.55, 0.45))
 		return
 	_flyer_saved_json = _flyer_json()
@@ -1332,7 +1335,7 @@ func _cancel() -> void:
 	# Flyer and fish tables: closing over edits made since the last SAVE asks once first.
 	if _saves_in_place() and not _close_armed and _flyer_json() != _flyer_saved_json:
 		_close_armed = true
-		_status.text = "Unsaved changes — SAVE them, or CLOSE again to throw them away."
+		_status.text = "You have unsaved changes. Save them, or press Close again to throw them away."
 		_status.add_theme_color_override("font_color", Color(1.0, 0.75, 0.35))
 		return
 	cancelled.emit()

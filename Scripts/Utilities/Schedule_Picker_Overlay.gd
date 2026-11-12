@@ -30,6 +30,10 @@ const DEFAULT_TIMES := ["M", "A", "E", "N"]
 const TIME_NAMES := {"M": "MORNING", "A": "AFTERNOON", "E": "EVENING", "N": "NIGHT", "B": "BEDTIME"}
 
 # ---- tweakables -------------------------------------------------------------
+## Text on the pale table cells. The debug theme's ink is light (for dark widgets), so the
+## table keeps its own dark ink.
+const CELL_INK := Color(0.07, 0.07, 0.10)
+const CELL_INK_DIM := Color(0.40, 0.40, 0.46)
 ## One pale colour per column, so a row of ticks is read as a shape rather than as
 ## four identical boxes. Saturated when ticked, greyed when it belongs elsewhere.
 const COLUMN_COLOURS := {
@@ -243,8 +247,8 @@ func _build_ui() -> void:
 	quick.position = Vector2(left, 102)
 	quick.add_theme_constant_override("separation", 12)
 	dim.add_child(quick)
-	quick.add_child(_quick_button("EVERY DAY, ALL TIMES", func(): _set_all(true)))
-	quick.add_child(_quick_button("CLEAR ALL", func(): _set_all(false)))
+	quick.add_child(_quick_button("Tick everything", func(): _set_all(true)))
+	quick.add_child(_quick_button("Clear everything", func(): _set_all(false)))
 
 	var scroll := ScrollContainer.new()
 	scroll.position = Vector2(left, GRID_TOP)
@@ -265,7 +269,7 @@ func _build_ui() -> void:
 	var footer: int = GRID_TOP + grid_h + 18
 
 	var legend := Label.new()
-	legend.text = "coloured = this character is here     grey = another variant of this character, edited by opening the form on a day it appears     EVERY DAY covers a whole column"
+	legend.text = "Coloured: they are here.   Grey: one of their other setups (open the form on that day to edit it).   The Every day row ticks a whole column."
 	legend.position = Vector2(left, footer)
 	legend.size = Vector2(1920 - left - MARGIN, 28)
 	legend.clip_text = true
@@ -275,9 +279,9 @@ func _build_ui() -> void:
 
 	if _authored_through > 0:
 		var note := Label.new()
-		note.text = "this map is authored through day %d -- later days repeat out of the calendar loop, so there is nothing to author past it" % _authored_through
+		note.text = "This map is planned up to day %d. Later days repeat earlier ones, so there is nothing to set past it." % _authored_through
 		if _opens > 1:
-			note.text = "this map opens on day %d and is authored through day %d -- earlier days are locked, and later ones repeat out of the calendar loop" 					% [_opens, _authored_through]
+			note.text = "This map opens on day %d and is planned up to day %d. Earlier days are locked; later days repeat earlier ones." 					% [_opens, _authored_through]
 		note.position = Vector2(left, footer + 26)
 		note.size = Vector2(1920 - left - MARGIN, 28)
 		note.clip_text = true
@@ -296,7 +300,8 @@ func _build_ui() -> void:
 	# The two buttons stay pinned to the bottom right of the screen whatever the
 	# table's height, so they are always in the same place to reach for.
 	_done_btn = Button.new()
-	_done_btn.text = "DONE"
+	_done_btn.text = "Done"
+	_done_btn.theme_type_variation = "PrimaryButton"
 	_done_btn.position = Vector2(1400, 1080 - MARGIN - 48)
 	_done_btn.size = Vector2(220, 48)
 	_done_btn.add_theme_font_size_override("font_size", FONT_SIZE)
@@ -304,7 +309,7 @@ func _build_ui() -> void:
 	dim.add_child(_done_btn)
 
 	var cancel := Button.new()
-	cancel.text = "CANCEL"
+	cancel.text = "Cancel"
 	cancel.position = Vector2(1640, 1080 - MARGIN - 48)
 	cancel.size = Vector2(220, 48)
 	cancel.add_theme_font_size_override("font_size", FONT_SIZE)
@@ -322,12 +327,12 @@ func _quick_button(text: String, action: Callable) -> Button:
 
 
 func _build_rows() -> void:
-	_grid.add_child(_header_cell("DAY", Vector2(DAY_COL_W, HEAD_H), Color(0.82, 0.82, 0.88)))
+	_grid.add_child(_header_cell("Day", Vector2(DAY_COL_W, HEAD_H), Color(0.82, 0.82, 0.88)))
 	for letter in TIME_ORDER:
-		var head := _header_cell(str(TIME_NAMES[letter]), Vector2(TIME_COL_W, HEAD_H),
+		var head := _header_cell(str(TIME_NAMES[letter]).capitalize(), Vector2(TIME_COL_W, HEAD_H),
 				COLUMN_COLOURS[letter])
 		head.pressed.connect(_toggle_column.bind(str(letter)))
-		head.tooltip_text = "tick or clear %s on every day" % str(TIME_NAMES[letter]).to_lower()
+		head.tooltip_text = "Tick or clear %s on every day" % str(TIME_NAMES[letter]).to_lower()
 		_grid.add_child(head)
 
 	for day in _day_rows:
@@ -348,7 +353,7 @@ func _header_cell(text: String, size: Vector2, colour: Color) -> Button:
 	button.clip_text = true
 	button.add_theme_font_size_override("font_size", FONT_SIZE)
 	for state in ["font_color", "font_hover_color", "font_pressed_color"]:
-		button.add_theme_color_override(state, DebugFormTheme.INK)
+		button.add_theme_color_override(state, CELL_INK)
 	_paint(button, colour.darkened(0.12), colour.darkened(0.24), colour.darkened(0.24))
 	return button
 
@@ -360,23 +365,23 @@ func _day_label(day: int) -> Button:
 	button.clip_text = true
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.add_theme_font_size_override("font_size", FONT_SIZE)
-	var ink := DebugFormTheme.INK
+	var ink := CELL_INK
 	if day == EVERY_DAY:
-		button.text = "EVERY DAY"
-		button.tooltip_text = "here every day at these times -- writes no day list at all" 				if _opens <= 1 else 				"here every day the map is open, at these times -- writes days %s" % _every_day_spec()
+		button.text = "Every day"
+		button.tooltip_text = "Here every day at these times." 				if _opens <= 1 else 				"Here every day the map is open (days %s), at these times." % _every_day_spec()
 	elif day == 0:
 		button.text = "0   (test day)"
-		button.tooltip_text = "the debug test day, reached with the [ key"
+		button.tooltip_text = "The debug test day (the [ key)."
 	else:
 		button.text = str(day)
 		if day < _opens:
-			ink = DebugFormTheme.INK_DIM
-			button.tooltip_text = "this map does not open until day %d" % _opens
+			ink = CELL_INK_DIM
+			button.tooltip_text = "This map doesn't open until day %d." % _opens
 		elif _authored_through > 0 and day > _authored_through:
 			# Authoring past authored_through is dead weight: resolve_day() folds those
 			# days back into the loop block before the cast is ever read.
-			ink = DebugFormTheme.INK_DIM
-			button.tooltip_text = "past the map's authored days -- the calendar loop already covers day %d" % day
+			ink = CELL_INK_DIM
+			button.tooltip_text = "Past the planned days: day %d repeats an earlier day." % day
 	for state in ["font_color", "font_hover_color", "font_pressed_color"]:
 		button.add_theme_color_override(state, ink)
 	var plate := Color(0.80, 0.87, 0.80) if day == EVERY_DAY else Color(0.88, 0.88, 0.92)
@@ -446,7 +451,7 @@ static func _tick() -> Texture2D:
 		for x in size:
 			if x < TICK_BORDER or y < TICK_BORDER \
 					or x >= size - TICK_BORDER or y >= size - TICK_BORDER:
-				img.set_pixel(x, y, DebugFormTheme.INK)
+				img.set_pixel(x, y, CELL_INK)
 	_stroke(img, Vector2(0.26, 0.50) * size, Vector2(0.44, 0.72) * size)
 	_stroke(img, Vector2(0.44, 0.72) * size, Vector2(0.78, 0.28) * size)
 	_tick_on = ImageTexture.create_from_image(img)
@@ -466,8 +471,8 @@ static func _stroke(img: Image, a: Vector2, b: Vector2) -> void:
 			if d >= 0.5:
 				continue
 			var alpha := maxf(clampf(0.5 - d, 0.0, 1.0), img.get_pixel(x, y).a)
-			img.set_pixel(x, y, Color(DebugFormTheme.INK.r, DebugFormTheme.INK.g,
-					DebugFormTheme.INK.b, alpha))
+			img.set_pixel(x, y, Color(CELL_INK.r, CELL_INK.g,
+					CELL_INK.b, alpha))
 
 
 # ============================================================
@@ -564,18 +569,18 @@ func _refresh() -> void:
 			if closed and not other:
 				cell.set_pressed_no_signal(false)
 				cell.icon = null
-				cell.tooltip_text = "the map does not open until day %d" % _opens
+				cell.tooltip_text = "This map doesn't open until day %d." % _opens
 				_paint(cell, CLOSED_DAY, CLOSED_DAY, CLOSED_DAY, CLOSED_DAY)
 				continue
 			if other:
 				var rule: int = int(_others[key])
-				cell.tooltip_text = "another variant of this character is here" \
+				cell.tooltip_text = "One of their other setups is here." \
 						+ ("   (when-rule #%d)" % rule if rule >= 0 else "")
 				_paint(cell, OTHER_VARIANT, OTHER_VARIANT, OTHER_VARIANT,
 						OTHER_VARIANT.darkened(0.08))
 			else:
 				var pale: Color = COLUMN_COLOURS[str(letter)]
-				cell.tooltip_text = "covered by the EVERY DAY row" if covered else ""
+				cell.tooltip_text = "Already covered by the Every day row." if covered else ""
 				_paint(cell, pale, pale.darkened(HOVER_DARKEN), pale.darkened(TICKED_DARKEN),
 						pale.darkened(TICKED_DARKEN) if covered else pale)
 	_refresh_status()
@@ -584,12 +589,12 @@ func _refresh() -> void:
 func _refresh_status() -> void:
 	var slots := build_slots()
 	if slots.is_empty():
-		_status.text = "nothing ticked -- a character with no slots would never appear"
+		_status.text = "Nothing ticked yet. They would never appear."
 		_status.add_theme_color_override("font_color", Color(1.0, 0.7, 0.35))
 		_done_btn.disabled = true
 		return
 	_done_btn.disabled = false
-	_status.text = "%d slot(s):   %s" % [slots.size(), summarise(slots)]
+	_status.text = summarise(slots)
 	_status.add_theme_color_override("font_color", Color(0.55, 1.0, 0.6))
 
 
@@ -681,12 +686,29 @@ static func compress_days(days: Array) -> String:
 static func summarise(slots: Array) -> String:
 	var parts: Array = []
 	for slot in slots:
-		var days := str(slot.get("days", "")).strip_edges()
-		var times := str(slot.get("times", "")).replace(",", "")
-		if times == "":
-			times = "".join(DEFAULT_TIMES)
-		parts.append("%s  %s" % ["every day" if days == "" else days, times])
-	return "   +   ".join(parts)
+		parts.append("%s: %s" % [_days_phrase(str(slot.get("days", ""))),
+				_times_phrase(parse_times(str(slot.get("times", ""))))])
+	return "   ·   ".join(parts)
+
+
+## "" -> "Every day", "3" -> "Day 3", "1,4-6" -> "Days 1, 4-6".
+static func _days_phrase(days: String) -> String:
+	var d := days.strip_edges()
+	if d == "" or d == "*":
+		return "Every day"
+	if d.is_valid_int():
+		return "Day " + d
+	return "Days " + d.replace(",", ", ")
+
+
+## ["M","A","E","N"] -> "all day"; ["E"] -> "evening"; ["M","E"] -> "morning, evening".
+static func _times_phrase(letters: Array) -> String:
+	if letters.size() >= DEFAULT_TIMES.size() and DEFAULT_TIMES.all(func(l): return letters.has(l)):
+		return "all day" + (" + bedtime" if letters.has("B") else "")
+	var names: Array = []
+	for letter in letters:
+		names.append(str(TIME_NAMES.get(letter, letter)).to_lower())
+	return ", ".join(names)
 
 
 ## The same list spelled out, for a tooltip -- "days 3-8:  Morning, Afternoon".
@@ -697,8 +719,7 @@ static func summarise_long(slots: Array) -> String:
 		var names: Array = []
 		for letter in parse_times(str(slot.get("times", ""))):
 			names.append(str(TIME_NAMES[letter]).capitalize())
-		lines.append("%s:  %s" % ["every day" if days == "" else "days " + days,
-				", ".join(names)])
+		lines.append("%s:  %s" % [_days_phrase(days), ", ".join(names)])
 	return "\n".join(lines)
 
 

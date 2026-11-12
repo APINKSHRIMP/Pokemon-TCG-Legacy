@@ -23,13 +23,14 @@ const CONSTANTS_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
 # TWEAKABLE: layout (screen px) and the first-win multiplier the CASH tab uses.
 const FIRST_WIN_MULTIPLIER := 3
 const MARGIN := 40.0
+const TOP_H := 128.0
 const ROW_H := 26.0
 const HEADER_H := 46.0
 const CELL_W := 14.0
 const DAY_GAP := 6.0
 const FONT_SIZE := 17
 const SMALL_FONT := 14
-const COLUMNS := [["Name", 300.0], ["Kind", 56.0], ["Deck", 230.0], ["$", 64.0], ["Stars", 64.0], ["Beaten", 70.0]]
+const COLUMNS := [["Name", 290.0], ["Type", 96.0], ["Deck", 240.0], ["Cash", 70.0], ["Stars", 96.0], ["Beaten?", 80.0]]
 const LIT := Color(0.35, 0.85, 1.0)
 const LIT_OPP := Color(1.0, 0.6, 0.3)
 const UNLIT := Color(1, 1, 1, 0.07)
@@ -45,6 +46,7 @@ var _tab := "cast"
 var _grid: Control = null
 var _scroll: ScrollContainer = null
 var _tab_buttons: Dictionary = {}
+var _legend: Label = null
 
 
 func setup(map_data: String) -> void:
@@ -57,42 +59,52 @@ func setup(map_data: String) -> void:
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Sized explicitly: under a CanvasLayer the full-rect anchors alone left it (and its
+	# backdrop) at zero size, so the list was drawn straight over the map and the HUD.
+	var screen: Vector2 = get_viewport().get_visible_rect().size
+	position = Vector2.ZERO
+	size = screen
+	theme = DebugFormTheme.build()
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var bg := ColorRect.new()
-	bg.color = Color(0.03, 0.03, 0.06, 0.96)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = DebugFormTheme.BACKDROP
+	bg.size = screen
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
-	var top := HBoxContainer.new()
-	top.theme = DebugFormTheme.build()
-	top.position = Vector2(MARGIN, 16)
-	top.add_theme_constant_override("separation", 12)
+	var top := VBoxContainer.new()
+	top.position = Vector2(MARGIN, 20)
+	top.custom_minimum_size = Vector2(screen.x - MARGIN * 2.0, 0)
+	top.add_theme_constant_override("separation", 10)
 	add_child(top)
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 10)
+	top.add_child(bar)
 	var title := Label.new()
-	title.text = "CAST LIST — %s" % map_name
+	title.text = "Cast list:  %s" % map_name.replace("_", " ")
 	title.add_theme_font_size_override("font_size", 28)
-	title.add_theme_color_override("font_color", Color(0.4, 0.95, 1.0))
-	top.add_child(title)
-	for tab in [["cast", "THIS MAP"], ["cash", "CASH (whole game, first wins x%d)" % FIRST_WIN_MULTIPLIER]]:
-		var b := Button.new()
-		b.text = tab[1]
-		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_size_override("font_size", 18)
-		b.pressed.connect(_show_tab.bind(tab[0]))
-		top.add_child(b)
+	bar.add_child(title)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(24, 0)
+	bar.add_child(gap)
+	for tab in [["cast", "Who is on this map"], ["cash", "First-win cash, whole game"]]:
+		var b := DebugFormTheme.button(tab[1], _show_tab.bind(tab[0]), "", "", 17)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		bar.add_child(b)
 		_tab_buttons[tab[0]] = b
-	var close := Button.new()
-	close.text = "CLOSE (Esc / L)"
-	close.focus_mode = Control.FOCUS_NONE
-	close.add_theme_font_size_override("font_size", 18)
-	close.pressed.connect(func(): closed.emit())
-	top.add_child(close)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_child(spacer)
+	var close := DebugFormTheme.button("Close", func(): closed.emit(), "Esc or L", "", 17)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_END
+	close.custom_minimum_size = Vector2(110, 0)
+	bar.add_child(close)
+	_legend = DebugFormTheme.hint("")
+	top.add_child(_legend)
 
 	_scroll = ScrollContainer.new()
-	_scroll.position = Vector2(MARGIN, 76)
-	_scroll.size = Vector2(UIKit.screen_w() - MARGIN * 2.0, UIKit.screen_h() - 76 - MARGIN)
+	_scroll.position = Vector2(MARGIN, TOP_H)
+	_scroll.size = Vector2(screen.x - MARGIN * 2.0, screen.y - TOP_H - MARGIN)
 	_scroll.focus_mode = Control.FOCUS_NONE
 	add_child(_scroll)
 	_grid = Control.new()
@@ -113,7 +125,11 @@ func _input(event: InputEvent) -> void:
 func _show_tab(tab: String) -> void:
 	_tab = tab
 	for k in _tab_buttons:
-		_tab_buttons[k].modulate = Color.WHITE if k == tab else Color(1, 1, 1, 0.55)
+		_tab_buttons[k].theme_type_variation = "PrimaryButton" if k == tab else ""
+	if _legend != null:
+		_legend.text = ("Each row is one character. The coloured squares are the days and times they are here (blue = NPC, orange = opponent; M A E N B = morning to bedtime). Click a square to jump there with them selected."
+			if tab == "cast" else
+			"For each day: the opponents you can beat for the first time that day (on every map), and what those first wins pay (their cash x%d)." % FIRST_WIN_MULTIPLIER)
 	if tab == "cast":
 		_grid.custom_minimum_size = Vector2(_grid_width(), HEADER_H + ROW_H * _rows.size() + 20)
 	else:
@@ -235,7 +251,7 @@ func _draw_grid() -> void:
 	var gx := _grid_left()
 	for d in range(1, _days + 1):
 		var dx := gx + (d - 1) * (_times.size() * CELL_W + DAY_GAP)
-		_grid.draw_string(font, Vector2(dx, 18), "D%d" % d, HORIZONTAL_ALIGNMENT_LEFT, -1, SMALL_FONT, DIM)
+		_grid.draw_string(font, Vector2(dx, 18), "Day %d" % d, HORIZONTAL_ALIGNMENT_LEFT, -1, SMALL_FONT, DIM)
 		for ti in _times.size():
 			_grid.draw_string(font, Vector2(dx + ti * CELL_W + 2, 38), str(_times[ti]).left(1),
 					HORIZONTAL_ALIGNMENT_LEFT, -1, SMALL_FONT - 2, DIM)
@@ -244,8 +260,11 @@ func _draw_grid() -> void:
 		var y := HEADER_H + r * ROW_H
 		if r % 2 == 0:
 			_grid.draw_rect(Rect2(0, y, _grid_width(), ROW_H), Color(1, 1, 1, 0.03))
-		var cells := [row["name"], row["kind"], row["deck"], ("$" + str(row["cash"])) if str(row["cash"]) != "" else "",
-				"*".repeat(int(row["stars"])) if int(row["stars"]) > 0 else "", row["beaten"]]
+		var stars := int(row["stars"])
+		var kind_text: String = "Opponent" if str(row["kind"]) == "opp" else "NPC"
+		var cells := [row["name"], kind_text, row["deck"], ("$" + str(row["cash"])) if str(row["cash"]) != "" else "",
+				("" if stars <= 0 else ("%d of 7" % stars if stars <= 7 else "%d secret" % stars)),
+				"yes" if str(row["beaten"]) == "yes" else ""]
 		x = 0.0
 		for c in COLUMNS.size():
 			_grid.draw_string(font, Vector2(x, y + ROW_H - 7), str(cells[c]), HORIZONTAL_ALIGNMENT_LEFT,
@@ -265,8 +284,8 @@ func _draw_grid() -> void:
 
 func _draw_cash() -> void:
 	var font := ThemeDB.fallback_font
-	_grid.draw_string(font, Vector2(0, 22), "Day    New opponents    First-win cash (x%d)    Running total" % FIRST_WIN_MULTIPLIER,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, DIM)
+	for h in [[0, "Day"], [90, "New opponents"], [260, "First-win cash that day"], [520, "Total so far"]]:
+		_grid.draw_string(font, Vector2(h[0], 22), str(h[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, DIM)
 	var y := HEADER_H
 	for d in _cash_days:
 		_grid.draw_string(font, Vector2(0, y + ROW_H - 7), "Day %d" % d["day"], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, LIT)

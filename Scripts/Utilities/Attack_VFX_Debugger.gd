@@ -57,10 +57,10 @@ func _build() -> void:
 	root.theme = DebugFormTheme.build()
 	add_child(root)
 
-	var title := _label("ATTACK ANIMATION TESTER", TITLE_FONT_SIZE)
+	var title := _label("Attack animation tester", TITLE_FONT_SIZE)
 	title.position = Vector2(MARGIN, 24)
 	root.add_child(title)
-	var hint := _label("Type to search  ·  Enter / double-click = PLAY  ·  DEL or Esc to close", NOTE_FONT_SIZE, NOTE_COLOUR)
+	var hint := _label("Type to search.  Enter or double-click plays it.  Del or Esc closes.", NOTE_FONT_SIZE, NOTE_COLOUR)
 	hint.position = Vector2(1920 - MARGIN - 900, 36)
 	hint.size = Vector2(900, 30)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -75,7 +75,7 @@ func _build() -> void:
 	var modes := HBoxContainer.new()
 	modes.add_theme_constant_override("separation", 10)
 	left.add_child(modes)
-	for m in [[Mode.ATTACKS, "ATTACKS"], [Mode.EFFECTS, "EFFECT RECIPES"], [Mode.STATUS, "CONDITIONS"], [Mode.SOUNDS, "SOUND CLIPS"]]:
+	for m in [[Mode.ATTACKS, "Attacks"], [Mode.EFFECTS, "Effect recipes"], [Mode.STATUS, "Conditions"], [Mode.SOUNDS, "Sound clips"]]:
 		var b := _button(m[1], _set_mode.bind(m[0]))
 		b.toggle_mode = true
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -101,7 +101,7 @@ func _build() -> void:
 	right.size = Vector2(1920 - MARGIN * 2 - LIST_WIDTH - 40, PANEL_HEIGHT)
 	right.add_theme_constant_override("separation", 12)
 	root.add_child(right)
-	right.add_child(_label("SELECTED", FONT_SIZE, HEADING_COLOUR))
+	right.add_child(_label("Selected", FONT_SIZE, HEADING_COLOUR))
 	_info = _label("", NOTE_FONT_SIZE, NOTE_COLOUR)
 	_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_info.custom_minimum_size = Vector2(0, 470)
@@ -113,9 +113,11 @@ func _build() -> void:
 	_both_ways.focus_mode = Control.FOCUS_NONE
 	_both_ways.add_theme_font_size_override("font_size", NOTE_FONT_SIZE)
 	right.add_child(_both_ways)
-	right.add_child(_button("PLAY", _play_selected))
-	right.add_child(_button("PLAY NEXT IN LIST", _play_next))
-	right.add_child(_button("CLOSE", close))
+	var play_btn := _button("Play", _play_selected)
+	play_btn.theme_type_variation = "PrimaryButton"
+	right.add_child(play_btn)
+	right.add_child(_button("Play the next one", _play_next))
+	right.add_child(_button("Close", close))
 	_status = _label("", NOTE_FONT_SIZE, INFO_COLOUR)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	right.add_child(_status)

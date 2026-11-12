@@ -4,17 +4,20 @@ extends Control
 # DIFFICULTY STARS -- how hard an opponent is, on their Yes/No challenge box
 # ============================================================
 # A row of stars straddling the message box's top edge at its right-hand end, each one
-# bigger than the last. 1-5 are gold, with the ones not earned drawn as dim outlines so
-# the scale can be read. The 6th (orange), 7th (red) and 8th (purple) are secret: they
-# only appear on the opponents that have them -- the Card Elders, the gym leaders, and
-# Mewtwo alone.
+# a touch bigger than the last. 1-7 are gold, with the ones not earned drawn dim so the
+# scale can be read. The 8th (orange), 9th (red) and 10th (purple) are secret and a step
+# larger: they only appear on the opponents that have them -- the Card Elders, the gym
+# leaders, and Mewtwo alone.
 # A child of the message box, so it goes when the box goes. MapManager builds one per
 # challenge (_show_difficulty_stars); the rating is Opponent_Ratings.stars_for().
 # ============================================================
 
 # TWEAKABLE
-## Outer diameter of each star, 1st to 8th (screen px). Each one grows.
-const STAR_SIZES := [24.0, 28.0, 32.0, 36.0, 40.0, 46.0, 52.0, 60.0]
+## Outer diameter of each star, 1st to 10th (screen px). The seven normal ones grow gently;
+## the three secret ones are a step larger.
+const STAR_SIZES := [26.0, 27.0, 28.0, 29.0, 30.0, 31.0, 32.0, 38.0, 40.0, 42.0]
+## How many stars are the normal (gold) scale; the rest are the secret colours.
+const NORMAL_STARS := 7
 const GAP := 4.0
 ## Distance in from the box's right edge.
 const INSET_RIGHT := 28.0
@@ -46,9 +49,9 @@ func _ready() -> void:
 	create_tween().tween_property(self, "modulate:a", 1.0, FADE_IN)
 
 
-## How many stars are drawn: always the five, plus the secret ones that were earned.
+## How many stars are drawn: always the normal seven, plus the secret ones that were earned.
 func _shown() -> int:
-	return maxi(5, stars)
+	return maxi(NORMAL_STARS, stars)
 
 
 func _place() -> void:
@@ -71,8 +74,8 @@ func _draw() -> void:
 		var centre := Vector2(x + d * 0.5, size.y - d * 0.5)
 		var colour := EMPTY
 		if n < stars:
-			colour = GOLD if n < 5 else [ORANGE, RED, PURPLE][n - 5]
-		var points := _star(centre, d * 0.5)
+			colour = colour_for(n + 1)
+		var points := star_points(centre, d * 0.5)
 		draw_colored_polygon(points, colour)
 		var outline := points.duplicate()
 		outline.append(points[0])
@@ -80,7 +83,15 @@ func _draw() -> void:
 		x += d + GAP
 
 
-func _star(centre: Vector2, outer: float) -> PackedVector2Array:
+## The fill for the Nth star (1-based): gold, then the secret orange / red / purple.
+static func colour_for(nth: int) -> Color:
+	if nth <= NORMAL_STARS:
+		return GOLD
+	return [ORANGE, RED, PURPLE][clampi(nth - NORMAL_STARS - 1, 0, 2)]
+
+
+## A five-pointed star's outline. Static so the placement tool's star picker draws the same shape.
+static func star_points(centre: Vector2, outer: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	for k in 10:
 		var r := outer if k % 2 == 0 else outer * INNER_RATIO

@@ -15,28 +15,45 @@ extends CanvasLayer
 ##   DEL / Escape   close (DEL still deletes text while a text box has focus)
 
 # ---- tweakables -------------------------------------------------------------
-const TITLE_FONT_SIZE := 34
-const HEADING_FONT_SIZE := 25
-const FONT_SIZE := 22
-const NOTE_FONT_SIZE := 18
-const MARGIN := 60
-const COLUMN_WIDTH := 540
-const COLUMN_GAP := 50
-const ROW_GAP := 10
-const BUTTON_HEIGHT := 50
-const SCROLL_TOP := 120
-const SCROLL_HEIGHT := 860
-const STATUS_TOP := 1000
+const TITLE_FONT_SIZE := 32
+const HEADING_FONT_SIZE := 19
+const FONT_SIZE := 19
+const NOTE_FONT_SIZE := 16
+const MARGIN := 48
+const COLUMN_WIDTH := 500
+const COLUMN_GAP := 28
+const ROW_GAP := 8
+const BUTTON_HEIGHT := 44
+const SCROLL_TOP := 112
+const STATUS_HEIGHT := 48
 ## Highest day the date picker offers. Day 0 is the match-effects test day.
 const MAX_DATE := 99
 ## Above the placement tool (128) and its forms (129).
 const LAYER := 130
-const HEADING_COLOUR := Color(1.0, 0.85, 0.4)
-const INFO_COLOUR := Color(0.45, 0.85, 1.0)
-const NOTE_COLOUR := Color(0.8, 0.84, 0.92)
-const GOOD_COLOUR := Color(0.55, 0.95, 0.55)
-const WARN_COLOUR := Color(1.0, 0.7, 0.35)
-const BAD_COLOUR := Color(1.0, 0.55, 0.45)
+const HEADING_COLOUR := DebugFormTheme.HEADING
+const INFO_COLOUR := DebugFormTheme.INK
+const NOTE_COLOUR := DebugFormTheme.INK_DIM
+const GOOD_COLOUR := DebugFormTheme.SUCCESS
+const WARN_COLOUR := DebugFormTheme.WARN
+const BAD_COLOUR := Color(1.0, 0.45, 0.45)
+## Each name cheat as a readable button: [label, what it does]. Codes missing here fall
+## back to a tidied version of the code itself.
+const CHEAT_NAMES := {
+	"CHT.All_Cards_1": ["Own every Base, Gym and promo card", "base1-5, gym1-2, basep, si1"],
+	"CHT.All_Cards_2": ["Own every Neo and e-Card card", "neo1-4, ecard1-3, np"],
+	"CHT.All_Cards_3": ["Own every early EX card", "ex1 to ex8"],
+	"CHT.All_Cards_4": ["Own every later EX and POP card", "ex9 to ex16, pop1-5"],
+	"CHT.Gimme_Cash": ["Max out cash", ""],
+	"CHT.Add_Starter_Set": ["Add the starter card set", ""],
+	"CHT.Add_Shop_Set": ["Add the shop card set", ""],
+	"CHT.Remove_All_Cards": ["Remove every card", "Can't be undone. Asks twice."],
+	"CHT.All_Coins": ["Unlock every coin", ""],
+	"CHT.All_Costumes": ["Unlock every costume", ""],
+	"CHT.All_Sleeves": ["Unlock every sleeve", ""],
+	"CHT.All_Energy_Styles": ["Unlock every Energy style", ""],
+	"CHT_Retreat.Confused": ["Confusion: fairer retreat rule", "Retreating while Confused always works"],
+	"CHT_Vanilla.Confusion": ["Confusion: original rule", "Undoes the fairer retreat rule"],
+}
 ## Cheats that throw progress away need a second click.
 const CONFIRM_CODES := ["CHT.Remove_All_Cards"]
 # -----------------------------------------------------------------------------
@@ -54,6 +71,7 @@ var _main_page: ScrollContainer = null
 var _cutscene_page: ScrollContainer = null
 ## The confirm-first cheat that has had its first click.
 var _armed_code: String = ""
+var _column_width: float = COLUMN_WIDTH
 
 
 func _ready() -> void:
@@ -67,6 +85,7 @@ func _ready() -> void:
 # ============================================================
 
 func _build() -> void:
+	var screen: Vector2 = get_viewport().get_visible_rect().size
 	var root := ColorRect.new()
 	root.color = DebugFormTheme.BACKDROP
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -74,153 +93,148 @@ func _build() -> void:
 	root.theme = DebugFormTheme.build()
 	add_child(root)
 
-	var title := _label("DEBUG MENU", TITLE_FONT_SIZE)
-	title.position = Vector2(MARGIN, 24)
-	root.add_child(title)
-
-	var hint := _label("DEL or Esc to close", FONT_SIZE, NOTE_COLOUR)
-	hint.position = Vector2(1920 - MARGIN - 400, 34)
-	hint.size = Vector2(400, 32)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	root.add_child(hint)
-
+	# Header: title, the save's live numbers, and a close button.
+	var header := HBoxContainer.new()
+	header.position = Vector2(MARGIN, 24)
+	header.custom_minimum_size = Vector2(screen.x - MARGIN * 2, 0)
+	header.add_theme_constant_override("separation", 18)
+	root.add_child(header)
+	var title := _label("Debug menu", TITLE_FONT_SIZE)
+	header.add_child(title)
 	_state_label = _label("", FONT_SIZE, INFO_COLOUR)
-	_state_label.position = Vector2(MARGIN, 74)
-	root.add_child(_state_label)
+	_state_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_state_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(_state_label)
+	var close := DebugFormTheme.button("Close", func(): MapManager.close_debug_menu(), "Del or Esc", "", FONT_SIZE)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_END
+	close.custom_minimum_size = Vector2(130, BUTTON_HEIGHT)
+	header.add_child(close)
 
 	var scroll := ScrollContainer.new()
 	scroll.position = Vector2(MARGIN, SCROLL_TOP)
-	scroll.size = Vector2(1920 - MARGIN * 2, SCROLL_HEIGHT)
+	scroll.size = Vector2(screen.x - MARGIN * 2, screen.y - SCROLL_TOP - STATUS_HEIGHT - 40)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
 	_main_page = scroll
-	_cutscene_page = _build_cutscene_page(root)
+	_cutscene_page = _build_cutscene_page(root, scroll.size)
 
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", COLUMN_GAP)
 	scroll.add_child(columns)
+	# Three columns share the screen's width (cards add 32 px of padding each).
+	_column_width = clampf((scroll.size.x - COLUMN_GAP * 2 - 32 * 3 - 16) / 3.0, 420.0, 640.0)
 
-	_build_world_column(_column(columns))
 	_build_placement_column(_column(columns))
+	_build_world_column(_column(columns))
 	_build_cheat_column(_column(columns))
 
-	_status = _label("", FONT_SIZE, GOOD_COLOUR)
-	_status.position = Vector2(MARGIN, STATUS_TOP)
-	_status.size = Vector2(1920 - MARGIN * 2, 40)
+	var status_card := PanelContainer.new()
+	status_card.add_theme_stylebox_override("panel", DebugFormTheme.card_style(10))
+	status_card.position = Vector2(MARGIN, screen.y - STATUS_HEIGHT - 20)
+	status_card.size = Vector2(screen.x - MARGIN * 2, STATUS_HEIGHT)
+	root.add_child(status_card)
+	_status = _label("Pick anything above. Changes happen straight away.", FONT_SIZE - 1, NOTE_COLOUR)
 	_status.clip_text = true
-	root.add_child(_status)
+	status_card.add_child(_status)
 
 
 func _build_world_column(col: VBoxContainer) -> void:
-	_heading(col, "CUTSCENES")
-	col.add_child(_button("CUTSCENES…", func(): _show_cutscene_page(true)))
-	col.add_child(_note("Every cutscene and variation, ready to play from the start."))
-
-	_heading(col, "TIME OF DAY")
+	_heading(col, "Time")
 	var row: HBoxContainer = null
 	for i in GameState.TIMES_OF_DAY.size():
-		if i % 2 == 0:
+		if i % 3 == 0:
 			row = _row(col)
 		var time_name := str(GameState.TIMES_OF_DAY[i])
-		_add_expanded(row, _button(time_name.to_upper(), func(): MapManager.debug_set_time(time_name)))
-
-	_heading(col, "DATE")
+		_add_expanded(row, _button(time_name, func(): MapManager.debug_set_time(time_name)))
 	var date_row := _row(col)
+	date_row.add_child(_label("Day", FONT_SIZE))
 	_date_spin = SpinBox.new()
 	_date_spin.min_value = 0
 	_date_spin.max_value = MAX_DATE
 	_date_spin.step = 1
 	_date_spin.value = GameState.get_date()
-	_date_spin.custom_minimum_size = Vector2(170, BUTTON_HEIGHT)
+	_date_spin.custom_minimum_size = Vector2(140, BUTTON_HEIGHT)
 	_date_spin.get_line_edit().add_theme_font_size_override("font_size", FONT_SIZE)
 	date_row.add_child(_date_spin)
-	_add_expanded(date_row, _button("JUMP TO DAY", _jump_to_day))
-	col.add_child(_button("DAY 0  —  MATCH EFFECTS TEST DAY", func(): MapManager.debug_set_date(0)))
-	col.add_child(_note("Changing the day or time resets this period's defeated count and reloads the map where you stand."))
+	_add_expanded(date_row, _button("Go to this day", _jump_to_day))
+	col.add_child(_button("Day 0: the match-effects test day", func(): MapManager.debug_set_date(0)))
+	col.add_child(_note("Changing the day or time reloads the map where you stand, and resets this period's wins."))
+	_clock_edit = _number_row(col, "Clock", "10:59pm", "Set", _set_clock)
+	_points_edit = _number_row(col, "Points", "0", "Set", _set_points)
+	col.add_child(_button("Add %d points (like a first win)" % GameState.TIME_POINTS_FIRST_WIN, _add_time_points))
+	col.add_child(_note("Clock: type 10:59pm, 22:59 or 1am. A day runs from 8am to 8am. Points: how far through this time of day you are; a full set moves time on."))
 
-	_heading(col, "CASH")
-	var cash_row := _row(col)
-	_cash_edit = LineEdit.new()
-	_cash_edit.placeholder_text = "Amount"
-	_cash_edit.custom_minimum_size = Vector2(240, BUTTON_HEIGHT)
-	_cash_edit.add_theme_font_size_override("font_size", FONT_SIZE)
-	_cash_edit.text_submitted.connect(func(_text: String): _set_cash())
-	cash_row.add_child(_cash_edit)
-	_add_expanded(cash_row, _button("SET CASH", _set_cash))
+	_heading(col, "Money")
+	_cash_edit = _number_row(col, "Cash", "Amount", "Set", _set_cash)
+	_fish_coin_edit = _number_row(col, "Fish Coins", "Amount", "Set", _set_fish_coins)
 
-	_heading(col, "FISH COINS")
-	var fish_row := _row(col)
-	_fish_coin_edit = LineEdit.new()
-	_fish_coin_edit.placeholder_text = "Amount"
-	_fish_coin_edit.custom_minimum_size = Vector2(240, BUTTON_HEIGHT)
-	_fish_coin_edit.add_theme_font_size_override("font_size", FONT_SIZE)
-	_fish_coin_edit.text_submitted.connect(func(_text: String): _set_fish_coins())
-	fish_row.add_child(_fish_coin_edit)
-	_add_expanded(fish_row, _button("SET FISH COINS", _set_fish_coins))
+	_heading(col, "Fish shop")
+	_fish_sent_edit = _number_row(col, "Fish sent", "Amount", "Set", _set_fish_sent)
+	col.add_child(_button("Fill every tank", _fill_fish_tanks))
+	col.add_child(_note("Every milestone up to this number counts as reached. Leave and re-enter the Fish Shop to see it."))
 
-	_heading(col, "FISH SENT")
-	var sent_row := _row(col)
-	_fish_sent_edit = LineEdit.new()
-	_fish_sent_edit.placeholder_text = "Amount"
-	_fish_sent_edit.custom_minimum_size = Vector2(240, BUTTON_HEIGHT)
-	_fish_sent_edit.add_theme_font_size_override("font_size", FONT_SIZE)
-	_fish_sent_edit.text_submitted.connect(func(_text: String): _set_fish_sent())
-	sent_row.add_child(_fish_sent_edit)
-	_add_expanded(sent_row, _button("SET FISH SENT", _set_fish_sent))
-	col.add_child(_button("FILL ALL TANKS", _fill_fish_tanks))
-	col.add_child(_note("Milestones at or below the number count as rung (items unlocked); the next real catch past one rings it. Re-enter FISH to see the change."))
 
-	_heading(col, "CLOCK")
-	var clock_row := _row(col)
-	_clock_edit = LineEdit.new()
-	_clock_edit.placeholder_text = "10:59pm"
-	_clock_edit.custom_minimum_size = Vector2(240, BUTTON_HEIGHT)
-	_clock_edit.add_theme_font_size_override("font_size", FONT_SIZE)
-	_clock_edit.text_submitted.connect(func(_text: String): _set_clock())
-	clock_row.add_child(_clock_edit)
-	_add_expanded(clock_row, _button("SET CLOCK", _set_clock))
-	var points_row := _row(col)
-	_points_edit = LineEdit.new()
-	_points_edit.placeholder_text = "Points"
-	_points_edit.custom_minimum_size = Vector2(240, BUTTON_HEIGHT)
-	_points_edit.add_theme_font_size_override("font_size", FONT_SIZE)
-	_points_edit.text_submitted.connect(func(_text: String): _set_points())
-	points_row.add_child(_points_edit)
-	_add_expanded(points_row, _button("SET POINTS", _set_points))
-	col.add_child(_button("+%d TIME POINTS" % GameState.TIME_POINTS_FIRST_WIN, _add_time_points))
-	col.add_child(_note("Clock: 10:59pm, 10:59 pm, 22:59, 1am (8am to 7:54am next morning). Points are whole, so it lands on the last point at or before that minute - the next point (a pack is +1 from day 3) tips it over. Points: the exact count in this period; a full period moves time on."))
-
-	_heading(col, "BATTLE")
-	col.add_child(_button("START TEST MATCH", func(): MapManager.debug_start_test_match()))
-	col.add_child(_note("You and the opponent both use the deck saved as \"TEST\"."))
-	col.add_child(_button("RATE ALL OPPONENTS (%d games each)" % RATE_ALL_GAMES, _rate_all_opponents))
-	col.add_child(_note("Runs in the background: every opponent's real CPU and deck against the smart bot playing each starter deck. The win rate sets their difficulty stars (unless set by hand in the character editor). Progress shows bottom-right. Takes a while: about 3 seconds a game."))
+## A caption, a number box and a button: Cash [ 4780 ] [ Set ]. Enter in the box works too.
+func _number_row(col: VBoxContainer, caption: String, placeholder: String, button_text: String,
+		action: Callable) -> LineEdit:
+	var row := _row(col)
+	var label := _label(caption, FONT_SIZE)
+	label.custom_minimum_size = Vector2(120, 0)
+	row.add_child(label)
+	var edit := LineEdit.new()
+	edit.placeholder_text = placeholder
+	edit.custom_minimum_size = Vector2(200, BUTTON_HEIGHT)
+	edit.add_theme_font_size_override("font_size", FONT_SIZE)
+	edit.text_submitted.connect(func(_text: String): action.call())
+	_add_expanded(row, edit)
+	var b := _button(button_text, action)
+	b.custom_minimum_size = Vector2(90, BUTTON_HEIGHT)
+	row.add_child(b)
+	return edit
 
 
 func _build_placement_column(col: VBoxContainer) -> void:
-	_heading(col, "PLACEMENT")
-	col.add_child(_button("EDIT CURRENT NPCS",
-			func(): MapManager.debug_open_placement_tool(PlacementTool.Mode.EDIT)))
-	col.add_child(_note("Walk around, cycle through the NPCs, opponents and Pokémon spawn points on this map, then move or edit them."))
-	col.add_child(_button("NEW NPC / OPPONENT / POKÉMON",
-			func(): MapManager.debug_open_placement_tool(PlacementTool.Mode.NEW)))
-	col.add_child(_note("Opens the create screen. After you place and save one, it opens again for the next."))
-	col.add_child(_button("FLYER TABLES",
+	_heading(col, "Edit this map")
+	col.add_child(_big_button("Move and edit people", "Walk around, pick anyone on this map (or a Pokémon spawn), move them, change their details.",
+			func(): MapManager.debug_open_placement_tool(PlacementTool.Mode.EDIT), "F"))
+	col.add_child(_big_button("Add someone new", "A new person, opponent or Pokémon spawn. After you save one, it asks for the next.",
+			func(): MapManager.debug_open_placement_tool(PlacementTool.Mode.NEW), "N"))
+	col.add_child(_big_button("Flying Pokémon", "The flocks that fly over this map, for each time of day.",
 			func(): MapManager.debug_open_placement_tool(PlacementTool.Mode.FLYERS)))
-	col.add_child(_note("This map's Morning / Afternoon / Evening / Night flying Pokémon."))
-	col.add_child(_button("FISH TABLE",
+	col.add_child(_big_button("Fish you can catch", "What bites at the nearest fishing spot, for each time of day.",
 			func(): MapManager.debug_open_placement_tool(PlacementTool.Mode.FISH)))
-	col.add_child(_note("The nearest fishing spot's Morning / Afternoon / Evening / Night catchable fish. A map can have several and they fish differently — add one with NEW, template \"Fishing spot\"."))
+
+	_heading(col, "Story")
+	col.add_child(_big_button("Play a cutscene", "Every cutscene and its variations, ready to play from the start.",
+			func(): _show_cutscene_page(true)))
+
+	_heading(col, "Battles")
+	col.add_child(_big_button("Start a test match", "You and the CPU both use the deck saved as \"TEST\".",
+			func(): MapManager.debug_start_test_match()))
+	col.add_child(_big_button("Rate every opponent", "Plays each opponent's real CPU and deck %d times against the test bot, in the background, to set their stars. About 3 seconds a game." % RATE_ALL_GAMES,
+			_rate_all_opponents))
+
+
+## A button with a line of grey explanation under it, kept together as one block.
+func _big_button(title: String, explain: String, action: Callable, key: String = "") -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	var b := _button(title, action)
+	if key != "":
+		b.tooltip_text = "Shortcut key on the map: %s" % key
+	box.add_child(b)
+	box.add_child(_note(explain))
+	return box
 
 
 ## The CUTSCENES sub-page: DebugCutscenes.entries(), one button each, grouped, in
 ## CUTSCENE_COLUMNS columns. A button jumps to that cutscene's day, time and place.
 const CUTSCENE_COLUMNS := 3
 
-func _build_cutscene_page(root: Control) -> ScrollContainer:
+func _build_cutscene_page(root: Control, page_size: Vector2) -> ScrollContainer:
 	var page := ScrollContainer.new()
 	page.position = Vector2(MARGIN, SCROLL_TOP)
-	page.size = Vector2(1920 - MARGIN * 2, SCROLL_HEIGHT)
+	page.size = page_size
 	page.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	page.visible = false
 	root.add_child(page)
@@ -229,10 +243,11 @@ func _build_cutscene_page(root: Control) -> ScrollContainer:
 	outer.add_theme_constant_override("separation", ROW_GAP)
 	page.add_child(outer)
 	var top := _row(outer)
-	var back := _button("◀  BACK", func(): _show_cutscene_page(false))
-	back.custom_minimum_size.x = 220
+	var back := _button("<  Back", func(): _show_cutscene_page(false))
+	back.custom_minimum_size.x = 160
+	back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	top.add_child(back)
-	var warn := _label("Rewrites this save's story state (intro answers, flags, date) — use a spare save slot.",
+	var warn := _label("Careful: this changes the save's story (intro answers, flags, date). Best done on a spare save slot.",
 			NOTE_FONT_SIZE, WARN_COLOUR)
 	warn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	top.add_child(warn)
@@ -268,12 +283,16 @@ func _show_cutscene_page(show: bool) -> void:
 
 
 func _build_cheat_column(col: VBoxContainer) -> void:
-	_heading(col, "NAME CHEATS")
-	col.add_child(_note("The same as typing the code as your trainer name."))
+	_heading(col, "Cheats")
+	col.add_child(_note("The same as typing the code as your trainer name. Hover a button to see its code."))
 	for code in CheatManager.codes():
 		var cheat_code := str(code)
 		var button := _button(_cheat_label(cheat_code), func(): _apply_cheat(cheat_code))
-		button.tooltip_text = cheat_code
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		var extra: String = str(CHEAT_NAMES.get(cheat_code, ["", ""])[1])
+		button.tooltip_text = ("%s\nCode: %s" % [extra, cheat_code]) if extra != "" else "Code: %s" % cheat_code
+		if CONFIRM_CODES.has(cheat_code):
+			button.theme_type_variation = "DangerButton"
 		col.add_child(button)
 
 
@@ -395,11 +414,11 @@ func _add_time_points() -> void:
 func _apply_cheat(code: String) -> void:
 	if CONFIRM_CODES.has(code) and _armed_code != code:
 		_armed_code = code
-		_say("Click %s again to confirm — it can't be undone." % _cheat_label(code), WARN_COLOUR)
+		_say("Click \"%s\" again to confirm. It can't be undone." % _cheat_label(code), WARN_COLOUR)
 		return
 	_armed_code = ""
 	var message := CheatManager.apply_code(code)
-	_say(message if message != "" else "%s did nothing." % code)
+	_say(message + "." if message != "" else "%s did nothing." % _cheat_label(code))
 
 
 ## TWEAKABLE: games per opponent for RATE ALL OPPONENTS.
@@ -412,7 +431,7 @@ func _rate_all_opponents() -> void:
 	if problem != "":
 		_say(problem, WARN_COLOUR)
 	else:
-		_say("Rating every opponent in the background — progress bottom-right.")
+		_say("Rating every opponent in the background. Progress shows bottom-right.")
 
 
 # ============================================================
@@ -428,7 +447,7 @@ func _say(text: String, colour: Color = GOOD_COLOUR) -> void:
 func _refresh_state() -> void:
 	if _state_label == null:
 		return
-	_state_label.text = "Day %d   |   %s %s   |   Cash %d   |   Fish Coins %d   |   Time points %d of %d" % [
+	_state_label.text = "Day %d  ·  %s, %s  ·  $%d  ·  %d Fish Coins  ·  %d of %d time points" % [
 			GameState.get_date(), GameState.get_time(), _clock_text(GameState.clock_hours()), GameState.get_cash(),
 			GameState.get_fish_coins(), GameState.get_time_points(), GameState.time_points_to_advance()]
 	if _points_edit != null and not _points_edit.has_focus():
@@ -441,16 +460,23 @@ func _refresh_state() -> void:
 		_fish_sent_edit.text = str(GameState.fish_sent_total())
 
 
-## "CHT.All_Cards_1" -> "ALL CARDS 1".
+## "CHT.All_Cards_1" -> "Own every Base, Gym and promo card" (CHEAT_NAMES), else a tidied code.
 func _cheat_label(code: String) -> String:
-	return code.trim_prefix("CHT.").replace("_", " ").to_upper()
+	if CHEAT_NAMES.has(code):
+		return str(CHEAT_NAMES[code][0])
+	return code.trim_prefix("CHT.").trim_prefix("CHT_").replace("_", " ").replace(".", " ").capitalize()
 
 
+## One column of the page: a card holding a stack of rows.
 func _column(parent: Control) -> VBoxContainer:
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", DebugFormTheme.card_style(16))
+	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	parent.add_child(card)
 	var col := VBoxContainer.new()
-	col.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
+	col.custom_minimum_size = Vector2(_column_width, 0)
 	col.add_theme_constant_override("separation", ROW_GAP)
-	parent.add_child(col)
+	card.add_child(col)
 	return col
 
 
@@ -468,13 +494,19 @@ func _add_expanded(row: HBoxContainer, control: Control) -> void:
 
 
 func _heading(col: VBoxContainer, text: String) -> void:
-	col.add_child(_label(text, HEADING_FONT_SIZE, HEADING_COLOUR))
+	if col.get_child_count() > 0:
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 8)
+		col.add_child(gap)
+	var heading := DebugFormTheme.heading(text)
+	heading.get_child(0).add_theme_font_size_override("font_size", HEADING_FONT_SIZE)
+	col.add_child(heading)
 
 
 func _note(text: String) -> Label:
 	var note := _label(text, NOTE_FONT_SIZE, NOTE_COLOUR)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
+	note.custom_minimum_size = Vector2(_column_width, 0)
 	return note
 
 

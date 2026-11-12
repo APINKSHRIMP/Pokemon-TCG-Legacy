@@ -2862,9 +2862,9 @@ func _single_gift_pack_rect() -> TextureRect:
 ## PackOpeningManager opens from. TWEAKABLE: GIFT_PACK_HANDOFF_TIME.
 const GIFT_PACK_HANDOFF_TIME := 0.35
 func _glide_rect_to_pack_rect(rect: TextureRect) -> void:
-	var target: Rect2 = PackOpeningManager.get_pack_target_rect()
+	var target: Rect2 = PackOpeningManager.get_pack_target_rect(rect.texture)
 	rect.stretch_mode = TextureRect.STRETCH_SCALE
-	var t: float = GameState.pack_time(GIFT_PACK_HANDOFF_TIME)
+	var t: float = PackOpeningManager.open_time(GIFT_PACK_HANDOFF_TIME)
 	var tw := rect.create_tween().set_parallel(true)
 	tw.tween_property(rect, "global_position", target.position, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
 	tw.tween_property(rect, "size", target.size, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)

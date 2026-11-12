@@ -11624,6 +11624,8 @@ func load_opponent_data_by_name(opp_name: String):
 		opponent_data = GameState.build_test_opponent_data()
 		if GameState.autotest != null and not GameState.autotest_opponent_data.is_empty():
 			opponent_data = GameState.autotest_opponent_data.duplicate(true)   # AUTOTEST --real: a real opponent's rules
+		# Reset per match, or a "never retreat" opponent's setting would carry into a test match.
+		CpuWeights.retreat_rate = clampf(float(opponent_data.get("cpu_retreat_rate", 1.0)), 0.0, 1.0)
 		return
 
 	opponent_data = CharacterSchedule.find_opponent(

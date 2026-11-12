@@ -46,11 +46,7 @@ static func instance() -> Node:
 func _ready() -> void:
 	layer = 127
 	_panel = PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.8)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(10)
-	_panel.add_theme_stylebox_override("panel", style)
+	_panel.add_theme_stylebox_override("panel", DebugFormTheme.card_style(12))
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_label = RichTextLabel.new()
 	_label.bbcode_enabled = true
@@ -122,28 +118,28 @@ func _process(delta: float) -> void:
 		return
 	if not OS.is_process_running(_pid):
 		_pid = -1
-		_show("[color=red]DECK TEST stopped without finishing[/color] — see the autotest run folder")
+		_show("[color=#ff7373]The deck test stopped before it finished.[/color] The autotest run folder has the details.")
 		_hide_t = RESULT_SECONDS
 		return
 	if progress is Dictionary:
-		_show("[color=aqua]DECK TEST[/color] %s — match %d / %d  (%s)" % [_what, int(progress.get("done", 0)),
+		_show("[color=#66a3ff][b]Deck test running[/b][/color]  %s\nGame %d of %d  ·  now playing %s" % [_what, int(progress.get("done", 0)),
 				int(progress.get("total", 0)), str(progress.get("opponent", ""))])
 
 
 func _report(results: Dictionary) -> void:
 	OpponentRatings.invalidate()
-	var lines: Array = ["[color=lime]DECK TEST done[/color] — %s" % _what]
+	var lines: Array = ["[color=#61d185][b]Deck test finished[/b][/color]  %s" % _what]
 	var names: Array = results.keys()
 	names.sort()
 	for n in names.slice(0, 8):
 		var r: Dictionary = results[n]
 		var stars := ""
 		if r.has("stars"):
-			stars = "  ->  %d star%s" % [int(r["stars"]), "" if int(r["stars"]) == 1 else "s"]
-		lines.append("%s: CPU won %d / %d (%d%%)%s" % [n, int(r.get("wins", 0)), int(r.get("games", 0)),
+			stars = ", so %d star%s" % [int(r["stars"]), "" if int(r["stars"]) == 1 else "s"]
+		lines.append("%s won %d of %d (%d%%)%s" % [n, int(r.get("wins", 0)), int(r.get("games", 0)),
 				roundi(float(r.get("win_rate", 0.0)) * 100.0), stars])
 	if names.size() > 8:
-		lines.append("...and %d more (Opponent_Ratings.json)" % (names.size() - 8))
+		lines.append("...and %d more (all in Opponent_Ratings.json)." % (names.size() - 8))
 	_show("\n".join(lines))
 	_hide_t = RESULT_SECONDS
 	finished.emit(results)

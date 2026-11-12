@@ -28,6 +28,7 @@ const CARD_SET_DATA_PATH := "res://Card_Set_Data/"
 const PACK_CARD_MARGIN : float = 5.0
 # Pack halves always draw above every card/cardback in the overlay (card z tops out at ~11).
 const PACK_Z_INDEX     : int   = 500
+const PACK_TOP_FRACTION : float = 0.11  # Share of the pack's height that is snipped off and flies away
 
 # ── Sequence timing (TWEAKABLE) ────────────────────────────
 # Base seconds; every one of these is divided by the pack speed multiplier at the call site.
@@ -124,10 +125,36 @@ func is_active() -> bool:
 ##
 ## Public because Pack_Purchase_Script tweens its bought pack into exactly this rect before handing
 ## over — matching the start rect here to the shop's end rect is what keeps the handoff snap-free.
-func get_pack_target_rect() -> Rect2:
-	var card_rect : Rect2   = _compute_card_layout()
-	var margin    : Vector2 = Vector2(PACK_CARD_MARGIN, PACK_CARD_MARGIN)
-	return Rect2(card_rect.position - margin, card_rect.size + margin * 2.0)
+##
+## 2026-11-12: the pack keeps its art's own aspect (it used to be stretched to the card shape,
+## which widened it). It is as wide as the card + margin, and since pack art is taller than a card,
+## the extra height goes ABOVE the cards: pack bottom lines up with card bottom (+margin), leaving
+## empty pack space over the cards. Pass the pack texture so its exact aspect is used.
+func get_pack_target_rect(pack_tex: Texture2D = null) -> Rect2:
+	var card_rect : Rect2 = _compute_card_layout()
+	var aspect    : float = DEFAULT_PACK_ASPECT
+	if pack_tex != null and pack_tex.get_height() > 0:
+		aspect = float(pack_tex.get_width()) / float(pack_tex.get_height())
+	var cover : Vector2 = card_rect.size + Vector2(PACK_CARD_MARGIN, PACK_CARD_MARGIN) * 2.0
+	# Fit the art's aspect around the cards so they are fully covered either way.
+	var fit   : Vector2 = Vector2(cover.x, cover.x / aspect)
+	if fit.y < cover.y:
+		fit = Vector2(cover.y * aspect, cover.y)
+	var bottom   : float = card_rect.end.y + PACK_CARD_MARGIN
+	var centre_x : float = card_rect.get_center().x
+	return Rect2(Vector2(centre_x - fit.x / 2.0, bottom - fit.y), fit)
+
+
+## Pack art is ~455x726; used when a caller has no texture to hand.
+const DEFAULT_PACK_ASPECT : float = 455.0 / 726.0
+
+
+## 2026-11-12: everything from the pack heading to the centre up to the first card flipping face-up
+## runs at this fraction of its base time (0.75 = 25% quicker). Callers' handoff glides use it too.
+const OPEN_SPEEDUP : float = 0.75
+
+func open_time(base_seconds: float) -> float:
+	return GameState.pack_time(base_seconds * OPEN_SPEEDUP)
 
 
 ## Cardback texture for the reveal: ALWAYS the default back.
@@ -290,10 +317,9 @@ func _start_pack_opening() -> void:
 		return
 
 	# ── Pack geometry ──
-	# The pack is sized to the cards it is about to reveal (+PACK_CARD_MARGIN a side) rather than to
-	# the viewport, so it covers them completely. That means stretching the art off its native aspect
-	# — STRETCH_SCALE, not KEEP_ASPECT, or it would letterbox inside the rect and expose the cards.
-	var pack_rect        : Rect2   = get_pack_target_rect()
+	# The pack covers the cards it is about to reveal (+PACK_CARD_MARGIN a side) at its art's own
+	# aspect, bottoms lined up, extra height above the cards — see get_pack_target_rect().
+	var pack_rect        : Rect2   = get_pack_target_rect(pack_tex)
 	var pack_size        : Vector2 = pack_rect.size
 	var center_pos       : Vector2 = pack_rect.position
 	var actual_card_size : Vector2 = _actual_card_size   # set by get_pack_target_rect()
@@ -313,11 +339,12 @@ func _start_pack_opening() -> void:
 	if _intro_fade_duration > 0.0:
 		anim_pack.modulate.a = 0.0
 		var fade_tw := create_tween()
-		fade_tw.tween_property(anim_pack, "modulate:a", 1.0, GameState.pack_time(_intro_fade_duration))
+		fade_tw.tween_property(anim_pack, "modulate:a", 1.0, open_time(_intro_fade_duration))
 		await fade_tw.finished
 
 	# ── Split pack into top / body ──
-	var top_height  : float = 100.0
+	# Scales with the pack, so the snip line sits in the empty space above the cards.
+	var top_height  : float = pack_size.y * PACK_TOP_FRACTION
 	var body_height : float = pack_size.y - top_height
 	var tex_w       : float = float(pack_tex.get_width())
 	var tex_h       : float = float(pack_tex.get_height())
@@ -373,12 +400,12 @@ func _start_pack_opening() -> void:
 	_overlay.add_child(_pack_body_rect)
 
 	# ── Beat on the intact pack before it tears ──
-	await get_tree().create_timer(GameState.pack_time(PAUSE_BEFORE_TEAR)).timeout
+	await get_tree().create_timer(open_time(PAUSE_BEFORE_TEAR)).timeout
 
 	# ── Tear: the halves part and the top tilts as it comes away ──
 	# The tilt runs with the tear rather than with the fly-off, so the lid reads as being peeled
 	# open rather than snapping straight then rotating on its way out.
-	var tear_time : float = GameState.pack_time(PACK_TEAR_TIME)
+	var tear_time : float = open_time(PACK_TEAR_TIME)
 	SoundManagerScript.play_sfx_from_path("res://Audio/SFX/pack_tear_sfx.ogg")
 	var split_tw := create_tween()
 	split_tw.set_parallel(true)
@@ -388,10 +415,10 @@ func _start_pack_opening() -> void:
 	await split_tw.finished
 
 	# ── Beat on the opened pack before the halves leave ──
-	await get_tree().create_timer(GameState.pack_time(PAUSE_AFTER_TEAR)).timeout
+	await get_tree().create_timer(open_time(PAUSE_AFTER_TEAR)).timeout
 
 	var fly_tw := create_tween()
-	fly_tw.tween_property(_pack_top_rect, "position:y", -200.0, GameState.pack_time(PACK_FLY_OFF_TIME)).set_ease(Tween.EASE_IN)
+	fly_tw.tween_property(_pack_top_rect, "position:y", -200.0 - top_height, open_time(PACK_FLY_OFF_TIME)).set_ease(Tween.EASE_IN)
 	await fly_tw.finished
 	_pack_top_rect.queue_free()
 	_pack_top_rect = null
@@ -401,7 +428,7 @@ func _start_pack_opening() -> void:
 
 	# ── Slide body off downward, revealing cardback ──
 	var slide_tw := create_tween()
-	slide_tw.tween_property(_pack_body_rect, "position:y", viewport_size.y + 50.0, GameState.pack_time(PACK_FLY_OFF_TIME)).set_ease(Tween.EASE_IN)
+	slide_tw.tween_property(_pack_body_rect, "position:y", viewport_size.y + 50.0, open_time(PACK_FLY_OFF_TIME)).set_ease(Tween.EASE_IN)
 	await slide_tw.finished
 	_pack_body_rect.queue_free()
 	_pack_body_rect = null
@@ -425,7 +452,7 @@ func _start_pack_opening() -> void:
 	# ── Flip cardback out ──
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_card_draw_sound)
 	var flip_out := create_tween()
-	flip_out.tween_property(_cardback_rect, "scale:x", 0.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_IN)
+	flip_out.tween_property(_cardback_rect, "scale:x", 0.0, open_time(0.25)).set_ease(Tween.EASE_IN)
 	await flip_out.finished
 	_cardback_rect.queue_free()
 	_cardback_rect = null
@@ -433,7 +460,7 @@ func _start_pack_opening() -> void:
 	# ── Flip first card in ──
 	_face_card_rect = first_rect
 	var flip_in := create_tween()
-	flip_in.tween_property(_face_card_rect, "scale:x", 1.0, GameState.pack_time(0.25)).set_ease(Tween.EASE_OUT)
+	flip_in.tween_property(_face_card_rect, "scale:x", 1.0, open_time(0.25)).set_ease(Tween.EASE_OUT)
 	await flip_in.finished
 
 	# ── Spawn remaining cards as a stack behind the face card ──

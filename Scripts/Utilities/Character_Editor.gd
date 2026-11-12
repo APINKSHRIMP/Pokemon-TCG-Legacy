@@ -80,12 +80,12 @@ const PROGRESS_SEED_PATH := "res://Player_Data/Player_Game_Progress.json"
 const GIFT_TYPES := ["none", "card", "coin", "costume", "sleeve", "pack", "available_pack"]
 const GIFT_HINTS := {
 	"none": "",
-	"card": "card ids, comma-separated:  base1-4, base2-5",
-	"coin": "one coin, picked below",
-	"costume": "one costume, picked below",
-	"sleeve": "one sleeve, picked below",
-	"pack": "pack ART codes to open now:  base5_a, base5_b",
-	"available_pack": "pack to unlock for purchase:  base4",
+	"card": "Card ids, like  base1-4, base2-5",
+	"coin": "Pick the coin below.",
+	"costume": "Pick the costume below.",
+	"sleeve": "Pick the sleeve below.",
+	"pack": "Packs they hand over to open, like  base5_a, base5_b",
+	"available_pack": "A pack to unlock in the shop, like  base4",
 }
 
 ## Which file each field belongs in. Anything in CONSTANT_FIELDS_* goes to
@@ -105,9 +105,11 @@ const CLEARABLE_FIELDS_OPP := ["coin_reward", "card_reward", "pack_reward",
 		"costume_reward", "match_format", "sleeve_reward", "fishing", "stars"]
 
 ## The Difficulty dropdown. Index 0 = auto (the deck test decides, Opponent_Ratings.gd);
-## 1-5 set it by hand; 6, 7 and 8 are the secret orange, red and purple stars.
-const STAR_CHOICES := ["auto (deck test)", "1 star", "2 stars", "3 stars", "4 stars", "5 stars",
-		"6 -- orange (Card Elders)", "7 -- red (gym leaders)", "8 -- purple (secret: Mewtwo)"]
+## 1-7 set it by hand; 8, 9 and 10 are the secret orange, red and purple stars.
+## (The placement tool's side panel has a clickable star picker for the same value.)
+const STAR_CHOICES := ["Automatic (from the deck test)", "1 star", "2 stars", "3 stars", "4 stars",
+		"5 stars", "6 stars", "7 stars", "8 - secret orange (Card Elders)",
+		"9 - secret red (gym leaders)", "10 - secret purple (Mewtwo only)"]
 
 var _map_data: String = ""
 var _mode: int = Mode.NEW
@@ -392,37 +394,39 @@ func _derive_unique_name(friendly: String) -> String:
 
 func _build_kind_choice() -> void:
 	_root = _make_backdrop()
+	# Centred on any screen width (the layout below is drawn for 1920).
+	var ox: float = (get_viewport().get_visible_rect().size.x - 1920.0) / 2.0
 	var title := Label.new()
-	title.text = "NEW CHARACTER"
+	title.text = "What do you want to add?"
 	title.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
-	title.position = Vector2(0, 380)
+	title.position = Vector2(0 + ox, 380)
 	title.size = Vector2(1920, 50)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_root.add_child(title)
 
 	var npc_btn := Button.new()
-	npc_btn.text = "NPC"
-	npc_btn.position = Vector2(195, 470)
+	npc_btn.text = "Person\n(talks, may give a gift)"
+	npc_btn.position = Vector2(195 + ox, 470)
 	npc_btn.size = Vector2(360, 120)
-	npc_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
+	npc_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE + 3)
 	npc_btn.pressed.connect(func(): _choose_kind("npcs"))
 	_root.add_child(npc_btn)
 
 	var opp_btn := Button.new()
-	opp_btn.text = "OPPONENT"
-	opp_btn.position = Vector2(585, 470)
+	opp_btn.text = "Opponent\n(someone to battle)"
+	opp_btn.position = Vector2(585 + ox, 470)
 	opp_btn.size = Vector2(360, 120)
-	opp_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
+	opp_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE + 3)
 	opp_btn.pressed.connect(func(): _choose_kind("opponents"))
 	_root.add_child(opp_btn)
 
 	# Not a character at all: hands straight over to PokemonSpawnEditor, which the
 	# placement tool opens in place of this form.
 	var pokemon_btn := Button.new()
-	pokemon_btn.text = "POKÉMON"
-	pokemon_btn.position = Vector2(975, 470)
+	pokemon_btn.text = "Pokémon spawn\n(wild Pokémon)"
+	pokemon_btn.position = Vector2(975 + ox, 470)
 	pokemon_btn.size = Vector2(360, 120)
-	pokemon_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
+	pokemon_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE + 3)
 	pokemon_btn.pressed.connect(func():
 		pokemon_chosen.emit()
 		queue_free())
@@ -430,18 +434,18 @@ func _build_kind_choice() -> void:
 
 	# The map's four time-of-day flyer tables -- the way back into them once saved.
 	var flyers_btn := Button.new()
-	flyers_btn.text = "FLYER TABLES"
-	flyers_btn.position = Vector2(1365, 470)
+	flyers_btn.text = "Flying Pokémon\n(this map's flocks)"
+	flyers_btn.position = Vector2(1365 + ox, 470)
 	flyers_btn.size = Vector2(360, 120)
-	flyers_btn.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
+	flyers_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE + 3)
 	flyers_btn.pressed.connect(func():
 		flyers_chosen.emit()
 		queue_free())
 	_root.add_child(flyers_btn)
 
 	var hint := Label.new()
-	hint.text = "Escape to cancel"
-	hint.position = Vector2(0, 630)
+	hint.text = "Esc to cancel"
+	hint.position = Vector2(0 + ox, 630)
 	hint.size = Vector2(1920, 40)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
@@ -487,8 +491,8 @@ func _build_form() -> void:
 	_root = _make_backdrop()
 
 	var title := Label.new()
-	title.text = "%s %s" % ["EDIT" if _mode == Mode.EDIT else "NEW",
-			"OPPONENT" if _is_opponent() else "NPC"]
+	title.text = "%s %s" % ["Edit" if _mode == Mode.EDIT else "New",
+			"opponent" if _is_opponent() else "person (NPC)"]
 	title.position = Vector2(FORM_MARGIN, 12)
 	title.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 	_root.add_child(title)
@@ -498,7 +502,7 @@ func _build_form() -> void:
 	_scope_label.size = Vector2(1920 - FORM_MARGIN * 2, 30)
 	_scope_label.clip_text = true
 	_scope_label.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-	_scope_label.add_theme_color_override("font_color", Color(0.45, 0.85, 1.0))
+	_scope_label.add_theme_color_override("font_color", DebugFormTheme.INK_DIM)
 	_scope_label.text = _scope_text()
 	_root.add_child(_scope_label)
 
@@ -540,7 +544,9 @@ func _build_form() -> void:
 	_root.add_child(_status)
 
 	_confirm_btn = Button.new()
-	_confirm_btn.text = "CONFIRM"
+	_confirm_btn.text = "Done"
+	_confirm_btn.theme_type_variation = "PrimaryButton"
+	_confirm_btn.tooltip_text = "Puts them on the map. Press Enter in the placement tool to save."
 	_confirm_btn.position = Vector2(1400, FOOTER_TOP)
 	_confirm_btn.size = Vector2(220, FOOTER_HEIGHT)
 	_confirm_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
@@ -548,7 +554,8 @@ func _build_form() -> void:
 	_root.add_child(_confirm_btn)
 
 	var cancel_btn := Button.new()
-	cancel_btn.text = "CANCEL"
+	cancel_btn.text = "Cancel"
+	cancel_btn.tooltip_text = "Esc"
 	cancel_btn.position = Vector2(1640, FOOTER_TOP)
 	cancel_btn.size = Vector2(220, FOOTER_HEIGHT)
 	cancel_btn.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
@@ -566,13 +573,13 @@ func _build_form() -> void:
 ## tool spells out before Enter, for the same reason.
 func _scope_text() -> String:
 	if _mode == Mode.NEW:
-		return "new character -- written to Characters/%s.json and All_NPC_Constant_Data.json" % _map_data
+		return "Fill this in, press Done, then put them where you want them. Nothing is saved until you press Enter in the placement tool."
 	if _rule_index < 0:
 		var rules = _character_raw.get("when")
 		if rules is Array and not rules.is_empty():
-			return "editing this character's DEFAULTS -- feeds every rule that does not override the field"
-		return "editing this character (it has no when-rules)"
-	return "matched when-rule #%d -- a field this rule states is rewritten in the rule, one it inherits is rewritten on the defaults" % _rule_index
+			return "Changes here apply on every day they appear, unless a day has its own setting."
+		return "Changes here apply on every day they appear."
+	return "This person has different setups on different days. You are editing the one for today; anything it shares with the others changes for them too."
 
 
 ## The same question for the schedule grid, which rewrites whole rules rather than
@@ -580,53 +587,51 @@ func _scope_text() -> String:
 ## wholesale by whatever comes back from the grid.
 func _schedule_scope_text() -> String:
 	if _mode == Mode.NEW:
-		return "new character -- every slot ticked here becomes a rule in Characters/%s.json" % _map_data
+		return "Tick the days and times they should be on this map."
 	if _owner_rules.is_empty():
-		return "this character has no when-rules, so the whole schedule is editable here"
+		return "Tick the days and times they should be on this map."
 	var numbers: Array = []
 	for index in _owner_rules:
 		numbers.append("#%d" % int(index))
-	var owned := "when-rule " + str(numbers[0]) if numbers.size() == 1 \
-			else "when-rules " + ", ".join(numbers)
 	if _other_slots.is_empty():
-		return "editing %s -- the character's only variant" % owned
-	return "editing %s -- this character has other variants with their own dialogue or position, shown grey" % owned
+		return "Tick the days and times they should be on this map."
+	return "Tick the days and times for this setup. Grey squares belong to their other setups (different dialogue or spot)."
 
 
 # ---- section builders --------------------------------------------------------
 
 func _build_identity(col: VBoxContainer) -> void:
-	_add_heading(col, "IDENTITY")
+	_add_heading(col, "Who they are")
 
 	_w["sprite"] = _add_asset_row(col, "Sprite", AssetPickerOverlay.Kind.SPRITE)
 
 	if _is_opponent():
 		# Opponents have no friendly_name -- MapManager upper-cases the unique key
 		# straight into the message box, so this string is what the player reads.
-		var name_edit := _make_line_edit("Opponent name (shown to the player).....", 60)
+		var name_edit := _make_line_edit("The name the player sees", 60)
 		name_edit.text_changed.connect(func(_t: String): _on_name_changed())
 		_w["name"] = name_edit
 		_add_row(col, "Name", name_edit)
 	else:
-		var friendly := _make_line_edit("Friendly name (shown in the message box).....", 40)
+		var friendly := _make_line_edit("The name shown when they talk", 40)
 		friendly.text_changed.connect(func(_t: String): _on_name_changed())
 		_w["friendly_name"] = friendly
 		_add_row(col, "Friendly name", friendly)
 
 	var key_label := Label.new()
 	key_label.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
-	key_label.add_theme_color_override("font_color", Color(0.65, 0.9, 0.65))
+	key_label.add_theme_color_override("font_color", DebugFormTheme.INK_DIM)
 	_w["unique_key"] = key_label
-	_add_row(col, "Unique key", key_label)
+	_add_row(col, "Saved as", key_label)
 
 	# Renaming rewrites the key EVERYWHERE: every map file, the constants file, every
 	# `beaten:` / `met:` gate and the difficulty ratings (the placement tool does it on
 	# confirm). Scripts that name the character in code are listed, not edited.
 	if _mode == Mode.EDIT:
-		var rename := _make_line_edit("New unique key -- leave empty to keep it.....", 60)
+		var rename := _make_line_edit("Type a new name to rename them everywhere", 60)
 		rename.text_changed.connect(func(_t: String): _revalidate())
 		_w["rename_to"] = rename
-		_add_row(col, "Rename to", rename)
+		_add_row(col, "Rename", rename)
 
 	var colour := OptionButton.new()
 	colour.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
@@ -638,7 +643,7 @@ func _build_identity(col: VBoxContainer) -> void:
 	_w["message_colour"] = colour
 	_add_row(col, "Message colour", colour)
 
-	_add_heading(col, "SCHEDULE")
+	_add_heading(col, "When they are here")
 
 	# One button rather than a days box and four tick boxes. "1-2,4/2" is a correct
 	# and unreadable way to say when somebody is on the map; the grid behind this
@@ -658,35 +663,35 @@ func _build_identity(col: VBoxContainer) -> void:
 	_w["schedule"] = schedule
 	schedule_row.add_child(schedule)
 	var pick_days := Button.new()
-	pick_days.text = "CHOOSE"
+	pick_days.text = "Change..."
 	pick_days.custom_minimum_size = Vector2(150, 0)
 	pick_days.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	pick_days.pressed.connect(_open_schedule_picker)
 	schedule_row.add_child(pick_days)
-	_add_row(col, "Days & times", schedule_row)
+	_add_row(col, "When", schedule_row)
 
 	var loop := CheckBox.new()
-	loop.text = "repeats when the calendar loops (off for story characters)"
+	loop.text = "Comes back when the calendar repeats (untick for story characters)"
 	loop.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	loop.button_pressed = true
 	_w["loop"] = loop
-	_add_row(col, "Loop", loop)
+	_add_row(col, "Repeats", loop)
 
 	# Holds a rod facing the way their idle_<dir> pattern pins them; puts it away while
 	# talked to. See WorldObjectBase._setup_fishing_rod.
 	var fishing := CheckBox.new()
-	fishing.text = "is fishing (rod out; needs an idle up/down/left/right pattern)"
+	fishing.text = "Holding a fishing rod (they must stand facing one way)"
 	fishing.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	_w["fishing"] = fishing
 	_add_row(col, "Fishing", fishing)
 
 
 func _build_opponent_battle(col: VBoxContainer) -> void:
-	_add_heading(col, "BATTLE")
+	_add_heading(col, "The battle")
 
 	var deck_row := HBoxContainer.new()
 	deck_row.add_theme_constant_override("separation", 10)
-	var deck_edit := _make_line_edit("Deck file name (no .json).....", 60)
+	var deck_edit := _make_line_edit("Deck name", 60)
 	deck_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	deck_edit.text_changed.connect(func(_t: String): _revalidate())
 	_w["deck"] = deck_edit
@@ -694,7 +699,7 @@ func _build_opponent_battle(col: VBoxContainer) -> void:
 	var deck_pick := OptionButton.new()
 	deck_pick.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	deck_pick.custom_minimum_size = Vector2(260, 0)
-	deck_pick.add_item("-- existing decks --")
+	deck_pick.add_item("Pick a deck...")
 	for name in _list_basenames(DECK_DIR, ".json"):
 		deck_pick.add_item(str(name))
 	deck_pick.item_selected.connect(func(idx: int):
@@ -719,7 +724,7 @@ func _build_opponent_battle(col: VBoxContainer) -> void:
 	_w["music"] = music
 	music_row.add_child(music)
 	var audition := Button.new()
-	audition.text = "PLAY"
+	audition.text = "Play"
 	audition.custom_minimum_size = Vector2(110, 0)
 	audition.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	audition.pressed.connect(_toggle_audition.bind(audition))
@@ -735,7 +740,7 @@ func _build_opponent_battle(col: VBoxContainer) -> void:
 	_add_row(col, "Prize cards", prizes)
 
 	var bo3 := CheckBox.new()
-	bo3.text = "best of 3 (first to two wins)"
+	bo3.text = "Best of 3 (first to two wins)"
 	bo3.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	_w["match_format"] = bo3
 	_add_row(col, "Match format", bo3)
@@ -752,26 +757,26 @@ func _build_opponent_battle(col: VBoxContainer) -> void:
 	_w["sleeve"] = _add_asset_row(col, "Sleeve", AssetPickerOverlay.Kind.SLEEVE)
 
 	var grant := CheckBox.new()
-	grant.text = "grant this sleeve to the player on first win"
+	grant.text = "Give the player this sleeve when they first win"
 	grant.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	grant.toggled.connect(func(_p: bool): _revalidate())
 	_w["sleeve_reward"] = grant
-	_add_row(col, "Grant sleeve?", grant)
+	_add_row(col, "", grant)
 
 
 func _build_opponent_rewards(col: VBoxContainer) -> void:
-	_add_heading(col, "REWARDS")
+	_add_heading(col, "Rewards for the first win")
 
 	var cash := _make_line_edit("100", 8)
 	cash.text_changed.connect(func(_t: String): _revalidate())
 	_w["cash_reward"] = cash
-	_add_row(col, "Cash reward", cash)
+	_add_row(col, "Cash", cash)
 
-	_w["coin_reward"] = _add_asset_row(col, "Coin reward", AssetPickerOverlay.Kind.COIN)
+	_w["coin_reward"] = _add_asset_row(col, "Coin", AssetPickerOverlay.Kind.COIN)
 
-	var card := _make_line_edit("card ids, comma-separated:  base1-4, base2-5", 200)
+	var card := _make_line_edit("Card ids, like  base1-4, base2-5", 200)
 	_w["card_reward"] = card
-	_add_row(col, "Card reward", card)
+	_add_row(col, "Cards", card)
 
 	# The value is the pack ART BASENAME from Image_Assets/Packs/ — "gym1_a", not
 	# "Gym1-a". The UNDERSCORE matters: PackOpeningManager takes everything before
@@ -779,15 +784,15 @@ func _build_opponent_rewards(col: VBoxContainer) -> void:
 	# rolls nothing. Match_End_Outro drops any name with no art on disk and pushes
 	# an error naming the file it looked for.
 	# Granted on the FIRST win only, like every other reward.
-	var pack := _make_line_edit("pack art names, comma-separated:  gym1_a, base5_c", 120)
+	var pack := _make_line_edit("Pack names, like  gym1_a, base5_c", 120)
 	_w["pack_reward"] = pack
-	_add_row(col, "Pack reward", pack)
+	_add_row(col, "Packs", pack)
 
-	_w["costume_reward"] = _add_asset_row(col, "Costume reward", AssetPickerOverlay.Kind.COSTUME, true)
+	_w["costume_reward"] = _add_asset_row(col, "Costume", AssetPickerOverlay.Kind.COSTUME, true)
 
 
 func _build_npc_gift(col: VBoxContainer) -> void:
-	_add_heading(col, "GIFT")
+	_add_heading(col, "Gift")
 
 	_gift_group = ButtonGroup.new()
 	var grid := GridContainer.new()
@@ -795,7 +800,7 @@ func _build_npc_gift(col: VBoxContainer) -> void:
 	grid.add_theme_constant_override("h_separation", 20)
 	for gift in GIFT_TYPES:
 		var cb := CheckBox.new()
-		cb.text = str(gift)
+		cb.text = {"none": "Nothing", "card": "Cards", "coin": "Coin", "costume": "Costume", "sleeve": "Sleeve", "pack": "Packs", "available_pack": "Shop unlock"}.get(str(gift), str(gift))
 		cb.button_group = _gift_group
 		cb.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 		cb.set_meta("gift", str(gift))
@@ -821,13 +826,13 @@ func _build_npc_gift(col: VBoxContainer) -> void:
 
 
 func _build_dialogue(col: VBoxContainer) -> void:
-	_add_heading(col, "DIALOGUE")
-	_w["meet"] = _add_text_area(col, "Meet text  (first time they are spoken to)")
-	_w["repeat"] = _add_text_area(col, "Repeat text  (every time after that)")
+	_add_heading(col, "What they say")
+	_w["meet"] = _add_text_area(col, "First time you talk to them")
+	_w["repeat"] = _add_text_area(col, "Every time after that")
 	if _is_opponent():
-		_w["first_win"] = _add_text_area(col, "First win text  (you beat them the first time)")
-		_w["rematch_win"] = _add_text_area(col, "Rematch win text  (you beat them again)")
-		_w["loss"] = _add_text_area(col, "Loss text  (they beat you)")
+		_w["first_win"] = _add_text_area(col, "When you beat them the first time")
+		_w["rematch_win"] = _add_text_area(col, "When you beat them again")
+		_w["loss"] = _add_text_area(col, "When they beat you")
 
 
 # ---- widget helpers ----------------------------------------------------------
@@ -868,11 +873,9 @@ func _add_heading(col: VBoxContainer, text: String) -> void:
 		var spacer := Control.new()
 		spacer.custom_minimum_size = Vector2(0, 10)
 		col.add_child(spacer)
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_size_override("font_size", FORM_FONT_SIZE + 4)
-	label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.4))
-	col.add_child(label)
+	var heading := DebugFormTheme.heading(text)
+	heading.get_child(0).add_theme_font_size_override("font_size", FORM_FONT_SIZE)
+	col.add_child(heading)
 
 
 func _add_row(col: VBoxContainer, label_text: String, control: Control) -> void:
@@ -933,7 +936,7 @@ func _add_asset_row(col: VBoxContainer, label_text: String, kind: int,
 	row.add_child(preview)
 
 	var button := Button.new()
-	button.text = "(none)"
+	button.text = "None"
 	button.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 	# Left, not centred: costume_reward holds a comma list, and a centred clip would
 	# eat the first name as well as the last.
@@ -948,7 +951,7 @@ func _add_asset_row(col: VBoxContainer, label_text: String, kind: int,
 
 	if append:
 		var clear := Button.new()
-		clear.text = "CLEAR"
+		clear.text = "Clear"
 		clear.custom_minimum_size = Vector2(110, 0)
 		clear.add_theme_font_size_override("font_size", FORM_FONT_SIZE)
 		clear.pressed.connect(func(): _set_asset(button, ""))
@@ -1021,7 +1024,7 @@ func _set_asset(button: Button, value: String) -> void:
 					return
 			final_value = existing + ", " + value
 	button.set_meta("value", final_value)
-	button.text = final_value if final_value != "" else "(none)"
+	button.text = final_value if final_value != "" else "None"
 	# The button is narrower than some asset names, so the full value has to be
 	# readable somewhere.
 	button.tooltip_text = final_value
@@ -1081,7 +1084,7 @@ func _open_schedule_picker() -> void:
 	if who == "":
 		who = "NEW " + ("OPPONENT" if _is_opponent() else "NPC")
 	_schedule_picker.setup(_slots, _other_slots, _calendar(),
-			"WHEN IS %s HERE?" % who.to_upper(), _schedule_scope_text())
+			"When is %s here?" % who, _schedule_scope_text())
 
 
 ## The map's calendar block, so the grid can say which days the loop generates.
@@ -1096,7 +1099,7 @@ func _refresh_schedule_button() -> void:
 	if button == null:
 		return
 	if _slots.is_empty():
-		button.text = "(never appears -- click to choose)"
+		button.text = "Never. Click to choose when they appear."
 		button.tooltip_text = ""
 		return
 	# One slot fits spelled out, which is the common case and much easier to read at
@@ -1141,7 +1144,7 @@ func _set_gift_visibility() -> void:
 func _toggle_audition(button: Button) -> void:
 	if _auditioning:
 		_stop_audition()
-		button.text = "PLAY"
+		button.text = "Play"
 		return
 	var music: OptionButton = _w.get("music")
 	if music == null or music.selected < 0:
@@ -1151,7 +1154,7 @@ func _toggle_audition(button: Button) -> void:
 	# first audition.
 	_bgm_before_audition = SoundManagerScript._current_bgm_path
 	_auditioning = true
-	button.text = "STOP"
+	button.text = "Stop"
 	# The preview runs on its own audio bus, so it stays audible with the music slider
 	# muted — muting the overworld loop while assigning tracks is the normal way to work.
 	# The map track is stopped anyway so the two never play over each other.
@@ -1281,7 +1284,7 @@ func _load_values_into_form() -> void:
 	# constants file, the target of every `beaten:` / `met:` gate, and the key the
 	# save file records progress under. Changing one side and not the others is how
 	# the migration made every NPC lose its sprite.
-	_w["unique_key"].text = _existing_name + "     (Rename to, below, changes it everywhere)"
+	_w["unique_key"].text = _existing_name
 
 	_load_schedule()
 	_w["loop"].button_pressed = bool(_character_raw.get("loop", true))
@@ -1382,7 +1385,7 @@ func _on_name_changed() -> void:
 	elif derived == typed:
 		_w["unique_key"].text = derived
 	else:
-		_w["unique_key"].text = "%s     (\"%s\" is taken)" % [derived, typed]
+		_w["unique_key"].text = "%s   (\"%s\" is already used)" % [derived, typed]
 	_revalidate()
 
 
@@ -1403,30 +1406,30 @@ func _typed_name() -> String:
 func _problems() -> Array:
 	var out: Array = []
 	if _typed_name() == "":
-		out.append("name")
+		out.append("a name")
 	if _asset_value("sprite") == "":
-		out.append("sprite")
+		out.append("a sprite")
 	# The grid cannot produce a malformed spec, only an empty one -- and a character
 	# with no slots would never appear anywhere.
 	if _slots.is_empty():
-		out.append("days & times")
+		out.append("when they appear")
 	var rename_to := _rename_target()
 	if rename_to != "" and _taken_names.has(rename_to.to_lower()):
-		out.append("a new key nobody else has (\"%s\" is taken)" % rename_to)
+		out.append("a different new name (\"%s\" is already used)" % rename_to)
 	if _is_opponent():
 		if _w["deck"].text.strip_edges() == "":
-			out.append("deck")
+			out.append("a deck")
 		if _asset_value("sleeve") == "":
-			out.append("sleeve")
+			out.append("a sleeve")
 		var cash: String = _w["cash_reward"].text.strip_edges()
 		if cash != "" and not cash.is_valid_int():
-			out.append("cash reward (must be a whole number)")
+			out.append("cash as a whole number")
 	else:
 		if _gift_type in ["coin", "costume", "sleeve"] and _asset_value("gift_asset") == "":
-			out.append("gift asset")
+			out.append("which gift to give")
 		if _gift_type in ["card", "pack", "available_pack"] \
 				and _w["gift_value"].text.strip_edges() == "":
-			out.append("gift value")
+			out.append("what the gift is")
 	return out
 
 
@@ -1436,17 +1439,17 @@ func _revalidate() -> void:
 	var problems := _problems()
 	_confirm_btn.disabled = not problems.is_empty()
 	if problems.is_empty():
-		_status.text = "ready -- Confirm places the character, then Enter in the placement tool saves"
-		_status.add_theme_color_override("font_color", Color(0.55, 1.0, 0.6))
+		_status.text = "Ready. Press Done to put them on the map, then Enter in the placement tool to save."
+		_status.add_theme_color_override("font_color", DebugFormTheme.SUCCESS)
 	else:
-		_status.text = "still needed:  " + ", ".join(problems)
-		_status.add_theme_color_override("font_color", Color(1.0, 0.7, 0.35))
+		_status.text = "Still needed:  " + ", ".join(problems)
+		_status.add_theme_color_override("font_color", DebugFormTheme.WARN)
 	# Opponents also need an in-battle portrait, which 210 overworld sprites lack.
 	var sprite := _asset_value("sprite")
 	if problems.is_empty() and _is_opponent() and sprite != "" \
 			and not AssetPickerOverlay.has_battle_portrait(sprite):
-		_status.text = "WARNING: \"%s\" has no in-battle portrait -- the match intro will show nothing" % sprite
-		_status.add_theme_color_override("font_color", Color(1.0, 0.62, 0.18))
+		_status.text = "Heads up: \"%s\" has no battle portrait, so the match intro will show nobody." % sprite
+		_status.add_theme_color_override("font_color", DebugFormTheme.WARN)
 
 
 # ============================================================

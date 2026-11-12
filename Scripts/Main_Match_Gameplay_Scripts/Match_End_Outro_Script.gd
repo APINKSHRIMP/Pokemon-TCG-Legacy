@@ -981,8 +981,8 @@ const PACK_HANDOFF_TIME := 0.35
 func _glide_gift_to_pack_rect(rect: TextureRect) -> void:
 	if rect == null or not is_instance_valid(rect):
 		return
-	var target: Rect2 = PackOpeningManager.get_pack_target_rect()
-	var t: float = GameState.pack_time(PACK_HANDOFF_TIME)
+	var target: Rect2 = PackOpeningManager.get_pack_target_rect(rect.texture)
+	var t: float = PackOpeningManager.open_time(PACK_HANDOFF_TIME)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(rect, "offset_left", target.position.x, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
 	tw.tween_property(rect, "offset_top", target.position.y, t).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_QUAD)
