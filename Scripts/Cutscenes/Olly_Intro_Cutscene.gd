@@ -139,13 +139,17 @@ const TEXT_ENERGY := "You received a load of energy cards!"
 # dropped there (the walkthrough builds the deck instead) and the energy line follows it.
 const LINE_ENERGY_AFTER_BONUS := "He also gave me a load of each energy card so we'll never run out. Here."
 const NEWBY_BETTER_DECK := "Better Deck"
-const TEXT_WALK_BUILDER := "You can look at your owned cards, edit your deck, remove any cards in it and add any new cards on this screen"
+# 2026-11-12: the deck walkthrough, one clickable line at a time (see _deck_walkthrough for the order).
+const LINE_WALK_OPEN_DECK := "Open your Cards & Deck option here in the menu to see all of your cards."
+const LINE_WALK_BINDER    := "You can put all of your cards in here. Let's put yours in now!"
+const LINE_WALK_VIEW_DECK := "This is the starter deck you have now. View Deck shows you all the cards in it together at once."
+const LINE_WALK_VIEWER    := "It has a lot of Basic Pokémon in it, but you got all those better cards from the bonus pack."
 const LINES_WALK_BETTER := [
-	"With those cards you got in your bonus pack, I would have a deck that looks a little more like this.",
-	"It'll have a much stronger selection of cards and you should be able to do a lot better with it!",
+	"With those bonus pack cards, I'd have a deck that looks a bit more like this.",
+	"This deck will have a much stronger selection of cards and you should be able to do a lot better with it!",
 	"Don't forget to tweak your deck to your own liking, don't just take my advice!!",
 ]
-const TEXT_WALK_LOAD := "It's a good idea to write down all your different deck ideas so you can quickly switch from one deck to another. You can go back to using your first deck if you want by pressing Load Deck."
+const LINE_COIN_CASE := "This is your Coin Case, where all of your coins are kept."
 const LINES_COIN := [
 	"You can also play matches using whatever coin you want. Your starter deck came with a coin and a case to keep them all in.",
 	"Put the coin I just gave you in there, for your next match you can use that instead if you prefer it!",
@@ -569,20 +573,30 @@ func _check_exit() -> void:
 # ============================================================
 # ISSUE #350 — THE MENU WALKTHROUGHS (deck builder, coin case)
 # ============================================================
-# Olly's "your deck can only keep 60 cards" line stays on screen (it can't be cleared yet, no caret)
-# while the escape menu opens with the Cards & Deck tile glowing and everything else dimmed, then the
-# deck builder opens on its own: the bonus pack's cards fly into their slots. The line can be cleared
-# once both screens have been up for WALK_MIN_VIEW seconds. Then the deck is rebuilt into the better
-# one while Olly talks, renamed, saved, and the menu closes back to the map. The coin case gets the
-# same treatment for "Put the coin I just gave you in there". TWEAKABLE below.
-const WALK_MIN_VIEW    := 2.0     # seconds each screen is up before the line can be cleared
-## ISSUE #466: the escape menu stays up this much longer before the deck builder opens.
-const WALK_MENU_EXTRA  := 1.0
+# Rebuilt 2026-11-12 from the user's play test: EVERY line is a normal clickable line (none timed,
+# none held), and the screens only move between lines, never under one.
+#   Deck:  menu, Cards & Deck tile glowing -> "Open your Cards & Deck..." -> the deck builder opens
+#          EMPTY -> "You can put all of your cards in here" -> the cards fly in (no message) ->
+#          "Your deck can only keep 60 cards..." -> View Deck glows -> "This is the starter deck..."
+#          -> the deck viewer -> "It has a lot of Basic Pokemon..." -> back -> "I'd have a deck that
+#          looks a bit more like this" -> the rebuild, in card ID order (no message) -> saved ->
+#          "This deck will have a much stronger selection..." -> "Don't forget to tweak...".
+#   Coin:  "You can also play matches using whatever coin..." on the map -> menu, Coin Case tile
+#          glowing -> "This is your Coin Case..." -> the case opens empty -> "Put the coin I just
+#          gave you in there..." -> both coins glide in, nothing selected -> back to the map.
+# While it runs a click blocker (WalkBlocker, its own CanvasLayer just under the message box) stops
+# the mouse, keys and pad reaching ANY menu tile or button -- nothing can be highlighted or pressed.
+# A left click anywhere, Space / Enter or pad A clears the line. TWEAKABLE below.
 const WALK_PULSE_SCALE := 1.06    # the highlighted tile's grow
 const WALK_PULSE_TIME  := 0.5     # one grow-and-shrink
 const WALK_DIM         := Color(0.3, 0.3, 0.3, 1.0)
-const WALK_CONVERT_SECONDS := 5.0
-const WALK_UI_LAYER    := 12      # the message box above the menu (10) and sub-menu (11) layers
+## The deck rebuild: one change every (this / number of changes) seconds. 2026-11-12: 4x slower (was 5).
+const WALK_CONVERT_SECONDS := 20.0
+const WALK_AFTER_FLY   := 0.5     # a beat after the cards land before Olly speaks
+const WALK_AFTER_SAVE  := 0.9     # "<DECK> SAVED!" is read before Olly speaks
+const WALK_COIN_LINGER := 1.2     # the coins sit in their slots this long before the case closes
+const WALK_UI_LAYER    := 13      # the message box above the menu (10), sub-menu (11) and blocker (12)
+const WALK_BLOCK_LAYER := 12
 const DECK_MENU_TILE   := "deck/deck_mode_background"
 const COIN_MENU_TILE   := "coin/coin_case_mode_background"
 const DECK_SCENE       := "res://Scenes/Main_Menu_Scenes/Deck_Build_And_Card_View_Scene.tscn"
@@ -592,46 +606,67 @@ const WALK_DONE_KEY    := "olly_intro_walkthrough_done"
 var _walk_ui_layer_was: int = 1
 var _walk_ring: Control = null
 var _walk_pulse: Tween = null
+var _walk_block_layer: CanvasLayer = null
+var _walk_focus_saved: Array = []   # [Control, focus_mode] switched off while the walkthrough runs
 
 
-func _deck_walkthrough(pack_art: String, from_deck: String, to_deck: String) -> void:
+## Full-screen, on its own layer between the menus and the message box: every mouse press, scroll
+## and key / pad press stops here, so no menu tile or button can be hovered, focused or pressed. A
+## left click clears Olly's line; Space / Enter / pad A are let through to the player node, which
+## clears it as it always does.
+class WalkBlocker extends Control:
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			if MapManager.wants_message_input():
+				MapManager.handle_message_accept()
+		accept_event()
+
+	func _input(event: InputEvent) -> void:
+		if event.is_action_pressed("ui_accept"):
+			return
+		if event is InputEventKey or event is InputEventJoypadButton or event is InputEventJoypadMotion:
+			get_viewport().set_input_as_handled()
+
+
+func _deck_walkthrough(_pack_art: String, _from_deck: String, to_deck: String) -> void:
 	if GameState.progress.get(WALK_DONE_KEY, false):
 		await say_all(_speaker, LINES_AFTER_BONUS.slice(0, 2))
 		return
-	var started := Time.get_ticks_msec()
 	_walk_lock(true)
-	_hold_line(_speaker, LINES_AFTER_BONUS[0])
-	var menu: Node = await _open_menu_on(DECK_MENU_TILE)
-	await wait(WALK_MIN_VIEW + WALK_MENU_EXTRA)   # ISSUE #466: a second longer on the menu
+	await _open_menu_on(DECK_MENU_TILE)
+	await _walk_say(LINE_WALK_OPEN_DECK)
 	var builder: Node = await _open_sub_menu(DECK_SCENE)
-	if builder == null or not builder.has_method("walkthrough_begin"):
-		await _release_line()
+	if builder == null or not builder.has_method("walkthrough_show_empty"):
 		await _close_walk_menu()
 		return
 	builder.walkthrough_begin()
-	var shown := Time.get_ticks_msec()
-	await builder.walkthrough_reveal_new_cards("base1", _count_ids(GameState.FIXED_PACKS.get(pack_art, [])))
-	var left: float = WALK_MIN_VIEW - float(Time.get_ticks_msec() - shown) / 1000.0
-	if left > 0.0:
-		await wait(left)
-	await _release_line()
-	await _system_line(TEXT_WALK_BUILDER)
+	await builder.walkthrough_show_empty("base1")
+	_freeze_focus(builder)
+	await _walk_say(LINE_WALK_BINDER)
+	await builder.walkthrough_fly_in()
+	await wait(WALK_AFTER_FLY)
+	await _walk_say(LINES_AFTER_BONUS[0])
 
-	# The better deck: anything it needs that the player doesn't own yet is given first.
+	# View Deck: the starter deck as it is.
+	builder.walkthrough_highlight_view_deck(true)
+	await _walk_say(LINE_WALK_VIEW_DECK)
+	builder.walkthrough_open_viewer()
+	_freeze_focus(builder)
+	await _walk_say(LINE_WALK_VIEWER)
+	builder.walkthrough_close_viewer()
+	_freeze_focus(builder)
+	await _walk_say(LINES_WALK_BETTER[0])
+
+	# The better deck: anything it needs that the player doesn't own yet is given first, then it is
+	# built card by card (no message on screen) and saved.
 	var target := _read_deck(GameState.STARTER_DECKS_FOLDER + to_deck + ".json")
 	_grant_missing(target)
-	var converting := [true]
-	var run := func() -> void:
-		await builder.walkthrough_convert_to(target, WALK_CONVERT_SECONDS)
-		converting[0] = false
-	run.call()
-	await say_all(_speaker, LINES_WALK_BETTER)
-	close_box()
-	while converting[0] and is_inside_tree():
-		await get_tree().process_frame
+	await builder.walkthrough_convert_to(target, WALK_CONVERT_SECONDS)
+	await wait(0.4)
 	await builder.walkthrough_save_as(to_deck)
-	await wait(0.6)
-	await _system_line(TEXT_WALK_LOAD)
+	await wait(WALK_AFTER_SAVE)
+	await _walk_say(LINES_WALK_BETTER[1])
+	await _walk_say(LINES_WALK_BETTER[2])
 	builder.walkthrough_end()
 	GameState.progress[WALK_DONE_KEY] = true
 	GameState.save_progress()
@@ -643,56 +678,43 @@ func _say_coin_lines() -> void:
 	if GameState.progress.get(WALK_DONE_KEY + "_coin", false):
 		await say(_speaker, LINES_COIN[1])
 		return
+	close_box()
 	_walk_lock(true)
 	# ISSUE #470: the coins are hidden from the moment the case builds them, so the one flying in is
-	# not drawn over a copy already sitting in its slot.
-	var hide: Array = []
+	# not drawn over a copy already sitting in its slot (and none of them is auto-selected).
+	var coins: Array = []
 	for c in GameState.progress.get("coins", []):
-		hide.append(String(c) if String(c).ends_with(".png") else String(c) + ".png")
-	GameState.coin_walk_hide = hide
-	_hold_line(_speaker, LINES_COIN[1])
+		coins.append(String(c) if String(c).ends_with(".png") else String(c) + ".png")
+	GameState.coin_walk_hide = coins.duplicate()
 	await _open_menu_on(COIN_MENU_TILE)
-	await wait(WALK_MIN_VIEW)
+	await _walk_say(LINE_COIN_CASE)
 	var case: Node = await _open_sub_menu(COIN_SCENE)
 	if case != null and case.has_method("walkthrough_place_coins"):
+		case.walkthrough_active = true   # its own keys off from the start, not only while coins fly
 		if not case.is_node_ready() or case.grid.get_child_count() == 0:
 			await case.coins_built
-		var coins: Array = []
-		for c in GameState.progress.get("coins", []):
-			coins.append(String(c) if String(c).ends_with(".png") else String(c) + ".png")
+		await get_tree().process_frame
+		_freeze_focus(case)
+		await _walk_say(LINES_COIN[1])
 		await case.walkthrough_place_coins(coins)
-		await wait(WALK_MIN_VIEW * 0.5)
-	await _release_line()
+		await wait(WALK_COIN_LINGER)
+	else:
+		await _walk_say(LINES_COIN[1])
 	GameState.progress[WALK_DONE_KEY + "_coin"] = true
 	GameState.save_progress()
 	await _close_walk_menu()
 
 
-## A line that stays up and can't be cleared until _release_line().
-func _hold_line(speaker: Dictionary, text: String) -> void:
-	_walk_ui_layer_was = map._ui_layer.layer
+## One of Olly's lines over the menus: the normal clickable box, taken down once it is cleared so
+## the screen behind can move on with nothing over it.
+func _walk_say(text: String) -> void:
 	map._ui_layer.layer = WALK_UI_LAYER
-	MapManager.show_cutscene_message(text, speaker, func(): line_advanced.emit())
-	MapManager.message_panel.hold_advance(true)
-
-
-func _release_line() -> void:
-	MapManager.message_panel.hold_advance(false)
-	await line_advanced
-	close_box()
-
-
-func _system_line(text: String) -> void:
-	map._ui_layer.layer = WALK_UI_LAYER
-	# No speaker and nobody being talked to: the plain system box.
-	MapManager.current_opponent = null
-	MapManager.current_npc = null
-	await say({}, text)
+	await say(_speaker, text)
 	close_box()
 
 
 ## The escape menu, opened for the player, with `tile` glowing (the selection ring) and pulsing and
-## every other tile dimmed. Its own keys are switched off.
+## every other tile dimmed. Its own keys are switched off and nothing in it can take focus.
 func _open_menu_on(tile: String) -> Node:
 	if map._menu_instance == null or not is_instance_valid(map._menu_instance):
 		map._open_menu_overlay()
@@ -701,6 +723,7 @@ func _open_menu_on(tile: String) -> Node:
 	menu.set_process_input(false)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	_freeze_focus(menu)
 	var target := menu.get_node_or_null(tile) as Control
 	if target == null:
 		return menu
@@ -735,18 +758,38 @@ func _open_sub_menu(scene_path: String) -> Node:
 	var inst: Node = layer.get_child(0)
 	if not inst.is_node_ready():
 		await inst.ready
+	_freeze_focus(inst)
 	return inst
 
 
+## Every focusable Control under `root` stops taking focus (keys / pad can't land on anything),
+## and whatever has focus now loses it. Put back by _close_walk_menu.
+func _freeze_focus(root: Node) -> void:
+	if root == null or not is_instance_valid(root):
+		return
+	var vp := get_viewport()
+	if vp != null:
+		vp.gui_release_focus()
+	for n in root.find_children("*", "Control", true, false):
+		var c := n as Control
+		if c.focus_mode != Control.FOCUS_NONE:
+			_walk_focus_saved.append([c, c.focus_mode])
+			c.focus_mode = Control.FOCUS_NONE
+
+
 func _close_walk_menu() -> void:
+	close_box()
 	if _walk_pulse != null and _walk_pulse.is_valid():
 		_walk_pulse.kill()
 	_walk_pulse = null
 	if _walk_ring != null and is_instance_valid(_walk_ring):
 		_walk_ring.queue_free()
 	_walk_ring = null
+	for pair in _walk_focus_saved:
+		if is_instance_valid(pair[0]):
+			(pair[0] as Control).focus_mode = pair[1]
+	_walk_focus_saved.clear()
 	map._close_menu_overlay()
-	map._ui_layer.layer = _walk_ui_layer_was
 	# Closing the menu hands the player back; the cutscene still owns them.
 	player.lock_movement()
 	_walk_lock(false)
@@ -755,10 +798,27 @@ func _close_walk_menu() -> void:
 
 
 ## ISSUE #467 / #468 / #470: for the whole menu walkthrough the overworld music keeps playing (the menus'
-## track is held off) and the menu cursor is switched off, so only the message box takes A / B.
+## track is held off), the menu cursor is switched off and the click blocker is up, so only the message
+## box takes input.
 func _walk_lock(on: bool) -> void:
 	SoundManagerScript.hold_world_bgm = on
 	InputDevice.set_suspended(on)
+	if on:
+		_walk_ui_layer_was = map._ui_layer.layer
+		map._ui_layer.layer = WALK_UI_LAYER
+		if _walk_block_layer == null or not is_instance_valid(_walk_block_layer):
+			_walk_block_layer = CanvasLayer.new()
+			_walk_block_layer.layer = WALK_BLOCK_LAYER
+			var blocker := WalkBlocker.new()
+			blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+			blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			_walk_block_layer.add_child(blocker)
+			map.add_child(_walk_block_layer)
+	else:
+		map._ui_layer.layer = _walk_ui_layer_was
+		if _walk_block_layer != null and is_instance_valid(_walk_block_layer):
+			_walk_block_layer.queue_free()
+		_walk_block_layer = null
 
 
 func _count_ids(ids: Array) -> Dictionary:

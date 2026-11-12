@@ -163,6 +163,7 @@ func _do_sleep() -> void:
 	)
 
 	# Sleep through the night: date +1 and Night/Bedtime -> Morning (the arrival night may sleep in).
+	GameState.going_to_bed = true   # no clock until the player wakes up
 	GameState.sleep_until_next_day()
 
 	var tween := create_tween()

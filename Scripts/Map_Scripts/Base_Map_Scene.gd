@@ -215,6 +215,7 @@ func _ready():
 	# Time moves on as maps load too, so any points still waiting (a fish banked just before a
 	# quit, say) land before anything below reads the time.
 	GameState.settle_time_points()
+	GameState.going_to_bed = false   # woken up: the clock may peek again
 	var is_sleep_wakeup := GameState.sleep_wakeup_fade
 	GameState.sleep_wakeup_fade = false
 	if is_sleep_wakeup:

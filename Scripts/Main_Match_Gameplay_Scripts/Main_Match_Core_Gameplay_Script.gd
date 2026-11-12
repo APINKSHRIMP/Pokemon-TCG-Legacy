@@ -7268,7 +7268,17 @@ func start_energy_attachment() -> void:
 	attachment_targets.append_array(player_bench)
 	if player_active_pokemon != null:
 		attachment_targets.append(player_active_pokemon)
-	
+
+	# The newby tutorial locks the Energy onto the one Pokemon it is meant for: only that
+	# one is offered (mouse, keys and pad all pick from this screen).
+	attachment_targets = tutorial.filter_attach_targets(energy_card_awaiting_target, attachment_targets)
+	if attachment_targets.is_empty():
+		var why: String = tutorial.gate("attach", {"energy": energy_card_awaiting_target, "target": player_active_pokemon})
+		energy_card_awaiting_target = null
+		clear_current_action_selection()
+		if why != "":
+			await tutorial.show_block(why)
+		return
 	
 	# Enter attach mode and show only valid targets
 	card_attach_mode_active = true
@@ -8937,6 +8947,7 @@ func start_retreat() -> void:
 	action_button.text = str(retreat_cost_remaining) + " ENERGY REMAINING"
 	action_button.disabled = true
 	action_button.theme = theme_disabled
+	tutorial.on_retreat_energy_shown()
 
 # Shows the player's bench for selecting which Pokemon to swap into the active spot
 func start_retreat_bench_selection() -> void:
@@ -9003,6 +9014,10 @@ func drag_attach_energy(energy: card_object, target: card_object) -> void:
 	if target != player_active_pokemon and target not in player_bench:
 		return
 	var tut_block: String = tutorial.gate("play", {"card": energy, "action": "ATTACH_ENERGY"})
+	if tut_block == "":
+		# Dropped on the wrong Pokemon: refuse here (the card flies home) rather than in
+		# perform_energy_attachment, which would open the target screen instead.
+		tut_block = tutorial.gate("attach", {"energy": energy, "target": target})
 	if tut_block != "":
 		await tutorial.show_block(tut_block)
 		return
@@ -12984,6 +12999,7 @@ func _show_card_zoom(card_node: CardDisplay) -> void:
 	# the live panel. Freeing and rebuilding the CanvasLayer lets the board flash through for a frame.
 	if is_zoomed and detail_panel != null and is_instance_valid(detail_panel):
 		detail_panel.show_card(uid)
+		detail_panel.retarget(card_node)
 		return
 
 	is_zoomed = true
@@ -12996,9 +13012,12 @@ func _show_card_zoom(card_node: CardDisplay) -> void:
 
 	# No backdrop: CardDetailPanel paints its own opaque scrolling field, and a
 	# black rect added here would be a sibling at z 0 over that field at z -100.
-	detail_panel = CardDetailPanel.new()
+	# match_ground: the preview opens on the match's own backdrop + stripes, so as it
+	# fades in the board disappears and the background never changes.
+	detail_panel = CardDetailPanel.new(true)
 	zoom_overlay.add_child(detail_panel)
 	detail_panel.show_card(uid)
+	detail_panel.open_from(card_node)
 
 
 func _hide_card_zoom() -> void:
@@ -13007,10 +13026,13 @@ func _hide_card_zoom() -> void:
 		return
 	is_zoomed = false
 	zoomed_card_node = null
-	detail_panel = null
-	if zoom_overlay != null:
+	# The panel plays its close animation and frees the overlay itself.
+	if detail_panel != null and is_instance_valid(detail_panel):
+		detail_panel.close_and_free()
+	elif zoom_overlay != null:
 		zoom_overlay.queue_free()
-		zoom_overlay = null
+	detail_panel = null
+	zoom_overlay = null
 
 
 # Both flags are static, so a match left while the preview was held or the log was

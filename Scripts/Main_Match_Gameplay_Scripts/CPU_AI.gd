@@ -4845,7 +4845,9 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	if main.card_fx != null: main.card_fx.attack_declared(main.opponent_active_pokemon)   # ISSUE #348
+	main.tutorial.on_cpu_attack_declared(main.opponent_active_pokemon, chosen_name)   # tutorial: grow the attack box
 	await main.show_message("Opponent's " + main.opponent_active_pokemon.metadata["name"].to_upper() + " used " + chosen_name.to_upper() + "!")
+	main.tutorial.on_cpu_attack_start()   # ...and shrink it before the animation
 	if main._should_bail(): return
 	await main.play_attack_intent(main.opponent_active_pokemon, main.player_active_pokemon, chosen_attack)   # ISSUE #348
 	if main._should_bail(): return

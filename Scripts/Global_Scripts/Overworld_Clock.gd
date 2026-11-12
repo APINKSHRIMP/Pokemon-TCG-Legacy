@@ -143,6 +143,14 @@ func _release_banner() -> void:
 
 func _process(delta: float) -> void:
 	start_delay = maxf(0.0, start_delay - delta)
+	# Going to bed: hide, and keep the night's time drawn (and remembered in
+	# last_seen_clock_hours) so the morning map sees the change and peeks on waking.
+	if GameState.going_to_bed:
+		if _showing:
+			_slide(false)
+		_peek_left = 0.0
+		_carried_peek = 0.0
+		return
 	var target: float = GameState.clock_hours()
 
 	# Triggers: the pause menu closing, and the time being anything but what is drawn. The
@@ -183,7 +191,7 @@ func _process(delta: float) -> void:
 
 
 func _should_show() -> bool:
-	if not GameState.overworld_clock_on():
+	if not GameState.overworld_clock_on() or GameState.going_to_bed:
 		return false
 	if MapManager.cutscene_active or MapManager.is_fishing():
 		return false

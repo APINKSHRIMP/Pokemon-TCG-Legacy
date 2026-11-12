@@ -321,8 +321,36 @@ var _card_image : TextureRect = null
 var _box_root   : Control = null
 var _current_uid : String = ""
 
+# ── OPEN / CLOSE ANIMATION (open_from / close_and_free) ──────────────────────
+# The ground is the SAME backdrop the screen underneath already shows (the match
+# passes match_ground = true and gets the overworld backdrop + stripes), so fading
+# it in reads as "everything else fades away" while the background never changes.
+# The card flies from where it sat to its big spot on the left, and the info boxes
+# drop in from above one after another. Releasing reverses it.
+# TWEAKABLE: every time here is in seconds at MEDIUM animation speed; slow / fast
+# scale them through GameState.item_animation_speed.
+const OPEN_GROUND_TIME   : float = 0.45  # backdrop fades over the board
+const OPEN_CARD_TIME     : float = 0.60  # card flies to the left and grows
+const OPEN_BOX_DELAY     : float = 0.30  # first box starts this long after the card
+const OPEN_BOX_TIME      : float = 0.35  # one box's fade + drop
+const OPEN_BOX_STAGGER   : float = 0.07  # next box starts this long after the last (squeezed to fit 1s)
+const OPEN_TOTAL         : float = 1.00  # the boxes are squeezed so the last one lands by here
+const BOX_DROP_PX        : float = 40.0  # how far above its spot a box starts
+const CLOSE_BOX_TIME     : float = 0.20  # boxes fade out
+const CLOSE_CARD_TIME    : float = 0.40  # card shrinks back home
+const CLOSE_GROUND_DELAY : float = 0.10
+const CLOSE_GROUND_TIME  : float = 0.40
+const MEDIUM_SPEED       : float = 1.375 # GameState ITEM_SPEED_PRESETS["medium"]
 
-func _init() -> void:
+var _ground_nodes : Array = []
+var _source : TextureRect = null      # the card on screen the preview came out of
+var _opening : bool = false           # boxes built during the open cascade in
+var _open_started_ms : int = 0
+var _anim_tween : Tween = null
+var _closing : bool = false
+
+
+func _init(match_ground: bool = false) -> void:
 	offset_left   = 0.0
 	offset_top    = 0.0
 	offset_right  = UIKit.screen_w()
@@ -332,7 +360,14 @@ func _init() -> void:
 	# The striped, slowly scrolling field every other screen sits on. Added
 	# first and at UIKit.Z_FIELD, so it is the ground the preview is drawn on
 	# — which is why none of the three call sites needs a backdrop any more.
-	UIKit.add_field(self)
+	# The match asks for its own ground (the overworld backdrop + stripes) so the
+	# preview opens on exactly the background the board is already on.
+	if match_ground:
+		MatchBackdrop.add_field(self)
+	else:
+		UIKit.add_field(self)
+	for c in get_children():
+		_ground_nodes.append(c)
 
 	_card_image = TextureRect.new()
 	_card_image.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
@@ -412,6 +447,148 @@ func show_card(card_uid: String) -> void:
 		return
 
 	_build(card)
+	if _opening:
+		_cascade_boxes()
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# OPEN / CLOSE ANIMATION
+# ══════════════════════════════════════════════════════════════════════════
+
+## Seconds for `t` (authored at medium speed) at the player's animation speed.
+func _t(t: float) -> float:
+	var speed: float = float(GameState.item_animation_speed) if GameState.item_animation_speed > 0.0 else MEDIUM_SPEED
+	return t * MEDIUM_SPEED / speed
+
+
+## The card art's rect on screen, in this panel's (canvas layer) coordinates.
+static func _screen_rect_of(tr: TextureRect) -> Rect2:
+	if tr == null or not is_instance_valid(tr) or not tr.is_inside_tree():
+		return Rect2()
+	var local := Rect2(Vector2.ZERO, tr.size)
+	if tr.texture != null and tr.stretch_mode in [TextureRect.STRETCH_KEEP_ASPECT,
+			TextureRect.STRETCH_KEEP_ASPECT_CENTERED, TextureRect.STRETCH_KEEP_ASPECT_COVERED]:
+		var ts: Vector2 = tr.texture.get_size()
+		if ts.x > 0.0 and ts.y > 0.0 and tr.size.x > 0.0 and tr.size.y > 0.0:
+			var s: float = minf(tr.size.x / ts.x, tr.size.y / ts.y)
+			var drawn: Vector2 = ts * s
+			var pos := Vector2.ZERO
+			if tr.stretch_mode != TextureRect.STRETCH_KEEP_ASPECT:
+				pos = (tr.size - drawn) * 0.5
+			local = Rect2(pos, drawn)
+	var xf := tr.get_global_transform_with_canvas()
+	return Rect2(xf * local.position, local.size * xf.get_scale())
+
+
+func _set_source(tr: TextureRect) -> void:
+	if _source != null and is_instance_valid(_source):
+		_source.self_modulate.a = 1.0
+	_source = tr
+
+
+## The preview has moved on to another card (held key, mouse slid): closing flies
+## back to THAT card. The new card swaps in at once, as it always has.
+func retarget(tr: TextureRect) -> void:
+	if _closing:
+		return
+	_set_source(tr)
+	if _source != null and is_instance_valid(_source) and not _opening:
+		_source.self_modulate.a = 0.0
+
+
+## Plays the opening: call straight after show_card() for the first card.
+## `source` is the card on screen it grows out of (null = no flight, just fades).
+func open_from(source: TextureRect) -> void:
+	var home := Rect2(Vector2(card_left(), MARGIN_TOP), Vector2(card_width(), card_height()))
+	var from := _screen_rect_of(source)
+	_set_source(source)
+	if _t(1.0) < 0.05:
+		return   # reduce motion: no animation at all
+	_opening = true
+	_open_started_ms = Time.get_ticks_msec()
+	if _anim_tween != null:
+		_anim_tween.kill()
+	_anim_tween = create_tween().set_parallel(true)
+	for g in _ground_nodes:
+		g.modulate.a = 0.0
+		_anim_tween.tween_property(g, "modulate:a", 1.0, _t(OPEN_GROUND_TIME))
+	if from.size.x > 1.0:
+		if _source != null:
+			_source.self_modulate.a = 0.0
+		_card_image.position = from.position
+		_card_image.size = from.size
+		_anim_tween.tween_property(_card_image, "position", home.position, _t(OPEN_CARD_TIME)) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		_anim_tween.tween_property(_card_image, "size", home.size, _t(OPEN_CARD_TIME)) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	else:
+		_card_image.modulate.a = 0.0
+		_anim_tween.tween_property(_card_image, "modulate:a", 1.0, _t(OPEN_GROUND_TIME))
+	_anim_tween.chain().tween_callback(func(): _opening = false)
+	_cascade_boxes()
+
+
+## Every box fades in and drops from above, each starting a beat after the last,
+## squeezed so the last one lands by OPEN_TOTAL.
+func _cascade_boxes() -> void:
+	var boxes: Array = _box_root.get_children()
+	var n: int = boxes.size()
+	if n == 0:
+		return
+	var elapsed: float = float(Time.get_ticks_msec() - _open_started_ms) / 1000.0
+	var first: float = maxf(0.0, _t(OPEN_BOX_DELAY) - elapsed)
+	var room: float = maxf(0.0, _t(OPEN_TOTAL - OPEN_BOX_DELAY - OPEN_BOX_TIME))
+	var stagger: float = _t(OPEN_BOX_STAGGER)
+	if n > 1:
+		stagger = minf(stagger, room / float(n - 1))
+	var tw := create_tween().set_parallel(true)
+	for i in n:
+		var holder: Control = boxes[i]
+		var end_y: float = holder.position.y
+		holder.position.y = end_y - BOX_DROP_PX
+		holder.modulate.a = 0.0
+		var d: float = first + stagger * i
+		tw.tween_property(holder, "position:y", end_y, _t(OPEN_BOX_TIME)).set_delay(d) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(holder, "modulate:a", 1.0, _t(OPEN_BOX_TIME)).set_delay(d)
+
+
+## Plays the closing (boxes fade, the card shrinks back to where it came from, the
+## board fades back in) and then frees the CanvasLayer this panel sits on. The
+## caller forgets the panel straight away: nothing here blocks input.
+func close_and_free() -> void:
+	if _closing:
+		return
+	_closing = true
+	_opening = false
+	var layer: Node = get_parent()
+	var finish := func() -> void:
+		if _source != null and is_instance_valid(_source):
+			_source.self_modulate.a = 1.0
+		if layer is CanvasLayer and is_instance_valid(layer):
+			layer.queue_free()
+		elif is_instance_valid(self):
+			queue_free()
+	if _t(1.0) < 0.05 or not is_inside_tree():
+		finish.call()
+		return
+	if _anim_tween != null:
+		_anim_tween.kill()
+	_anim_tween = create_tween().set_parallel(true)
+	for holder in _box_root.get_children():
+		_anim_tween.tween_property(holder, "modulate:a", 0.0, _t(CLOSE_BOX_TIME))
+		_anim_tween.tween_property(holder, "position:y", holder.position.y - BOX_DROP_PX * 0.5, _t(CLOSE_BOX_TIME))
+	var to := _screen_rect_of(_source)
+	if to.size.x > 1.0:
+		_anim_tween.tween_property(_card_image, "position", to.position, _t(CLOSE_CARD_TIME)) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT).set_delay(_t(0.05))
+		_anim_tween.tween_property(_card_image, "size", to.size, _t(CLOSE_CARD_TIME)) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT).set_delay(_t(0.05))
+	else:
+		_anim_tween.tween_property(_card_image, "modulate:a", 0.0, _t(CLOSE_CARD_TIME))
+	for g in _ground_nodes:
+		_anim_tween.tween_property(g, "modulate:a", 0.0, _t(CLOSE_GROUND_TIME)).set_delay(_t(CLOSE_GROUND_DELAY))
+	_anim_tween.chain().tween_callback(finish)
 
 
 ## Loads (and caches) one card's JSON. Public so callers can ask questions
@@ -1364,7 +1541,12 @@ func _make_box(pos: Vector2, size: Vector2, accent: Color) -> Control:
 	mat.set_shader_parameter("shadow_dy",     SHADOW_DY)
 	mat.set_shader_parameter("shadow_blur",   SHADOW_BLUR)
 	rect.material = mat
-	_box_root.add_child(rect)
+	# One holder per box (the glass + its content) so the open animation can fade
+	# and drop each box as a unit. It sits at the origin, so no layout number moved.
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_box_root.add_child(holder)
+	holder.add_child(rect)
 
 	# The inflated rects overlap their neighbours, so the content has to sit in
 	# a band of its own — otherwise the next box's padding draws over this
@@ -1374,7 +1556,7 @@ func _make_box(pos: Vector2, size: Vector2, accent: Color) -> Control:
 	content.size = size
 	content.z_index = 1
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_box_root.add_child(content)
+	holder.add_child(content)
 	return content
 
 

@@ -1180,6 +1180,7 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	# hand the new card to the live panel rather than rebuilding the CanvasLayer.
 	if _is_zoomed and _detail_panel != null and is_instance_valid(_detail_panel):
 		_detail_panel.show_card(card_id)
+		_detail_panel.retarget(card_rect)
 		return
 
 	_is_zoomed = true
@@ -1193,6 +1194,7 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	_detail_panel = CardDetailPanel.new()
 	_zoom_overlay.add_child(_detail_panel)
 	_detail_panel.show_card(card_id)
+	_detail_panel.open_from(card_rect)
 
 
 func _hide_zoom() -> void:
@@ -1200,7 +1202,10 @@ func _hide_zoom() -> void:
 		return
 	_is_zoomed    = false
 	_zoomed_card  = null
-	_detail_panel = null
-	if _zoom_overlay != null:
+	# The panel plays its close animation and frees the overlay itself.
+	if _detail_panel != null and is_instance_valid(_detail_panel):
+		_detail_panel.close_and_free()
+	elif _zoom_overlay != null:
 		_zoom_overlay.queue_free()
-		_zoom_overlay = null
+	_detail_panel = null
+	_zoom_overlay = null

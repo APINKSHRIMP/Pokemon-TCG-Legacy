@@ -3702,6 +3702,7 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	# the bright UI underneath show through for a frame, which is the white flash between cards.
 	if is_zoomed and detail_panel != null and is_instance_valid(detail_panel):
 		detail_panel.show_card(card_id)
+		detail_panel.retarget(card_rect)
 		return
 
 	is_zoomed = true
@@ -3714,6 +3715,7 @@ func _show_zoom(card_rect: TextureRect) -> void:
 	detail_panel = CardDetailPanel.new()
 	zoom_overlay.add_child(detail_panel)
 	detail_panel.show_card(card_id)
+	detail_panel.open_from(card_rect)
 
 
 ## Removes the zoom overlay and restores all UI elements.
@@ -3723,11 +3725,13 @@ func _hide_zoom() -> void:
 
 	is_zoomed = false
 	zoomed_card = null
-	detail_panel = null
-
-	if zoom_overlay != null:
+	# The panel plays its close animation and frees the overlay itself.
+	if detail_panel != null and is_instance_valid(detail_panel):
+		detail_panel.close_and_free()
+	elif zoom_overlay != null:
 		zoom_overlay.queue_free()
-		zoom_overlay = null
+	detail_panel = null
+	zoom_overlay = null
 
 
 
@@ -4498,14 +4502,23 @@ var _owned_override: Dictionary = {}   # card_id -> copies to hold back from the
 var _walk_held: Dictionary = {}        # ISSUE #466: card_id -> copies owned, held back by "__all__"
 ## ISSUE #466: TWEAKABLE - each card's fade + fall into its slot, the gap before the next one sets off,
 ## and how quickly the grid scroll catches up with the newest card (higher = tighter follow).
-const WALK_ALL_FLY_TIME := 0.5
-const WALK_ALL_STAGGER  := 0.1
-const WALK_ALL_FOLLOW   := 4.0
+## 2026-11-12: twice as fast as before (0.5 / 0.1), with the grid easing down behind them.
+const WALK_ALL_FLY_TIME := 0.25
+const WALK_ALL_STAGGER  := 0.05
+const WALK_ALL_FOLLOW   := 5.0
 ## ISSUE #469: TWEAKABLE - the +1 / -1 that floats off a card while Olly rebuilds the deck.
-const WALK_DELTA_RISE   := 60.0
-const WALK_DELTA_TIME   := 0.9
-const WALK_DELTA_FONT   := 44
+## 2026-11-12: bigger, bolder and more saturated so the player can follow the rebuild.
+const WALK_DELTA_RISE   := 70.0
+const WALK_DELTA_TIME   := 1.4
+const WALK_DELTA_FONT   := 60
+const WALK_DELTA_OUTLINE := 16
+const WALK_DELTA_ADD_COL := Color("00FF4C")
+const WALK_DELTA_CUT_COL := Color("FF1F1F")
+## The rebuild scrolls each changed card into view this slowly (it was 0.25 for everything).
+const WALK_CONVERT_ROW_SCROLL := 0.6
 var _walk_blocker: Control = null
+var _walk_ring_layer: Control = null
+var _walk_pulse: Tween = null
 
 
 func walkthrough_begin() -> void:
@@ -4515,11 +4528,72 @@ func walkthrough_begin() -> void:
 	_walk_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_walk_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
 	_walk_blocker.z_index = 400
+	# The blocker eats every click and scroll, so a left click is handed to Olly's message box
+	# here (it never reaches the player's _unhandled_input, which is what normally clears it).
+	_walk_blocker.gui_input.connect(_walk_blocker_input)
 	add_child(_walk_blocker)
+	# Nothing on this screen may take the keyboard / pad focus while Olly drives it.
+	get_viewport().gui_release_focus()
+
+
+func _walk_blocker_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if MapManager.wants_message_input():
+			MapManager.handle_message_accept()
+	_walk_blocker.accept_event()
+
+
+## The blocker back on top of everything (a full-screen overlay added after it would take input).
+func _walk_blocker_to_top() -> void:
+	if _walk_blocker != null and is_instance_valid(_walk_blocker):
+		move_child(_walk_blocker, get_child_count() - 1)
+
+
+## The View Deck button glows (the selection ring) and pulses, or stops.
+func walkthrough_highlight_view_deck(on: bool) -> void:
+	if _walk_pulse != null and _walk_pulse.is_valid():
+		_walk_pulse.kill()
+	_walk_pulse = null
+	view_deck_btn.scale = Vector2.ONE
+	if _walk_ring_layer != null and is_instance_valid(_walk_ring_layer):
+		_walk_ring_layer.queue_free()
+	_walk_ring_layer = null
+	if not on:
+		return
+	_walk_ring_layer = Control.new()
+	_walk_ring_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_walk_ring_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_walk_ring_layer.z_index = 390
+	add_child(_walk_ring_layer)
+	_walk_blocker_to_top()
+	var ring := UIKit.add_selection_ring(_walk_ring_layer, view_deck_btn)
+	UIKit.strengthen_ring(ring)
+	view_deck_btn.pivot_offset = view_deck_btn.size * 0.5
+	_walk_pulse = view_deck_btn.create_tween().set_loops()
+	_walk_pulse.tween_property(view_deck_btn, "scale", Vector2.ONE * 1.08, 0.25).set_trans(Tween.TRANS_SINE)
+	_walk_pulse.tween_property(view_deck_btn, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_SINE)
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+
+
+## Opens / closes the deck viewer exactly as View Deck / Close would, still behind the blocker.
+func walkthrough_open_viewer() -> void:
+	walkthrough_highlight_view_deck(false)
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
+	_on_view_deck_pressed()
+	_walk_blocker_to_top()
+	get_viewport().gui_release_focus()
+
+
+func walkthrough_close_viewer() -> void:
+	if deck_viewer_active:
+		_close_deck_viewer()
+	_walk_blocker_to_top()
+	get_viewport().gui_release_focus()
 
 
 func walkthrough_end() -> void:
 	walkthrough_active = false
+	walkthrough_highlight_view_deck(false)
 	_owned_override.clear()
 	if _walk_blocker != null and is_instance_valid(_walk_blocker):
 		_walk_blocker.queue_free()
@@ -4529,11 +4603,28 @@ func walkthrough_end() -> void:
 ## Shows `set_id` with the cards in `new_counts` (card_id -> copies just received) held back as empty
 ## slots, scrolls so the first row holding one is the top row, then flies each copy in -- the copies
 ## of one card a moment apart -- and ticks its "in deck / owned" count up as it lands.
-func walkthrough_reveal_new_cards(set_id: String, new_counts: Dictionary) -> void:
+func walkthrough_reveal_new_cards(set_id: String, _new_counts: Dictionary) -> void:
 	# ISSUE #466: every owned card in the set flies in now (the deck's as well as the new ones), all
 	# together - one sets off every WALK_ALL_STAGGER and each takes WALK_ALL_FLY_TIME - while the grid
 	# scrolls smoothly down behind them. `new_counts` is kept for the old one-by-one reveal below.
-	await _walk_reveal_all(set_id)
+	await walkthrough_show_empty(set_id)
+	await walkthrough_fly_in()
+
+
+## 2026-11-12: the two halves of the reveal, so Olly can talk in between. First the set with every
+## owned card held back as an empty slot (the binder, empty)...
+var _walk_entries: Array = []   # [cell, card_id, copies], filled by walkthrough_show_empty
+
+func walkthrough_show_empty(set_id: String) -> void:
+	_walk_entries = await _walk_hold_all(set_id)
+	_walk_blocker_to_top()
+	get_viewport().gui_release_focus()
+
+
+## ...then every card flies into its slot while the grid eases down like pages of a binder.
+func walkthrough_fly_in() -> void:
+	await _walk_fly_entries(_walk_entries)
+	_walk_entries = []
 
 
 ## The pre-#466 reveal: only the new cards, one after another. Kept, unused.
@@ -4596,7 +4687,10 @@ func walkthrough_convert_to(target: Dictionary, seconds: float) -> void:
 				(e_up if is_e else adds).append([cid, 1])
 			else:
 				(e_down if is_e else cuts).append([cid, -1])
+	# 2026-11-12: in card ID order (set, then number), adds and cuts mixed, so the grid only ever
+	# moves DOWN and the player can follow each change. Energy still comes last (it is at the end).
 	steps = adds + cuts + e_down + e_up
+	steps.sort_custom(func(x, y): return _walk_id_key(String(x[0])) < _walk_id_key(String(y[0])))
 	if steps.is_empty():
 		return
 	var gap: float = seconds / float(steps.size())
@@ -4605,7 +4699,15 @@ func walkthrough_convert_to(target: Dictionary, seconds: float) -> void:
 		await get_tree().create_timer(gap).timeout
 
 
-## Names the deck, "presses" Save (the button pops) and shows DECK SAVED!. The old deck's file is
+## "base1-55" -> "base1-00055", so IDs sort by number within a set.
+func _walk_id_key(cid: String) -> String:
+	var parts := cid.split("-")
+	if parts.size() != 2:
+		return cid
+	return parts[0] + "-" + parts[1].pad_zeros(5)
+
+
+## Names the deck, "presses" Save (the button pops) and shows "<NAME> SAVED!". The old deck's file is
 ## left where it was, so Load Deck still has it.
 func walkthrough_save_as(deck_name: String) -> void:
 	deck_name_edit.text = deck_name
@@ -4616,7 +4718,7 @@ func walkthrough_save_as(deck_name: String) -> void:
 	tw.tween_property(save_btn, "scale", Vector2.ONE, 0.12)
 	await tw.finished
 	_write_deck_save()
-	_show_deck_message(MSG_SAVED_TEXT, MSG_SAVED_COLOUR)
+	_show_deck_message(deck_name.to_upper() + " SAVED!", MSG_SAVED_COLOUR)
 
 
 func _walk_cells() -> Array:
@@ -4692,6 +4794,11 @@ func _walk_fly_into(idx: int, cid: String) -> void:
 
 ## ISSUE #466: shows `set_id` with every owned card held back as an empty slot, then flies them all in.
 func _walk_reveal_all(set_id: String) -> void:
+	await _walk_fly_entries(await _walk_hold_all(set_id))
+
+
+## The set on screen with every owned card held back; returns [cell, card_id, copies] per owned card.
+func _walk_hold_all(set_id: String) -> Array:
 	_walk_held.clear()
 	_owned_override = {"__all__": true}
 	for pos in unlocked_indices.size():
@@ -4707,15 +4814,25 @@ func _walk_reveal_all(set_id: String) -> void:
 		var cid := String(cells[i].get_meta("card_id", ""))
 		if int(_walk_held.get(cid, 0)) > 0:
 			entries.append([cells[i], cid, int(_walk_held[cid])])
+	_walk_held.clear()
+	var scroll = grid.get_parent()
+	if scroll is ScrollContainer:
+		(scroll as ScrollContainer).scroll_vertical = 0
+	return entries
+
+
+## Every entry flies in, one every WALK_ALL_STAGGER. The grid scroll follows a target that moves
+## CONTINUOUSLY with the launches (interpolated between one card's row and the next), eased, so the
+## view glides down at a steady pace instead of hopping a row at a time.
+func _walk_fly_entries(entries: Array) -> void:
 	print("ISSUE #466 FIX ACTIVE: flying ", entries.size(), " owned cards in together")
 	if entries.is_empty():
 		return
 	var scroll = grid.get_parent()
-	if scroll is ScrollContainer:
-		(scroll as ScrollContainer).scroll_vertical = 0
 	var landed := [0]
 	var t := 0.0
 	var launched := 0
+	var scroll_f := -1.0
 	while landed[0] < entries.size() and is_inside_tree():
 		var dt := get_process_delta_time()
 		t += dt
@@ -4726,19 +4843,23 @@ func _walk_reveal_all(set_id: String) -> void:
 				landed[0] += 1
 			land_one.call()
 			launched += 1
-		# The grid follows the newest card: its row sits at the bottom of the view, eased, never jumping.
-		if scroll is ScrollContainer and launched > 0:
-			var newest: Control = entries[launched - 1][0]
-			if is_instance_valid(newest):
-				var sc := scroll as ScrollContainer
-				var bar: VScrollBar = sc.get_v_scroll_bar()
-				var max_y: float = maxf(0.0, bar.max_value - bar.page) if bar != null else 0.0
-				var row_bottom: float = newest.position.y + CARD_SIZE.y
-				var want: float = clampf(row_bottom - sc.size.y + 20.0, 0.0, max_y)
-				if want > sc.scroll_vertical:
-					sc.scroll_vertical = int(lerpf(sc.scroll_vertical, want, 1.0 - exp(-dt * WALK_ALL_FOLLOW)) + 0.5)
+		if scroll is ScrollContainer:
+			var sc := scroll as ScrollContainer
+			if scroll_f < 0.0:
+				scroll_f = float(sc.scroll_vertical)
+			var bar: VScrollBar = sc.get_v_scroll_bar()
+			var max_y: float = maxf(0.0, bar.max_value - bar.page) if bar != null else 0.0
+			# Where the launches have got to, as a fractional entry index.
+			var k: float = clampf(t / WALK_ALL_STAGGER, 0.0, float(entries.size() - 1))
+			var a = entries[int(floor(k))][0]
+			var b = entries[mini(int(floor(k)) + 1, entries.size() - 1)][0]
+			if is_instance_valid(a) and is_instance_valid(b):
+				var row_y: float = lerpf((a as Control).position.y, (b as Control).position.y, k - floor(k))
+				var want: float = clampf(row_y + CARD_SIZE.y - sc.size.y + 20.0, 0.0, max_y)
+				if want > scroll_f:
+					scroll_f = lerpf(scroll_f, want, 1.0 - exp(-dt * WALK_ALL_FOLLOW))
+					sc.scroll_vertical = int(scroll_f + 0.5)
 		await get_tree().process_frame
-	_walk_held.clear()
 
 
 ## ISSUE #466: one card fades in above its (scrolling) slot and falls into it, tracking the slot every
@@ -4779,10 +4900,13 @@ func _walk_fly_follow(cell: Control, cid: String, copies: int) -> void:
 func _walk_delta_label(cell: Control, delta: int) -> void:
 	var lbl := Label.new()
 	lbl.text = "+1" if delta > 0 else "-1"
+	var bold := _get_msg_bold_font()
+	if bold != null:
+		lbl.add_theme_font_override("font", bold)
 	lbl.add_theme_font_size_override("font_size", WALK_DELTA_FONT)
-	lbl.add_theme_color_override("font_color", Color("4CE07A") if delta > 0 else Color("FF5A5A"))
+	lbl.add_theme_color_override("font_color", WALK_DELTA_ADD_COL if delta > 0 else WALK_DELTA_CUT_COL)
 	lbl.add_theme_color_override("font_outline_color", Color.BLACK)
-	lbl.add_theme_constant_override("outline_size", 10)
+	lbl.add_theme_constant_override("outline_size", WALK_DELTA_OUTLINE)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl.z_index = 360
 	add_child(lbl)
@@ -4813,7 +4937,7 @@ func _walk_change_count(cid: String, delta: int) -> void:
 		var cell: Control = cells[i]
 		if String(cell.get_meta("card_id", "")) != cid:
 			continue
-		await _walk_scroll_to_row(int(i / COLUMNS), WALK_ROW_SCROLL)
+		await _walk_scroll_to_row(int(i / COLUMNS), WALK_CONVERT_ROW_SCROLL)
 		print("ISSUE #469 FIX ACTIVE: ", "+1 " if delta > 0 else "-1 ", cid)
 		_walk_delta_label(cell, delta)
 		cell.set_meta("in_deck", now)

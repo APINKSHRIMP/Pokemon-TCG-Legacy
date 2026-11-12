@@ -2927,10 +2927,10 @@
       ]
     },
     "Youngster Joey": {
-      "at": [-1259, 1432],
+      "at": [-1192, 1385],
       "move": {
         "pattern": "random_wander",
-        "box": [138, 282],
+        "box": [42, 146],
         "speed": 60
       },
       "says": {

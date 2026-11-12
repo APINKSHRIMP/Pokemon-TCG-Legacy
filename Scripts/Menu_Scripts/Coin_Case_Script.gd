@@ -805,24 +805,28 @@ func _get_coin_sparkle_colour(coin_path: String) -> Color:
 
 signal coins_built
 
-const WALK_COIN_START_SCALE := 3.2
-const WALK_COIN_FADE_TIME   := 0.25
-const WALK_COIN_HOLD_TIME   := 0.2
-const WALK_COIN_DROP_TIME   := 0.22
-const WALK_COIN_GAP         := 0.35
+## 2026-11-12: smoother and calmer. Every coin glides in at once (a beat apart), shrinking from
+## WALK_COIN_START_SCALE and fading up as it settles, eased out - no hold, no snap - and nothing is
+## selected afterwards (the selected pulse was too busy for the walkthrough).
+const WALK_COIN_START_SCALE := 2.0
+const WALK_COIN_TIME        := 0.8    # one coin's glide into its slot
+const WALK_COIN_STAGGER     := 0.18   # the next coin sets off this long after the last
 
 var walkthrough_active: bool = false
 
 
 func walkthrough_place_coins(coin_files: Array) -> void:
 	walkthrough_active = true
+	get_viewport().gui_release_focus()
 	var rects: Array = []
 	for child in grid.get_children():
 		if child is TextureRect and String(child.get_meta("coin_name", "")) in coin_files:
 			child.modulate.a = 0.0
 			rects.append(child)
 	await get_tree().process_frame
-	for rect in rects:
+	var last: Tween = null
+	for n in rects.size():
+		var rect: TextureRect = rects[n]
 		var fly := TextureRect.new()
 		fly.texture = rect.texture
 		fly.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -834,17 +838,16 @@ func walkthrough_place_coins(coin_files: Array) -> void:
 		fly.pivot_offset = COIN_SIZE / 2.0
 		fly.global_position = rect.global_position
 		fly.scale = Vector2.ONE * WALK_COIN_START_SCALE
-		fly.modulate.a = 0.0
-		var tw := create_tween()
-		tw.tween_property(fly, "modulate:a", 1.0, WALK_COIN_FADE_TIME)
-		tw.tween_interval(WALK_COIN_HOLD_TIME)
-		tw.tween_property(fly, "scale", Vector2.ONE, WALK_COIN_DROP_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		await tw.finished
-		SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
-		fly.queue_free()
-		rect.modulate = Color(0.8, 0.8, 0.8, 1.0)
-		# ISSUE #470: the equipped coin takes its selected pulse only now it has landed.
-		if String(rect.get_meta("coin_name", "")) == saved_coin_name:
-			_select_coin(rect)
-		await get_tree().create_timer(WALK_COIN_GAP).timeout
-	walkthrough_active = false
+		fly.modulate = Color(0.8, 0.8, 0.8, 0.0)
+		var tw := create_tween().set_parallel(true)
+		tw.tween_interval(WALK_COIN_STAGGER * n)
+		tw.chain().tween_property(fly, "scale", Vector2.ONE, WALK_COIN_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(fly, "modulate:a", 1.0, WALK_COIN_TIME * 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.chain().tween_callback(func():
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+			rect.modulate = Color(0.8, 0.8, 0.8, 1.0)
+			fly.queue_free())
+		last = tw
+	if last != null:
+		await last.finished
+	# walkthrough_active stays on: Olly closes this screen himself (the instance is freed with it).

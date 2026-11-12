@@ -92,6 +92,7 @@ func _do_sleep() -> void:
 		_player.lock_movement()
 	var scene_path := get_scene_path()
 	GameState.save_menu_return_state(scene_path, _player.position, "left")
+	GameState.going_to_bed = true   # no clock until the player wakes up
 	GameState.sleep_until_next_day()
 	GameState.sleep_wakeup_fade = true
 	# ISSUE #489: the bedroom music stops DEAD (no fade) and the goodnight sound plays on its own; the

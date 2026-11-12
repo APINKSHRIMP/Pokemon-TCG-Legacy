@@ -927,6 +927,10 @@ func transition_time(base_seconds: float) -> float:
 	return base_seconds * float(TRANSITION_SPEED_PRESETS.get(animation_speed_setting, 1.0))
 
 var sleep_wakeup_fade: bool = false
+## True from the moment the player agrees to sleep until the next map loads. The overworld
+## clock stays hidden and keeps the night's time drawn meanwhile, so it only peeks (and sweeps
+## to the morning) once the player has woken up. Cleared at the top of BaseMapScene._ready.
+var going_to_bed: bool = false
 
 # ISSUE #53: when a sub-menu (deck/costume/coin/sleeves/options/info) closes back to the standalone
 # Main Menu, the menu redirects to the saved map scene with this flag set so the map is reloaded and

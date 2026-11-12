@@ -197,14 +197,16 @@ const GIFT_COSTUME_TOTAL_DURATION := 1.5
 # "card_fly" gifts (Olly's energy cards): each card flies up from below and fades in,
 # left to right, CARD_FLY_STAGGER apart, settling with UIKit.fly_in's little fall-back.
 # ISSUE #444: twice as fast (1.4 / 0.4 / 0.12 before).
-const CARD_FLY_TIME := 0.7
-const CARD_FLY_STAGGER := 0.2
+# 2026-11-12 (user): twice as fast again (0.7 / 0.2 before).
+const CARD_FLY_TIME := 0.35
+const CARD_FLY_STAGGER := 0.1
 const CARD_FLY_FROM_Y := 260.0
 # Behind each flying card a trail of CARD_FLY_TRAIL copies follows it in, CARD_FLY_TRAIL_GAP
 # apart, each doing the same up-and-settle and landing in a pile under the front card.
 # CARD_FLY_TRAIL_STEP is how far each copy in the pile sits from the one above it (0 = hidden).
-const CARD_FLY_TRAIL := 20
-const CARD_FLY_TRAIL_GAP := 0.06
+# 2026-11-12 (user): half as many cards fly in (20 before), twice as fast (0.06 before).
+const CARD_FLY_TRAIL := 10
+const CARD_FLY_TRAIL_GAP := 0.03
 const CARD_FLY_TRAIL_STEP := Vector2(1.2, -0.6)
 # ISSUE #444: each trail copy rises straight up, pops CARD_FLY_POP_PX above its pile spot
 # (just peeking over the card in front) and drops back in -- a neat stack stepping right,
@@ -242,6 +244,10 @@ const GIFT_ITEM_SEPARATION := 20.0
 const GIFT_DISPLAY_CENTER_Y_CARD    := 460.0
 const GIFT_DISPLAY_CENTER_Y_COIN    := 570.0
 const GIFT_DISPLAY_CENTER_Y_COSTUME := 570.0
+## TWEAKABLE: a gifted pack or boxed deck (Olly's starter deck + starter pack). Higher than the
+## costume line so the 594px-tall art sits centred in the space ABOVE the big message box
+## rather than resting on it.
+const GIFT_DISPLAY_CENTER_Y_PACK    := 410.0
 
 # ============================================================
 # COIN FLIPPER — TWEAKABLES
@@ -2643,7 +2649,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		# A sleeve is a card back, so it shares the costume box: 432x594 is a 0.727
 		# aspect and a card is 0.72, so the aspect-fit below barely has to move it.
 		target_box = GIFT_COSTUME_SIZE
-		center_y = GIFT_DISPLAY_CENTER_Y_COSTUME
+		center_y = GIFT_DISPLAY_CENTER_Y_PACK if kind == "pack" else GIFT_DISPLAY_CENTER_Y_COSTUME
 	else:   # "card" and "card_fly"
 		var n_clamp: int = clamp(image_paths.size(), 1, GIFT_CARD_SIZES.size())
 		target_box = GIFT_CARD_SIZES.get(n_clamp, GIFT_CARD_SIZES[GIFT_CARD_SIZES.size()])

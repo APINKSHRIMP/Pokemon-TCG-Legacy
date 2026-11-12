@@ -65,6 +65,7 @@ var _tip_index: int = 0
 var _turn_start_spoke: bool = false
 var _hand_opened: bool = false
 var _player_ever_benched: bool = false
+var _player_ever_retreated: bool = false   # the at-risk / retreat line is never needed after this
 var _last_player_ko_name: String = ""
 
 # NEWBY: where in the script the player is.
@@ -118,6 +119,7 @@ func _stacked() -> bool:
 ## The match is over: a one-shot "next match" tutorial has been spent.
 func on_match_end() -> void:
 	GameState.mandatory_tutorial_running = false   # ISSUE #344
+	_clear_callouts()
 	if mode == "generic" and GameState.tutorial_next_match_setting == "on":
 		GameState.set_tutorial_next_match("off")
 	if _newby_followup:
@@ -358,6 +360,10 @@ func forces_opponent_first() -> bool:
 ## "rules": once the player has chosen their Active, the CPU's Active becomes one that is
 ## WEAK to it (from its bench or hand), if it has one and is not already.
 func on_player_active_set() -> void:
+	if mode == "newby":
+		# The bench-setup screen comes up next: nothing left to bench, so press Done.
+		_deferred_once("n_bench_setup", _cm(NEWBY_BENCH_SETUP_KM, NEWBY_BENCH_SETUP_PAD))
+		return
 	if mode != "rules":
 		return
 	var mine = main.player_active_pokemon
@@ -551,7 +557,7 @@ func _say(lines: Array, fills: Dictionary = {}) -> void:
 	for line in lines:
 		var text := String(line)
 		for k in fills:
-			text = text.replace(k, String(fills[k]))
+			text = text.replace(k, str(fills[k]))
 		await main.show_message(_keys(text), true, "tutorial")
 	_busy = false
 
@@ -569,6 +575,7 @@ func _once(key: String, lines: Array, fills: Dictionary = {}) -> bool:
 func show_block(text: String) -> void:
 	if _block_showing:
 		return
+	print("TUTORIAL BLOCK (step '", _step, "'): ", text)
 	_block_showing = true
 	await main.show_message(_keys(text), true, "tutorial")
 	_block_showing = false
@@ -614,31 +621,27 @@ const G_CLICK_HAND_PAD := [
 	"Press [PAD_A] to open or use whatever the cursor is on...",
 	"Your cursor starts on your hand every turn. Press [PAD_A] to open it and see every card you're holding.",
 ]
+# The newby's SECOND match already knows dragging (Olly's match taught it): its first turn only
+# adds the one thing it has not seen. One line each.
+const FOLLOWUP_CLICK_HAND_KM := ["As well as dragging cards from your hand to play them, you can hold [ALT] and click your hand to open it and play cards from there."]
+const FOLLOWUP_CLICK_HAND_PAD := ["[PAD_X] jumps the cursor to your hand, [PAD_Y] to End Turn and [PAD_RB] to your Active's attacks. [PAD_B] backs out of most screens."]
 const G_BLOCK_END_BEFORE_HAND_KM := "You don't want to end your turn yet. Drag a card from your hand to play it first."
 const G_BLOCK_END_BEFORE_HAND_PAD := "You don't want to end your turn yet. Press [PAD_A] on your hand first to start playing cards."
 # The large hand view opened (pad: A on the hand; mouse: Alt + click).
 const G_HAND_OPENED_KM := ["In here you can play a card by clicking it and pressing the action button below, or by double clicking it."]
 const G_HAND_OPENED_PAD := ["Move the cursor onto a card to select it and press [PAD_A] to play it. [PAD_B] closes your hand again."]
-const G_CAN_ATTACK_KM := [
-	"[POKEMON] has enough energy and can now attack using [ATTACK]...",
-	"Click the [ATTACK] button next to your [POKEMON] to attack your opponent's [DEFENDER]!",
-]
-const G_CAN_ATTACK_PAD := [
-	"[POKEMON] has enough energy and can now attack using [ATTACK]...",
-	"Press [PAD_RB] to jump to [POKEMON]'s attacks, then [PAD_A] on [ATTACK] to attack your opponent's [DEFENDER]!",
-]
+const G_CAN_ATTACK_KM := ["[POKEMON] can now use [ATTACK]. Click the [ATTACK] button to attack your opponent's [DEFENDER]!"]
+const G_CAN_ATTACK_PAD := ["[POKEMON] can now use [ATTACK]. Press [PAD_RB], then [PAD_A] on [ATTACK] to attack your opponent's [DEFENDER]!"]
 const G_WEAKNESS_DEALT := ["[DEFENDER] is weak to your [POKEMON]'s [TYPE] type so it takes double damage!"]
+# 2026-11-12: two lines, never on the first turn, never once the player has retreated by
+# themselves, and never when the Pokemon at risk can evolve (the evolution line goes instead).
 const G_AT_RISK_KM := [
-	"Your [POKEMON] is at risk of being knocked out...",
-	"If you have no Bench Pokemon and your Active Pokemon is knocked out then you instantly lose the match!",
-	"You can retreat your [POKEMON] and make one of your Benched Pokemon active instead...",
-	"Drag [POKEMON] onto one of your Benched Pokemon to retreat it, or click its Retreat button.",
+	"Your [POKEMON] is at risk of being knocked out. If your Active Pokémon is knocked out with no Benched Pokémon, you instantly lose the match!",
+	"If you have a Benched Pokémon, you can retreat [POKEMON] by dragging it onto your Bench, or by clicking Retreat.",
 ]
 const G_AT_RISK_PAD := [
-	"Your [POKEMON] is at risk of being knocked out...",
-	"If you have no Bench Pokemon and your Active Pokemon is knocked out then you instantly lose the match!",
-	"You can retreat your [POKEMON] and make one of your Benched Pokemon active instead...",
-	"Press [PAD_RB] to jump to [POKEMON]'s buttons, move the cursor onto Retreat and press [PAD_A].",
+	"Your [POKEMON] is at risk of being knocked out. If your Active Pokémon is knocked out with no Benched Pokémon, you instantly lose the match!",
+	"If you have a Benched Pokémon, you can retreat [POKEMON]: press [PAD_RB], move onto Retreat and press [PAD_A].",
 ]
 const G_PRIZE := [
 	"You have knocked out your opponent's Pokemon! You can now take one of your 'Prize cards'!",
@@ -662,15 +665,14 @@ const G_RESISTANCE_SOME := [
 	"[DEFENDER] has a [TYPE] resistance so [ATTACKER] did less damage!",
 	"All resistances reduce damage dealt by 30.",
 ]
+# 2026-11-12: only once the evolution is legal RIGHT NOW (never turn 1), naming the two cards.
 const G_EVOLUTION_KM := [
-	"Some Pokemon can evolve to unlock better attacks and more HP!",
-	"You can't evolve a Pokemon on the same turn it has been put onto the field or evolved already...",
-	"To evolve, drag the Evolution card from your hand onto the Pokemon it evolves from.",
+	"[EVO] can evolve from your [BASIC]. Drag [EVO] onto your [BASIC] to evolve it.",
+	"Pokémon can't evolve on the same turn they were played or already evolved.",
 ]
 const G_EVOLUTION_PAD := [
-	"Some Pokemon can evolve to unlock better attacks and more HP!",
-	"You can't evolve a Pokemon on the same turn it has been put onto the field or evolved already...",
-	"To evolve, open your hand, press [PAD_A] on the Evolution card and choose the Pokemon it evolves from.",
+	"[EVO] can evolve from your [BASIC]. Open your hand, select [EVO], then select your [BASIC] to evolve it.",
+	"Pokémon can't evolve on the same turn they were played or already evolved.",
 ]
 const G_END_TURN_HINT_KM := ["If you can't attack or play any more cards, finish your turn by clicking End Turn. [Q] jumps straight to it."]
 const G_END_TURN_HINT_PAD := ["If you can't attack or play any more cards, press [PAD_Y] to jump to End Turn, then [PAD_A]."]
@@ -709,8 +711,11 @@ const G_TIP_ORDER_KM := ["preview", "quick", "alt", "attached", "log", "forfeit"
 const G_TIP_ORDER_PAD := ["preview", "quick", "attached", "log", "forfeit"]
 ## ISSUE #349: the newby's second match starts on the preview tip (first turn), then the
 ## rest. The "alt" / "attached" tips now come before the log tip here too.
-const FOLLOWUP_TIP_ORDER_KM := ["preview", "alt", "attached", "log", "quick", "forfeit"]
-const FOLLOWUP_TIP_ORDER_PAD := ["preview", "attached", "log", "quick", "forfeit"]
+## 2026-11-12: the preview (Shift) tip is no longer said on turn 1 -- turn 1 is the hand line only
+## (FOLLOWUP_CLICK_HAND_*, which now carries the Alt tip / the pad's jump keys). Tips start turn 2,
+## one per quiet turn start.
+const FOLLOWUP_TIP_ORDER_KM := ["preview", "attached", "log", "quick", "forfeit"]
+const FOLLOWUP_TIP_ORDER_PAD := ["preview", "attached", "log", "forfeit"]
 
 # Viewing a pile for the first time (both NewbyTutorialMatch.txt and the generic set).
 const PILE_LINES := {
@@ -773,10 +778,6 @@ func on_player_turn_pre_draw() -> void:
 ## The player's turn, after the draw and every turn-start effect.
 ## ISSUE #349: the newby's second match takes the tips in this order -- Shift on the very first
 ## turn (as the first card is drawn), then Caps Lock on the next turn nothing else is said.
-const CAPS_REMINDER_KM := ["Remember you can press [CAPS LOCK] to see the match log and all messages."]
-const CAPS_REMINDER_PAD := ["Remember you can press [PAD_VIEW] to see the match log and all messages."]
-const SHIFT_HINT_KM := ["You can hover over a card and hold [SHIFT] to see its details."]
-const SHIFT_HINT_PAD := ["You can move the cursor onto a card and hold [PAD_LB] to see its details."]
 
 
 ## The turn tip under `key` for this control scheme.
@@ -795,43 +796,56 @@ func on_player_turn_start() -> void:
 		return
 	# "rules" gets the newby's first-turn spiel on the aim of the game too.
 	if mode == "rules" and _player_turns == 1:
-		await _once("n_t1_aim", NEWBY_T1_AIM, {"[POKEMON]": _name(main.player_active_pokemon)})
-	var spoke: bool = await _once("g_click_hand", _cm(G_CLICK_HAND_KM, G_CLICK_HAND_PAD))
-	if spoke:
-		_turn_start_spoke = true
-	if _player_at_risk():
-		spoke = await _once("g_risk", _cm(G_AT_RISK_KM, G_AT_RISK_PAD), {"[POKEMON]": _name(main.player_active_pokemon)})
-		if spoke:
-			_turn_start_spoke = true
-	spoke = await _maybe_evolution_message()
-	if spoke:
-		_turn_start_spoke = true
-	var order: Array = _cm(G_TIP_ORDER_KM, G_TIP_ORDER_PAD)
-	if _player_turns >= 2 and not _turn_start_spoke and _tip_index < order.size():
-		await _say(_tip(order[_tip_index]))
-		_tip_index += 1
+		await _once("n_t1_aim", RULES_T1_AIM, {"[POKEMON]": _name(main.player_active_pokemon)})
+	if _player_turns <= 1:
+		await _once("g_click_hand", _cm(G_CLICK_HAND_KM, G_CLICK_HAND_PAD))
+		return
+	await _one_turn_start_message(_cm(G_TIP_ORDER_KM, G_TIP_ORDER_PAD))
 
 
-## ISSUE #349 / #485: the newby's second match -- the generic messages, the preview tip first thing.
+## ISSUE #349 / #485: the newby's second match. 2026-11-12: turn 1 is ONE line (the Alt / pad jump
+## tip); every later turn start says at most one thing (_one_turn_start_message).
 func _followup_turn_start() -> void:
-	var order: Array = _cm(FOLLOWUP_TIP_ORDER_KM, FOLLOWUP_TIP_ORDER_PAD)
-	if _player_turns == 1 and _tip_index == 0:
-		await _say(_tip(order[0]))
-		_tip_index = 1
+	if _player_turns <= 1:
+		await _once("g_click_hand", _cm(FOLLOWUP_CLICK_HAND_KM, FOLLOWUP_CLICK_HAND_PAD))
+		return
+	await _one_turn_start_message(_cm(FOLLOWUP_TIP_ORDER_KM, FOLLOWUP_TIP_ORDER_PAD))
+
+
+## 2026-11-12 (user: "don't play multiple messages at once"): a turn start says ONE thing, the most
+## useful one, and anything else waits for a later turn start that is quiet:
+##   1. the evolution line, when an evolution is legal right now (an Active that is at risk AND can
+##      evolve gets this, not the retreat line -- evolving is the better answer);
+##   2. the at-risk / retreat line (turn 2 on, never once the player has retreated by themselves);
+##   3. the next turn tip.
+func _one_turn_start_message(order: Array) -> void:
+	var evo: Array = _evolution_pair()
+	if not evo.is_empty() and not _seen.has("g_evolution"):
+		await _evolution_message(evo)
 		_turn_start_spoke = true
-	var spoke: bool = await _once("g_click_hand", _cm(G_CLICK_HAND_KM, G_CLICK_HAND_PAD))
-	if spoke:
+		return
+	if _risk_message_due(evo):
+		await _once("g_risk", _cm(G_AT_RISK_KM, G_AT_RISK_PAD), {"[POKEMON]": _name(main.player_active_pokemon)})
 		_turn_start_spoke = true
-	if _player_at_risk():
-		spoke = await _once("g_risk", _cm(G_AT_RISK_KM, G_AT_RISK_PAD), {"[POKEMON]": _name(main.player_active_pokemon)})
-		if spoke:
-			_turn_start_spoke = true
-	spoke = await _maybe_evolution_message()
-	if spoke:
-		_turn_start_spoke = true
+		return
 	if not _turn_start_spoke and _tip_index < order.size():
 		await _say(_tip(order[_tip_index]))
 		_tip_index += 1
+		_turn_start_spoke = true
+
+
+func _risk_message_due(evo: Array) -> bool:
+	if _seen.has("g_risk") or _player_turns <= 1 or _player_ever_retreated:
+		return false
+	if not _player_at_risk():
+		return false
+	# The Active can evolve right now: the evolution line is the answer, not retreating.
+	if not evo.is_empty() and evo[1] == main.player_active_pokemon:
+		return false
+	for c in main.player_hand:
+		if main.get_valid_evolution_targets(c, false).has(main.player_active_pokemon):
+			return false
+	return true
 
 
 ## Any pile, hand or bench clicked open. Not awaited by the core.
@@ -879,11 +893,10 @@ func _note_hand_used() -> void:
 
 
 ## The Energy attach screen has just opened.
-func on_attach_screen(energy) -> void:
-	# Every time, until the Energy is attached: cancelling out and coming back must not
-	# leave the player with no instructions.
-	if mode == "newby" and _step == "t1_attach":
-		_deferred_say(_cm(NEWBY_T1_ATTACH_SCREEN_KM, NEWBY_T1_ATTACH_SCREEN_PAD))
+## Nothing is said here any more: in the newby match the screen only lists the Pokemon the
+## Energy may go on (filter_attach_targets), so it cannot go wrong. Kept as the core's hook.
+func on_attach_screen(_energy) -> void:
+	pass
 
 
 ## An Energy finished landing on `target`.
@@ -964,7 +977,7 @@ func on_attack_damage(attacker, defender, final_damage: int, modifiers: Array, a
 ## The prize selection screen has opened. Not awaited by the core.
 func on_prize_shown() -> void:
 	if active():
-		_deferred_once("g_prize", G_PRIZE)
+		_deferred_once("g_prize", NEWBY_PRIZE if mode == "newby" else G_PRIZE)
 
 
 ## Called when any Pokemon is knocked out, before it leaves the board.
@@ -993,16 +1006,25 @@ func on_player_active_ko(has_bench: bool) -> void:
 func on_retreat_bench_shown() -> void:
 	if mode == "newby" and _step == "t5_retreat":
 		_step = "t5_pick"
-		_deferred_once("n_retreat_pick", _cm(NEWBY_T5_PICK_KM, NEWBY_T5_PICK_PAD))
+		_deferred_once("n_retreat_pick", NEWBY_T5_PICK)
+
+
+## The retreat's Energy-to-discard screen has opened. Not awaited.
+func on_retreat_energy_shown() -> void:
+	if mode == "newby" and _step == "t5_retreat":
+		_deferred_once("n_retreat_cost", NEWBY_T5_COST)
 
 
 ## The retreat swap has finished animating.
 ## A mouse retreat by DRAGGING Ponyta onto Machop picks the new Active itself, so the
 ## bench screen (and "t5_pick") never comes: "t5_retreat" finishes the beat as well.
 func on_retreat_done() -> void:
+	if not main.opponents_turn_active:
+		_player_ever_retreated = true
 	if mode == "newby" and _step in ["t5_pick", "t5_retreat"]:
 		_step = "t5_machop"
-		await _once("n_retreat_done", _cm(NEWBY_T5_RETREATED_KM, NEWBY_T5_RETREATED_PAD))
+		await _once("n_retreat_done", _cm(NEWBY_T5_RETREATED_KM, NEWBY_T5_RETREATED_PAD),
+			{"[DEFENDER]": _name(main.opponent_active_pokemon)})
 
 
 # ============================================================
@@ -1056,21 +1078,37 @@ func _player_at_risk() -> bool:
 	return false
 
 
-## The player holds an evolution for something they have in play.
-func _maybe_evolution_message() -> bool:
-	if _seen.has("g_evolution") or mode == "newby":
-		return false
-	var field: Array = main.player_bench.duplicate()
-	if main.player_active_pokemon != null:
-		field.append(main.player_active_pokemon)
+## [evolution card, Pokemon it can evolve RIGHT NOW] (the Active first), or [] -- never on the
+## player's first turn, nor onto something played this turn (get_valid_evolution_targets knows).
+func _evolution_pair() -> Array:
+	if _player_turns <= 1:
+		return []
 	for c in main.player_hand:
 		var subtypes: Array = c.metadata.get("subtypes", [])
 		if not ("Stage 1" in subtypes or "Stage 2" in subtypes):
 			continue
-		for f in field:
-			if main.can_evolve_from(c, f):
-				return await _once("g_evolution", _cm(G_EVOLUTION_KM, G_EVOLUTION_PAD))
-	return false
+		var targets: Array = main.get_valid_evolution_targets(c, false)
+		if targets.has(main.player_active_pokemon):
+			return [c, main.player_active_pokemon]
+		if not targets.is_empty():
+			return [c, targets[0]]
+	return []
+
+
+func _evolution_message(pair: Array) -> bool:
+	return await _once("g_evolution", _cm(G_EVOLUTION_KM, G_EVOLUTION_PAD),
+		{"[EVO]": _name(pair[0]), "[BASIC]": _name(pair[1])})
+
+
+## Mid-turn (a Trainer just drew cards): the evolution line, if one is legal now and nothing is
+## being said already.
+func _maybe_evolution_message() -> bool:
+	if _seen.has("g_evolution") or mode == "newby" or _busy:
+		return false
+	var pair: Array = _evolution_pair()
+	if pair.is_empty():
+		return false
+	return await _evolution_message(pair)
 
 
 # ============================================================
@@ -1080,20 +1118,22 @@ func _maybe_evolution_message() -> bool:
 # same cards. _step names the beat inside a turn; _newby_gate() reads it to decide what
 # is blocked and with which line.
 
-const NEWBY_SETUP_KM := [
-	"When you start a match, you must choose a Pokémon from your hand to play as your Active Pokémon...",
-	"Click a Pokémon to select it and press the button below, or just double click it...",
-	"After setting your active pokemon, you can place up to 5 more Pokémon from your hand on your bench.",
-]
-const NEWBY_SETUP_PAD := [
-	"When you start a match, you must choose a Pokémon from your hand to play as your Active Pokémon...",
-	"Use the [PAD_LSTICK] or the [PAD_DPAD] to move between the cards and press [PAD_A] to choose one...",
-	"After setting your active pokemon, you can place up to 5 more Pokémon from your hand on your bench.",
-]
-const NEWBY_COIN := ["A coin is flipped at the start of every game to decide which player goes first. Choose heads or tails"]
-const NEWBY_AUTO_DRAW := ["You automatically draw a card from your deck and add it to your hand at the start of every turn."]
-# The very first thing on the player's first turn ("newby" and "rules").
-const NEWBY_T1_AIM := [
+# EVERY LINE IS ONE OR TWO LINES OF THE MESSAGE BOX AT MOST (user, 2026-11-12, after a play
+# test: the old script was overwhelming). Keep new lines that short. [PAD_*] tokens: see _keys().
+# Each beat locks the board to the ONE thing the player should do next (_newby_allows), for the
+# mouse, the keys and the pad alike -- anything else shows that beat's hint (_step_hint) instead.
+
+const NEWBY_SETUP_KM := ["At the start of a match, choose 1 Basic Pokémon in your hand to be your Active Pokémon. Double click Voltorb, or click it then the button below."]
+const NEWBY_SETUP_PAD := ["At the start of a match, choose 1 Basic Pokémon in your hand to be your Active Pokémon. Select Voltorb and press [PAD_A]."]
+# The bench-setup screen, straight after the Active is set.
+const NEWBY_BENCH_SETUP_KM := ["You could also put up to 5 more Basic Pokémon on your Bench, but you have none left, so click Done."]
+const NEWBY_BENCH_SETUP_PAD := ["You could also put up to 5 more Basic Pokémon on your Bench, but you have none left, so choose Done."]
+const NEWBY_COIN := ["A coin flip decides who goes first. Choose heads or tails."]
+const NEWBY_AUTO_DRAW := ["You draw a card from your deck at the start of every turn."]
+# The very first thing on the player's first turn.
+const NEWBY_T1_AIM := ["The aim of the game is to knock out your opponent's Pokémon by attacking with your own."]
+# "rules" keeps the longer first-turn spiel it always had (it is not the newby script).
+const RULES_T1_AIM := [
 	"In the Pokemon TCG the general aim is to knock out your opponent's Pokemon...",
 	"You will do this by attacking their active Pokemon with your active Pokemon...",
 	"Knocking out an opponent's Pokemon wins you a 'Prize Card'...",
@@ -1101,252 +1141,234 @@ const NEWBY_T1_AIM := [
 	"Every Pokemon needs 'Energy' attached to it in order to use one of its attacks...",
 	"You will first need to attach an energy card to your active [POKEMON]...",
 ]
-# The Energy rules. The pad hears them on the attach screen (it opens the hand and picks
-# the Energy first); the mouse drags the Energy straight on, so it hears them at turn start.
-const NEWBY_ENERGY_RULES := [
-	"Every attack has an Energy Requirement to use and you can only attach 1 energy card per turn...",
-	"Attacking doesn't discard the attached energy and different attacks have different requirements...",
-	"Voltorb's Tackle attack has a single white energy icon next to it. This icon means 'Colorless' Energy...",
-	"A Colorless energy requirement can be met with any energy card of any type...",
-]
-# Turn 1, MOUSE: no hand to open -- the rules, the tips, then the drag.
-const NEWBY_T1_KM := [
-	"Your hand is along the bottom of the screen. Play cards straight from it by dragging them with the mouse...",
-]
-const NEWBY_ALT_TIP := [
-	"You can also hold [ALT] and click your hand to open it and look at every card fully...",
-	"In there you can play cards by clicking them twice and choosing a target instead of dragging them.",
-]
-const NEWBY_ATTACHED_TIP_KM := ["You can click a Pokemon in play to check all of the cards attached to it, like its Energy."]
-const NEWBY_ATTACHED_TIP_PAD := ["Press [PAD_A] on a Pokemon in play to check all of the cards attached to it, like its Energy."]
-const NEWBY_T1_DRAG := ["Drag a Fighting Energy from your hand and drop it onto your Active Voltorb to attach it."]
-# Turn 1, PAD: how the cursor works, the tips, then "open your hand".
-const NEWBY_T1_PAD := [
-	"Use the [PAD_LSTICK] or [PAD_DPAD] to move the cursor between your hand, your bench and attacks...",
-	"Press [PAD_A] to open or use whatever the cursor is on...",
-]
-const NEWBY_T1_OPEN_HAND_PAD := ["Your cursor is on your hand. Press [PAD_A] to open it and see every card you're holding."]
-const NEWBY_T1_HAND_PAD := [
-	"You are now looking at all the cards in your hand...",
-	"Move the cursor onto a card to select it and press [PAD_A] to play it...",
-	"Some cards can't always be played. Try attaching a Fighting Energy to your Voltorb first.",
-]
-# The mouse only sees the hand view if it Alt + clicks (or double clicks an Energy).
-const NEWBY_T1_HAND_KM := ["In here, play a card by clicking it twice and choosing a target. Try attaching a Fighting Energy to Voltorb."]
-const NEWBY_T1_ATTACH_SCREEN_KM := ["Click Voltorb and press the Attach button to attach the Fighting Energy to it."]
-const NEWBY_T1_ATTACH_SCREEN_PAD := [
-	"Every attack has an Energy Requirement to use and you can only attach 1 energy card per turn...",
-	"Attacking doesn't discard the attached energy and different attacks have different requirements...",
-	"Voltorb's Tackle attack has a single white energy icon next to it. This icon means 'Colorless' Energy...",
-	"A Colorless energy requirement can be met with any energy card of any type...",
-	"Move the cursor onto Voltorb and press [PAD_A] to attach the Fighting Energy to it.",
-]
+const NEWBY_T1_ENERGY_KM := ["Voltorb's Tackle can be used once Voltorb has any Energy attached. Drag an Energy card from your hand at the bottom of the screen onto Voltorb."]
+const NEWBY_T1_ENERGY_PAD := ["Voltorb's Tackle can be used once Voltorb has any Energy attached. Press [PAD_A] to open your hand, select an Energy card, then select Voltorb."]
+const NEWBY_STUCK_KM := ["If you get stuck, press [CAPS LOCK] to read back any of these tutorial messages."]
+const NEWBY_STUCK_PAD := ["If you get stuck, press [PAD_VIEW] to read back any of these tutorial messages."]
 const NEWBY_T1_ATTACHED_KM := [
-	"Voltorb can now attack using Tackle. Don't forget to attach an energy every turn when you can...",
-	"Click the Tackle button next to Voltorb to attack.",
+	"You can only attach 1 Energy card per turn, so remember to attach one every turn.",
+	"Voltorb can now use Tackle. Click the Tackle button next to Voltorb to attack.",
 ]
 const NEWBY_T1_ATTACHED_PAD := [
-	"Voltorb can now attack using Tackle. Don't forget to attach an energy every turn when you can...",
-	"Press [PAD_RB] to jump the cursor to Voltorb's attacks, then press [PAD_A] on Tackle to attack.",
+	"You can only attach 1 Energy card per turn, so remember to attach one every turn.",
+	"Voltorb can now use Tackle. Press [PAD_RB] to jump to Voltorb's attacks, then [PAD_A] on Tackle.",
 ]
-const NEWBY_T1_WEAKNESS := [
-	"Even though Voltorb's Tackle attack should do 10 damage, Magikarp lost 20hp...",
-	"Pokemon may have a Weakness to a type, doubling the damage dealt...",
-	"Voltorb is a lightning type and Magikarp has a Lightning Weakness, so Magikarp takes double damage!",
-	"Only the attacking Pokemon's type matters, not the energy required to attack.",
-]
+# Played by _newby_weakness(), which grows the Weakness / type callouts between the lines.
+const NEWBY_T1_WEAK_1 := "Voltorb's Tackle should do 10 damage, but Magikarp took 20!"
+const NEWBY_T1_WEAK_2 := "Pokémon can have a Weakness to a type, which doubles the damage they take."
+const NEWBY_T1_WEAK_3 := "Voltorb is a Lightning type and Magikarp is weak to Lightning, so it took double damage!"
+const NEWBY_T1_WEAK_4 := "Only the attacking Pokémon's type matters, not the Energy it used."
 const NEWBY_T2_START_KM := [
-	"It is now your turn again. Voltorb only has 20hp left and is at risk of being knocked out...",
-	"If you have no Bench Pokemon and your Active Pokemon is knocked out then you instantly lose the match!",
-	"With a Pokemon on your bench you could swap Voltorb out by Retreating. Instead, play a trainer card...",
-	"Drag Bill from your hand and drop it in the middle of the board to play it.",
+	"Voltorb is at risk of being knocked out. If your Active Pokémon is knocked out with no Pokémon on your Bench, you instantly lose!",
+	"Drag the Trainer card Bill from your hand into the middle of the board to play it.",
 ]
 const NEWBY_T2_START_PAD := [
-	"It is now your turn again. Voltorb only has 20hp left and is at risk of being knocked out...",
-	"If you have no Bench Pokemon and your Active Pokemon is knocked out then you instantly lose the match!",
-	"With a Pokemon on your bench you could swap Voltorb out by Retreating. Instead, play a trainer card...",
-	"Open your hand and play Bill.",
+	"Voltorb is at risk of being knocked out. If your Active Pokémon is knocked out with no Pokémon on your Bench, you instantly lose!",
+	"Open your hand, select the Trainer card Bill and press [PAD_A] to play it.",
 ]
-const NEWBY_T2_BILL_KM := [
-	"Bill has added a new Pokemon to your hand. Your new Voltorb can be placed onto the bench...",
-	"This will give you a backup ready for when your active Voltorb is knocked out...",
-	"Drag Voltorb from your hand and drop it onto your bench.",
+const NEWBY_T2_BILL_KM := ["Bill has added a new Pokémon to your hand. Drag Voltorb from your hand onto your Bench."]
+const NEWBY_T2_BILL_PAD := ["Bill has added a new Pokémon to your hand. Select Voltorb in your hand and press [PAD_A] to put it on your Bench."]
+const NEWBY_T2_BENCHED_KM := ["You now have a backup for when your Active is knocked out. Drag a Fighting Energy onto your Benched Voltorb so it's ready to attack too."]
+const NEWBY_T2_BENCHED_PAD := ["You now have a backup for when your Active is knocked out. Attach a Fighting Energy to your Benched Voltorb so it's ready to attack too."]
+const NEWBY_T2_BENCH_ENERGY := ["Your Benched Voltorb is ready if your Active Voltorb is knocked out, so you can safely knock out Magikarp with Tackle again."]
+# The newby's Prize lines (the prize talk moved here from the first turn).
+const NEWBY_PRIZE := [
+	"You knocked out your opponent's Pokémon, so you can take one of your Prize cards and add it to your hand.",
+	"Prize cards are set aside from your deck at the start of a match. Take your last Prize card to win!",
 ]
-const NEWBY_T2_BILL_PAD := [
-	"Bill has added a new Pokemon to your hand. Your new Voltorb can be placed onto the bench...",
-	"This will give you a backup ready for when your active Voltorb is knocked out...",
-	"Open your hand and play Voltorb onto your bench.",
-]
-const NEWBY_T2_BENCHED_KM := [
-	"You now have another Pokemon as a backup for Voltorb. You can get it ready to attack while it is benched...",
-	"Drag a Fighting Energy from your hand onto the Benched Voltorb.",
-]
-const NEWBY_T2_BENCHED_PAD := [
-	"You now have another Pokemon as a backup for Voltorb. You can get it ready to attack while it is benched...",
-	"Open your hand and attach an energy card to the Benched Voltorb.",
-]
-const NEWBY_T2_BENCH_ENERGY := [
-	"Your benched Voltorb is now ready if your active Voltorb is knocked out...",
-	"You can safely knockout Magikarp by attacking with Tackle again.",
-]
-const NEWBY_T3_VOLTORB_KO := [
-	"Oh no! Your Voltorb was weak to Diglett so it took double damage and was knocked out...",
-	"You will now need to set one of your Bench Pokemon as your new active Pokemon...",
-	"You only have another Voltorb, set that as your active Pokemon for now...",
-]
-const NEWBY_T3_START_KM := [
-	"As you have no other bench pokemon, if Voltorb is knocked out you will lose...",
-	"Professor Oak may help. Drag it from your hand and drop it in the middle of the board to play it.",
-]
-const NEWBY_T3_START_PAD := [
-	"As you have no other bench pokemon, if Voltorb is knocked out you will lose...",
-	"Professor Oak may help. Open your hand, move the cursor onto Professor Oak and press [PAD_A] to play it.",
-]
+const NEWBY_T3_VOLTORB_KO := ["Oh no! Voltorb was knocked out and your opponent takes a Prize card. Choose your Benched Voltorb as your new Active Pokémon."]
+const NEWBY_T3_START_KM := ["You have no Benched Pokémon again, but Professor Oak might help. Drag Professor Oak into the middle of the board to play it."]
+const NEWBY_T3_START_PAD := ["You have no Benched Pokémon again, but Professor Oak might help. Select Professor Oak in your hand and press [PAD_A] to play it."]
 const NEWBY_T3_OAK_KM := [
-	"You now have a better matchup against Diglett. Ponyta isn't weak to Fighting type attacks...",
-	"Drag Ponyta onto your bench, then drag a Fire Energy onto Ponyta.",
+	"Ponyta isn't weak to Diglett's Fighting type. Drag Ponyta onto your Bench, then drag a Fire Energy onto it.",
+	"Remember, you can press [CAPS LOCK] to read back any of these messages.",
 ]
 const NEWBY_T3_OAK_PAD := [
-	"You now have a better matchup against Diglett. Ponyta isn't weak to Fighting type attacks...",
-	"Place Ponyta on your bench and attach a Fire Energy to it.",
+	"Ponyta isn't weak to Diglett's Fighting type. Put Ponyta on your Bench, then attach a Fire Energy to it.",
+	"Remember, you can press [PAD_VIEW] to read back any of these messages.",
 ]
-const NEWBY_T3_FIRE := ["Ponyta needs another energy to attack. To keep it at full HP until then, attack with Voltorb instead."]
+const NEWBY_T3_FIRE_KM := [
+	"Ponyta can't attack with only one Energy card. For now, attack with Voltorb again instead.",
+	"You can hover over any card and hold [SHIFT] to zoom in on its details.",
+]
+const NEWBY_T3_FIRE_PAD := [
+	"Ponyta can't attack with only one Energy card. For now, attack with Voltorb again instead.",
+	"You can move onto any card and hold [PAD_LB] to zoom in on its details.",
+]
+# Played with Diglett's Resistance grown beside it.
 const NEWBY_T3_RESIST := [
-	"Just like having a Weakness to a type, some Pokemon have a Resistance to a type...",
-	"Diglett has a Lightning resistance so Voltorb did no damage!",
-	"All resistances reduce damage dealt by 30.",
+	"Just like a Weakness, some Pokémon have a Resistance to a type.",
+	"Diglett resists Lightning, which takes 30 off all damage it's dealt, so Voltorb did no damage!",
 ]
-const NEWBY_T4_START_KM := [
-	"You have another Pokemon in your hand now and Ponyta can't attack yet...",
-	"Drag Machop onto your bench and drag another Fire Energy onto Ponyta.",
-]
-const NEWBY_T4_START_PAD := [
-	"You have another Pokemon in your hand now and Ponyta can't attack yet...",
-	"Put Machop on your bench and attach another fire energy to Ponyta.",
-]
+const NEWBY_T4_START_KM := ["You've drawn another Pokémon. Drag Machop onto your Bench, then drag another Fire Energy onto Ponyta."]
+const NEWBY_T4_START_PAD := ["You've drawn another Pokémon. Put Machop on your Bench, then attach another Fire Energy to Ponyta."]
+# The second Fire lands: _newby_colorless() grows Smash Kick, then Flame Tail, beside these.
+const NEWBY_T4_COLORLESS := "Smash Kick's two white stars are 'Colorless' Energy. Just like Tackle, any type of Energy card can pay for them."
+const NEWBY_T4_FLAME_TAIL := "Flame Tail needs 2 Fire Energy, but does more damage! Ponyta has 2 Fire Energy now, so attack with Flame Tail."
+const NEWBY_T4_FLAME_TAIL_BENCH := "Flame Tail needs 2 Fire Energy, but does more damage! Ponyta has 2 now, so put Machop on your Bench, then attack with Flame Tail."
 const NEWBY_T5_START_KM := [
-	"Ponyta is at risk of being knocked out, but Machop has full HP so it might be useful to retreat Ponyta...",
-	"Most Pokemon have to discard energy cards to retreat but some Pokemon have a free retreat cost...",
-	"You can only retreat when you have at least 1 Pokemon on your bench and can only retreat once per turn...",
-	"Drag Ponyta onto your Benched Machop to retreat it, or click Retreat. Ponyta will discard a Fire energy.",
+	"Ponyta is at risk of being knocked out, but it can retreat to the Bench and let Machop, with full HP, take its place.",
+	"You can only retreat once per turn, and only with a Pokémon on your Bench. Drag Ponyta onto Machop, or click Retreat.",
 ]
 const NEWBY_T5_START_PAD := [
-	"Ponyta is at risk of being knocked out, but Machop has full HP so it might be useful to retreat Ponyta...",
-	"Most Pokemon have to discard energy cards to retreat but some Pokemon have a free retreat cost...",
-	"You can only retreat when you have at least 1 Pokemon on your bench and can only retreat once per turn...",
-	"Press [PAD_RB], move onto Retreat and press [PAD_A] to retreat Ponyta and discard a Fire energy.",
+	"Ponyta is at risk of being knocked out, but it can retreat to the Bench and let Machop, with full HP, take its place.",
+	"You can only retreat once per turn, and only with a Pokémon on your Bench. Press [PAD_RB], move onto Retreat and press [PAD_A].",
 ]
-const NEWBY_T5_PICK_KM := [
-	"You must replace your retreated Pokemon with one from your bench as your new Active Pokemon...",
-	"Click your Benched Machop and press the button below to set it as your active Pokemon.",
-]
-const NEWBY_T5_PICK_PAD := [
-	"You must replace your retreated Pokemon with one from your bench as your new Active Pokemon...",
-	"Move the cursor onto your Benched Machop and press [PAD_A] to set it as your active Pokemon.",
-]
-const NEWBY_T5_RETREATED_KM := [
-	"Ponyta has now retreated to the bench and Machop is now your active Pokemon...",
-	"Drag a fighting energy onto Machop, then click Low Kick to knock out your opponent's Diglett",
-]
-const NEWBY_T5_RETREATED_PAD := [
-	"Ponyta has now retreated to the bench and Machop is now your active Pokemon...",
-	"Attach a fighting energy to Machop and attack with Low Kick to knock out your opponent's Diglett",
-]
+# The retreat's Energy-to-discard screen.
+const NEWBY_T5_COST := ["Ponyta has a Retreat Cost of 1, so 1 Energy card must be discarded to retreat. Some Pokémon have no Retreat Cost at all!"]
+const NEWBY_T5_PICK := ["Now Ponyta is retreating, choose Machop as your new Active Pokémon."]
+const NEWBY_T5_RETREATED_KM := ["Drag a Fighting Energy onto Machop, then attack with Low Kick to knock out [DEFENDER]."]
+const NEWBY_T5_RETREATED_PAD := ["Attach a Fighting Energy to Machop, then attack with Low Kick to knock out [DEFENDER]."]
 const NEWBY_T6_START_KM := [
-	"Your opponent has attached a Defender card to their active Rattata...",
-	"Rattata is weak to fighting so Machop would deal double damage and knock out Rattata...",
-	"However, Defender reduces the damage by 20, reducing the damage back to 20 leaving Rattata with 10hp...",
-	"Luckily you have just drawn a Pluspower card and can play it now...",
-	"Playing Pluspower allows your active Pokemon to deal an additional 10 damage!",
-	"Drag Pluspower into the middle of the board to attach it to Machop and knockout Rattata!",
+	"Rattata is weak to Machop's Fighting type, so Low Kick should do double damage and knock it out.",
+	"But with Defender attached, Rattata takes 20 less damage, which would leave it on 10 HP.",
+	"Luckily, the PlusPower you just drew makes Machop do 10 more damage! Drag it into the middle of the board, then knock out Rattata with Low Kick!",
 ]
 const NEWBY_T6_START_PAD := [
-	"Your opponent has attached a Defender card to their active Rattata...",
-	"Rattata is weak to fighting so Machop would deal double damage and knock out Rattata...",
-	"However, Defender reduces the damage by 20, reducing the damage back to 20 leaving Rattata with 10hp...",
-	"Luckily you have just drawn a Pluspower card and can play it now...",
-	"Playing Pluspower allows your active Pokemon to deal an additional 10 damage!",
-	"Open your hand and play Pluspower now to attach it to Machop and knockout Rattata!",
+	"Rattata is weak to Machop's Fighting type, so Low Kick should do double damage and knock it out.",
+	"But with Defender attached, Rattata takes 20 less damage, which would leave it on 10 HP.",
+	"Luckily, the PlusPower you just drew makes Machop do 10 more damage! Play it from your hand, then knock out Rattata with Low Kick!",
 ]
+const NEWBY_T6_SHIFT_KM := ["Remember, you can hover over any card and hold [SHIFT] at any time to read its effects in full."]
+const NEWBY_T6_SHIFT_PAD := ["Remember, you can move onto any card and hold [PAD_LB] at any time to read its effects in full."]
 const NEWBY_T7_START_KM := [
-	"Dratini has no weakness at all so Machop can only do 20 damage to it...",
-	"Without another Fire Energy, Ponyta doesn't do more damage and you have no more Pluspowers either...",
-	"Some Pokemon can evolve to unlock better attacks and more HP!",
-	"You can't evolve a Pokemon on the same turn it has been put onto the field or evolved already",
-	"Drag Machoke from your hand and drop it onto Machop to evolve it",
+	"Some Pokémon can evolve for better attacks and more HP, but not on the turn they were played or already evolved.",
+	"Drag Machoke from your hand onto Machop to evolve it!",
 ]
 const NEWBY_T7_START_PAD := [
-	"Dratini has no weakness at all so Machop can only do 20 damage to it...",
-	"Without another Fire Energy, Ponyta doesn't do more damage and you have no more Pluspowers either...",
-	"Some Pokemon can evolve to unlock better attacks and more HP!",
-	"You can't evolve a Pokemon on the same turn it has been put onto the field or evolved already",
-	"Open your hand, press [PAD_A] on Machoke and choose Machop to evolve it",
+	"Some Pokémon can evolve for better attacks and more HP, but not on the turn they were played or already evolved.",
+	"Open your hand, select Machoke, then select Machop to evolve it!",
 ]
 const NEWBY_T7_EVOLVED_KM := [
-	"Machoke needs 3 Energies to attack and Machop only has 1...",
-	"It is nearly always a good idea to evolve but there are often times you should wait...",
-	"Drag another Fighting Energy onto Machoke so it can attack next turn.",
+	"It's nearly always a good idea to evolve, but Machoke needs 3 Energy to attack and Machop only had 1.",
+	"You can't undo an evolution, so drag another Fighting Energy onto Machoke so it can attack next turn.",
 ]
 const NEWBY_T7_EVOLVED_PAD := [
-	"Machoke needs 3 Energies to attack and Machop only has 1...",
-	"It is nearly always a good idea to evolve but there are often times you should wait...",
-	"Attach another Fighting Energy to Machoke so it can attack next turn.",
+	"It's nearly always a good idea to evolve, but Machoke needs 3 Energy to attack and Machop only had 1.",
+	"You can't undo an evolution, so attach another Fighting Energy to Machoke so it can attack next turn.",
 ]
-# The opponent's Energy Removal (its turn 7) leaves Machop on 1 Energy, so after this attach
-# Machoke has 2 of the 3 it needs and cannot attack until next turn.
-const NEWBY_T7_ENERGY_KM := ["If you can't attack or play any more cards, finish your turn by clicking End Turn. [Q] jumps straight to it."]
-const NEWBY_T7_ENERGY_PAD := ["If you can't attack or play any more cards, press [PAD_Y] to jump to End Turn, then [PAD_A]."]
-const NEWBY_T8_START_KM := [
-	"Most Evolved Pokemon have higher HP and better attacks than their Basic stage Pokemon",
-	"When a Pokemon evolves, it heals any status conditions but keeps its damage counters...",
-	"Machoke's Karate Chop should do 50 damage but not while Machoke is damaged...",
-	"Machoke can only do 10 damage now. Try dragging Bill into the middle of the board to draw more cards.",
-]
-const NEWBY_T8_START_PAD := [
-	"Most Evolved Pokemon have higher HP and better attacks than their Basic stage Pokemon",
-	"When a Pokemon evolves, it heals any status conditions but keeps its damage counters...",
-	"Machoke's Karate Chop should do 50 damage but not while Machoke is damaged...",
-	"Machoke can only do 10 damage now. Try opening your hand and playing Bill to draw more useful cards.",
+const NEWBY_T7_ENERGY_KM := ["If you can't attack or play any more cards, click End Turn or press [Q]."]
+const NEWBY_T7_ENERGY_PAD := ["If you can't attack or play any more cards, press [PAD_Y], then [PAD_A] on End Turn."]
+# [HP] / [MAX] / [COUNTERS] / [CHOP] are read off Machoke when the turn starts.
+const NEWBY_T8_START := [
+	"When a Pokémon evolves it recovers from Poison, Sleep, Confusion and Paralysis, but keeps its damage counters.",
+	"A damage counter is the same as 10 damage. Machoke has [HP]/[MAX] HP, so it has [COUNTERS] damage counters.",
+	"Karate Chop does 10 less damage for each damage counter, so it would only do [CHOP] to Dratini. Try playing your Bill card.",
 ]
 const NEWBY_T8_BILL_KM := [
-	"Potion heals a Pokemon for 20hp. You have 2 potions in your hand now.",
-	"Drag each Potion from your hand and drop it onto Machoke to fully heal it",
+	"Potion removes 2 damage counters from one of your Pokémon, so it restores 20 HP to Machoke.",
+	"Drag both Potion cards onto Machoke.",
 ]
 const NEWBY_T8_BILL_PAD := [
-	"Potion heals a Pokemon for 20hp. You have 2 potions in your hand now.",
-	"Open your hand and play both potions on Machoke to fully heal it",
+	"Potion removes 2 damage counters from one of your Pokémon, so it restores 20 HP to Machoke.",
+	"Open your hand and play both Potion cards on Machoke.",
 ]
-const NEWBY_T8_HEALED_KM := [
-	"Your Machoke is back to full HP so Karate Chop will do the full 50 damage and knockout Dratini...",
-	"Click Karate Chop to knockout Dratini, take your last Prize card and win the match!",
-]
-const NEWBY_T8_HEALED_PAD := [
-	"Your Machoke is back to full HP so Karate Chop will do the full 50 damage and knockout Dratini...",
-	"Press [PAD_RB] and use Karate Chop to knockout Dratini, take your last Prize card and win the match!",
-]
+const NEWBY_T8_HEALED_KM := ["Machoke is back to full HP! Click Karate Chop to knock out Dratini and take your last Prize card!"]
+const NEWBY_T8_HEALED_PAD := ["Machoke is back to full HP! Press [PAD_RB], then [PAD_A] on Karate Chop to take your last Prize card!"]
+const NEWBY_T8_HEALED_ENERGY_KM := ["Machoke is back to full HP! Drag your last Energy card onto Machoke, then use Karate Chop to take your last Prize card!"]
+const NEWBY_T8_HEALED_ENERGY_PAD := ["Machoke is back to full HP! Attach your last Energy card to Machoke, then use Karate Chop to take your last Prize card!"]
+const NEWBY_T8_ENERGY_KM := ["Click Karate Chop to knock out Dratini and take your last Prize card!"]
+const NEWBY_T8_ENERGY_PAD := ["Press [PAD_RB], then [PAD_A] on Karate Chop to take your last Prize card!"]
+
+
+# ------------------------------------------------------------
+# CALLOUTS -- a piece of a card grown and ringed while a line talks about it
+# ------------------------------------------------------------
+# Regions are in the card art's pixels on a 600 x 825 card (every Base Set card lays its
+# Weakness / Resistance / type symbol out in the same place). Attack boxes differ per card.
+const Callout := preload("res://Scripts/Main_Match_Gameplay_Scripts/Tutorial_Callout.gd")
+const REGION_WEAKNESS   := Rect2(35, 686, 130, 58)
+const REGION_RESISTANCE := Rect2(245, 686, 135, 58)
+const REGION_TYPE       := Rect2(498, 28, 64, 62)
+const ATTACK_REGIONS := {
+	"base1-35:Flail":      Rect2(28, 590, 548, 90),   # Magikarp
+	"base1-60:Smash Kick": Rect2(28, 492, 548, 86),   # Ponyta
+	"base1-60:Flame Tail": Rect2(28, 590, 548, 88),   # Ponyta
+}
+# TWEAKABLE: how many times bigger each callout grows.
+const CALLOUT_GROW := 3.0
+const CALLOUT_GROW_ATTACK := 2.0
+var _callouts: Array = []
+
+
+func _callout(card, region: Rect2, grow: float) -> void:
+	if card == null:
+		return
+	var node = main.find_card_ui_for_object(card, true)
+	if node == null:
+		push_warning("TUTORIAL: no board node for %s's callout" % _name(card))
+		return
+	var c = Callout.new()
+	main.add_child(c)
+	c.start(node, String(card.metadata.get("id", "")), region, grow, UIKit.screen_h() - main.BOARD_BOT_H)
+	_callouts.append(c)
+
+
+func _attack_callout(card, attack_name: String) -> void:
+	if card == null:
+		return
+	var key := String(card.metadata.get("id", "")) + ":" + attack_name
+	if ATTACK_REGIONS.has(key):
+		_callout(card, ATTACK_REGIONS[key], CALLOUT_GROW_ATTACK)
+
+
+func _swap_attack_callout(card, attack_name: String) -> void:
+	_clear_callouts()
+	_attack_callout(card, attack_name)
+
+
+func _weakness_callouts(a, b) -> void:
+	_callout(a, REGION_WEAKNESS, CALLOUT_GROW)
+	_callout(b, REGION_WEAKNESS, CALLOUT_GROW)
+
+
+func _clear_callouts() -> void:
+	for c in _callouts:
+		if is_instance_valid(c):
+			c.dismiss()
+	_callouts.clear()
+
+
+## Lines with actions between them: a String is said (and clicked through), a Callable is
+## run on the spot. Once per match under `key`.
+func _once_script(key: String, items: Array, fills: Dictionary = {}) -> void:
+	if _seen.has(key):
+		return
+	_seen[key] = true
+	_busy = true
+	for it in items:
+		if it is Callable:
+			(it as Callable).call()
+			continue
+		var text := String(it)
+		for k in fills:
+			text = text.replace(k, str(fills[k]))
+		await main.show_message(_keys(text), true, "tutorial")
+	_busy = false
+
+
+## The CPU has chosen its attack and is about to announce it (CPU_AI). Magikarp's Flail is
+## grown while "used Flail!" is up.
+func on_cpu_attack_declared(attacker, attack_name: String) -> void:
+	if mode != "newby" or _seen.has("n_flail"):
+		return
+	if _name(attacker) == "Magikarp" and attack_name == "Flail":
+		_seen["n_flail"] = true
+		_attack_callout(attacker, attack_name)
+
+
+## The CPU's attack animation is about to play: any callout goes.
+func on_cpu_attack_start() -> void:
+	_clear_callouts()
 
 
 func _newby_turn_start() -> void:
 	match _player_turns:
 		1:
-			await _once("n_t1_aim", NEWBY_T1_AIM, {"[POKEMON]": _name(main.player_active_pokemon)})
-			if _is_pad():
-				# The pad must open its hand to play anything: "t1_hand" waits for that.
-				_step = "t1_hand"
-				await _once("n_t1", NEWBY_T1_PAD)
-				await _once("n_attached_tip", NEWBY_ATTACHED_TIP_PAD)
-				# ISSUE #349: the Caps Lock hint moved here from the very first screen.
-				await _once("n_caps", [_caps_hint()])
-				await _once("n_t1_open", NEWBY_T1_OPEN_HAND_PAD)
-			else:
-				# The mouse drags straight from the bar: no hand to open, straight to the attach.
-				_step = "t1_attach"
-				await _once("n_t1_rules", NEWBY_ENERGY_RULES)
-				await _once("n_t1", NEWBY_T1_KM)
-				await _once("n_alt_tip", NEWBY_ALT_TIP)
-				await _once("n_attached_tip", NEWBY_ATTACHED_TIP_KM)
-				await _once("n_caps", [_caps_hint()])
-				await _once("n_t1_drag", NEWBY_T1_DRAG)
+			_step = "t1_attach"
+			await _once("n_t1_aim", NEWBY_T1_AIM)
+			await _once("n_t1_energy", _cm(NEWBY_T1_ENERGY_KM, NEWBY_T1_ENERGY_PAD))
+			await _once("n_caps", _cm(NEWBY_STUCK_KM, NEWBY_STUCK_PAD))
 		2:
 			_step = "t2_bill"
 			await _once("n_t2", _cm(NEWBY_T2_START_KM, NEWBY_T2_START_PAD))
@@ -1367,52 +1389,28 @@ func _newby_turn_start() -> void:
 			await _once("n_t7", _cm(NEWBY_T7_START_KM, NEWBY_T7_START_PAD))
 		8:
 			_step = "t8_bill"
-			await _once("n_t8", _cm(NEWBY_T8_START_KM, NEWBY_T8_START_PAD))
+			var m = main.player_active_pokemon
+			var hp: int = m.current_hp if m != null else 40
+			var mx: int = m.get_max_hp() if m != null else 80
+			var counters: int = maxi(0, (mx - hp) / 10)
+			await _once("n_t8", NEWBY_T8_START, {"[HP]": hp, "[MAX]": mx,
+				"[COUNTERS]": counters, "[CHOP]": maxi(0, 50 - 10 * counters)})
 		_:
 			_step = "free"
 
 
-# What to do next, said again when the player opens their hand a SECOND time in the same
-# step -- they opened it, backed out (cancelled) without doing the thing, and came back.
-# Said inside the large hand view, so the same words fit the mouse (Alt + click) and the pad.
-const NEWBY_REMINDERS := {
-	"t1_attach":       "Some cards can't always be played. Try attaching an energy card to your Voltorb first.",
-	"t2_bill":         "Play Bill and draw more cards.",
-	"t2_bench":        "Play Voltorb onto your bench.",
-	"t2_bench_energy": "Attach an energy card to the Benched Voltorb.",
-	"t3_oak":          "Professor Oak may help. Select it and play it from your hand.",
-	"t3_ponyta":       "Place Ponyta on your bench and attach a Fire Energy to it.",
-	"t3_fire":         "Attach a Fire Energy card to Ponyta.",
-	"t4":              "Put Machop on your bench and attach another fire energy to Ponyta.",
-	"t5_machop":       "Attach a fighting energy to Machop and attack with Low Kick to knock out your opponent's Diglett",
-	"t6_pluspower":    "Play Pluspower now to attach it to Machop and knockout Rattata!",
-	"t6_energy":       "Attach another Fighting Energy to Machop.",
-	"t7_evolve":       "Select Machoke in your hand and play it to Evolve your Machop",
-	"t7_energy":       "Attach another Fighting Energy to Machoke so it can attack next turn.",
-	"t8_bill":         "Play Bill to draw more useful cards.",
-	"t8_potions":      "Play both potions to fully heal Machoke",
-}
+## The hand view opened a SECOND time in the same beat (opened, backed out, came back):
+## say what to do again.
 var _last_hand_step: String = ""
 
 
 func _newby_hand_opened() -> void:
-	if _step == "t1_hand":
-		_step = "t1_attach"
-		_last_hand_step = _step
-		_deferred_once("n_t1_hand", NEWBY_T1_HAND_PAD)
-		return
-	if not _is_pad() and _step == "t1_attach" and not _seen.has("n_t1_hand"):
-		# The mouse's first Alt + click: how the large view plays a card.
-		_last_hand_step = _step
-		_deferred_once("n_t1_hand", NEWBY_T1_HAND_KM)
-		return
-	if _step == _last_hand_step and NEWBY_REMINDERS.has(_step):
-		_deferred_say([NEWBY_REMINDERS[_step]])
+	if _step == _last_hand_step and not _step in ["", "free"]:
+		_deferred_say([_step_hint()])
 	_last_hand_step = _step
 
 
-func _newby_energy_attached(energy, target) -> void:
-	var tname := _name(target)
+func _newby_energy_attached(_energy, target) -> void:
 	match _step:
 		"t1_attach":
 			_step = "t1_attack"
@@ -1422,9 +1420,12 @@ func _newby_energy_attached(energy, target) -> void:
 				_step = "t2_attack"
 				await _once("n_t2_energy", NEWBY_T2_BENCH_ENERGY)
 		"t3_fire":
-			if tname == "Ponyta":
+			if _name(target) == "Ponyta":
 				_step = "t3_attack"
-				await _once("n_t3_fire", NEWBY_T3_FIRE)
+				await _once("n_t3_fire", _cm(NEWBY_T3_FIRE_KM, NEWBY_T3_FIRE_PAD))
+		"t4":
+			if _name(target) == "Ponyta":
+				await _newby_colorless(target)
 		"t5_machop":
 			if target == main.player_active_pokemon:
 				_step = "t5_attack"
@@ -1435,6 +1436,26 @@ func _newby_energy_attached(energy, target) -> void:
 			if target == main.player_active_pokemon:
 				_step = "t7_done"
 				await _once("n_t7_energy", _cm(NEWBY_T7_ENERGY_KM, NEWBY_T7_ENERGY_PAD))
+		"t8_energy":
+			if target == main.player_active_pokemon:
+				_step = "t8_attack"
+				await _once("n_t8_energy", _cm(NEWBY_T8_ENERGY_KM, NEWBY_T8_ENERGY_PAD))
+
+
+## Ponyta's second Fire: Smash Kick grown for the Colorless line, then Flame Tail for the next.
+func _newby_colorless(ponyta) -> void:
+	var tail: String = NEWBY_T4_FLAME_TAIL if _machop_benched() else NEWBY_T4_FLAME_TAIL_BENCH
+	await _once_script("n_t4_colorless", [
+		func(): _attack_callout(ponyta, "Smash Kick"),
+		NEWBY_T4_COLORLESS,
+		func(): _swap_attack_callout(ponyta, "Flame Tail"),
+		tail,
+		func(): _clear_callouts(),
+	])
+
+
+func _machop_benched() -> bool:
+	return main.player_bench.any(func(b): return _name(b) == "Machop")
 
 
 func _newby_benched(card) -> void:
@@ -1458,12 +1479,11 @@ func _newby_trainer(card) -> void:
 			if n == "Professor Oak":
 				_step = "t3_ponyta"
 				await _once("n_t3_oak", _cm(NEWBY_T3_OAK_KM, NEWBY_T3_OAK_PAD))
-				# ISSUE #349: Ponyta has just been drawn
-				await _once("n_caps_again", _cm(CAPS_REMINDER_KM, CAPS_REMINDER_PAD))
 		"t6_pluspower":
 			if n == "PlusPower":
-				_step = "t6_energy"
-				await _once("n_shift", _cm(SHIFT_HINT_KM, SHIFT_HINT_PAD))   # ISSUE #349
+				# The Energy may already be on (attached before the PlusPower).
+				_step = "t6_attack" if main.player_energy_played_this_turn else "t6_energy"
+				await _once("n_shift", _cm(NEWBY_T6_SHIFT_KM, NEWBY_T6_SHIFT_PAD))
 		"t8_bill":
 			if n == "Bill":
 				_step = "t8_potions"
@@ -1472,16 +1492,28 @@ func _newby_trainer(card) -> void:
 		"t8_potions":
 			if n == "Potion":
 				_potions_played += 1
-				# Done once Machoke is healed -- or once the Potions are gone, so a Potion spent on
-				# Ponyta cannot leave the player stuck behind the "heal Machoke" block.
+				# Done once Machoke is healed -- or once the Potions are gone, so the player can
+				# never be left behind a "heal Machoke" lock with nothing to heal it with.
 				var machoke = main.player_active_pokemon
 				var healed: bool = machoke != null and machoke.current_hp >= machoke.get_max_hp()
 				var potions_left: bool = main.player_hand.any(func(c): return _name(c) == "Potion")
-				if healed:
-					_step = "t8_attack"
-					await _once("n_t8_healed", _cm(NEWBY_T8_HEALED_KM, NEWBY_T8_HEALED_PAD))
-				elif not potions_left:
-					_step = "t8_attack"
+				if healed or not potions_left:
+					if _machoke_can_attack():
+						_step = "t8_attack"
+						await _once("n_t8_healed", _cm(NEWBY_T8_HEALED_KM, NEWBY_T8_HEALED_PAD))
+					else:
+						_step = "t8_energy"
+						await _once("n_t8_healed", _cm(NEWBY_T8_HEALED_ENERGY_KM, NEWBY_T8_HEALED_ENERGY_PAD))
+
+
+func _machoke_can_attack() -> bool:
+	var m = main.player_active_pokemon
+	if m == null:
+		return false
+	for a in main.get_attacks_for_card(m):
+		if String(a.get("name", "")) == "Karate Chop":
+			return main.check_attack_requirements(a, m)
+	return false
 
 
 func _newby_evolved(card) -> void:
@@ -1490,158 +1522,215 @@ func _newby_evolved(card) -> void:
 		await _once("n_t7_evolved", _cm(NEWBY_T7_EVOLVED_KM, NEWBY_T7_EVOLVED_PAD))
 
 
-func _newby_attack(attacker, defender, weak: bool, resist: bool, fills: Dictionary, attacker_is_opponent: bool) -> void:
+func _newby_attack(attacker, defender, weak: bool, resist: bool, _fills: Dictionary, attacker_is_opponent: bool) -> void:
 	if attacker_is_opponent:
 		return
 	if _step == "t1_attack" and weak:
 		_step = "t1_done"
-		await _once("n_t1_weak", NEWBY_T1_WEAKNESS)
+		await _newby_weakness(attacker, defender)
 	elif _step == "t2_attack":
 		_step = "t2_done"
 	elif _step == "t3_attack" and resist:
 		_step = "t3_done"
-		await _once("n_t3_resist", NEWBY_T3_RESIST)
+		await _once_script("n_t3_resist", [
+			func(): _callout(defender, REGION_RESISTANCE, CALLOUT_GROW),
+			NEWBY_T3_RESIST[0],
+			NEWBY_T3_RESIST[1],
+			func(): _clear_callouts(),
+		])
 
 
-const NEWBY_BLOCK_POTION_PONYTA := "Ponyta won't help much more now. Save your Potions for Machoke."
+## Voltorb's first Tackle: both Actives' Weaknesses grow for the Weakness line, Voltorb's
+## type joins them for the type line, and everything shrinks back after the last line.
+func _newby_weakness(attacker, defender) -> void:
+	await _once_script("n_t1_weak", [
+		NEWBY_T1_WEAK_1,
+		func(): _weakness_callouts(attacker, defender),
+		NEWBY_T1_WEAK_2,
+		func(): _callout(attacker, REGION_TYPE, CALLOUT_GROW),
+		NEWBY_T1_WEAK_3,
+		NEWBY_T1_WEAK_4,
+		func(): _clear_callouts(),
+	])
+
+
+const NEWBY_BLOCK_POTION_PONYTA := "Save your Potions for Machoke."
 
 
 ## What the newby player may not do right now, and why. "" = allowed.
-## Lines that say HOW to do something come as _cm(mouse, pad) pairs; the rest fit both.
+## WHITELIST: each beat names the only things allowed; anything else is refused with the
+## beat's hint. Every play path asks this -- drag, double click, the hand view, the pad --
+## and the Energy target screen only lists the allowed Pokemon (filter_attach_targets).
 func _newby_gate(kind: String, data: Dictionary) -> String:
+	if kind == "heal":
+		return NEWBY_BLOCK_POTION_PONYTA if _name(data.get("target", null)) == "Ponyta" else ""
+	if _newby_allows(kind, data):
+		return ""
+	return _step_hint()
+
+
+func _newby_allows(kind: String, data: Dictionary) -> bool:
 	var card = data.get("card", null)
-	var energy = data.get("energy", null)
+	var cname := _name(card)
+	var action := String(data.get("action", ""))
+	var attach_play: bool = kind == "play" and action == "ATTACH_ENERGY"
+	var energy = data.get("energy", card if attach_play else null)
+	var etype: String = main.get_energy_type_from_card(energy) if energy != null else ""
 	var target = data.get("target", null)
-	var attack_name: String = String(data.get("attack", {}).get("name", "")) if data.get("attack") is Dictionary else ""
 	var active = main.player_active_pokemon
-	var energy_type: String = main.get_energy_type_from_card(energy) if energy != null else ""
-	var is_energy_play: bool = kind == "play" and String(data.get("action", "")) == "ATTACH_ENERGY"
-	# Potions are for Machoke: Ponyta is never a heal target, and a Potion can't be played
-	# while Ponyta is the only damaged Pokemon (it would have nothing to heal).
-	if kind == "heal" and _name(target) == "Ponyta":
-		return NEWBY_BLOCK_POTION_PONYTA
-	if kind == "play" and _name(card) == "Potion":
-		var field: Array = [active] + main.player_bench
-		var healable: bool = field.any(func(p): return p != null and _name(p) != "Ponyta" and p.current_hp < p.get_max_hp())
-		if not healable:
-			return NEWBY_BLOCK_POTION_PONYTA
+	var atk: String = String(data.get("attack", {}).get("name", "")) if data.get("attack") is Dictionary else ""
+	var energy_done: bool = main.player_energy_played_this_turn
+	var is_bench := func(n: String) -> bool: return kind == "play" and action == "SET_POKEMON" and cname == n
+	var is_trainer := func(n: String) -> bool: return kind == "play" and action == "PLAY_TRAINER" and cname == n
+	# An Energy of `type` ("" = any) onto a Pokemon `want` accepts. Picking the Energy itself
+	# (the target is not known yet) only checks the type; the target screen is filtered.
+	var attach_ok := func(type: String, want: Callable) -> bool:
+		if attach_play:
+			return type == "" or etype == type
+		return kind == "attach" and (type == "" or etype == type) and target != null and want.call(target)
+	var is_active := func(t) -> bool: return t == active
 	match _step:
-		"t1_hand":   # pad only (the mouse starts on "t1_attach")
-			if kind == "end_turn":
-				return "You don't want to end your turn yet. Press [PAD_A] on your hand first to start playing cards."
 		"t1_attach":
-			if kind == "end_turn":
-				return _cm("Drag a Fighting Energy from your hand and drop it onto Voltorb to attach it.",
-					"Press [PAD_A] on your hand, choose a Fighting Energy and attach it to Voltorb.")
-		"t1_attack":
-			if kind == "end_turn":
-				return "You don't want to end your turn without attacking. Use Voltorb's Tackle attack"
+			return attach_ok.call("", is_active)
+		"t1_attack", "t2_attack", "t3_attack":
+			return kind == "attack" and atk == "Tackle"
 		"t2_bill":
-			if kind in ["end_turn", "attack"]:
-				return _cm("Voltorb only has 20hp and you could lose. Drag Bill into the middle of the board to draw more cards.",
-					"Voltorb only has 20hp left and you could lose the match. Open your hand to play Bill and draw more cards.")
-			if is_energy_play:
-				return "Play Bill and draw more cards first. You may draw something more useful."
+			return is_trainer.call("Bill")
 		"t2_bench":
-			if kind in ["end_turn", "attack"] or is_energy_play:
-				return _cm("Voltorb only has 20hp left and you could lose the match. Drag Voltorb onto your bench first.",
-					"Voltorb only has 20hp left and you could lose the match. Open your hand to bench Voltorb first.")
+			return is_bench.call("Voltorb")
 		"t2_bench_energy":
-			if kind in ["end_turn", "attack", "retreat"] or (kind == "attach" and target == active):
-				return _cm("Your active Voltorb is at risk and has enough energy. Drag a Fighting Energy onto the Benched Voltorb.",
-					"Your active Voltorb is at risk and has enough energy. Attach Fighting Energy to the Benched Voltorb.")
-		"t2_attack":
-			if kind == "end_turn":
-				return _cm("You should attack Magikarp with Voltorb's tackle by clicking the Tackle attack button.",
-					"You should attack Magikarp with Voltorb's tackle. Press [PAD_RB], then [PAD_A] on Tackle.")
+			return attach_ok.call("Fighting", func(t): return t != active and _name(t) == "Voltorb")
 		"t3_oak":
-			if kind in ["end_turn", "attack"]:
-				return _cm("Try dragging Professor Oak from your hand into the middle of the board to draw more cards.",
-					"Try playing Professor Oak from your hand to draw more cards.")
-			if is_energy_play:
-				return "Voltorb doesn't need any more energy, play Professor Oak to draw more useful cards first."
+			return is_trainer.call("Professor Oak")
 		"t3_ponyta":
-			if kind == "attach" and target == active:
-				return "Voltorb is about to be knocked out, attach a Fire Energy to Ponyta instead"
-			if kind in ["end_turn", "attack", "retreat"] or is_energy_play:
-				return _cm("Drag Ponyta onto your bench, then drag a Fire Energy onto it",
-					"Place Ponyta on your bench and attach a Fire Energy to it")
+			return is_bench.call("Ponyta")
 		"t3_fire":
-			if kind == "attach" and target == active:
-				return "Voltorb is about to be knocked out, attach a Fire Energy to Ponyta instead"
-			if kind == "attach" and _name(target) == "Ponyta" and energy_type != "Fire":
-				return "Pay attention to energy types. With 2 Fire energy, Ponyta can use the stronger 'Flame Tail' attack."
-			if kind in ["end_turn", "attack", "retreat"]:
-				return _cm("Drag a Fire Energy card onto Ponyta", "Attach a Fire Energy card to Ponyta")
-		"t3_attack":
-			if kind in ["end_turn", "retreat"]:
-				return _cm("Click the Tackle button to attack Diglett with Voltorb's Tackle",
-					"Press [PAD_RB], then [PAD_A] on Tackle to attack Diglett with Voltorb's Tackle")
+			return attach_ok.call("Fire", func(t): return _name(t) == "Ponyta")
 		"t4":
-			var machop_benched := false
-			for b in main.player_bench:
-				if _name(b) == "Machop":
-					machop_benched = true
-			if kind == "attach" and _name(target) == "Ponyta" and energy_type != "Fire":
-				return "Ponyta's Flame Tail does more damage to Diglett than Smash Kick if you attach another Fire Energy"
-			if kind == "attach" and _name(target) == "Machop" and energy_type == "Fire":
-				return "Machop doesn't have Colorless energy requirements so can't use a Fire Energy. Attach it to Ponyta instead."
-			if kind == "retreat":
-				return "Retreating isn't a great choice here. Attach a fire energy to Ponyta and attack with Flame Tail instead"
-			if kind == "attack" and not machop_benched:
-				return "Attacking will end your turn. Put Machop on your bench first before you attack."
-			if kind == "attack" and attack_name == "Smash Kick":
-				return "Flame Tail does more damage than Smash kick. Attack with Flame Tail instead."
-			if kind == "end_turn":
-				return _cm("Drag Machop onto your bench and drag another Fire Energy onto Ponyta.",
-					"Put Machop on your bench and attach another Fire Energy to Ponyta.")
+			var benched := _machop_benched()
+			if is_bench.call("Machop") and not benched:
+				return true
+			if not energy_done and attach_ok.call("Fire", func(t): return _name(t) == "Ponyta"):
+				return true
+			return kind == "attack" and atk == "Flame Tail" and benched
 		"t5_retreat":
-			if kind in ["end_turn", "attack"] or is_energy_play:
-				return _cm("Ponyta is at risk of being knocked out. Drag it onto your Benched Machop, or click Retreat, to retreat it.",
-					"Ponyta is at risk of being knocked out. Press [PAD_RB] and use the Retreat button to retreat Ponyta.")
+			return kind == "retreat"
 		"t5_machop":
-			if kind == "attach" and target != active:
-				return "Ponyta has just retreated and Machop is now active. Attach Fighting Energy to Machop instead."
-			if kind in ["end_turn", "attack"]:
-				return _cm("Drag a fighting energy onto Machop and attack with Low Kick to knock out your opponent's Diglett",
-					"Attach a fighting energy to Machop and attack with Low Kick to knock out your opponent's Diglett")
-		"t5_attack":
-			if kind == "end_turn":
-				return "You should attack with Low Kick to knockout your opponent's Pokemon!"
+			return attach_ok.call("Fighting", is_active)
+		"t5_attack", "t6_attack":
+			return kind == "attack" and atk == "Low Kick"
 		"t6_pluspower":
-			if kind in ["end_turn", "attack"] or is_energy_play:
-				return _cm("Drag Pluspower into the middle of the board now to attach it to Machop and knockout Rattata!",
-					"Play Pluspower now to attach it to Machop and knockout Rattata!")
+			if is_trainer.call("PlusPower"):
+				return true
+			return not energy_done and attach_ok.call("Fighting", is_active)
 		"t6_energy":
-			if kind in ["end_turn", "attack"] or (kind == "attach" and target != active):
-				return _cm("Make sure to still attach your regular Energy Card too. Drag another Fighting Energy onto Machop.",
-					"Make sure to still attach your regular Energy Card too. Attach another Fighting Energy to Machop.")
-		"t6_attack":
-			if kind == "end_turn":
-				return "Knock out the Opponent's Rattata with Machop's Low Kick attack."
+			return attach_ok.call("Fighting", is_active)
 		"t7_evolve":
-			var evolving: bool = kind == "play" and String(data.get("action", "")) == "EVOLVE" and _name(card) == "Machoke"
-			if not evolving:
-				return _cm("Drag Machoke from your hand onto Machop to evolve it",
-					"Play Machoke from your hand to evolve Machop")
+			return kind == "play" and action == "EVOLVE" and cname == "Machoke"
 		"t7_energy":
-			if kind == "end_turn" or (kind == "attach" and target != active):
-				return _cm("Drag another Fighting Energy onto Machoke so it can attack next turn",
-					"Attach another Fighting Energy to Machoke so it can attack next turn")
+			return attach_ok.call("Fighting", is_active)
+		"t7_done":
+			return kind == "end_turn"
+		"t8_bill", "t8_potions", "t8_energy":
+			# Machoke's last Energy may go on at any point this turn, of any type.
+			if not energy_done and attach_ok.call("", is_active):
+				return true
+			if _step == "t8_bill":
+				return is_trainer.call("Bill")
+			if _step == "t8_potions":
+				return is_trainer.call("Potion")
+			return false
+		"t8_attack":
+			return kind == "attack" and atk == "Karate Chop"
+		"free":
+			return true
+	# A beat with nothing scripted (between turns, a screen of its own): only End Turn, so the
+	# player can never be stuck.
+	return kind == "end_turn"
+
+
+## The line for whatever the player should be doing right now (a refused action shows it).
+func _step_hint() -> String:
+	var defender := _name(main.opponent_active_pokemon)
+	match _step:
+		"t1_attach":
+			return _cm("Drag a Fighting Energy from your hand onto Voltorb.",
+				"Open your hand, select a Fighting Energy, then select Voltorb.")
+		"t1_attack", "t3_attack":
+			return _cm("Click the Tackle button next to Voltorb to attack.",
+				"Press [PAD_RB], then [PAD_A] on Tackle to attack.")
+		"t2_bill":
+			return _cm("Drag Bill from your hand into the middle of the board to play it.",
+				"Open your hand, select Bill and press [PAD_A] to play it.")
+		"t2_bench":
+			return _cm("Drag Voltorb from your hand onto your Bench.",
+				"Open your hand, select Voltorb and press [PAD_A] to put it on your Bench.")
+		"t2_bench_energy":
+			return _cm("Drag a Fighting Energy onto your Benched Voltorb.",
+				"Attach a Fighting Energy to your Benched Voltorb.")
+		"t2_attack":
+			return _cm("Click Tackle to knock out Magikarp.",
+				"Press [PAD_RB], then [PAD_A] on Tackle to knock out Magikarp.")
+		"t3_oak":
+			return _cm("Drag Professor Oak into the middle of the board to play it.",
+				"Open your hand, select Professor Oak and press [PAD_A] to play it.")
+		"t3_ponyta":
+			return _cm("Drag Ponyta from your hand onto your Bench.",
+				"Open your hand, select Ponyta and press [PAD_A] to put it on your Bench.")
+		"t3_fire":
+			return _cm("Drag a Fire Energy onto Ponyta.", "Attach a Fire Energy to Ponyta.")
+		"t4":
+			var benched := _machop_benched()
+			var energy_done: bool = main.player_energy_played_this_turn
+			if not benched and not energy_done:
+				return _cm("Drag Machop onto your Bench, then drag a Fire Energy onto Ponyta.",
+					"Put Machop on your Bench, then attach a Fire Energy to Ponyta.")
+			if not benched:
+				return _cm("Drag Machop from your hand onto your Bench.",
+					"Open your hand, select Machop and press [PAD_A] to put it on your Bench.")
+			if not energy_done:
+				return _cm("Drag a Fire Energy onto Ponyta.", "Attach a Fire Energy to Ponyta.")
+			return _cm("Click Flame Tail to attack.", "Press [PAD_RB], then [PAD_A] on Flame Tail to attack.")
+		"t5_retreat":
+			return _cm("Drag Ponyta onto Machop, or click Retreat, to retreat Ponyta.",
+				"Press [PAD_RB], move onto Retreat and press [PAD_A] to retreat Ponyta.")
+		"t5_machop":
+			return _cm("Drag a Fighting Energy onto Machop.", "Attach a Fighting Energy to Machop.")
+		"t5_attack":
+			return _cm("Click Low Kick to knock out %s." % defender,
+				"Press [PAD_RB], then [PAD_A] on Low Kick to knock out %s." % defender)
+		"t6_pluspower":
+			return _cm("Drag PlusPower into the middle of the board to play it.",
+				"Open your hand, select PlusPower and press [PAD_A] to play it.")
+		"t6_energy":
+			return _cm("Remember to attach an Energy every turn. Drag a Fighting Energy onto Machop.",
+				"Remember to attach an Energy every turn. Attach a Fighting Energy to Machop.")
+		"t6_attack":
+			return _cm("Click Low Kick to knock out Rattata.",
+				"Press [PAD_RB], then [PAD_A] on Low Kick to knock out Rattata.")
+		"t7_evolve":
+			return _cm("Drag Machoke from your hand onto Machop to evolve it.",
+				"Open your hand, select Machoke, then select Machop to evolve it.")
+		"t7_energy":
+			return _cm("Drag a Fighting Energy onto Machoke so it can attack next turn.",
+				"Attach a Fighting Energy to Machoke so it can attack next turn.")
+		"t7_done":
+			return _cm(NEWBY_T7_ENERGY_KM[0], NEWBY_T7_ENERGY_PAD[0])
 		"t8_bill":
-			if kind == "end_turn":
-				return _cm("Drag one more fighting Energy onto Machoke, then Bill into the middle of the board to draw more cards.",
-					"Attach one more fighting Energy to Machoke and play Bill to draw more useful cards.")
-			if kind == "attack":
-				return "Karate Chop will only do 10 damage. Bill might give you something useful to help."
-			if kind == "retreat":
-				return "Ponyta won't help much more now. Bill might give you something useful to help."
+			return _cm("Karate Chop would only do 10 damage. Drag Bill into the middle of the board to play it.",
+				"Karate Chop would only do 10 damage. Open your hand and play Bill.")
 		"t8_potions":
-			if kind == "end_turn":
-				return _cm("Recover your Machoke's HP by dragging the Potion cards in your hand onto it",
-					"Recover your Machoke's HP by playing the Potion cards in your hand")
-			if kind == "attack":
-				return "Karate Chop only does 10 (or 30) damage while Machoke is damaged. Use your Potions to heal it first."
-			if kind == "retreat":
-				return "Ponyta won't help much more now. Recover your Machoke's HP by playing the Potion cards in your hand."
-	return ""
+			return _cm("Drag both Potion cards onto Machoke.", "Open your hand and play both Potion cards on Machoke.")
+		"t8_energy":
+			return _cm("Drag your last Energy card onto Machoke.", "Attach your last Energy card to Machoke.")
+		"t8_attack":
+			return _cm(NEWBY_T8_ENERGY_KM[0], NEWBY_T8_ENERGY_PAD[0])
+	return _cm("Not right now. Press [CAPS LOCK] to read the last tutorial message again.",
+		"Not right now. Press [PAD_VIEW] to read the last tutorial message again.")
+
+
+## The Energy target screen: only the Pokemon the tutorial allows this Energy onto.
+func filter_attach_targets(energy, targets: Array) -> Array:
+	if mode != "newby" or main.opponents_turn_active:
+		return targets
+	return targets.filter(func(p): return gate("attach", {"energy": energy, "target": p}) == "")
