@@ -62,23 +62,45 @@ static func centre_x(ui_layer: Node) -> float:
 static func play(ui_layer: Node, time_name: String, rest_y: float = REST_POS.y, clock: Node = null) -> void:
 	if ui_layer == null or not is_instance_valid(ui_layer):
 		return
+	# 2026-11-12 (user): with the clock on, the clock OWNS the sign -- they slide in together, leave
+	# together, and the sign is carried through doors with the clock (Overworld_Clock.show_banner).
+	if clock != null and is_instance_valid(clock) and GameState.overworld_clock_on() and clock.has_method("show_banner"):
+		clock.show_banner(time_name, HOLD_TIME)
+		return
+	var panel := build(ui_layer, time_name, rest_y)
+	var tween := drop_in(panel, DELAY)
+	tween.tween_interval(HOLD_TIME)
+	tween.tween_callback(leave.bind(panel))
+
+
+## A sign for `time_name`, added to `ui_layer`, waiting invisible above its resting spot.
+## drop_in() brings it down; leave() takes it away.
+static func build(ui_layer: Node, time_name: String, rest_y: float) -> Control:
 	var column: float = centre_x(ui_layer)
 	var panel := _build_panel(time_name)
 	ui_layer.add_child(panel)
 	var rest_pos := Vector2(column - panel.get_combined_minimum_size().x * 0.5, rest_y)
+	panel.set_meta("rest_y", rest_y)
 	panel.position = rest_pos - Vector2(0.0, DROP_FROM)
 	panel.modulate.a = 0.0
+	return panel
 
+
+## Drops a built sign onto its resting spot after `delay` (`instant`: put it there now). Returns the tween.
+static func drop_in(panel: Control, delay: float = 0.0, instant: bool = false) -> Tween:
+	var rest_y: float = float(panel.get_meta("rest_y", REST_POS.y))
 	var tween := panel.create_tween()
-	tween.tween_interval(DELAY)
-	tween.tween_property(panel, "position:y", rest_pos.y, IN_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	if instant:
+		panel.position.y = rest_y
+		panel.modulate.a = 1.0
+		tween.tween_interval(0.0)
+		return tween
+	if delay > 0.0:
+		tween.tween_interval(delay)
+	tween.tween_property(panel, "position:y", rest_y, IN_TIME).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(panel, "modulate:a", 1.0, IN_TIME)
-	print("ISSUE #478 FIX ACTIVE: time banner holds ", HOLD_TIME, "s")
-	if clock != null and is_instance_valid(clock) and GameState.overworld_clock_on():
-		tween.tween_callback(Callable(clock, "hold_banner").bind(panel, HOLD_TIME))
-		return
-	tween.tween_interval(HOLD_TIME)
-	tween.tween_callback(leave.bind(panel))
+	return tween
 
 
 ## Slide a banner back up and free it. The clock calls this as it slides away itself (which can
@@ -87,6 +109,9 @@ static func leave(panel: Control) -> void:
 	if panel == null or not is_instance_valid(panel) or panel.has_meta("leaving"):
 		return
 	panel.set_meta("leaving", true)
+	var drop: Tween = panel.get_meta("drop_tween") if panel.has_meta("drop_tween") else null
+	if drop != null and drop.is_valid():
+		drop.kill()
 	var tween := panel.create_tween()
 	tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tween.tween_property(panel, "position:y", panel.position.y - DROP_FROM, OUT_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)

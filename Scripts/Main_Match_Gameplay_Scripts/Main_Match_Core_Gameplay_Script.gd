@@ -2937,6 +2937,9 @@ func _make_action_row(row: Dictionary, is_opponent: bool) -> Button:
 
 	var btn := Button.new()
 	btn.text = ""
+	# The newby tutorial rings the row it asks for (Tutorial_Director.guide_targets).
+	btn.set_meta("row_kind", kind)
+	btn.set_meta("row_text", String(row.get("text", "")))
 	btn.custom_minimum_size = Vector2(0, ACTION_ROW_H)
 	btn.disabled = not enabled
 	btn.focus_mode = Control.FOCUS_NONE

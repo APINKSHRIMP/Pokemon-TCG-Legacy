@@ -175,6 +175,42 @@
 	]
   },
 
+  "_registration_reminder_readme": [
+	"Morning 3 (registration day) nudges while the player hasn't registered at the Town Hall yet",
+	"(RegistrationReminders, Scripts/Cutscenes/Registration_Reminders.gd). registration_call_alexander",
+	"rings first, a few steps into the living room, for every start that didn't meet Olly that morning.",
+	"Then Ellie, then Alexander again. Thresholds are matches / NPC talks / interior-to-outside exits /",
+	"packs opened, whichever comes first."
+  ],
+
+  "registration_call_alexander": {
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "yellow",
+	"background": "BlurryTreeBackground", "phone": "iPhone4",
+	"battle_sprite": "1Alexander",
+	"lines": [
+	  "Hey, we're at the Town Hall now waiting in line. If you come here quick enough you can register with us.",
+	  "Hurry up and come to the Town Hall."
+	]
+  },
+
+  "registration_reminder_ellie": {
+	"speaker": "Ellie", "character": "Ellie", "clothes": "Hoodie", "pill_sprite": "1Ellie_Hoodie", "colour": "lilac",
+	"background": "BlurryTreeBackground", "phone": "iPhone4",
+	"battle_sprite": "1Ellie_Hoodie", "mouth": [500, 300], "mouth_width": 26,
+	"lines": [
+	  "Hey, we're right at the front of the line for registration at the Town Hall now, run here quick!!!"
+	]
+  },
+
+  "registration_reminder_alexander": {
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "yellow",
+	"background": "BlurryTreeBackground", "phone": "iPhone4",
+	"battle_sprite": "1Alexander",
+	"lines": [
+	  "Yo, we had to queue for HOURS this morning, we're not gonna hold a spot for you all morning, we'll be registering in like 2 seconds so run to the Town Hall now."
+	]
+  },
+
   "_fish_shop_readme": [
 	"FISH milestone calls: fish_shop_<N>_olly / fish_shop_<N>_alexander, rung by FishShopCalls the",
 	"moment the player has SENT N fish to FISH. Whoever is behind the counter today rings (the other",

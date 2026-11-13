@@ -1039,6 +1039,71 @@
       "sprite": "Gardener2",
       "message_colour": "green",
       "friendly_name": "Harbour Florist"
+    },
+    "Ellie": {
+      "sprite": "1Ellie_Dress",
+      "message_colour": "light_pink",
+      "friendly_name": "Ellie"
+    },
+    "Challenger": {
+      "sprite": "NPC260",
+      "message_colour": "orange",
+      "friendly_name": "Challenger"
+    },
+    "Alexander": {
+      "sprite": "1Alexander",
+      "message_colour": "yellow",
+      "friendly_name": "Alexander"
+    },
+    "Challenger 2": {
+      "sprite": "NPC304",
+      "message_colour": "dark_blue",
+      "friendly_name": "Challenger"
+    },
+    "Challenger 3": {
+      "sprite": "NPC298",
+      "message_colour": "orange",
+      "friendly_name": "Challenger"
+    },
+    "Challenger 4": {
+      "sprite": "NPC45",
+      "message_colour": "grey",
+      "friendly_name": "Challenger"
+    },
+    "Spectator": {
+      "sprite": "NPC273",
+      "message_colour": "dark_blue",
+      "friendly_name": "Spectator"
+    },
+    "Tourist": {
+      "sprite": "NPC250",
+      "message_colour": "grey",
+      "friendly_name": "Tourist"
+    },
+    "Challenger 5": {
+      "sprite": "NPC93",
+      "message_colour": "aqua",
+      "friendly_name": "Challenger"
+    },
+    "Challenger 6": {
+      "sprite": "NPC94",
+      "message_colour": "dark_red",
+      "friendly_name": "Challenger"
+    },
+    "Elder Elder": {
+      "sprite": "Elder",
+      "message_colour": "grey",
+      "friendly_name": "Elder Elder"
+    },
+    "Poke Archeologist": {
+      "sprite": "NPC267",
+      "message_colour": "yellow",
+      "friendly_name": "Poke Archeologist"
+    },
+    "Town Hall Maintenance": {
+      "sprite": "OfficeWorker_M4",
+      "message_colour": "light_blue",
+      "friendly_name": "Town Hall Maintenance"
     }
   },
   "opponents": {
@@ -1245,7 +1310,8 @@
       "music": "Medium_Battle 3 (PMDX Thunderwave Cave)",
       "cash_reward": "65",
       "deck": "Zzzap",
-      "message_colour": "yellow"
+      "message_colour": "yellow",
+      "stars": 2
     },
     "Engineer Brad": {
       "coin_reward": "Tauros Silver",
@@ -1370,7 +1436,8 @@
       "music": "Easy_battle (PMD beach cave)",
       "cash_reward": "65",
       "deck": "Fishy Fish",
-      "message_colour": "dark_blue"
+      "message_colour": "dark_blue",
+      "cpu_retreat_rate": 0
     },
     "Fisherman Gary": {
       "prize_cards": 6,
@@ -1388,7 +1455,8 @@
       "music": "Calm Battle 3 (PMDEoS Drenched Bluff)",
       "cash_reward": "90",
       "deck": "Seavolutions",
-      "message_colour": "dark_blue"
+      "message_colour": "dark_blue",
+      "stars": 2
     },
     "Forest Ranger Tucker": {
       "prize_cards": 6,
@@ -1416,7 +1484,8 @@
       "prize_cards": 2,
       "sprite": "Gambler",
       "cash_reward": "75",
-      "message_colour": "light_red"
+      "message_colour": "light_red",
+      "stars": 1
     },
     "Gambler Victor": {
       "prize_cards": 4,
@@ -1443,7 +1512,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "65",
       "deck": "Pollen Power",
-      "message_colour": "green"
+      "message_colour": "green",
+      "stars": 2
     },
     "Gentleman Benedict": {
       "prize_cards": 6,
@@ -1699,7 +1769,8 @@
       "prize_cards": 2,
       "sprite": "Artist_M",
       "cash_reward": "70",
-      "message_colour": "lilac"
+      "message_colour": "lilac",
+      "cpu_retreat_rate": 0
     },
     "Pikachu Fan Cami": {
       "stars": 7,
@@ -1916,7 +1987,8 @@
       "music": "Simple_battle (PTCG2 Mr Ishiharas Villa)",
       "cash_reward": "55",
       "deck": "Status Infliction",
-      "message_colour": "light_blue"
+      "message_colour": "light_blue",
+      "cpu_retreat_rate": 0
     },
     "Shady Character Bernard": {
       "prize_cards": 6,
@@ -2045,7 +2117,9 @@
       "prize_cards": 2,
       "sprite": "Youngster2",
       "cash_reward": "50",
-      "message_colour": "light_blue"
+      "message_colour": "light_blue",
+      "stars": 1,
+      "cpu_retreat_rate": 0
     },
     "Youngster Milo": {
       "prize_cards": 4,
@@ -2133,6 +2207,30 @@
       "cash_reward": "100",
       "pack_reward": "base1_c",
       "cpu_retreat_rate": 0
+    },
+    "Ellie 4": {
+      "sprite": "1Ellie_Dress",
+      "message_colour": "light_pink",
+      "deck": "Cuties",
+      "music": "fast_battle (PTCG Ronalds Theme)",
+      "prize_cards": 4,
+      "cash_reward": "150",
+      "coin_reward": "Eevee Pink",
+      "card_reward": "base2-51, base2-51",
+      "pack_reward": "base1_a",
+      "stars": 2
+    },
+    "Alexander 4": {
+      "sprite": "1Alexander",
+      "message_colour": "yellow",
+      "deck": "Conversion 1",
+      "music": "fast_battle (PTCG Ronalds Theme)",
+      "prize_cards": 4,
+      "cash_reward": "150",
+      "coin_reward": "Porygon Pink",
+      "card_reward": "base1-39, base1-39",
+      "pack_reward": "base2_c",
+      "stars": 2
     }
   }
 }

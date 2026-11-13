@@ -98,6 +98,11 @@ func setup(main_node: Node) -> void:
 		print("TUTORIAL: mode ", mode, " (controls: ", controls, ")")
 	# ISSUE #344: Options shows the tutorial row locked On while a must-finish tutorial runs.
 	GameState.mandatory_tutorial_running = mode in ["newby", "rules"] or _newby_followup
+	# 2026-11-12: the newby match rings and pulses whatever it asks the player to press.
+	if mode == "newby" and GameState.autotest == null:
+		_guide = Guide.new()
+		_guide.director = self
+		main.add_child(_guide)
 
 
 ## A full tutorial (messages, blocks, labels).
@@ -120,6 +125,9 @@ func _stacked() -> bool:
 func on_match_end() -> void:
 	GameState.mandatory_tutorial_running = false   # ISSUE #344
 	_clear_callouts()
+	if _guide != null and is_instance_valid(_guide):
+		_guide.queue_free()
+	_guide = null
 	if mode == "generic" and GameState.tutorial_next_match_setting == "on":
 		GameState.set_tutorial_next_match("off")
 	if _newby_followup:
@@ -674,7 +682,7 @@ const G_EVOLUTION_PAD := [
 	"[EVO] can evolve from your [BASIC]. Open your hand, select [EVO], then select your [BASIC] to evolve it.",
 	"Pokémon can't evolve on the same turn they were played or already evolved.",
 ]
-const G_END_TURN_HINT_KM := ["If you can't attack or play any more cards, finish your turn by clicking End Turn. [Q] jumps straight to it."]
+const G_END_TURN_HINT_KM := ["If you can't attack or play any more cards, finish your turn by clicking End Turn."]
 const G_END_TURN_HINT_PAD := ["If you can't attack or play any more cards, press [PAD_Y] to jump to End Turn, then [PAD_A]."]
 
 # One per player turn from the 2nd, each pushed back a turn whenever another message
@@ -1229,8 +1237,14 @@ const NEWBY_T6_START_PAD := [
 	"But with Defender attached, Rattata takes 20 less damage, which would leave it on 10 HP.",
 	"Luckily, the PlusPower you just drew makes Machop do 10 more damage! Play it from your hand, then knock out Rattata with Low Kick!",
 ]
-const NEWBY_T6_SHIFT_KM := ["Remember, you can hover over any card and hold [SHIFT] at any time to read its effects in full."]
-const NEWBY_T6_SHIFT_PAD := ["Remember, you can move onto any card and hold [PAD_LB] at any time to read its effects in full."]
+const NEWBY_T6_SHIFT_KM := [
+	"Remember, you can hover over any card and hold [SHIFT] at any time to read its effects in full.",
+	"Don't forget to attach an Energy every turn!",
+]
+const NEWBY_T6_SHIFT_PAD := [
+	"Remember, you can move onto any card and hold [PAD_LB] at any time to read its effects in full.",
+	"Don't forget to attach an Energy every turn!",
+]
 const NEWBY_T7_START_KM := [
 	"Some Pokémon can evolve for better attacks and more HP, but not on the turn they were played or already evolved.",
 	"Drag Machoke from your hand onto Machop to evolve it!",
@@ -1247,7 +1261,7 @@ const NEWBY_T7_EVOLVED_PAD := [
 	"It's nearly always a good idea to evolve, but Machoke needs 3 Energy to attack and Machop only had 1.",
 	"You can't undo an evolution, so attach another Fighting Energy to Machoke so it can attack next turn.",
 ]
-const NEWBY_T7_ENERGY_KM := ["If you can't attack or play any more cards, click End Turn or press [Q]."]
+const NEWBY_T7_ENERGY_KM := ["If you can't attack or play any more cards, click End Turn."]
 const NEWBY_T7_ENERGY_PAD := ["If you can't attack or play any more cards, press [PAD_Y], then [PAD_A] on End Turn."]
 # [HP] / [MAX] / [COUNTERS] / [CHOP] are read off Machoke when the turn starts.
 const NEWBY_T8_START := [
@@ -1329,6 +1343,218 @@ func _clear_callouts() -> void:
 	_callouts.clear()
 
 
+# ------------------------------------------------------------
+# THE GUIDE -- the gold glow, arrow + slow pulse on whatever the newby is told to press (Tutorial_Guide.gd)
+# ------------------------------------------------------------
+# 2026-11-12 (user): at every step the thing to press wears the selected look, for the mouse,
+# the keys and the pad: the hand card AND where it goes (the Pokémon, or the Bench), the attack
+# row, Retreat, End Turn, Done. Worked out fresh every frame from _step (guide_targets), so it
+# follows the board through every redraw, the pad's hand view and the target screens.
+#   _guide_quiet   true while a line is talking about something else (the step's ring waits)
+#   _guide_extra   Callables returning a node to ring while a line talks about it (Defender)
+const Guide := preload("res://Scripts/Main_Match_Gameplay_Scripts/Tutorial_Guide.gd")
+## TWEAKABLE: how much a small attached card (Defender) grows while it is talked about.
+const GUIDE_SMALL_PULSE := 1.15
+var _guide: Node = null
+var _guide_quiet: bool = false
+var _guide_extra: Array = []
+## TWEAKABLE: seconds the board must be free of messages / flights (and the step unchanged)
+## before the glow fades in.
+const GUIDE_SETTLE := 0.35
+var _guide_sig: String = ""
+var _guide_hold_until: int = 0
+
+
+## Called by Tutorial_Guide every frame: [{"node", "kind", "pulse"?}, ...] to ring right now.
+func guide_targets() -> Array:
+	var out: Array = []
+	if mode != "newby" or main == null or main.game_is_over:
+		return out
+	for f in _guide_extra:
+		var n = (f as Callable).call()
+		if n != null:
+			out.append({"node": n, "kind": "card", "pulse": GUIDE_SMALL_PULSE})
+	if _guide_quiet or main.is_zoomed:
+		return out
+	# The step's glow waits for the message telling the player about it to finish. 2026-11-12
+	# (user): it used to pop in, vanish when the line appeared, then pop back - show_message()
+	# settles for a moment BEFORE the box shows, so _busy (set before that) holds it too. Any
+	# message, block, card in flight or step change restarts GUIDE_SETTLE; the glow (and its
+	# arrow) only fade in once the board has been quiet that long.
+	var now := Time.get_ticks_msec()
+	var sig := "%s|%d" % [_step, _player_turns]
+	if _busy or _block_showing or main.msgbox_container.visible or main.animation_blocker.visible \
+			or sig != _guide_sig:
+		_guide_sig = sig
+		_guide_hold_until = now + int(GUIDE_SETTLE * 1000.0)
+		return out
+	if now < _guide_hold_until:
+		return out
+	# The match setup (before the first turn): Voltorb as the Active, then Done.
+	if _player_turns == 0:
+		if main.card_selection_mode_enabled:
+			if _seen.has("n_bench_setup"):
+				# Bench setup's "Done" is the CANCEL button (start_bench_setup_phase relabels it);
+				# action_button is the greyed "Select a Card".
+				_guide_add_button(out, main.cancel_button)
+			elif _seen.has("n_setup"):
+				_guide_add_card(out, _hand_card("Voltorb"))
+		return out
+	if main.opponents_turn_active:
+		return out
+	var active = main.player_active_pokemon
+	# A hand card and where it goes (_pair): only the hand card glows until the player has picked
+	# it up, so it is obvious to press the CARD first, not the Pokémon / Bench.
+	var to_bench := func(): _guide_add_bench(out)
+	var to_mon := func(c): return func(): _guide_add_card(out, c)
+	match _step:
+		"t1_attach":
+			_pair(out, _hand_card("Fighting Energy"), to_mon.call(active))
+		"t1_attack", "t2_attack", "t3_attack":
+			_guide_add_row(out, "Tackle")
+		"t2_bill", "t8_bill":
+			_guide_add_card(out, _hand_card("Bill"))
+		"t2_bench":
+			_pair(out, _hand_card("Voltorb"), to_bench)
+		"t2_bench_energy":
+			_pair(out, _hand_card("Fighting Energy"), to_mon.call(_bench_mon("Voltorb")))
+		"t3_oak":
+			_guide_add_card(out, _hand_card("Professor Oak"))
+		"t3_ponyta":
+			_pair(out, _hand_card("Ponyta"), to_bench)
+		"t3_fire":
+			_pair(out, _hand_card("Fire Energy"), to_mon.call(_bench_mon("Ponyta")))
+		"t4":
+			if not _machop_benched():
+				_pair(out, _hand_card("Machop"), to_bench)
+			elif not main.player_energy_played_this_turn:
+				_pair(out, _hand_card("Fire Energy"), to_mon.call(active))
+			else:
+				_guide_add_row(out, "Flame Tail")
+		"t5_retreat":
+			if main.card_selection_mode_enabled:
+				# The retreat's Energy-to-discard screen: any one of them, then the button.
+				var pool: Array = main.shown_selection_pool
+				if not pool.is_empty():
+					_guide_add_card(out, pool[0])
+			else:
+				_guide_add_row(out, "Retreat", "retreat")
+		"t5_pick":
+			_guide_add_card(out, _bench_mon("Machop"))
+		"t5_machop", "t6_energy", "t7_energy":
+			_pair(out, _hand_card("Fighting Energy"), to_mon.call(active))
+		"t5_attack", "t6_attack":
+			_guide_add_row(out, "Low Kick")
+		"t6_pluspower":
+			_guide_add_card(out, _hand_card("PlusPower"))
+		"t7_evolve":
+			_pair(out, _hand_card("Machoke"), to_mon.call(active))
+		"t7_done":
+			_guide_add_button(out, main._end_turn_btn)
+		"t8_potions":
+			_pair(out, _hand_card("Potion"), to_mon.call(active))
+		"t8_energy":
+			_pair(out, _hand_energy(), to_mon.call(active))
+		"t8_attack":
+			_guide_add_row(out, "Karate Chop")
+	return out
+
+
+## The hand card glows; where it goes (`dest`, a Callable that adds it) only joins in once the
+## player has hold of the card.
+func _pair(out: Array, hand_card, dest: Callable) -> void:
+	_guide_add_card(out, hand_card)
+	if hand_card != null and _held(hand_card):
+		dest.call()
+
+
+## True while the player has picked `card` up: clicked in the bar, being dragged, selected with
+## the keys / pad, or played and now choosing its target on a selection screen.
+func _held(card) -> bool:
+	var hd = main.get("hand_drag")
+	if hd != null and is_instance_valid(hd):
+		if hd.get("bar_selected") == card:
+			return true
+		if hd.get("_dragging") and (hd.get("_press") as Dictionary).get("card", null) == card:
+			return true
+	if main.get("selected_card_for_action") == card:
+		return true
+	return main.card_selection_mode_enabled
+
+
+## The first card in the player's hand called `card_name` (or null).
+func _hand_card(card_name: String):
+	for c in main.player_hand:
+		if _name(c) == card_name:
+			return c
+	return null
+
+
+func _hand_energy():
+	for c in main.player_hand:
+		if main.is_basic_energy_card(c):
+			return c
+	return null
+
+
+func _bench_mon(card_name: String):
+	for c in main.player_bench:
+		if _name(c) == card_name:
+			return c
+	if main.player_active_pokemon != null and _name(main.player_active_pokemon) == card_name:
+		return main.player_active_pokemon
+	return null
+
+
+## A card object -> its node on screen (a selection screen's copy first, then the board / hand).
+func _guide_add_card(out: Array, card) -> void:
+	if card == null:
+		return
+	# The card being dragged is in the player's hand already: its slot is empty, ring the target only.
+	var hd = main.get("hand_drag")
+	if hd != null and is_instance_valid(hd) and hd.get("_dragging") and (hd.get("_press") as Dictionary).get("card", null) == card:
+		return
+	var node = main.find_card_ui_for_object(card)
+	if node != null and is_instance_valid(node):
+		out.append({"node": node, "kind": "card"})
+
+
+func _guide_add_button(out: Array, btn) -> void:
+	if btn != null and is_instance_valid(btn) and (btn as Control).is_visible_in_tree():
+		out.append({"node": btn, "kind": "button"})
+
+
+## The action row whose label is `text` (or of `kind`, for Retreat).
+func _guide_add_row(out: Array, text: String, kind: String = "") -> void:
+	var panel = main._player_action_panel
+	if panel == null or not is_instance_valid(panel):
+		return
+	for b in panel.find_children("*", "Button", true, false):
+		if not b.has_meta("row_kind"):
+			continue
+		if (kind != "" and String(b.get_meta("row_kind")) == kind) or String(b.get_meta("row_text", "")) == text:
+			_guide_add_button(out, b)
+			return
+
+
+## Where a Basic goes: the player's Bench, ringed (not pulsed).
+func _guide_add_bench(out: Array) -> void:
+	var bench: Control = main.player_bench_container
+	if bench != null and is_instance_valid(bench):
+		out.append({"node": bench, "kind": "zone"})
+
+
+## The Defender card attached to the opponent's Active, for the line about it.
+func _opp_defender_node():
+	var box: Node = main.opponent_attached_cards_container
+	if box == null:
+		return null
+	for child in box.get_children():
+		if "card_ref" in child and child.card_ref != null and _name(child.card_ref) == "Defender":
+			return child
+	return null
+
+
 ## Lines with actions between them: a String is said (and clicked through), a Callable is
 ## run on the spot. Once per match under `key`.
 func _once_script(key: String, items: Array, fills: Dictionary = {}) -> void:
@@ -1345,6 +1571,9 @@ func _once_script(key: String, items: Array, fills: Dictionary = {}) -> void:
 			text = text.replace(k, str(fills[k]))
 		await main.show_message(_keys(text), true, "tutorial")
 	_busy = false
+	# Whatever the script switched on for the guide, it never outlives the script.
+	_guide_quiet = false
+	_guide_extra = []
 
 
 ## The CPU has chosen its attack and is about to announce it (CPU_AI). Magikarp's Flail is
@@ -1383,7 +1612,22 @@ func _newby_turn_start() -> void:
 			await _once("n_t5", _cm(NEWBY_T5_START_KM, NEWBY_T5_START_PAD))
 		6:
 			_step = "t6_pluspower"
-			await _once("n_t6", _cm(NEWBY_T6_START_KM, NEWBY_T6_START_PAD))
+			# 2026-11-12 (user): Rattata's Weakness grows for the Weakness line (as Magikarp's did on
+			# turn 1), the Defender on it rings and pulses for the Defender line, and PlusPower in
+			# the hand only lights up for the line that says to play it.
+			var lines: Array = _cm(NEWBY_T6_START_KM, NEWBY_T6_START_PAD)
+			var rattata = main.opponent_active_pokemon
+			await _once_script("n_t6", [
+				func(): _guide_quiet = true,
+				func(): _callout(rattata, REGION_WEAKNESS, CALLOUT_GROW),
+				lines[0],
+				func(): _clear_callouts(),
+				func(): _guide_extra = [_opp_defender_node],
+				lines[1],
+				func(): _guide_extra = [],
+				func(): _guide_quiet = false,
+				lines[2],
+			])
 		7:
 			_step = "t7_evolve"
 			await _once("n_t7", _cm(NEWBY_T7_START_KM, NEWBY_T7_START_PAD))
@@ -1446,8 +1690,10 @@ func _newby_energy_attached(_energy, target) -> void:
 func _newby_colorless(ponyta) -> void:
 	var tail: String = NEWBY_T4_FLAME_TAIL if _machop_benched() else NEWBY_T4_FLAME_TAIL_BENCH
 	await _once_script("n_t4_colorless", [
+		func(): _guide_quiet = true,   # Smash Kick is the subject: Flame Tail's ring waits a line
 		func(): _attack_callout(ponyta, "Smash Kick"),
 		NEWBY_T4_COLORLESS,
+		func(): _guide_quiet = false,
 		func(): _swap_attack_callout(ponyta, "Flame Tail"),
 		tail,
 		func(): _clear_callouts(),

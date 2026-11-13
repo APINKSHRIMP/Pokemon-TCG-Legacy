@@ -2,7 +2,7 @@ extends BaseMapScene
 
 ## The Celeste Harbour Town Hall interior. Home of the three Card Elders, who stand in
 ## front of the three card mats along the top wall, with their spectators gathered
-## round. The Card Elder Challenge starts on day 4 (busy Morning/Afternoon, battling
+## round. The Card Elder Challenge starts on day 6 (busy Morning/Afternoon, battling
 ## from the Evening); the whole cast lives in NPC_and_Opponent_Data/Characters/TownHall.json.
 ##
 ## THE STAIRS. Three states, read from two story flags:
@@ -25,6 +25,21 @@ const GUARD_STEP_ASIDE_TIME := 0.6
 func get_scene_path() -> String:      return SCENE_PATH
 func get_bgm_path() -> String:        return SoundManagerScript.BGM_TOWN_HALL
 func get_map_data_name() -> String:   return "TownHall"
+
+
+## Morning 3 (registration day): Ellie and Alexander queuing - TownHallTrioCutscene. Once the
+## player has registered, any load of the hall before both matches are over (back from one, or
+## a quit) picks the scene up again.
+func _ready() -> void:
+	var resume: bool = TownHallTrioCutscene.should_resume()
+	if resume:
+		_player.lock_movement()
+	await super._ready()
+	if resume:
+		var cs := TownHallTrioCutscene.new()
+		cs.install(self)
+		cs.run_resume()
+	TownHallTrioCutscene.register(self)
 
 
 func _scene_setup() -> void:

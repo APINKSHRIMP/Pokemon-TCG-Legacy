@@ -383,7 +383,47 @@ const SEARCH_MODE_LABEL := "SEARCH MODE ACTIVE"
 
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
+## 2026-11-12 (user): the controls help panel (MenuHelp), Caps Lock / pad left stick in.
+## DOCUMENTATION, NOT BINDINGS - change a binding and its line here (and in Controls_Screen) by hand.
+const HELP_TITLE := "Deck Builder Controls"
+const HELP_FLAG := "help_deck_builder_seen"
+const HELP_ROWS_KM := [
+	["Left click", "Add a copy of a card to your deck"],
+	["Right click", "Remove a copy of a card from your deck"],
+	["Shift", "Card detail view (hold over a card)"],
+	["Wheel", "Scroll the cards"],
+	["PgUp|PgDn", "Previous / next card set"],
+	["F", "Search & filter"],
+	["V", "View your deck"],
+	["L", "Load a deck"],
+	["Arrows", "Move the cursor"],
+	["Space|Enter", "Add a copy (cursor)"],
+	["X|Delete", "Remove a copy (cursor)"],
+	["Q", "Jump to Save"],
+	["Esc|Backspace", "Back, close"],
+	["Caps Lock", "Show / hide this help"],
+]
+const HELP_ROWS_PAD := [
+	["lstick|dpad", "Move the cursor"],
+	["a", "Add a copy of a card to your deck"],
+	["x", "Remove a copy of a card from your deck"],
+	["lb", "Card detail view (hold)"],
+	["lt|rt", "Previous / next card set"],
+	["view", "Search & filter"],
+	["rb", "View your deck"],
+	["r3", "Load a deck"],
+	["y", "Jump to Save"],
+	["menu", "Jump to Save, again: save"],
+	["b", "Back, close"],
+	["l3", "Show / hide this help"],
+]
+
+
 func _ready() -> void:
+	# The first time the player opens this screen themselves (never during Olly's walkthrough,
+	# which first_time() checks for), the help panel opens on its own.
+	MenuHelp.first_time(self, HELP_FLAG, func():
+		MenuHelp.open_controls(self, HELP_TITLE, HELP_ROWS_KM, HELP_ROWS_PAD, true))
 	# Shortcuts (UIKit.set_shortcut): F / pad Back = Search & Filter, V / pad RB = View Deck,
 	# L / pad R3 = Load Deck. Save stays on Start / Y / Q, sets on LT / RT / PgUp / PgDn.
 	UIKit.set_shortcut(search_btn, UIInput.MENU_PAD_ALT, [KEY_F])
@@ -1374,6 +1414,7 @@ func _on_energy_icon_gui_input(event: InputEvent, energy_type: String) -> void:
 	else:
 		return
 
+	_flash_deck_change(icon, event.button_index == MOUSE_BUTTON_LEFT)
 	label.text = str(in_deck)
 	_update_deck_count_label()
 	_refresh_save_button()
@@ -1892,6 +1933,7 @@ func _viewer_change_count(card_id: String, delta: int) -> void:
 		SoundManagerScript.play_sfx(SoundManagerScript.SFX_minus_select)
 
 	_viewer_changed = true
+	_flash_viewer_card(card_id, delta > 0)
 	_set_viewer_row_count(card_id, in_deck)
 	_refresh_viewer_count_chip()
 	_update_deck_count_label()
@@ -2509,10 +2551,40 @@ func _on_card_gui_input(event: InputEvent, card_node: Control) -> void:
 	else:
 		return   # ignore middle-click etc.
 
+	_flash_deck_change(card_rect, event.button_index == MOUSE_BUTTON_LEFT)
 	# Update the label and global UI
 	label.text = "%d / %d" % [in_deck, owned]
 	_update_deck_count_label()
 	_refresh_save_button()
+
+
+# ─── Add / remove flash ─────────────────────────────────────────────────────
+## 2026-11-12 (user): a card (or Energy icon) flashes a pale hint of green when a copy goes into the
+## deck and red when one comes out, so every click / button press visibly registers. It tints
+## self_modulate, which the looping in-deck glow (on modulate) never touches. TWEAKABLE.
+const DECK_FLASH_ADD_COL := Color(0.72, 1.0, 0.72)
+const DECK_FLASH_CUT_COL := Color(1.0, 0.68, 0.68)
+const DECK_FLASH_TIME    := 0.35   # seconds to fade back to normal
+
+func _flash_deck_change(item: CanvasItem, added: bool) -> void:
+	if item == null or not is_instance_valid(item):
+		return
+	var old: Tween = item.get_meta("flash_tween") if item.has_meta("flash_tween") else null
+	if old != null and old.is_valid():
+		old.kill()
+	item.self_modulate = DECK_FLASH_ADD_COL if added else DECK_FLASH_CUT_COL
+	var tw := item.create_tween()
+	tw.tween_property(item, "self_modulate", Color.WHITE, DECK_FLASH_TIME).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	item.set_meta("flash_tween", tw)
+
+
+## Every image of `card_id` in the deck viewer flashes (the viewer's add / remove).
+func _flash_viewer_card(card_id: String, added: bool) -> void:
+	if _viewer_grid == null or not is_instance_valid(_viewer_grid):
+		return
+	for child in _viewer_grid.get_children():
+		if String(child.get_meta("card_id", "")) == card_id and not child.is_queued_for_deletion():
+			_flash_deck_change(child as CanvasItem, added)
 
 
 # ─── Selection animation ────────────────────────────────────────────────────
@@ -3544,6 +3616,20 @@ func _input(event: InputEvent) -> void:
 			_cancel_confirm_popup()
 		return
 
+	# ── Caps Lock / pad left stick in: the controls help panel ──
+	# Not over the load popup, the search screen or while the deck name is being typed. Once
+	# open, the panel (a child of this screen) takes every press first, including the one
+	# that closes it.
+	if UIInput.is_help_toggle(event):
+		if load_popup == null and not _search_screen_open() and not deck_name_edit.has_focus() \
+				and not OnScreenKeyboard.is_open():
+			get_viewport().set_input_as_handled()
+			if is_zoomed:
+				zoom_held = false
+				_hide_zoom()
+			MenuHelp.open_controls(self, HELP_TITLE, HELP_ROWS_KM, HELP_ROWS_PAD, false)
+		return
+
 	# ── Cancel / Escape ──
 	# Backs out exactly ONE layer per press: whichever popup or overlay is on top
 	# closes and drops the player back into normal deck-building mode, and only an
@@ -4515,7 +4601,7 @@ const WALK_DELTA_OUTLINE := 16
 const WALK_DELTA_ADD_COL := Color("00FF4C")
 const WALK_DELTA_CUT_COL := Color("FF1F1F")
 ## The rebuild scrolls each changed card into view this slowly (it was 0.25 for everything).
-const WALK_CONVERT_ROW_SCROLL := 0.6
+const WALK_CONVERT_ROW_SCROLL := 0.42   # 2026-11-12: 30% faster (was 0.6)
 var _walk_blocker: Control = null
 var _walk_ring_layer: Control = null
 var _walk_pulse: Tween = null
@@ -4569,9 +4655,16 @@ func walkthrough_highlight_view_deck(on: bool) -> void:
 	var ring := UIKit.add_selection_ring(_walk_ring_layer, view_deck_btn)
 	UIKit.strengthen_ring(ring)
 	view_deck_btn.pivot_offset = view_deck_btn.size * 0.5
+	# 2026-11-12 (user): the ring grows and shrinks WITH the button - it is re-fitted to the button's
+	# scaled rect on every step of the pulse.
+	var btn := view_deck_btn
+	var step := func(s: float) -> void:
+		if is_instance_valid(btn) and is_instance_valid(ring):
+			btn.scale = Vector2.ONE * s
+			UIKit.place_selection_ring(ring, UIKit.transformed_rect(btn, Rect2(Vector2.ZERO, btn.size)))
 	_walk_pulse = view_deck_btn.create_tween().set_loops()
-	_walk_pulse.tween_property(view_deck_btn, "scale", Vector2.ONE * 1.08, 0.25).set_trans(Tween.TRANS_SINE)
-	_walk_pulse.tween_property(view_deck_btn, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_SINE)
+	_walk_pulse.tween_method(step, 1.0, 1.08, 0.25).set_trans(Tween.TRANS_SINE)
+	_walk_pulse.tween_method(step, 1.08, 1.0, 0.25).set_trans(Tween.TRANS_SINE)
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 
 
@@ -4699,12 +4792,119 @@ func walkthrough_convert_to(target: Dictionary, seconds: float) -> void:
 		await get_tree().create_timer(gap).timeout
 
 
+## The sidebar Energy icon for `cid` if it is one of the current energy style's basic Energy, else null.
+func _style_energy_icon(cid: String) -> TextureRect:
+	var ids: Array = GameState.ENERGY_STYLES.get(current_energy_style, [])
+	var i := ids.find(cid)
+	if i < 0 or i >= ENERGY_TYPES.size():
+		return null
+	return energy_icons.get(ENERGY_TYPES[i], null)
+
+
 ## "base1-55" -> "base1-00055", so IDs sort by number within a set.
 func _walk_id_key(cid: String) -> String:
 	var parts := cid.split("-")
 	if parts.size() != 2:
 		return cid
 	return parts[0] + "-" + parts[1].pad_zeros(5)
+
+
+## 2026-11-12 (user): Olly's Energy gift lands in the collection. Every card on the gift reveal -- each
+## pile's front card and its whole trail -- shrinks and flies into its Energy icon in the sidebar, top
+## of each pile first, while the reveal's dim fades away. Each icon flashes as its cards land.
+## `rects`: the reveal's TextureRects (on another CanvasLayer); `card_ids`: the reveal's ids, left to
+## right; `dim`: the reveal's dim overlay (or null). TWEAKABLE below.
+const WALK_ENERGY_FLY_TIME     := 0.55    # one card's flight into its icon
+const WALK_ENERGY_STAGGER      := 0.03    # between cards of the same pile setting off
+const WALK_ENERGY_COLUMN_DELAY := 0.08    # each pile starts this much after the one to its left
+const WALK_ENERGY_FADE_SHARE   := 0.3     # the last share of the flight it fades out over
+
+func walkthrough_absorb_energy(rects: Array, card_ids: Array, dim: Control) -> void:
+	# Which pile each card belongs to: by its texture's file name, else by left-to-right order.
+	var tex_x := {}   # texture -> leftmost x
+	for r in rects:
+		var tr := r as TextureRect
+		tex_x[tr.texture] = minf(float(tex_x.get(tr.texture, INF)), tr.global_position.x)
+	var by_x: Array = tex_x.keys()
+	by_x.sort_custom(func(a, b): return tex_x[a] < tex_x[b])
+	var tex_cid := {}
+	for i in by_x.size():
+		var t: Texture2D = by_x[i]
+		var named := t.resource_path.get_file().get_basename()
+		tex_cid[t] = named if named in card_ids else (String(card_ids[i]) if i < card_ids.size() else "")
+
+	# Top of each pile first: a higher child index is drawn on top.
+	var piles := {}   # cid -> [rect...]
+	for r in rects:
+		var cid: String = tex_cid.get((r as TextureRect).texture, "")
+		if not piles.has(cid):
+			piles[cid] = []
+		piles[cid].append(r)
+	var longest := 0.0
+	var col := 0
+	for t in by_x:
+		var cid: String = tex_cid[t]
+		var icon := _energy_icon_any_style(cid)
+		var pile: Array = piles.get(cid, [])
+		pile.sort_custom(func(a, b): return (a as Node).get_index() > (b as Node).get_index())
+		for k in pile.size():
+			var delay: float = col * WALK_ENERGY_COLUMN_DELAY + k * WALK_ENERGY_STAGGER
+			_walk_energy_fly(pile[k], icon, delay, k == 0)
+			longest = maxf(longest, delay + WALK_ENERGY_FLY_TIME)
+		col += 1
+	if dim != null and is_instance_valid(dim):
+		var dt := dim.create_tween()
+		dt.tween_property(dim, "modulate:a", 0.0, longest)
+	await get_tree().create_timer(longest + 0.05).timeout
+
+
+## One card from the reveal into `icon`: position and size eased in (it speeds up as it goes), fading
+## over the end. The icon flashes green as it lands; the first card of each pile also ticks.
+func _walk_energy_fly(rect: TextureRect, icon: TextureRect, delay: float, first: bool) -> void:
+	if rect == null or not is_instance_valid(rect):
+		return
+	rect.scale = Vector2.ONE
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	var to := Rect2(rect.global_position + rect.size * 0.5, Vector2.ZERO)   # no icon: shrink on the spot
+	if icon != null and is_instance_valid(icon):
+		var r := _rect_in_canvas_of(UIKit.drawn_texture_rect(icon), icon, rect)
+		# The card keeps its own shape, fitted inside the icon.
+		var k: float = minf(r.size.x / maxf(rect.size.x, 1.0), r.size.y / maxf(rect.size.y, 1.0))
+		var sz: Vector2 = rect.size * k
+		to = Rect2(r.get_center() - sz * 0.5, sz)
+	var tw := rect.create_tween().set_parallel(true)
+	tw.tween_property(rect, "global_position", to.position, WALK_ENERGY_FLY_TIME).set_delay(delay) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.tween_property(rect, "size", to.size, WALK_ENERGY_FLY_TIME).set_delay(delay) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	var fade_t: float = WALK_ENERGY_FLY_TIME * WALK_ENERGY_FADE_SHARE
+	tw.tween_property(rect, "modulate:a", 0.0, fade_t).set_delay(delay + WALK_ENERGY_FLY_TIME - fade_t)
+	tw.chain().tween_callback(func() -> void:
+		if icon != null and is_instance_valid(icon):
+			_flash_deck_change(icon, true)
+		if first:
+			SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+		if is_instance_valid(rect):
+			rect.visible = false)
+
+
+## `r` (in `from`'s canvas) re-expressed in `to`'s canvas -- the gift reveal and this screen sit on
+## different CanvasLayers.
+func _rect_in_canvas_of(r: Rect2, from: CanvasItem, to: CanvasItem) -> Rect2:
+	var screen: Transform2D = from.get_canvas_transform()
+	var back: Transform2D = to.get_canvas_transform().affine_inverse()
+	var a: Vector2 = back * (screen * r.position)
+	var b: Vector2 = back * (screen * r.end)
+	return Rect2(a, b - a)
+
+
+## The sidebar Energy icon for a basic Energy of ANY energy style (by its type), or null.
+func _energy_icon_any_style(cid: String) -> TextureRect:
+	for ids in GameState.ENERGY_STYLES.values():
+		var i: int = (ids as Array).find(cid)
+		if i >= 0 and i < ENERGY_TYPES.size():
+			return energy_icons.get(ENERGY_TYPES[i], null)
+	return null
 
 
 ## Names the deck, "presses" Save (the button pops) and shows "<NAME> SAVED!". The old deck's file is
@@ -4898,6 +5098,11 @@ func _walk_fly_follow(cell: Control, cid: String, copies: int) -> void:
 
 ## ISSUE #469: a green "+1" or red "-1" floats up off a card and fades while Olly edits the deck.
 func _walk_delta_label(cell: Control, delta: int) -> void:
+	_walk_delta_label_at(Rect2(cell.global_position, CARD_SIZE), delta)
+
+
+## The +1 / -1 over any screen rect (a grid card, or one of the sidebar's Energy icons).
+func _walk_delta_label_at(r: Rect2, delta: int) -> void:
 	var lbl := Label.new()
 	lbl.text = "+1" if delta > 0 else "-1"
 	var bold := _get_msg_bold_font()
@@ -4911,7 +5116,7 @@ func _walk_delta_label(cell: Control, delta: int) -> void:
 	lbl.z_index = 360
 	add_child(lbl)
 	lbl.reset_size()
-	var start: Vector2 = cell.global_position + Vector2(CARD_SIZE.x * 0.5 - lbl.size.x * 0.5, CARD_SIZE.y * 0.25)
+	var start: Vector2 = r.position + Vector2(r.size.x * 0.5 - lbl.size.x * 0.5, r.size.y * 0.25)
 	lbl.global_position = start
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(lbl, "global_position:y", start.y - WALK_DELTA_RISE, WALK_DELTA_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -4948,7 +5153,14 @@ func _walk_change_count(cid: String, delta: int) -> void:
 				_apply_selected_animation(cell)
 			elif now == 0:
 				_remove_selected_animation(cell)
+			_flash_deck_change(cell, delta > 0)
 		break
+	# 2026-11-12 (user): a basic Energy is not in the grid -- its +1 / -1 floats off (and flashes) the
+	# matching Energy icon in the sidebar instead.
+	var e_icon := _style_energy_icon(cid)
+	if e_icon != null:
+		_walk_delta_label_at(UIKit.transformed_rect(e_icon, Rect2(Vector2.ZERO, e_icon.size)), delta)
+		_flash_deck_change(e_icon, delta > 0)
 	_refresh_energy_icons_from_deck()
 	_update_deck_count_label()
 	_refresh_save_button()

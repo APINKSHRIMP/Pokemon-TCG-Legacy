@@ -75,6 +75,7 @@ var _load_cancelled    : bool = false
 # ─── Lifecycle ───────────────────────────────────────────────────────────────
 
 func _ready() -> void:
+	MenuHelp.cosmetic_first_time(self)   # 2026-11-12: "change your Coin, Costume and Sleeve..." once
 	# Shortcut: H / pad Back toggles Show all / Show owned only (UIKit.set_shortcut).
 	UIKit.set_shortcut(hide_btn, UIInput.MENU_PAD_ALT, [KEY_H])
 	add_child(audio_player)

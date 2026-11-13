@@ -72,6 +72,7 @@ const KEYBOARD_ROWS := {
 		["PgUp|PgDn", "Deck builder: previous / next set"],
 		["Q", "Jump to the main button (Buy, Save, Sell)"],
 		["F|V|L", "Deck builder: Search, View Deck, Load Deck"],
+		["Caps Lock", "Deck builder: controls help"],
 		["H", "Coins, sleeves, costumes, guide: show all / owned"],
 		["C", "Options: Controls"],
 		["B|G|M", "Player info: Bag, Field Guide, Medals"],
@@ -105,7 +106,7 @@ const PAD_ROWS := {
 		["a", "Confirm, play, open"],
 	],
 	"menus": [
-		["lstick", "Move the cursor"],
+		["lstick", "Move; click: deck builder help"],
 		["dpad", "Move the cursor"],
 		["lb", "Enlarge a card, coin or sleeve (hold)"],
 		["lt", "Deck builder: previous set"],

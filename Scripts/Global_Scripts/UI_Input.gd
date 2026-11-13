@@ -88,6 +88,16 @@ static func is_log_toggle(event: InputEvent) -> bool:
 		return event.pressed and event.button_index == JOY_BUTTON_BACK
 	return false
 
+
+## A menu's controls help panel (MenuHelp): Caps Lock, or pressing the LEFT STICK in on a pad
+## (View is already Search in the deck builder). Same press-only edge as the log key above.
+static func is_help_toggle(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return _key_pressed(event) and event.keycode in LOG_KEYS
+	if event is InputEventJoypadButton:
+		return event.pressed and event.button_index == JOY_BUTTON_LEFT_STICK
+	return false
+
 # ── Mouse ────────────────────────────────────────────────────────────────────
 # ISSUE #137: Godot delivers every mouse-wheel notch as an InputEventMouseButton with
 # pressed == true, so the natural-looking test

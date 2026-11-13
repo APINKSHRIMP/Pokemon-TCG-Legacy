@@ -116,6 +116,10 @@ func spawn(actor_name: String, sprite: String, at: Vector2,
 	# Into the same container the map's own actors live in, so this character sits
 	# in the same draw layer as everyone else rather than under the scenery.
 	var parent: Node = map.get_node_or_null("OPPONENTS")
+	# Interiors keep their cast in a nested container (the Town Hall's Tile_Maps/NPCS).
+	if parent == null and MapManager._opponents_container != null \
+			and is_instance_valid(MapManager._opponents_container) and map.is_ancestor_of(MapManager._opponents_container):
+		parent = MapManager._opponents_container
 	if parent == null:
 		parent = map
 	parent.add_child(actor)

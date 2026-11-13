@@ -264,7 +264,7 @@ func _board_targets() -> Array:
 		var pool: Array = a[2]
 		if node == null or not node.is_visible_in_tree() or pool.is_empty():
 			continue
-		var r := _children_rect(node) if a[0] in ["bench", "opp_bench", "prizes", "opp_prizes"] else _rect_of(node)
+		var r := _zone_rect(node) if a[0] in WHOLE_ZONES else _rect_of(node)
 		if r.size == Vector2.ZERO:
 			continue
 		out.append({"key": a[0], "rect": r, "node": node, "card": null,
@@ -347,6 +347,41 @@ func _children_rect(c: Control) -> Rect2:
 			var cr2 := _rect_of(child)
 			r = cr2 if not any else r.merge(cr2)
 			any = true
+	return r if any else _rect_of(c)
+
+
+## 2026-11-12 (user): the Bench and the Prizes are framed WHOLE - every slot, filled or
+## empty - so a bench of one Pokémon doesn't look like that one card is being picked.
+## The bench always draws BENCH_SLOTS slots and the prizes a full block (taken ones as
+## outlines), so the union of the slots is the whole zone.
+const WHOLE_ZONES := ["bench", "opp_bench", "prizes", "opp_prizes"]
+
+
+func _zone_rect(c: Control) -> Rect2:
+	var r := Rect2()
+	var any := false
+	for child in c.get_children():
+		if not (child is Control) or not (child as Control).is_visible_in_tree():
+			continue
+		var slot := child as Control
+		var cr := Rect2()
+		if slot is CardDisplay:
+			cr = _rect_of(slot)                       # a prize card
+		else:
+			var cards: Array = []
+			_collect_cards(slot, cards)
+			if not cards.is_empty():
+				cr = _rect_of(cards[0])               # a benched Pokémon (its Energies sit behind it)
+				for cd in cards:
+					cr = cr.merge(_rect_of(cd))
+			elif slot.get_child_count() > 0 and slot.get_child(0) is Control:
+				cr = _rect_of(slot.get_child(0))      # an empty bench slot's card-sized outline
+			else:
+				cr = _rect_of(slot)                   # a taken prize's outline
+		if cr.size == Vector2.ZERO:
+			continue
+		r = cr if not any else r.merge(cr)
+		any = true
 	return r if any else _rect_of(c)
 
 
@@ -764,7 +799,9 @@ func _stop_pulse() -> void:
 ## A target's rect measured now (so it includes the current pulse scale).
 func _target_rect_now(t: Dictionary, node: Control) -> Rect2:
 	var key = t["key"]
-	if key is String and key in ["hand", "opp_hand", "bench", "opp_bench", "prizes", "opp_prizes"]:
+	if key is String and key in WHOLE_ZONES:
+		return _zone_rect(node)
+	if key is String and key in ["hand", "opp_hand"]:
 		return _children_rect(node)
 	return _rect_of(node)
 

@@ -845,7 +845,7 @@
     "Mother Of Twins": {
       "at": [954, 2396],
       "days": "3",
-      "times": "M,A",
+      "times": "M,E",
       "move": "idle_right",
       "says": {
         "meet": "We're only visiting the harbour but my kids wanted some Pokemon cards so I bought them a few to play with.",
@@ -1402,16 +1402,16 @@
         "speed": 30
       },
       "says": {
-        "meet": "Hoh Hoh, I imagine you're new in town ey? I'm Hamish, one of the 3 Card Elders in town. Beat all 3 of us and we'll grant you access to the Gym Hero Challenge! The official Card Elder Challenge doesn't start until the day after tomorrow, so I'm just stretching my legs. Here, take this card to get you started.",
+        "meet": "Hoh Hoh, I imagine you're new in town ey? I'm Hamish, one of the 3 Card Elders in town. Beat all 3 of us and we'll grant you access to the Gym Hero Challenge! The official Card Elder Challenge doesn't start for a few more days yet, so I'm just stretching my legs. Here, take this card to get you started.",
         "repeat": "Make sure you've registered at the Town Hall before the challenge starts. That's where you'll find the 3 of us, behind the card mats."
       },
       "when": [
         {
-          "days": "2",
+          "days": "2-4",
           "times": "M,A,E"
         },
         {
-          "days": "3",
+          "days": "5",
           "times": "M,A,E",
           "says": {
             "meet": "Hoh Hoh, I imagine you're new in town ey? I'm Hamish, one of the 3 Card Elders in town. Beat all 3 of us and we'll grant you access to the Gym Hero Challenge! The official Card Elder Challenge starts tomorrow, so I'm just stretching my legs. Here, take this card to get you started.",
@@ -1428,16 +1428,16 @@
         "speed": 30
       },
       "says": {
-        "meet": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? Beat all 3 of us Elders and we'll grant you permission! The Card Elder Challenge doesn't start until the day after tomorrow though, so I'm enjoying a stroll in the meantime. Take this card, it might help you feel the torrent.",
+        "meet": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? Beat all 3 of us Elders and we'll grant you permission! The Card Elder Challenge doesn't start for a few more days though, so I'm enjoying a stroll in the meantime. Take this card, it might help you feel the torrent.",
         "repeat": "You might need some better cards if you have a hope of beating us. Make sure you've visited the Card Mart and the card vendor at the market."
       },
       "when": [
         {
-          "days": "2",
+          "days": "2-4",
           "times": "M,A,E"
         },
         {
-          "days": "3",
+          "days": "5",
           "times": "M,A,E",
           "says": {
             "meet": "Hoh Hoh, are you looking to enter the Gym Hero Challenge? Beat all 3 of us Elders and we'll grant you permission! The Card Elder Challenge starts tomorrow, so I'm enjoying one last stroll before it begins. Take this card, it might help you feel the torrent.",
@@ -1454,16 +1454,16 @@
         "speed": 30
       },
       "says": {
-        "meet": "Hello there young one, you look like a card player. The 3 of us Elders will be taking on challengers at the Town Hall, but not until the day after tomorrow. Take this card to help with your patience.",
+        "meet": "Hello there young one, you look like a card player. The 3 of us Elders will be taking on challengers at the Town Hall, but not for a few more days yet. Take this card to help with your patience.",
         "repeat": "Make sure you've earned as many cards as you can around here, you'll need them to defeat us 3."
       },
       "when": [
         {
-          "days": "2",
+          "days": "2-4",
           "times": "M,A,E"
         },
         {
-          "days": "3",
+          "days": "5",
           "times": "M,A,E",
           "says": {
             "meet": "Hello there young one, you look like a card player. The 3 of us Elders will be taking on challengers at the Town Hall from tomorrow. Take this card to help with your patience.",
@@ -1997,7 +1997,11 @@
           "times": "A"
         },
         {
-          "days": "3-4,7-8",
+          "days": "3",
+          "times": "A,E"
+        },
+        {
+          "days": "4,7-8",
           "times": "M,A,E"
         }
       ],
@@ -2072,7 +2076,11 @@
           "times": "A"
         },
         {
-          "days": "3,5-7",
+          "days": "3",
+          "times": "A"
+        },
+        {
+          "days": "5-7",
           "times": "M,A"
         },
         {
@@ -2104,7 +2112,11 @@
           "times": "A"
         },
         {
-          "days": "3,5-7",
+          "days": "3",
+          "times": "A"
+        },
+        {
+          "days": "5-7",
           "times": "M,A"
         },
         {
@@ -2157,7 +2169,11 @@
           "times": "A,E"
         },
         {
-          "days": "3,7",
+          "days": "3",
+          "times": "A"
+        },
+        {
+          "days": "7",
           "times": "M"
         },
         {
@@ -2216,7 +2232,11 @@
           "times": "A,E"
         },
         {
-          "days": "3-4,7-8",
+          "days": "3",
+          "times": "A,E"
+        },
+        {
+          "days": "4,7-8",
           "times": "M,A,E"
         }
       ],
@@ -2269,6 +2289,7 @@
           "times": "N"
         },
         {
+          "at": [922, 3155],
           "days": "3,7",
           "times": "E,N"
         }
@@ -2290,7 +2311,11 @@
           "times": "E,N"
         },
         {
-          "days": "3-4,7-8",
+          "days": "3",
+          "times": "A"
+        },
+        {
+          "days": "4,7-8",
           "times": "M"
         },
         {
@@ -2333,7 +2358,11 @@
           "times": "E,N"
         },
         {
-          "days": "3-4,7-8",
+          "days": "3",
+          "times": "A"
+        },
+        {
+          "days": "4,7-8",
           "times": "M"
         },
         {
@@ -2376,7 +2405,11 @@
           "times": "M,A,E"
         },
         {
-          "days": "3,7",
+          "days": "3",
+          "times": "A"
+        },
+        {
+          "days": "7",
           "times": "M"
         },
         {
@@ -2430,7 +2463,11 @@
           "times": "M,A"
         },
         {
-          "days": "3-4,7-8",
+          "days": "3",
+          "times": "A"
+        },
+        {
+          "days": "4,7-8",
           "times": "M"
         }
       ],
@@ -2595,7 +2632,11 @@
           "times": "A,E,N"
         },
         {
-          "days": "3-4,6-8",
+          "days": "3",
+          "times": "A"
+        },
+        {
+          "days": "4,6-8",
           "times": "M"
         }
       ],
@@ -2629,7 +2670,7 @@
       "sleeve": "Pokeball_Pink"
     },
     "Painter Jericho": {
-      "at": [-565, 2372],
+      "at": [-238, 628],
       "move": "idle_right",
       "says": {
         "meet": "The evening sun is the most perfect time to come here and paint... or play cards!",
@@ -2900,7 +2941,11 @@
           "times": "M,A"
         },
         {
-          "days": "3,7",
+          "days": "3",
+          "times": "M,A"
+        },
+        {
+          "days": "7",
           "times": "M"
         }
       ]
@@ -2921,7 +2966,11 @@
           "times": "M,A"
         },
         {
-          "days": "3,7",
+          "days": "3",
+          "times": "M,A"
+        },
+        {
+          "days": "7",
           "times": "M"
         }
       ]
@@ -3030,6 +3079,29 @@
       "times": "M",
       "requires": "not flag: cafe_olly_gone",
       "at": [2032, 1116]
+    },
+    "Ellie 4": {
+      "says": {
+        "meet": "Hey! I didn't fancy battling anyone else in the end so just decided to have a drink if you want a match now?",
+        "repeat": "Hey! I'm still here if you want another match now?",
+        "first_win": "I love this little Eevee fella, he's so cute!!!",
+        "rematch_win": "I still love Eevee!!",
+        "loss": "Eevee must be really strong!!"
+      },
+      "sleeve": "UP_Eevee",
+      "move": "idle_left",
+      "at": [2143, 1107],
+      "when": [
+        {
+          "days": "3",
+          "times": "A"
+        },
+        {
+          "at": [855, 2315],
+          "days": "3",
+          "times": "E"
+        }
+      ]
     }
   }
 }

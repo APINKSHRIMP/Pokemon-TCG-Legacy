@@ -39,8 +39,8 @@ extends CanvasLayer
 #
 # return_to_scene() is the way OUT of a match: the outro (stripes and all) is covered
 # fast by the screenshot, the map loads underneath, and the screenshot cross-fades
-# slowly into the LIVE overworld - blurred and zoomed the same way - while the two
-# come back into focus together. A time-of-day change therefore fades in gradually.
+# into the LIVE overworld - blurred and zoomed the same way - while it un-zooms and
+# comes back into focus, all at once. A time-of-day change fades in on the way.
 #
 # Options "Play Match Intro / Outro Animation? = skip" and Reduce motion both skip
 # everything: the backdrop is still captured, and the setup screen appears directly.
@@ -90,8 +90,8 @@ const DECK_LABEL_RISE: float = 0.25   # deck names moving up to sit under their 
 const SKIP_FADE      : float = 0.25   # click-to-skip and the Options skip
 const SKIP_GUARD     : float = 0.4    # a click this soon after "Yes" is not a skip (never scaled)
 const RETURN_COVER   : float = 0.18   # outro -> map: outro content and its stripes vanish (fast)
-const RETURN_COLOUR  : float = 1.3    # outro -> map: old screenshot cross-fades into the live map (slow), still blurred
-const RETURN_UNZOOM  : float = 0.6    # outro -> map: THEN the live map comes back into focus
+const RETURN_COLOUR  : float = 0.5    # outro -> map: old screenshot cross-fades into the live map (was 1.3)...
+const RETURN_UNZOOM  : float = 0.5    # ...WHILE the live map un-zooms and de-blurs (same time, was 0.6 after it)
 
 # -- TWEAKABLE: distances and sizes (screen px) ---------------------------------
 const SPRITE_FLY_PX  : float = 700.0
@@ -929,23 +929,19 @@ func _run_return() -> void:
 		return
 
 	# 3. The live map - already in its NEW time of day, with the new slot's NPCs -
-	#    appears UNDER the screenshot, blurred and zoomed exactly the same way. The
-	#    screenshot fades out slowly, so the world visibly darkens / recolours while
-	#    it is still out of focus.
-	# 4. Only once that has finished does the live map zoom back into focus. At
-	#    progress 0 the live rect IS the screen, so freeing the overlay changes nothing.
+	#    appears UNDER the screenshot, blurred and zoomed exactly the same way.
+	# 4. 2026-11-12 (user: the way back was slow and sluggish, one effect after another):
+	#    the screenshot's fade (the new time-of-day colour) and the un-zoom / de-blur
+	#    now run TOGETHER, in one parallel tween. At progress 0 the live rect IS the
+	#    screen, so freeing the overlay changes nothing.
 	_live.visible = true
 	var colour: float = _t(RETURN_COLOUR)
 	var unzoom: float = _t(RETURN_UNZOOM)
-	if colour > 0.0:
-		var ft := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		ft.tween_property(_bg, "modulate:a", 0.0, colour)
-		await ft.finished
-	_bg.visible = false
-	if unzoom > 0.0:
-		var zt := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		zt.tween_property(_live.material, "shader_parameter/progress", 0.0, unzoom)
-		await zt.finished
+	if colour > 0.0 or unzoom > 0.0:
+		var tw := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(_bg, "modulate:a", 0.0, maxf(colour, 0.01))
+		tw.tween_property(_live.material, "shader_parameter/progress", 0.0, maxf(unzoom, 0.01))
+		await tw.finished
 	queue_free()
 
 # ============================================================

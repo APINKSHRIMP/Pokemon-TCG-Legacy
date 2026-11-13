@@ -310,10 +310,25 @@ func _show_tile_ring(rect: TextureRect, radius_frac: float) -> void:
 	print("ISSUE #447 FIX ACTIVE: pause menu ring drawn under ", rect.name, "'s icon")
 
 
+## Olly's intro walkthrough (OllyIntroCutscene._open_menu_on): the tile at `path` shows its own
+## cursor ring -- the exact one a controller gets, shaped to that tile -- whatever the device.
+## It lives inside the tile's container, so it grows and shrinks with the tile's pulse.
+var _walk_ring_forced: bool = false
+
+func walkthrough_ring(path: String) -> void:
+	var rect := get_node_or_null(path) as TextureRect
+	if rect == null:
+		return
+	_walk_ring_forced = true
+	_show_tile_ring(rect, float(TILE_RING_RADIUS.get(path, 0.135)))
+	if _tile_ring != null and is_instance_valid(_tile_ring):
+		_tile_ring.visible = true
+
+
 func _process(_delta: float) -> void:
 	# The ring is the keyboard / pad cursor: hidden while the player is on the mouse.
 	if _tile_ring != null and is_instance_valid(_tile_ring):
-		_tile_ring.visible = InputDevice.using_nav()
+		_tile_ring.visible = _walk_ring_forced or InputDevice.using_nav()
 
 const NAV_LEFT_COLUMN := ["deck/deck_mode_background", "options/options_mode_background",
 		"close/map_mode_background"]

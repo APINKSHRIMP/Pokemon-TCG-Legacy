@@ -52,6 +52,9 @@ var cutscene_speaker: Dictionary = {}
 # instead of opening their challenge box (the café breakfast cutscene). Registered
 # by the map script after its own _ready(); initialise() clears it every map load.
 var opponent_interact_overrides: Dictionary = {}
+# npc_name -> Callable(npc_node), the same for NPCs (the Town Hall queue on morning 3,
+# TownHallTrioCutscene.register). Cleared in initialise() too.
+var npc_interact_overrides: Dictionary = {}
 
 # True while the deck-validation popup is open. Blocks the regular
 # opponent/NPC interact handlers so the player can't re-trigger a
@@ -298,7 +301,15 @@ const REGISTRATION_FEE: int    = 50
 const CARD_ELDER_NAME: String  = "Card Elder Hamish"
 const CARD_ELDER_MAP: String   = "TownHall"
 ## Used only if the schedule scan below finds no battle day at all.
-const CARD_ELDER_FALLBACK_START: int = 4
+## 2026-11-12: the challenge moved back 2 days (TownHall.json, every Elder day +2).
+const CARD_ELDER_FALLBACK_START: int = 6
+## 2026-11-12 (user): registration opens on the morning of day 3 (Olly's "the day after
+## tomorrow"). Before that the receptionist is closed: REGISTRAR_CLOSED, then the line for
+## how long is left. She is not marked as met, so day 3 still gets her full greeting.
+const REGISTRATION_OPEN_DAY: int = 3
+const REGISTRAR_CLOSED := "Ho ho ho slow down there eager beaver, we're closed today so if you're looking for something you'll have to come back!"
+const REGISTRAR_CLOSED_TOMORROW := "You look like you're here to register in the Pokemon TCG championships? Well registration for that doesn't open until tomorrow anyway so come back first thing in the morning."
+const REGISTRAR_CLOSED_LATER := "You look like you're here to register in the Pokemon TCG championships? Well registration for that doesn't open until the day after tomorrow anyway so come back then."
 
 ## First meeting: these boxes in order, the last one a Yes/No.
 const REGISTRAR_MEET := [
@@ -309,7 +320,7 @@ const REGISTRAR_MEET := [
 ]
 ## Day ELDER_CHALLENGE_LAST_DAY + 1 on, all three Elders beaten: the challenge is over (the
 ## Elders leave the hall -- TownHall.json) and she says so instead of REGISTRAR_DONE.
-const ELDER_CHALLENGE_LAST_DAY := 10
+const ELDER_CHALLENGE_LAST_DAY := 12   # 2026-11-12: was 10, the challenge moved back 2 days
 const REGISTRAR_ELDERS_ENDED := [
 	"The Card Elder Challenge has now ended! If you missed out then you'll have to wait for the next round.",
 	"Sadly anyone who didn't win in time won't be able to take part in the Gym Hero Challenge. Not you though, congratulations on earning the Medal of Elders!",
@@ -446,6 +457,7 @@ func initialise(
 	cutscene_active = false
 	cutscene_speaker = {}
 	opponent_interact_overrides = {}
+	npc_interact_overrides = {}
 	# The old scene's fishing sequence died with it.
 	_fishing = null
 	# A fresh map is never paused: the flag belongs to a menu overlay over the OLD
@@ -1764,7 +1776,11 @@ func start_forced_battle(entry: Dictionary, overrides: Dictionary = {}) -> void:
 	GameState.test_match_mode = false
 	GameState.current_opponent_name = str(entry.get("name", ""))
 	GameState.current_opponent_deck = str(entry.get("deck", ""))
-	GameState.current_opponent_map  = _map_data
+	# The match, its intro and its outro look the opponent up by map + name. A story match
+	# against an opponent who lives on another map (the Town Hall's Ellie 4 / Alexander 4, from
+	# Celeste Harbour / the Fish Shop) names that map, so it plays exactly like their own match:
+	# music, sleeve, prizes, rewards, lines.
+	GameState.current_opponent_map  = str(overrides.get("opponent_map", _map_data))
 	GameState.player_position       = _player.position
 	GameState.save_player_direction(_player.get_current_direction())   # ISSUE #378
 	GameState.returning_from_battle = false
@@ -1941,6 +1957,7 @@ func _on_player_interact(opponent: Node):
 	if message_panel.visible or _validation_popup_active:
 		return
 	CafeBreakfastCutscene.note_npc_talk()
+	RegistrationReminders.note_npc_talk()
 	# A story opponent whose talk is a cutscene (the café breakfast): the map's script
 	# registered a handler by name, and it takes over instead of the Yes/No challenge.
 	var override: Callable = opponent_interact_overrides.get(opponent.opponent_name, Callable())
@@ -2210,6 +2227,17 @@ func _on_player_npc_interact(npc: Node):
 	if message_panel.visible or _validation_popup_active:
 		return
 	CafeBreakfastCutscene.note_npc_talk()
+	RegistrationReminders.note_npc_talk()
+	# An NPC whose talk is a cutscene (Ellie / Alexander queuing at the Town Hall on morning 3):
+	# the map's script registered a handler by name, and it takes over.
+	var npc_override: Callable = npc_interact_overrides.get(str(npc.npc_name), Callable())
+	if npc_override.is_valid():
+		if cutscene_active:
+			return
+		npc.pause_and_face(_player.global_position)
+		_face_player_toward_actor(npc)
+		npc_override.call(npc)
+		return
 	current_npc = npc
 
 	npc.pause_and_face(_player.global_position)
@@ -2266,6 +2294,17 @@ func _on_player_npc_interact(npc: Node):
 	# Town Hall Receptionist: the $50 registration that grants the TCG Tracker App. Read
 	# has_been_met() BEFORE marking, as the coin flipper does.
 	if npc.npc_type == "registrar":
+		# Before registration opens: closed, and not marked as met (day 3 gets the full greeting).
+		if GameState.get_date() < REGISTRATION_OPEN_DAY:
+			var closed_steps: Array = [{"text": REGISTRAR_CLOSED}]
+			var days_left: int = REGISTRATION_OPEN_DAY - GameState.get_date()
+			closed_steps.append({"text": REGISTRAR_CLOSED_TOMORROW if days_left == 1 else REGISTRAR_CLOSED_LATER})
+			_run_npc_steps(closed_steps, 0)
+			return
+		# Morning 3, before the queue scene with Ellie and Alexander: back of the line, please.
+		if TownHallTrioCutscene.is_pending():
+			_run_npc_steps([{"text": TownHallTrioCutscene.DESK_QUEUE_LINE}], 0)
+			return
 		var registrar_seen: bool = npc.has_been_met()
 		npc.mark_as_met()
 		npc.refresh_bubble()
@@ -4344,6 +4383,8 @@ func _try_story_reminder() -> void:
 	if message_panel == null or not is_instance_valid(message_panel) or message_panel.visible:
 		return
 	var call_id := CafeBreakfastCutscene.reminder_due()
+	if call_id == "":
+		call_id = RegistrationReminders.reminder_due()   # day 3: get to the Town Hall
 	if call_id != "":
 		_ring_story_reminder(call_id)
 
@@ -4362,7 +4403,10 @@ func _ring_story_reminder(call_id: String) -> void:
 	# Left the map mid-call (a quit): not marked, so it rings again next time.
 	if not is_instance_valid(host) or not host.is_inside_tree():
 		return
-	CafeBreakfastCutscene.reminder_played(call_id)
+	if RegistrationReminders.is_reminder(call_id):
+		RegistrationReminders.reminder_played(call_id)
+	else:
+		CafeBreakfastCutscene.reminder_played(call_id)
 	cutscene_active = false
 	if is_instance_valid(_player):
 		_player.unlock_movement()

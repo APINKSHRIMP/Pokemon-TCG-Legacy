@@ -11,20 +11,23 @@
     "loop    : set false for story characters who must never repeat when the",
     "          calendar loops -- they are matched against the real day instead.",
     "",
-    "CALENDAR opens day 1, authored through 11, then loops day 11 for ever: from day 11",
+    "CALENDAR opens day 1, authored through 13, then loops day 13 for ever: from day 13",
     "the hall is the receptionist and whichever Card Elders are still to be beaten. Once",
     "all three are beaten the Elders (beaten ones too) leave for good -- on the NEXT visit,",
     "never under the player's feet straight after the winning match.",
     "",
-    "THE CARD ELDER CHALLENGE starts on day 4. Days 2-3 the Elders wander Celeste",
-    "Harbour (Super Elder Hamish/Rayne/Waverly in Celeste_Harbour.json). Day 4 Morning",
+    "THE CARD ELDER CHALLENGE starts on day 6 (2026-11-12: pushed back from day 4, every",
+    "Elder day in this file +2). Days 2-5 the Elders wander Celeste",
+    "Harbour (Super Elder Hamish/Rayne/Waverly in Celeste_Harbour.json). Day 6 Morning",
     "and Afternoon they are busy NPCs behind the three card mats (CardMat/2/3) with the",
-    "Plaza Challenger crowd queuing in front; from Evening 4 they battle M,A,E,N.",
+    "Plaza Challenger crowd queuing in front; from Evening 6 they battle M,A,E,N.",
+    "REGISTRATION opens on day 3 (MapManager REGISTRATION_OPEN_DAY): before that the",
+    "receptionist says she is closed (REGISTRAR_CLOSED*).",
     "Beating an Elder swaps them for their '<name> Defeated' NPC (no rematch). Once the",
     "Gym Challenge is complete (flag gym_challenge_complete) all of them leave this",
     "room and move upstairs into the TCG club (TownHall_Upstairs.json).",
-    "Evening 4 to day 10 the Town Hall Spectators (1-24) watch from the sides and back,",
-    "a big crowd on days 4-7 thinning to one or two by day 10, then none.",
+    "Evening 6 to day 12 the Town Hall Spectators (1-24) watch from the sides and back,",
+    "a big crowd on days 6-9 thinning to one or two by day 12, then none.",
     "WHO IS PLAYING WHICH ELDER is decided in code (Town_Hall_Crowd.gd), not here: each",
     "slot with a spectator puts one 'Elder Challenger N' on an Elder's challenger spot",
     "(Hamish 399,83.5 / Rayne 271,83.5 / Waverly 335,83.5) and that Elder is busy. ANY",
@@ -39,16 +42,16 @@
   "map": "TownHall",
   "calendar": {
     "opens": 1,
-    "authored_through": 11,
+    "authored_through": 13,
     "loop": {
-      "from": 11,
+      "from": 13,
       "period": 1
     }
   },
   "npcs": {
     "Plaza Challenger 1": {
       "at": [335, 83.5],
-      "days": "4",
+      "days": "6",
       "times": "M",
       "move": "idle_up",
       "says": {
@@ -58,7 +61,7 @@
     },
     "Plaza Challenger 2": {
       "at": [271, 83.5],
-      "days": "4",
+      "days": "6",
       "times": "M",
       "move": "idle_up",
       "says": {
@@ -68,7 +71,7 @@
     },
     "Plaza Challenger 3": {
       "at": [399, 83.5],
-      "days": "4",
+      "days": "6",
       "times": "M",
       "move": "idle_up",
       "says": {
@@ -85,12 +88,12 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "M"
         },
         {
           "at": [335, 83.5],
-          "days": "4",
+          "days": "6",
           "times": "A"
         }
       ]
@@ -105,7 +108,7 @@
       "when": [
         {
           "at": [237.5, 68.5],
-          "days": "4",
+          "days": "6",
           "times": "M",
           "move": "idle_right",
           "says": {
@@ -115,7 +118,7 @@
         },
         {
           "at": [243.5, 101.5],
-          "days": "4",
+          "days": "6",
           "times": "A",
           "says": {
             "meet": "I'm no good at playing myself but I love to watch.",
@@ -123,11 +126,11 @@
           }
         },
         {
-          "days": "4",
+          "days": "6",
           "times": "E"
         },
         {
-          "days": "4",
+          "days": "6",
           "times": "N",
           "says": {
             "meet": "I've been watching everyone play all day.",
@@ -145,17 +148,17 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "M,E"
         },
         {
           "at": [433, 92.5],
-          "days": "4",
+          "days": "6",
           "times": "A"
         },
         {
           "at": [423, 95.5],
-          "days": "4",
+          "days": "6",
           "times": "N",
           "move": "idle_up",
           "says": {
@@ -174,12 +177,12 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "M"
         },
         {
           "at": [399, 83.5],
-          "days": "4",
+          "days": "6",
           "times": "A"
         }
       ]
@@ -193,12 +196,12 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "M"
         },
         {
           "at": [365.5, 106.5],
-          "days": "4",
+          "days": "6",
           "times": "A"
         }
       ]
@@ -212,12 +215,12 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "M,E"
         },
         {
           "at": [303.5, 116.5],
-          "days": "4",
+          "days": "6",
           "times": "A"
         }
       ]
@@ -231,12 +234,12 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "M"
         },
         {
           "at": [271, 83.5],
-          "days": "4",
+          "days": "6",
           "times": "A"
         }
       ]
@@ -251,13 +254,13 @@
       },
       "when": [
         {
-          "days": "6",
+          "days": "8",
           "times": "M,A,E",
           "at": [367, 122],
           "move": "idle_up"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "E,N",
           "at": [456, 126],
           "move": "idle_left"
@@ -274,25 +277,25 @@
       },
       "when": [
         {
-          "days": "5",
+          "days": "7",
           "times": "M",
           "at": [303, 122],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "E,N",
           "at": [239, 152],
           "move": "idle_up"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "E,N",
           "at": [303, 152],
           "move": "idle_up"
         },
         {
-          "days": "9",
+          "days": "11",
           "times": "E",
           "at": [303, 122],
           "move": "idle_up"
@@ -309,7 +312,7 @@
       },
       "when": [
         {
-          "days": "7",
+          "days": "9",
           "times": "M,A",
           "at": [367, 152],
           "move": "idle_up"
@@ -326,13 +329,13 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "N",
           "at": [444, 58],
           "move": "idle_left"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "A,E,N",
           "at": [303, 122],
           "move": "idle_up"
@@ -349,19 +352,19 @@
       },
       "when": [
         {
-          "days": "5",
+          "days": "7",
           "times": "M",
           "at": [367, 122],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "M",
           "at": [239, 152],
           "move": "idle_up"
         },
         {
-          "days": "9",
+          "days": "11",
           "times": "M",
           "at": [239, 152],
           "move": "idle_up"
@@ -378,19 +381,19 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "N",
           "at": [456, 126],
           "move": "idle_left"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "M,A,E,N",
           "at": [456, 92],
           "move": "idle_left"
         },
         {
-          "days": "8",
+          "days": "10",
           "times": "N",
           "at": [367, 152],
           "move": "idle_up"
@@ -407,25 +410,25 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "E",
           "at": [444, 58],
           "move": "idle_left"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "M",
           "at": [303, 122],
           "move": "idle_up"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "M,A",
           "at": [456, 126],
           "move": "idle_left"
         },
         {
-          "days": "9",
+          "days": "11",
           "times": "A",
           "at": [214, 92],
           "move": "idle_right"
@@ -442,25 +445,25 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "E",
           "at": [456, 126],
           "move": "idle_left"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "A,E,N",
           "at": [444, 58],
           "move": "idle_left"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "N",
           "at": [214, 92],
           "move": "idle_right"
         },
         {
-          "days": "8",
+          "days": "10",
           "times": "A",
           "at": [226, 58],
           "move": "idle_right"
@@ -477,19 +480,19 @@
       },
       "when": [
         {
-          "days": "5",
+          "days": "7",
           "times": "M",
           "at": [239, 152],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "M",
           "at": [214, 92],
           "move": "idle_right"
         },
         {
-          "days": "8",
+          "days": "10",
           "times": "M,A,E",
           "at": [431, 152],
           "move": "idle_up"
@@ -506,25 +509,25 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "E",
           "at": [226, 126],
           "move": "idle_right"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "M",
           "at": [303, 152],
           "move": "idle_up"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "E,N",
           "at": [367, 122],
           "move": "idle_up"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "A",
           "at": [431, 152],
           "move": "idle_up"
@@ -541,37 +544,37 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "N",
           "at": [303, 122],
           "move": "idle_up"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "A,E",
           "at": [226, 126],
           "move": "idle_right"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "A",
           "at": [303, 122],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "N",
           "at": [226, 58],
           "move": "idle_right"
         },
         {
-          "days": "8",
+          "days": "10",
           "times": "M",
           "at": [226, 126],
           "move": "idle_right"
         },
         {
-          "days": "8",
+          "days": "10",
           "times": "N",
           "at": [303, 152],
           "move": "idle_up"
@@ -588,25 +591,25 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "E,N",
           "at": [239, 152],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "A",
           "at": [226, 126],
           "move": "idle_right"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "M,A,E,N",
           "at": [456, 92],
           "move": "idle_left"
         },
         {
-          "days": "10",
+          "days": "12",
           "times": "M",
           "at": [456, 126],
           "move": "idle_left"
@@ -623,25 +626,25 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "N",
           "at": [303, 152],
           "move": "idle_up"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "A,E",
           "at": [367, 152],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "E",
           "at": [303, 122],
           "move": "idle_up"
         },
         {
-          "days": "9",
+          "days": "11",
           "times": "M,A",
           "at": [226, 58],
           "move": "idle_right"
@@ -658,19 +661,19 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "E",
           "at": [431, 152],
           "move": "idle_up"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "M",
           "at": [226, 126],
           "move": "idle_right"
         },
         {
-          "days": "8",
+          "days": "10",
           "times": "M",
           "at": [456, 92],
           "move": "idle_left"
@@ -687,25 +690,25 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "N",
           "at": [431, 152],
           "move": "idle_up"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "A",
           "at": [431, 152],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "M",
           "at": [226, 126],
           "move": "idle_right"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "M,A",
           "at": [239, 152],
           "move": "idle_up"
@@ -722,25 +725,25 @@
       },
       "when": [
         {
-          "days": "5",
+          "days": "7",
           "times": "M",
           "at": [214, 92],
           "move": "idle_right"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "E,N",
           "at": [239, 152],
           "move": "idle_up"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "M,A,E,N",
           "at": [226, 58],
           "move": "idle_right"
         },
         {
-          "days": "8",
+          "days": "10",
           "times": "A,E",
           "at": [226, 126],
           "move": "idle_right"
@@ -757,19 +760,19 @@
       },
       "when": [
         {
-          "days": "5",
+          "days": "7",
           "times": "M",
           "at": [431, 152],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "M,A",
           "at": [367, 152],
           "move": "idle_up"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "M",
           "at": [214, 92],
           "move": "idle_right"
@@ -786,13 +789,13 @@
       },
       "when": [
         {
-          "days": "5",
+          "days": "7",
           "times": "A",
           "at": [367, 122],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "M,A,E",
           "at": [444, 58],
           "move": "idle_left"
@@ -809,37 +812,37 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "E",
           "at": [456, 92],
           "move": "idle_left"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "M,A,E,N",
           "at": [456, 92],
           "move": "idle_left"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "A",
           "at": [456, 126],
           "move": "idle_left"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "N",
           "at": [303, 152],
           "move": "idle_up"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "A",
           "at": [303, 122],
           "move": "idle_up"
         },
         {
-          "days": "9",
+          "days": "11",
           "times": "E",
           "at": [444, 58],
           "move": "idle_left"
@@ -856,13 +859,13 @@
       },
       "when": [
         {
-          "days": "5",
+          "days": "7",
           "times": "A",
           "at": [456, 126],
           "move": "idle_left"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "M,A,E",
           "at": [431, 152],
           "move": "idle_up"
@@ -879,25 +882,25 @@
       },
       "when": [
         {
-          "days": "5",
+          "days": "7",
           "times": "M",
           "at": [456, 126],
           "move": "idle_left"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "E,N",
           "at": [431, 152],
           "move": "idle_up"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "E",
           "at": [214, 92],
           "move": "idle_right"
         },
         {
-          "days": "9",
+          "days": "11",
           "times": "M",
           "at": [456, 126],
           "move": "idle_left"
@@ -914,19 +917,19 @@
       },
       "when": [
         {
-          "days": "5",
+          "days": "7",
           "times": "M,A",
           "at": [226, 58],
           "move": "idle_right"
         },
         {
-          "days": "7",
+          "days": "9",
           "times": "E",
           "at": [367, 122],
           "move": "idle_up"
         },
         {
-          "days": "8",
+          "days": "10",
           "times": "M,A,E,N",
           "at": [303, 122],
           "move": "idle_up"
@@ -943,13 +946,13 @@
       },
       "when": [
         {
-          "days": "5",
+          "days": "7",
           "times": "M",
           "at": [367, 152],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "A,E",
           "at": [226, 58],
           "move": "idle_right"
@@ -966,25 +969,25 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "E,N",
           "at": [367, 152],
           "move": "idle_up"
         },
         {
-          "days": "5",
+          "days": "7",
           "times": "A,E,N",
           "at": [303, 152],
           "move": "idle_up"
         },
         {
-          "days": "6",
+          "days": "8",
           "times": "N",
           "at": [367, 122],
           "move": "idle_up"
         },
         {
-          "days": "10",
+          "days": "12",
           "times": "M,A",
           "at": [239, 152],
           "move": "idle_up"
@@ -1047,15 +1050,15 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "E,N"
         },
         {
-          "days": "5-10",
+          "days": "7-12",
           "times": "M,A,E,N"
         },
         {
-          "days": "11",
+          "days": "13",
           "times": "M,A,E,N",
           "requires": {
             "type": "all",
@@ -1112,15 +1115,15 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "E,N"
         },
         {
-          "days": "5-10",
+          "days": "7-12",
           "times": "M,A,E,N"
         },
         {
-          "days": "11",
+          "days": "13",
           "times": "M,A,E,N",
           "requires": {
             "type": "all",
@@ -1177,15 +1180,15 @@
       },
       "when": [
         {
-          "days": "4",
+          "days": "6",
           "times": "E,N"
         },
         {
-          "days": "5-10",
+          "days": "7-12",
           "times": "M,A,E,N"
         },
         {
-          "days": "11",
+          "days": "13",
           "times": "M,A,E,N",
           "requires": {
             "type": "all",
@@ -1226,7 +1229,7 @@
         "repeat": "Are you here to register with the Pokemon TCG Championships? Registration is a one off payment of $50."
       },
       "move": "idle_down",
-      "at": [111, 44],
+      "at": [111, 38],
       "when": [
         {
           "times": "M,A,E,N"
@@ -1240,6 +1243,194 @@
           }
         }
       ]
+    },
+    "Ellie": {
+      "says": {
+        "meet": "Oh hey! I knew you'd be by sometime soon, hey it's our turn next so you can jump in with us. We've been queuing for AGES...",
+        "repeat": "Oh hey! I knew you'd be by sometime soon, hey it's our turn next so you can jump in with us. We've been queuing for AGES..."
+      },
+      "move": "idle_up",
+      "days": "3",
+      "times": "M",
+      "requires": "not flag: town_hall_trio_done",
+      "at": [97, 103]
+    },
+    "Challenger": {
+      "says": {
+        "meet": "I am SO ready to take part in this challenge.",
+        "repeat": "I've been practicing all day every day for weeks now."
+      },
+      "move": "idle_up",
+      "days": "3",
+      "times": "M",
+      "at": [112, 75]
+    },
+    "Alexander": {
+      "says": {
+        "meet": "Oh, [NAME]. I thought you'd be here already. Hey just jump in the queue with us lol it's fine, we're next.",
+        "repeat": "Oh, [NAME]. I thought you'd be here already. Hey just jump in the queue with us lol it's fine, we're next."
+      },
+      "move": "idle_up",
+      "days": "3",
+      "times": "M",
+      "requires": "not flag: town_hall_trio_done",
+      "at": [127, 103]
+    },
+    "Challenger 2": {
+      "says": {
+        "meet": "I'm going to be the first to beat the Elder Challenge, then first to beat the Gym Hero Challenge.",
+        "repeat": "This league will be a piece of cake"
+      },
+      "move": "idle_up",
+      "days": "3",
+      "times": "M",
+      "at": [114, 131]
+    },
+    "Challenger 3": {
+      "says": {
+        "meet": "I'm signing up with my little sister.",
+        "repeat": "She's actually better than me..."
+      },
+      "move": "idle_up",
+      "days": "3",
+      "times": "M",
+      "at": [100, 155]
+    },
+    "Challenger 4": {
+      "says": {
+        "meet": "I AM GOING TO DESTROY THE ELDERS",
+        "repeat": "I AM GOING TO DESTROY THE GYM HERO CHALLENGE"
+      },
+      "move": "idle_up",
+      "days": "3",
+      "times": "M",
+      "at": [131, 154]
+    },
+    "Spectator": {
+      "says": {
+        "meet": "I have absolutely no idea how to play this game but I'm trying to figure out if it's worthwhile",
+        "repeat": "What even is a damage counter??"
+      },
+      "move": "idle_random",
+      "times": "M,A,E,N",
+      "at": [219, 13]
+    },
+    "Tourist": {
+      "says": {
+        "meet": "I actually came by the town hall to check out all of these old fossils.",
+        "repeat": "Root Fossil, Helix Fossil, Dome fossil, Old Amber... There's so much from the past we haven't even begun to uncover"
+      },
+      "move": {
+        "pattern": "random_wander",
+        "box": [160, 160],
+        "speed": 60
+      },
+      "times": "M,A",
+      "at": [-118, 56],
+      "days": "3"
+    },
+    "Challenger 5": {
+      "says": {
+        "meet": "I signed up first thing this morning",
+        "repeat": "I'm not missing out on this challenge."
+      },
+      "move": "idle_left",
+      "times": "M,A",
+      "at": [350, 104],
+      "days": "3"
+    },
+    "Challenger 6": {
+      "says": {
+        "meet": "I signed up second.",
+        "repeat": "I'm going to come first."
+      },
+      "move": "idle_right",
+      "days": "3",
+      "times": "M,A",
+      "at": [330, 104]
+    },
+    "Elder Elder": {
+      "says": {
+        "meet": "I used to be one of the Elders here but I simply couldn't keep up with the youth of today. I'm just not good enough.",
+        "repeat": "I don't think I'll ever pick up cards again."
+      },
+      "move": "idle_random",
+      "days": "3",
+      "times": "M,A",
+      "at": [244, 155]
+    },
+    "Poke Archeologist": {
+      "says": {
+        "meet": "You might not believe me, but I've dug up more than my fair share of fossils in my time.",
+        "repeat": "I'm actually responsible for finding one of the oldest helix fossils on earth!"
+      },
+      "move": "idle_up",
+      "when": [
+        {
+          "days": "2",
+          "times": "M,A,E,N"
+        },
+        {
+          "days": "3",
+          "times": "M,A"
+        },
+        {
+          "days": "5,9,13",
+          "times": "E"
+        },
+        {
+          "days": "6,10",
+          "times": "N"
+        },
+        {
+          "days": "7,11",
+          "times": "A"
+        },
+        {
+          "days": "8,12",
+          "times": "M"
+        }
+      ],
+      "at": [-198, 160]
+    },
+    "Town Hall Maintenance": {
+      "says": {
+        "meet": "I'm responsible for looking after the town hall.",
+        "repeat": "I water the plants here every single day."
+      },
+      "move": {
+        "pattern": "route",
+        "speed": 30,
+        "mode": "loop",
+        "steps": [
+          {"wait": 5, "idle": "idle_right"},
+          {"to": [-3, -256]},
+          {"wait": 5, "idle": "idle_right"},
+          {"to": [-689, -259]},
+          {"wait": 5, "idle": "idle_left"},
+          {"to": [-689, 1]},
+          {"wait": 5, "idle": "idle_left"}
+        ]
+      },
+      "when": [
+        {
+          "days": "3-4,10",
+          "times": "M"
+        },
+        {
+          "days": "5-6,9,12",
+          "times": "A"
+        },
+        {
+          "days": "7-8,11",
+          "times": "E"
+        },
+        {
+          "days": "13",
+          "times": "M,E"
+        }
+      ],
+      "at": [454, 205]
     }
   },
   "opponents": {
@@ -1269,7 +1460,7 @@
       "when": [
         {
           "kind": "npc",
-          "days": "4",
+          "days": "6",
           "times": "M,A",
           "says": {
             "meet": "Hoh Hoh, the Card Elder Challenge has begun! As you can see everyone wanted to be first in line. Come back this evening once we've worked through this lot and I'll gladly take you on.",
@@ -1277,11 +1468,11 @@
           }
         },
         {
-          "days": "4",
+          "days": "6",
           "times": "E,N"
         },
         {
-          "days": "5-11",
+          "days": "7-13",
           "times": "M,A,E,N"
         }
       ],
@@ -1313,7 +1504,7 @@
       "when": [
         {
           "kind": "npc",
-          "days": "4",
+          "days": "6",
           "times": "M,A",
           "says": {
             "meet": "Hoh Hoh, I'm right in the middle of a match! The whole harbour has turned up today. Come back this evening when the crowd has died down and you can feel the torrent.",
@@ -1321,11 +1512,11 @@
           }
         },
         {
-          "days": "4",
+          "days": "6",
           "times": "E,N"
         },
         {
-          "days": "5-11",
+          "days": "7-13",
           "times": "M,A,E,N"
         }
       ],
@@ -1357,7 +1548,7 @@
       "when": [
         {
           "kind": "npc",
-          "days": "4",
+          "days": "6",
           "times": "M,A",
           "says": {
             "meet": "Hold on there, can't you see the queue? We'll be playing all day with this lot, but come back this evening and I'll be ready for you.",
@@ -1365,11 +1556,11 @@
           }
         },
         {
-          "days": "4",
+          "days": "6",
           "times": "E,N"
         },
         {
-          "days": "5-11",
+          "days": "7-13",
           "times": "M,A,E,N"
         }
       ],

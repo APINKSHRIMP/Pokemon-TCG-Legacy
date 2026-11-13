@@ -320,6 +320,7 @@ func _ready():
 	# Stepping outside counts toward the café breakfast reminder calls.
 	if came_outside:
 		CafeBreakfastCutscene.note_exterior_return()
+		RegistrationReminders.note_exterior_return()   # and the day-3 registration calls
 	GameState.last_map_was_interior = not uses_time_of_day()
 	_add_clock(clock_slides_in, CLOCK_WAKE_DELAY if is_sleep_wakeup else 0.0, from_battle)
 	# The slot changed since the player last saw a map, however that happened: the banner.

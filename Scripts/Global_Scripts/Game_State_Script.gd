@@ -1869,7 +1869,12 @@ func get_time_points() -> int:
 func add_time_points(amount: int) -> void:
 	if CafeBreakfastCutscene.is_active():
 		return
-	progress["time_points"] = get_time_points() + amount
+	var total: int = get_time_points() + amount
+	# Registration morning (day 3) before the TCG Tracker App: the clock stops at
+	# TownHallTrioCutscene.MORNING_POINTS_CAP (10am) - the Town Hall is the only way on.
+	if TownHallTrioCutscene.morning_locked():
+		total = maxi(get_time_points(), mini(total, TownHallTrioCutscene.MORNING_POINTS_CAP))
+	progress["time_points"] = total
 	save_progress()
 
 
@@ -1895,14 +1900,21 @@ func score_cafe_morning_battle() -> void:
 
 ## From day 3, like fish. Pack screens are off the map, so a slot change lands as the map comes back.
 func add_pack_opened_time() -> void:
-	if every_match_advances_time():
+	if extras_advance_time():
 		add_time_points(TIME_POINTS_PACK)
+
+
+## Fish and packs move the clock from day 3, morning included (2026-11-12, user: briefly frozen
+## until the afternoon, then put back). Until the player registers on morning 3 everything is
+## still capped at TownHallTrioCutscene.MORNING_POINTS_CAP by add_time_points().
+func extras_advance_time() -> bool:
+	return every_match_advances_time()
 
 
 ## True when enough points have built up to move into the next slot. Never on the café morning:
 ## only the café scene moves that morning on, straight to the afternoon with the points zeroed.
 func time_slot_change_due() -> bool:
-	if CafeBreakfastCutscene.is_active():
+	if CafeBreakfastCutscene.is_active() or TownHallTrioCutscene.morning_locked():
 		return false
 	return get_time() != "Bedtime" and get_time_points() >= time_points_to_advance()
 
@@ -2309,6 +2321,7 @@ func record_match_result(won: bool) -> void:
 		progress["matches_won"] = int(progress.get("matches_won", 0)) + 1
 	save_progress()
 	CardMartDuoCutscene.on_match_played()
+	RegistrationReminders.note_battle()   # morning 3: Ellie's / Alexander's nudges
 
 # ============================================================
 # TIME / DATE SYSTEM
@@ -2576,7 +2589,7 @@ func add_fish_caught(amount: int = 1) -> void:
 	save_nature_guide()
 	# ISSUE #441: from day 3 a fish adds a little toward the time slot. It takes effect when the
 	# fish is let go (MapManager.finish_fishing); the clock is hidden until then anyway.
-	if every_match_advances_time():
+	if extras_advance_time():   # 2026-11-12: not on the registration morning either
 		add_time_points(TIME_POINTS_FISH * amount)
 
 

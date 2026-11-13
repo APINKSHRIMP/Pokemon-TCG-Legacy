@@ -732,6 +732,7 @@ func _generate_pack_cards(set_id: String) -> Array:
 		GameState.progress["packs_opened_standard"] = standard_number
 	GameState.save_progress()
 	GameState.add_pack_opened_time()
+	RegistrationReminders.note_pack_opened()   # day 3: counts toward the "get to the Town Hall" calls
 
 	# ── Weighted pack ───────────────────────────────────────────
 	# The Weighed Pack Seller's discounted stock: still 10 cards, but the rare slot becomes a

@@ -26,7 +26,8 @@ extends RefCounted
 ##
 ## The roll is made once per day + time slot and saved (progress STATE_KEY), so walking
 ## out and back in never re-rolls it. A slot with no spectators gets no random challenger,
-## which is how the challenge winds down after day 10.
+## which is how the challenge winds down after day 12. A slot with no Elder in it gets none
+## either (before the challenge starts on day 6).
 
 const MAP_NAME := "TownHall"
 const STATE_KEY := "town_hall_crowd"
@@ -93,6 +94,11 @@ static func apply(cast: Dictionary, date: int, time: String, player_pos) -> Dict
 	# After the Gym Challenge the Elders are upstairs: no challenge down here.
 	if GameState.has_flag(GameState.GYM_CHALLENGE_COMPLETE_FLAG):
 		return cast
+	# 2026-11-12 (user): no Elder in the hall this slot (before the challenge starts - e.g. day 3,
+	# where Ellie, Alexander and the queue counted as "spectators") = nobody to play, so no random
+	# "Elder Challenger" is put on a card mat.
+	if not _elders_in_cast(cast):
+		return cast
 	_add_extra_spectators(cast, date, time, player_pos)
 	npcs = cast["npcs"]
 	var state := _state_for(date, time, npcs, player_pos)
@@ -100,6 +106,15 @@ static func apply(cast: Dictionary, date: int, time: String, player_pos) -> Dict
 	for elder in state.get("busy", []):
 		_make_busy(cast, String(elder), String(challengers.get(elder, "")), player_pos)
 	return cast
+
+
+## True when any Card Elder (to play, busy, or "<name> Defeated") is in this slot's cast.
+static func _elders_in_cast(cast: Dictionary) -> bool:
+	for section in ["opponents", "npcs"]:
+		for e: Dictionary in cast.get(section, []):
+			if String(e.get("name", "")).begins_with("Card Elder"):
+				return true
+	return false
 
 
 # ── the growing crowd ─────────────────────────────────────────────────────────

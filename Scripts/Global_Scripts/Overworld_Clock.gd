@@ -79,10 +79,15 @@ var _frame: int = -1
 var _label: String = ""
 var _showing: bool = false
 var _tween: Tween = null
-## The time-slot banner under the clock (TimeOfDayBanner hands it over once it has landed).
-## The clock stays up while _banner_hold runs, and the banner goes when the clock goes.
+## The time-slot sign under the clock. 2026-11-12 (user): the clock OWNS it -- the sign only ever
+## drops in AS the clock slides in (or straight away if the clock is already up), and it leaves
+## when the clock leaves. The clock stays up while _banner_hold runs (counted only while on
+## screen). A door carries the sign on to the next map with the clock (_carried_banner_*).
 var _banner: Control = null
+var _banner_slot: String = ""
 var _banner_hold: float = 0.0
+static var _carried_banner_slot: String = ""
+static var _carried_banner_hold: float = 0.0
 
 
 ## How far down the time-slot banner rests: just below the clock, when the clock is switched on.
@@ -123,25 +128,67 @@ func _ready() -> void:
 	position.y = REST_Y if _showing else _hidden_y()
 	modulate.a = 1.0 if _showing else 0.0
 
+	# Through a door: a sign still up on the last map comes along, already in place if the clock is.
+	var carried_slot: String = _carried_banner_slot
+	var carried_hold: float = _carried_banner_hold
+	_carried_banner_slot = ""
+	_carried_banner_hold = 0.0
+	if not start_hidden and carried_slot != "" and _peek_left > 0.0:
+		_make_banner(carried_slot, carried_hold)
+		if _showing:
+			_banner_in(true)
+
 
 ## Show the clock for PEEK_SECONDS (restarts the countdown if it is already up).
 func peek() -> void:
 	_peek_left = PEEK_SECONDS
 
 
-## TimeOfDayBanner: the banner has landed under the clock. Keep the clock up for at least `hold`
-## seconds (or longer, if its own peek runs longer), then the two slide away together.
-func hold_banner(panel: Control, hold: float) -> void:
-	_release_banner()
-	_banner = panel
-	_banner_hold = hold
+## TimeOfDayBanner.play: a new time-slot sign. It waits (invisible) for the clock and drops in as the
+## clock slides in -- or now, if the clock is already up. The two stay at least `hold` seconds on
+## screen, then slide away together.
+func show_banner(time_name: String, hold: float) -> void:
+	_drop_banner_now()
+	_make_banner(time_name, hold)
 	peek()
+	if _showing:
+		_banner_in(false)
 
 
+func _make_banner(time_name: String, hold: float) -> void:
+	var layer := get_parent()
+	if layer == null:
+		return
+	_banner_slot = time_name
+	_banner_hold = hold
+	_banner = TimeOfDayBanner.build(layer, time_name, banner_rest_y(TimeOfDayBanner.REST_POS.y))
+	print("CLOCK: owns the ", time_name, " sign (hold ", snappedf(hold, 0.1), "s)")
+
+
+## The sign drops in alongside the clock (`instant`: it is just there, the clock already being up).
+func _banner_in(instant: bool) -> void:
+	if _banner == null or not is_instance_valid(_banner) or _banner.has_meta("dropped"):
+		return
+	_banner.set_meta("dropped", true)
+	_banner.set_meta("drop_tween", TimeOfDayBanner.drop_in(_banner, 0.0, instant or _reduce_motion()))
+
+
+## The clock is leaving: the sign goes with it, for good.
 func _release_banner() -> void:
 	if _banner != null and is_instance_valid(_banner):
 		TimeOfDayBanner.leave(_banner)
 	_banner = null
+	_banner_slot = ""
+	_banner_hold = 0.0
+
+
+## A newer sign replaces this one: gone at once, no slide.
+func _drop_banner_now() -> void:
+	if _banner != null and is_instance_valid(_banner):
+		_banner.queue_free()
+	_banner = null
+	_banner_slot = ""
+	_banner_hold = 0.0
 
 
 func _process(delta: float) -> void:
@@ -172,17 +219,19 @@ func _process(delta: float) -> void:
 	if _banner != null:
 		if not is_instance_valid(_banner):
 			_banner = null
+			_banner_slot = ""
 		else:
-			_banner_hold = maxf(0.0, _banner_hold - delta)
+			# The sign's time only runs while it is actually on screen with the clock.
+			if _showing and not _sliding():
+				_banner_hold = maxf(0.0, _banner_hold - delta)
 			_peek_left = maxf(_peek_left, _banner_hold)
 	_carried_peek = _peek_left
+	_carried_banner_slot = _banner_slot if _banner != null else ""
+	_carried_banner_hold = _banner_hold if _banner != null else 0.0
 
 	var want: bool = start_delay <= 0.0 and _should_show() and _peek_left > 0.0
 	if want != _showing:
 		_slide(want)
-	# Never shown at all while the banner was up (a menu open the whole time, say): it goes alone.
-	if _banner != null and not _showing and _banner_hold <= 0.0:
-		_release_banner()
 
 	# 2026-11-12 (user request): the hand only animates when the time SLOT changes, and then only
 	# the last few steps (SLOT_CHANGE_SWEEP_HOURS). A change inside the same slot just shows the
@@ -232,7 +281,9 @@ func _sliding() -> bool:
 
 func _slide(show_it: bool) -> void:
 	_showing = show_it
-	if not show_it:
+	if show_it:
+		_banner_in(false)
+	else:
 		_release_banner()
 	if _tween != null and _tween.is_valid():
 		_tween.kill()

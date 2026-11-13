@@ -33,13 +33,26 @@
   },
   "npcs": {
     "Fish Shop Olly": {
-      "at": [107.5, -30.5],
+      "at": [108, -38],
       "move": "idle_down",
       "when": [
-        { "days": "1", "times": "M,A,E,N" },
-        { "days": "2", "times": "M", "requires": "flag: cafe_olly_gone" },
-        { "days": "2-8", "times": "A" },
-        { "days": "3-8", "times": "M" }
+        {
+          "days": "1",
+          "times": "M,A,E,N"
+        },
+        {
+          "days": "2",
+          "times": "M",
+          "requires": "flag: cafe_olly_gone"
+        },
+        {
+          "days": "2-8",
+          "times": "A"
+        },
+        {
+          "days": "3-8",
+          "times": "M"
+        }
       ],
       "says": {
         "meet": "Hey [NAME]! I hope the waters are treating you well! Do you need any FISH gear?"
@@ -55,7 +68,10 @@
       "at": [107.5, -30.5],
       "move": "idle_down",
       "when": [
-        { "days": "2-8", "times": "E,N" }
+        {
+          "days": "2-8",
+          "times": "E,N"
+        }
       ],
       "says": {
         "meet": "Hey [NAME], do you need anything?"
@@ -68,5 +84,40 @@
       "sprite": "1Alexander"
     }
   },
-  "opponents": {}
+  "opponents": {
+    "Alexander 4": {
+      "says": {
+        "meet": "Hey! Are you looking for a match right here and now then?",
+        "repeat": "You looking for another match?",
+        "first_win": "What!!! How could I lose!",
+        "rematch_win": "How could I lose AGAIN!!!!!",
+        "loss": "Haha, there was no way I was ever going to lose"
+      },
+      "sleeve": "Porygon_Grass",
+      "move": {
+        "pattern": "route",
+        "speed": 60,
+        "mode": "loop",
+        "steps": [
+          {"wait": 3.5, "idle": "idle_left"},
+          {"to": [216, 0]},
+          {"wait": 5, "idle": "idle_right"},
+          {"to": [221, -77]},
+          {"wait": 5, "idle": "idle_up"},
+          {"to": [396, -77]},
+          {"to": [309, -81]},
+          {"wait": 5, "idle": "idle_up"},
+          {"to": [309, -145]},
+          {"wait": 5, "idle": "idle_up"},
+          {"to": [-87, -145]},
+          {"wait": 5, "idle": "idle_up"},
+          {"to": [-87, -72]},
+          {"to": [11, -72]}
+        ]
+      },
+      "days": "3",
+      "times": "A",
+      "at": [-2, 205]
+    }
+  }
 }

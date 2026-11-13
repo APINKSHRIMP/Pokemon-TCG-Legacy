@@ -1309,9 +1309,15 @@ func transition_back_to_map() -> void:
 	# jumps to the afternoon once both its matches are played, won or lost).
 	# The café morning (day 2) has its own flat rule: +10 for Olly, Ellie or Alexander, won or lost,
 	# and the slot never moves on points (GameState.score_cafe_morning_battle).
+	# A story battle can also name a flat score instead ("time_points": the Town Hall matches on
+	# morning 3 are +10 each, won or lost - TownHallTrioCutscene).
 	var holds_clock: bool = bool(GameState.forced_opponent_overrides.get("no_time_advance", false))
+	var flat_points: int = int(GameState.forced_opponent_overrides.get("time_points", -1))
 	if CafeBreakfastCutscene.is_active():
 		GameState.score_cafe_morning_battle()
+	elif flat_points >= 0 and not holds_clock:
+		GameState.add_time_points(flat_points)
+		GameState.settle_time_points()
 	elif not holds_clock:
 		GameState.score_match_for_time(battle_won, _was_new_opponent, forfeited, series_results)
 		GameState.settle_time_points()

@@ -155,7 +155,19 @@ const LINES_COIN := [
 	"Put the coin I just gave you in there, for your next match you can use that instead if you prefer it!",
 ]
 # After the battle, win or loss, just before his goodbye: the Town Hall registration nudge.
-const LINE_TOWN_HALL := "From tomorrow the Town Hall is offering a cheap official registration service so make sure you check out the Town Hall in the morning."
+# 2026-11-12 (user): registration opens on the morning of DAY 3 (MapManager.REGISTRATION_OPEN_DAY),
+# so it fits round the café on day 2. "new" / "rules" meet Olly on day 1: the day after tomorrow.
+const LINE_TOWN_HALL := "The official registration service doesn't start at the Town Hall until the day after tomorrow. I'll be there as will Ellie and Alexander, so make sure you pop into the Town Hall first thing that morning! We'll be able to track each other in the Tournament app!"
+# "played" meets him on the morning of day 2: registration is tomorrow.
+const LINE_TOWN_HALL_TOMORROW := "The official registration service starts at the Town Hall tomorrow. I'll be there as will Ellie and Alexander, so make sure you pop into the Town Hall first thing tomorrow morning! We'll be able to track each other in the Tournament app!"
+# "expert" (and Hard Mode) meet him on the morning of day 3 itself, registration morning: these
+# replace the Town Hall line and his "Catch ya later." goodbye.
+const LINES_DAY3_TOWN_HALL := [
+	"El and Alexander are probably already waiting in line at the Town Hall right now trying to register with the league.",
+	"Me? I'll have to call in later, I don't have time to queue up all morning like they do.",
+	"You should call at the Town Hall now ASAP too, you might be able to jump in line with those two.",
+	"Catch ya later.",
+]
 const LINES_NEW_GOODBYE := [
 	"I've really gotta shoot off and get the shop open. El and Alexander have gone away for the day so it's just me running it today.",
 	"If you're still interested in fishing then you should swing by and I'll hook you up with a rod!",
@@ -493,8 +505,7 @@ func _play_after_battle() -> void:
 			await _gift_pack(TEXT_NEW_BONUS, "starter1_a")
 			# ISSUE #350: the deck builder walkthrough, Basic Starter Deck -> Better Deck.
 			await _deck_walkthrough("starter1_a", GameState.STARTER_DECK_BASIC, NEWBY_BETTER_DECK)
-			await say(_speaker, LINE_ENERGY_AFTER_BONUS)
-			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE)
+			await _energy_on_map_if_needed()
 			await _say_coin_lines()
 			await say(_speaker, LINE_TOWN_HALL)
 			await say_all(_speaker, LINES_NEW_GOODBYE)
@@ -505,8 +516,7 @@ func _play_after_battle() -> void:
 			await _gift_pack(TEXT_RULES_BONUS, bonus_art)
 			# ISSUE #350: "<pair> Starter Deck" -> "<pair> Deck", from the bonus pack's cards.
 			await _deck_walkthrough(bonus_art, pair + " Starter Deck", pair + " Deck")
-			await say(_speaker, LINE_ENERGY_AFTER_BONUS)
-			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE)
+			await _energy_on_map_if_needed()
 			await _say_coin_lines()
 			await say(_speaker, LINE_TOWN_HALL)
 			await say_all(_speaker, LINES_RULES_GOODBYE)
@@ -515,14 +525,17 @@ func _play_after_battle() -> void:
 			await say(_speaker, LINE_ENERGY_ADVANCED)
 			await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE)
 			if GameState.get_familiarity() == GameState.FAMILIARITY_PLAYED:
+				# The Town Hall line names "Ellie" in full -- the only time Olly does -- so it comes
+				# before the café lines, which call her "El".
+				await say(_speaker, LINE_TOWN_HALL_TOMORROW)
 				await say_all(_speaker, LINES_CAFE_MORNING)
-			await say(_speaker, LINE_TOWN_HALL)
-			await say_all(_speaker, LINES_ADVANCED_GOODBYE)
+				await say_all(_speaker, LINES_ADVANCED_GOODBYE)
+			else:
+				await _say_day3_goodbye()
 		"packs":
-			# The energy came before the deck builder.
+			# The energy came before the deck builder. Hard Mode is "expert": registration morning.
 			await say(_speaker, LINE_GET_PACKS)
-			await say(_speaker, LINE_TOWN_HALL)
-			await say_all(_speaker, LINES_ADVANCED_GOODBYE)
+			await _say_day3_goodbye()
 	close_box()
 
 	_set_stage(STAGE_DONE)
@@ -541,6 +554,13 @@ func _play_after_battle() -> void:
 		Vector2(EXIT_PATH_X, on_path.y),
 		Vector2(EXIT_PATH_X, on_path.y - EXIT_RUN_UP),
 	], EXIT_SPEED)
+
+
+## "expert" / Hard Mode, the morning of day 3: back to the shop, then the Town Hall push (which
+## ends on his "Catch ya later.").
+func _say_day3_goodbye() -> void:
+	await say(_speaker, LINES_ADVANCED_GOODBYE[0])
+	await say_all(_speaker, LINES_DAY3_TOWN_HALL)
 
 
 func _spawn_opposite_player() -> void:
@@ -590,8 +610,9 @@ func _check_exit() -> void:
 const WALK_PULSE_SCALE := 1.06    # the highlighted tile's grow
 const WALK_PULSE_TIME  := 0.5     # one grow-and-shrink
 const WALK_DIM         := Color(0.3, 0.3, 0.3, 1.0)
-## The deck rebuild: one change every (this / number of changes) seconds. 2026-11-12: 4x slower (was 5).
-const WALK_CONVERT_SECONDS := 20.0
+## The deck rebuild: one change every (this / number of changes) seconds. 2026-11-12: 4x slower (was 5),
+## then 30% faster again (was 20).
+const WALK_CONVERT_SECONDS := 14.0
 const WALK_AFTER_FLY   := 0.5     # a beat after the cards land before Olly speaks
 const WALK_AFTER_SAVE  := 0.9     # "<DECK> SAVED!" is read before Olly speaks
 const WALK_COIN_LINGER := 1.2     # the coins sit in their slots this long before the case closes
@@ -628,6 +649,33 @@ class WalkBlocker extends Control:
 			get_viewport().set_input_as_handled()
 
 
+## True once the Energy gift has played inside the deck walkthrough, so the map doesn't give it again.
+var _energy_given_in_walk: bool = false
+
+
+## The Energy gift inside the deck builder: the reveal (piles flying up, "You received a load of
+## energy cards!"), and once it is cleared, the cards fly into the sidebar's Energy icons.
+func _walk_energy_gift(builder: Node) -> void:
+	map._ui_layer.layer = WALK_UI_LAYER
+	MapManager.show_card_reveal(TEXT_ENERGY, ENERGY_SHOWCASE, func(): line_advanced.emit(), true)
+	await line_advanced
+	MapManager.message_panel.visible = false
+	var box: Control = MapManager._gift_display_container
+	if box != null and is_instance_valid(box) and builder.has_method("walkthrough_absorb_energy"):
+		var rects: Array = box.find_children("*", "TextureRect", true, false)
+		await builder.walkthrough_absorb_energy(rects, ENERGY_SHOWCASE, MapManager._gift_dim_overlay)
+	close_box()
+	_energy_given_in_walk = true
+
+
+## Basic / Starter: the Energy gift on the map -- only if the deck walkthrough didn't already give it.
+func _energy_on_map_if_needed() -> void:
+	if _energy_given_in_walk:
+		return
+	await say(_speaker, LINE_ENERGY_AFTER_BONUS)
+	await _reveal_cards(TEXT_ENERGY, ENERGY_SHOWCASE)
+
+
 func _deck_walkthrough(_pack_art: String, _from_deck: String, to_deck: String) -> void:
 	if GameState.progress.get(WALK_DONE_KEY, false):
 		await say_all(_speaker, LINES_AFTER_BONUS.slice(0, 2))
@@ -645,6 +693,10 @@ func _deck_walkthrough(_pack_art: String, _from_deck: String, to_deck: String) -
 	await _walk_say(LINE_WALK_BINDER)
 	await builder.walkthrough_fly_in()
 	await wait(WALK_AFTER_FLY)
+	# 2026-11-12 (user): the Energy is given HERE, with the cards just put in the binder: the usual
+	# gift reveal over the deck builder, then every card flies into its Energy icon in the sidebar.
+	await _walk_say(LINE_ENERGY_AFTER_BONUS)
+	await _walk_energy_gift(builder)
 	await _walk_say(LINES_AFTER_BONUS[0])
 
 	# View Deck: the starter deck as it is.
@@ -733,12 +785,10 @@ func _open_menu_on(tile: String) -> Node:
 			(child as Control).modulate = WALK_DIM
 		elif child == tile_box:
 			(child as Control).modulate = Color.WHITE
-	var ring_layer := Control.new()
-	ring_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ring_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	menu.add_child(ring_layer)
-	_walk_ring = ring_layer
-	UIKit.add_selection_ring(ring_layer, target, float(UITheme.mi("panel_radius")))
+	# 2026-11-12 (user): the tile's OWN cursor ring, the one a controller gets (shaped per tile, and
+	# inside the tile so it grows and shrinks with it) -- not a separate rounded box over the top.
+	if menu.has_method("walkthrough_ring"):
+		menu.walkthrough_ring(tile)
 	tile_box.pivot_offset = target.position + target.size * 0.5
 	_walk_pulse = tile_box.create_tween().set_loops()
 	_walk_pulse.tween_property(tile_box, "scale", Vector2.ONE * WALK_PULSE_SCALE, WALK_PULSE_TIME * 0.5).set_trans(Tween.TRANS_SINE)

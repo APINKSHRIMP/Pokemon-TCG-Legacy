@@ -225,7 +225,8 @@ const BILL_PAID := [
 ]
 # Said by Alexander straight after BILL_PAID, only while the player has not registered at the
 # Town Hall yet (no TCG Tracker App -- MapManager.TRACKER_ITEM).
-const ALEX_TOWN_HALL := "Oh and [NAME], make sure you visit the Town Hall to officially register with the championships ASAP. The mobile tracker app has been so useful to see where other people are."
+# 2026-11-12: registration opens on day 3 (the café is day 2), so this sets up the morning queue.
+const ALEX_TOWN_HALL := "Oh and [NAME], registration for the championships opens at the Town Hall tomorrow morning, so make sure you get there first thing. We're going to queue up early!"
 
 # ------------------------------------------------------------
 # STATE

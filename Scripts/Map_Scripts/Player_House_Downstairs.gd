@@ -4,7 +4,7 @@ const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 
 # ── The arrival night: a note through the door — TWEAKABLE ──────────────────
 const NOTE_FOUND_TEXT := "Huh, a note was put through the door"
-const NOTE_AFTER_TEXT := "I'll call mum tomorrow..."
+const NOTE_AFTER_TEXT := "I'll call mum tomorrow, it's too late now, she'll be asleep already..."
 const NOTE_LOOK_BACK_DELAY := 0.5   # after the fade in, before the player turns back to the door
 
 # ── Morning 2: Ellie rings about breakfast at Café Mieux — TWEAKABLE ────────
@@ -15,7 +15,14 @@ const NOTE_LOOK_BACK_DELAY := 0.5   # after the fade in, before the player turns
 # displacement so a small room can't keep the call from ever ringing.
 const CAFE_CALL_ID := "cafe_call_ellie"
 const CAFE_CALL_TRIGGER_DISTANCE := 128.0
+# ── Morning 3: Alexander rings from the Town Hall queue — TWEAKABLE ─────────
+# 2026-11-12 (user): "as the player takes a few steps downstairs", for every start that didn't
+# meet Olly this morning (RegistrationReminders.first_call_due). World px walked, as above.
+const REGISTRATION_CALL_TRIGGER_DISTANCE := 48.0
 
+## The call armed for this visit ("" = none) and how far the player walks before it rings.
+var _call_id: String = ""
+var _call_distance: float = 0.0
 var _cafe_call_from: Vector2 = Vector2.INF
 var _cafe_call_walked: float = 0.0
 
@@ -31,7 +38,15 @@ func _ready() -> void:
 		GameState.save_progress()
 		_play_note_through_door()
 	elif CafeBreakfastCutscene.call_due():
-		_cafe_call_from = _player.global_position
+		_arm_call(CAFE_CALL_ID, CAFE_CALL_TRIGGER_DISTANCE)
+	elif RegistrationReminders.first_call_due():
+		_arm_call(RegistrationReminders.FIRST_CALL_ID, REGISTRATION_CALL_TRIGGER_DISTANCE)
+
+
+func _arm_call(call_id: String, distance: float) -> void:
+	_call_id = call_id
+	_call_distance = distance
+	_cafe_call_from = _player.global_position
 
 
 func _process(_delta: float) -> void:
@@ -39,22 +54,26 @@ func _process(_delta: float) -> void:
 		return
 	_cafe_call_walked += _player.global_position.distance_to(_cafe_call_from)
 	_cafe_call_from = _player.global_position
-	if _cafe_call_walked >= CAFE_CALL_TRIGGER_DISTANCE:
+	if _cafe_call_walked >= _call_distance:
 		_cafe_call_from = Vector2.INF
 		_play_cafe_call()
 
 
-## Ellie's call. The player stops where they are until it hangs up; only then is it
-## marked as taken, so a quit mid-call rings again next time.
+## Ellie's breakfast call (morning 2) or Alexander's queue call (morning 3). The player stops
+## where they are until it hangs up; only then is it marked as taken, so a quit mid-call rings
+## again next time.
 func _play_cafe_call() -> void:
 	_player.lock_movement()
 	MapManager.cutscene_active = true   # keeps the menu shut for the call
-	var call := PhoneCall.play_from_data(self, CAFE_CALL_ID)
+	var call := PhoneCall.play_from_data(self, _call_id)
 	if call != null and not call.is_finished():
 		await call.finished
 	if not is_inside_tree():
 		return
-	GameState.set_flag(CafeBreakfastCutscene.CALL_DONE_FLAG)
+	if _call_id == CAFE_CALL_ID:
+		GameState.set_flag(CafeBreakfastCutscene.CALL_DONE_FLAG)
+	else:
+		RegistrationReminders.reminder_played(_call_id)
 	MapManager.cutscene_active = false
 	_player.unlock_movement()
 

@@ -17,6 +17,11 @@ const HOUSE_DOWN := "res://Scenes/Map_Scenes/Player_House_Downstairs.tscn"
 const CARD_MART := "res://Scenes/Map_Scenes/Card_Mart.tscn"
 const FISH_SHOP := "res://Scenes/Map_Scenes/Fish_Shop.tscn"
 const WINDMILL := "res://Scenes/Map_Scenes/Windmill.tscn"
+const TOWN_HALL := "res://Scenes/Map_Scenes/TownHall.tscn"
+## TWEAKABLE — Town Hall root-local spots beside the queue (NPC container + (121, 59)): just
+## right of Alexander [127, 103] and just left of Ellie [97, 103].
+const TOWN_HALL_BESIDE_ALEX := Vector2(271.0, 162.0)
+const TOWN_HALL_BESIDE_ELLIE := Vector2(195.0, 162.0)
 
 ## TWEAKABLE — where the player stands for the Mewtwo vanish (Windmill root-local: just
 ## below Mewtwo at [229, 10] in the NPCS container).
@@ -38,6 +43,11 @@ const STORY_KEYS := [
 	CafeBreakfastCutscene.FISH_CALL_DONE_FLAG,
 	CardMartDuoCutscene.BOUGHT_FLAG, CardMartDuoCutscene.BONUS_FLAG, CardMartDuoCutscene.GONE_FLAG,
 	GameState.FISH_SHOP_INTRO_FLAG, "mewtwo_vanished",
+	TownHallTrioCutscene.STAGE_KEY, TownHallTrioCutscene.SIDE_KEY,
+	TownHallTrioCutscene.ELLIE_RESULT_KEY, TownHallTrioCutscene.ALEX_RESULT_KEY,
+	RegistrationReminders.TRIO_DONE_FLAG, RegistrationReminders.FIRST_CALL_FLAG,
+	RegistrationReminders.STEP_KEY, RegistrationReminders.BATTLES_KEY, RegistrationReminders.TALKS_KEY,
+	RegistrationReminders.EXITS_KEY, RegistrationReminders.PACKS_KEY,
 ]
 
 
@@ -86,6 +96,19 @@ static func entries() -> Array:
 			["Reminder 1 — Ellie rings (Olly invited you)", "remind_ellie"],
 			["Reminder 2 — Alexander rings", "remind_alexander"],
 			["Bonus — Olly: \"Are you fishing right now?\"", "remind_fishing"],
+		]],
+		["MORNING 3 — REGISTRATION DAY (TOWN HALL)", [
+			["Alexander's queue call (living room)", "reg_call"],
+			["Reminder 2 — Ellie rings (after 1 match)", "reg_remind_ellie"],
+			["Reminder 3 — Alexander rings (after 2 matches)", "reg_remind_alexander"],
+			["Queue scene — talk to Alexander (full scene)", "reg_queue_alex"],
+			["Queue scene — talk to Ellie (full scene)", "reg_queue_ellie"],
+			["Queue scene — talk to Alexander, under $50 (Ellie pays)", "reg_queue_broke"],
+			["Registered — Ellie's match next (quit/resume)", "reg_ellie_next"],
+			["After Ellie's match, player WON (Alexander's match next)", "reg_after_ellie_won"],
+			["After Ellie's match, player LOST (Alexander's match next)", "reg_after_ellie_lost"],
+			["Ending — Alexander WON his match", "reg_end_alex_won"],
+			["Ending — Alexander LOST his match", "reg_end_alex_lost"],
 		]],
 		["AFTERNOON 2 — CARD MART", [
 			["Ellie + Alexander pack chat (after buying a pack)", "mart_duo"],
@@ -173,6 +196,46 @@ static func launch(id: String) -> void:
 				_:
 					GameState.progress[CafeBreakfastCutscene.REMINDER_EXITS_KEY] = CafeBreakfastCutscene.REMINDERS[0]["exits"]
 			_go(HARBOUR, "Player_House_Downstairs")
+
+		# ---- morning 3: registration day ----
+		"reg_call":
+			_registration_morning(fam, false)
+			_go(HOUSE_DOWN, "Player_House_Upstairs")
+		"reg_remind_ellie", "reg_remind_alexander":
+			_registration_morning(fam, false)
+			GameState.progress[RegistrationReminders.FIRST_CALL_FLAG] = true
+			var step := 0 if id == "reg_remind_ellie" else 1
+			GameState.progress[RegistrationReminders.STEP_KEY] = step
+			GameState.progress[RegistrationReminders.BATTLES_KEY] = RegistrationReminders.REMINDERS[step]["battles"]
+			_go(HARBOUR, "Player_House_Downstairs")
+		"reg_queue_alex", "reg_queue_ellie", "reg_queue_broke":
+			_registration_morning(fam, false)
+			GameState.progress[RegistrationReminders.FIRST_CALL_FLAG] = true
+			if id == "reg_queue_broke":
+				GameState.add_cash(-GameState.get_cash())   # nothing left: Ellie pays
+			elif GameState.get_cash() < MapManager.REGISTRATION_FEE:
+				GameState.add_cash(MapManager.REGISTRATION_FEE)
+			var talk_to := TownHallTrioCutscene.ELLIE_NAME if id == "reg_queue_ellie" else TownHallTrioCutscene.ALEX_NAME
+			var spot := TOWN_HALL_BESIDE_ELLIE if id == "reg_queue_ellie" else TOWN_HALL_BESIDE_ALEX
+			_go_at(TOWN_HALL, spot, "right" if id == "reg_queue_ellie" else "left",
+				func(map_scene: Node): _talk_to_npc(map_scene, talk_to))
+		"reg_ellie_next", "reg_after_ellie_won", "reg_after_ellie_lost", "reg_end_alex_won", "reg_end_alex_lost":
+			_registration_morning(fam, true)
+			match id:
+				"reg_ellie_next":
+					GameState.progress[TownHallTrioCutscene.STAGE_KEY] = TownHallTrioCutscene.STAGE_ELLIE_NEXT
+					GameState.progress["time_points"] = TownHallTrioCutscene.REGISTERED_POINTS
+				"reg_after_ellie_won", "reg_after_ellie_lost":
+					GameState.progress[TownHallTrioCutscene.STAGE_KEY] = TownHallTrioCutscene.STAGE_ELLIE_BATTLE
+					GameState.progress[TownHallTrioCutscene.ELLIE_RESULT_KEY] = "won" if id.ends_with("won") else "lost"
+					GameState.progress["time_points"] = TownHallTrioCutscene.REGISTERED_POINTS + TownHallTrioCutscene.MATCH_POINTS
+				_:
+					# The ending: both matches played, it's 12pm. Results are the PLAYER's side.
+					GameState.progress[TownHallTrioCutscene.STAGE_KEY] = TownHallTrioCutscene.STAGE_ALEX_BATTLE
+					GameState.progress[TownHallTrioCutscene.ELLIE_RESULT_KEY] = "won"
+					GameState.progress[TownHallTrioCutscene.ALEX_RESULT_KEY] = "lost" if id == "reg_end_alex_won" else "won"
+					GameState.progress["time"] = "Afternoon"
+			_go(TOWN_HALL, "Celeste_Harbour")
 
 		# ---- Card Mart ----
 		"mart_duo":
@@ -314,6 +377,30 @@ static func _go_at(scene: String, pos: Vector2, facing: String, after: Callable 
 	await tree.create_timer(AUTO_START_DELAY).timeout
 	if is_instance_valid(tree.current_scene):
 		after.call(tree.current_scene)
+
+
+## Morning 3 with Olly's intro long done ("new" - Olly told them on day 1). `registered`: the
+## TCG Tracker App is held and the queue scene's flag is up (the matches part of the scene);
+## otherwise neither, so the queue and the locked morning are back.
+static func _registration_morning(familiarity: String, registered: bool) -> void:
+	_post_intro(familiarity, TownHallTrioCutscene.DAY, TownHallTrioCutscene.MORNING)
+	GameState.progress[CafeBreakfastCutscene.STAGE_KEY] = CafeBreakfastCutscene.STAGE_DONE
+	var items: Array = GameState.progress.get("items", [])
+	items.erase(MapManager.TRACKER_ITEM)
+	if registered:
+		items.append(MapManager.TRACKER_ITEM)
+		GameState.progress[RegistrationReminders.TRIO_DONE_FLAG] = true
+		GameState.progress[RegistrationReminders.FIRST_CALL_FLAG] = true
+	GameState.progress["items"] = items
+
+
+## Talk to the NPC called `npc_name` for the player (the real talk path, overrides and all).
+static func _talk_to_npc(map_scene: Node, npc_name: String) -> void:
+	for n in map_scene.get_tree().get_nodes_in_group("npcs"):
+		if str(n.get("npc_name")) == npc_name:
+			MapManager._on_player_npc_interact(n)
+			return
+	push_warning("DebugCutscenes: no '%s' on this load" % npc_name)
 
 
 ## The café starts when the table is talked to: do that for the player.
