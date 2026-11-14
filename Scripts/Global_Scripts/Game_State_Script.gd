@@ -279,6 +279,9 @@ func board_labels_on() -> bool:
 # keeps time either way; this only decides whether it is drawn.
 const OVERWORLD_CLOCK_OPTIONS := ["off", "on"]
 const DEFAULT_OVERWORLD_CLOCK := "on"
+# The Options row for this is hidden (2026-11-14), so a saved "off" is ignored on load - otherwise a
+# player who had hidden the clock could never get it back.
+const OVERWORLD_CLOCK_OPTION_HIDDEN := true
 var overworld_clock_setting: String = DEFAULT_OVERWORLD_CLOCK
 
 func set_overworld_clock(choice: String, save: bool = true) -> void:
@@ -633,6 +636,8 @@ func _load_animation_speed() -> void:
 	set_board_labels(labels if labels in BOARD_LABELS_OPTIONS else DEFAULT_BOARD_LABELS, false)
 
 	var clock_choice: String = str(data.get("overworld_clock", DEFAULT_OVERWORLD_CLOCK))
+	if OVERWORLD_CLOCK_OPTION_HIDDEN:
+		clock_choice = DEFAULT_OVERWORLD_CLOCK
 	set_overworld_clock(clock_choice if clock_choice in OVERWORLD_CLOCK_OPTIONS else DEFAULT_OVERWORLD_CLOCK, false)
 
 	var tut: String = str(data.get("tutorial_next_match", "off"))

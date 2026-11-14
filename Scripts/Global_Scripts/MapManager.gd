@@ -247,9 +247,9 @@ const GIFT_ITEM_SEPARATION := 20.0
 const GIFT_DISPLAY_CENTER_Y_CARD    := 460.0
 const GIFT_DISPLAY_CENTER_Y_COIN    := 570.0
 const GIFT_DISPLAY_CENTER_Y_COSTUME := 570.0
-## TWEAKABLE: a gifted pack or boxed deck (Olly's starter deck + starter pack). Higher than the
-## costume line so the 594px-tall art sits centred in the space ABOVE the big message box
-## rather than resting on it.
+## A gifted pack or boxed deck (Olly's starter deck + starter pack) is centred in the space ABOVE
+## the big message box, equal gaps above and below - see _gift_pack_center_y(). This is only the
+## fallback for when there is no message box to measure.
 const GIFT_DISPLAY_CENTER_Y_PACK    := 410.0
 
 # ============================================================
@@ -2654,6 +2654,18 @@ func _prepare_gift_display(gift_type: String, gift_value: String) -> void:
 #   2. Compute aspect-fit size against a target box
 #   3. Apply EXPAND_IGNORE_SIZE + size/custom_minimum_size all set to the
 #      computed values so the rect renders at exactly the size we want
+## Where a gifted pack / deck box is centred: halfway between the top of the screen and the top
+## of the "You received..." box, so the gap above the art equals the gap below it whatever its
+## height. The box grows with its text, so its top is MEASURED (the same large style the notice
+## uses) rather than assumed.
+func _gift_pack_center_y(text: String) -> float:
+	if message_panel == null:
+		return GIFT_DISPLAY_CENTER_Y_PACK
+	var box_h: float = message_panel.measure_panel_height("[center]" + text + "[/center]", LARGE_MESSAGE_FONT_SIZE)
+	var box_top: float = UIKit.screen_h() - DynamicMessageBox.PANEL_BOTTOM_INSET - box_h
+	return box_top * 0.5
+
+
 func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 	_clear_gift_display()
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gift_received)
@@ -2688,7 +2700,7 @@ func _show_gift_display(text: String, image_paths: Array, kind: String) -> void:
 		# A sleeve is a card back, so it shares the costume box: 432x594 is a 0.727
 		# aspect and a card is 0.72, so the aspect-fit below barely has to move it.
 		target_box = GIFT_COSTUME_SIZE
-		center_y = GIFT_DISPLAY_CENTER_Y_PACK if kind == "pack" else GIFT_DISPLAY_CENTER_Y_COSTUME
+		center_y = _gift_pack_center_y(text) if kind == "pack" else GIFT_DISPLAY_CENTER_Y_COSTUME
 	else:   # "card" and "card_fly"
 		var n_clamp: int = clamp(image_paths.size(), 1, GIFT_CARD_SIZES.size())
 		target_box = GIFT_CARD_SIZES.get(n_clamp, GIFT_CARD_SIZES[GIFT_CARD_SIZES.size()])

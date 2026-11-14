@@ -192,7 +192,7 @@ func _ready() -> void:
 		# SCRAPPED: "hide_bars" - see UITheme.BARS_ALWAYS_HIDDEN.
 		# "hide_bars":    GameState.set_hide_bars,
 		"board_labels": GameState.set_board_labels,
-		"overworld_clock": GameState.set_overworld_clock,
+		# "overworld_clock": GameState.set_overworld_clock,   # HIDDEN, see _build_rows()
 		"tutorial_next_match": GameState.set_tutorial_next_match,
 		"window_mode":  GameState.set_window_mode,
 		"window_size":  GameState.set_window_size,
@@ -388,10 +388,13 @@ func _build_rows() -> void:
 		["off", "Off"],
 		["on",  "On"],
 	], "(names the hands, benches, attacks...)")
-	_add_button_row(body, "overworld_clock", "Overworld clock", [
-		["off", "Hide"],
-		["on",  "Show"],
-	], "(the clock in the corner)")
+	# HIDDEN 2026-11-14 (user): the clock is always shown. The setting still works - to offer it
+	# again, uncomment this row and the two "overworld_clock" lines below (section_setters and
+	# _current_values), and set GameState.OVERWORLD_CLOCK_OPTION_HIDDEN false.
+	# _add_button_row(body, "overworld_clock", "Overworld clock", [
+	# 	["off", "Hide"],
+	# 	["on",  "Show"],
+	# ], "(the clock in the corner)")
 	# One match only: it switches itself back off when that match ends.
 	_add_button_row(body, "tutorial_next_match", "Tutorial messages for next match", [
 		["off", "Off"],
@@ -577,7 +580,7 @@ func _current_values() -> Dictionary:
 		"ui_theme":      GameState.ui_theme_setting,
 		# "hide_bars":     GameState.hide_bars_setting,   # SCRAPPED, see _build_rows()
 		"board_labels":  GameState.board_labels_setting,
-		"overworld_clock": GameState.overworld_clock_setting,
+		# "overworld_clock": GameState.overworld_clock_setting,   # HIDDEN, see _build_rows()
 		"window_mode":   GameState.window_mode_setting,
 		"window_size":   GameState.window_size_setting,
 		"fullscreen_size": GameState.fullscreen_size_setting,

@@ -7,10 +7,14 @@
 	"Image_Assets/Character_Sprites/Talking_Sprites/.",
 	"  speaker      name on the message box / the pill over the picture",
 	"  screen_name  overrides the pill's text; \"\" hides the pill",
-	"  character    folder under Characters/, e.g. \"Ellie\". The caller is built from PARTS on one",
-	"               shared canvas, front to back: Hair/<C>_Hair_Front, Mouths/<C>_Mouth_1/_2/_3 (the",
-	"               only animated part), Face/<C>_Face, Clothes/<C>_<clothes>, Hair/<C>_Hair_Back.",
-	"  clothes      the outfit: \"Dress\" loads Clothes/Ellie_Dress.png. Swap this alone to put the",
+	"  character    folder under Characters/, e.g. \"Ellie\". The caller is ONE picture,",
+	"               Characters/<C>/<C>_<clothes>.png, with talking mouths laid over it.",
+	"  clothes      the outfit: \"Dress\" loads Characters/Ellie/Ellie_Dress.png. Its mouth frames are",
+	"               Mouths/<C>_<clothes>_Mouth_1/_2/_3.png (shut, half open, open), drawn on",
+	"               the sprite's own canvas, so they line up with no coordinates. Build them with",
+	"               Scripts/Utilities/make_talking_mouths.py. A new outfit is art only, no code.",
+	"  sprite       optional: the caller's file name outright (no extension), if it breaks the pattern",
+	"  flip         optional: false for a sprite that already faces right. Default true.",
 	"               character in a new outfit - every face, mouth and expression carries over.",
 	"  background   what is behind them, from Backgrounds/",
 	"  phone        the handset art, from Phones/. Defaults to iPhone4.",
@@ -21,12 +25,10 @@
 	"",
 	"EXPRESSIONS. A line may open with an emotion tag in CAPITALS, and it applies to that line only:",
 	"    \"[HAPPY]Oh hey! So you're just coming round the corner then?\"",
-	"The next line with no tag goes back to the neutral face. EVERY part is looked up on its own with",
-	"the emotion added, and falls back to its neutral art: [SAD] finds Ellie_Face_Sad and",
-	"Ellie_Mouth_Sad_1/_2/_3; [WINK] finds only Ellie_Face_Wink and talks with the normal mouth. Sad",
-	"clothes or hair would be Ellie_Dress_Sad / Ellie_Hair_Front_Sad. Casing is forgiving, and missing",
-	"art is a warning plus the neutral face rather than a broken call. [TIME], [NAME] and bbcode such as",
-	"[center] are NOT expressions and pass through untouched.",
+	"The tag swaps the MOUTH set for that line: [SAD] uses Mouths/<C>_<clothes>_Sad_Mouth_1.png ...",
+	"(e.g. Olly_White_Sad_Mouth_1.png) if it exists, otherwise the ordinary mouth. The next line with",
+	"no tag goes back to the ordinary mouth. The tag is always stripped from the text, and casing is",
+	"forgiving. [TIME], [NAME] and bbcode such as [center] are NOT expressions and pass through untouched.",
 	"",
 	"A new call is an entry here. A character calling in a different outfit, from a different place,",
     "or at a different point in the story is a new entry - no code."
@@ -39,7 +41,6 @@
   "intro_call_new": {
 	"speaker": "Olly", "character": "Olly", "clothes": "White", "pill_sprite": "1Olly_White", "colour": "aqua",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
 	"lines": [
 	  "Hey! Well that did end up being a late one then. I'm guessing the tournament must have overran?",
 	  "I bet it was fun at least! I'm so jealous I couldn't get tickets for it but Alexander couldn't watch the shop for me tonight.",
@@ -53,7 +54,6 @@
   "intro_call_rules": {
 	"speaker": "Olly", "character": "Olly", "clothes": "White", "pill_sprite": "1Olly_White", "colour": "aqua",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
 	"lines": [
 	  "Hey! Wow the tournament finished really early, I thought you'd be back way later.",
 	  "I bet it was fun at least! I'm so jealous I couldn't get tickets for it but El and Alexander are away today so I had to keep the shop open.",
@@ -68,7 +68,6 @@
   "intro_call_played": {
 	"speaker": "Olly", "character": "Olly", "clothes": "White", "pill_sprite": "1Olly_White", "colour": "aqua",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
 	"lines": [
 	  "Hey! Well that did end up being a late one then. I'm guessing the tournament must have overran?",
 	  "I bet it was fun at least! I'm so jealous I couldn't get tickets for it but Alexander couldn't watch the shop for me tonight.",
@@ -83,7 +82,6 @@
   "intro_call_expert": {
 	"speaker": "Olly", "character": "Olly", "clothes": "White", "pill_sprite": "1Olly_White", "colour": "aqua",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
 	"lines": [
 	  "Hey! Well that did end up being a late one then. I'm guessing the tournament must have overran?",
 	  "I bet it was fun at least! I'm so jealous I couldn't get tickets for it, I was stuck running the shop all day.",
@@ -98,7 +96,6 @@
   "intro_call_hard": {
 	"speaker": "Olly", "character": "Olly", "clothes": "White", "pill_sprite": "1Olly_White", "colour": "aqua",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
 	"lines": [
 	  "Hey! I assume you're just coming round the corner now then? That ended up being so late, I guess the tournament must have overran?",
 	  "I hope it was fun! I'm so jealous I couldn't get tickets for it, tell me about it tomorrow.",
@@ -117,7 +114,6 @@
   "cafe_call_ellie": {
 	"speaker": "Ellie", "character": "Ellie", "clothes": "Hoodie", "pill_sprite": "1Ellie_Hoodie", "colour": "lilac",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Ellie_Hoodie", "mouth": [500, 300], "mouth_width": 26,
 	"lines": [
 	  "Hey! Me, Olly and Alexander went out for breakfast at Café Mieux this morning if you're interested?",
 	  "Alexander's off until he takes over the shop tonight. It's bank holiday but Ol is still opening up this afternoon anyway.",
@@ -137,7 +133,6 @@
   "cafe_reminder_ellie": {
 	"speaker": "Ellie", "character": "Ellie", "clothes": "Hoodie", "pill_sprite": "1Ellie_Hoodie", "colour": "lilac",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Ellie_Hoodie", "mouth": [500, 300], "mouth_width": 26,
 	"lines": [
 	  "Hey! Did Olly say we were at the Cafe? You should come by while we're still here!",
 	  "We'll be waiting at the cafe for you so hurry up!"
@@ -147,7 +142,6 @@
   "cafe_reminder_olly": {
 	"speaker": "Olly", "character": "Olly", "clothes": "White", "pill_sprite": "1Olly_White", "colour": "aqua",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
 	"lines": [
 	  "Hey, will you get over here please, I've gotta head down to the shop asap.",
 	  "I'll be waiting at the cafe until you get here."
@@ -157,7 +151,6 @@
   "cafe_reminder_fishing": {
 	"speaker": "Olly", "character": "Olly", "clothes": "White", "pill_sprite": "1Olly_White", "colour": "aqua",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Olly_White", "mouth": [405, 261], "mouth_width": 22,
 	"lines": [
 	  "...... Are you fishing right now?",
 	  "Look, I wish I was out there with ya fishing too, but we're waiting on you at the cafe!!!"
@@ -165,9 +158,8 @@
   },
 
   "cafe_reminder_alexander": {
-	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "yellow",
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Black", "pill_sprite": "1Alexander", "colour": "yellow",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Alexander",
 	"lines": [
 	  "Please can you come here like right now? My sister is doing my head in.",
 	  "I don't mind playing this game a bit but this is relentless.",
@@ -184,9 +176,8 @@
   ],
 
   "registration_call_alexander": {
-	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "yellow",
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Black", "pill_sprite": "1Alexander", "colour": "yellow",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Alexander",
 	"lines": [
 	  "Hey, we're at the Town Hall now waiting in line. If you come here quick enough you can register with us.",
 	  "Hurry up and come to the Town Hall."
@@ -196,16 +187,14 @@
   "registration_reminder_ellie": {
 	"speaker": "Ellie", "character": "Ellie", "clothes": "Hoodie", "pill_sprite": "1Ellie_Hoodie", "colour": "lilac",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Ellie_Hoodie", "mouth": [500, 300], "mouth_width": 26,
 	"lines": [
 	  "Hey, we're right at the front of the line for registration at the Town Hall now, run here quick!!!"
 	]
   },
 
   "registration_reminder_alexander": {
-	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "yellow",
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Black", "pill_sprite": "1Alexander", "colour": "yellow",
 	"background": "BlurryTreeBackground", "phone": "iPhone4",
-	"battle_sprite": "1Alexander",
 	"lines": [
 	  "Yo, we had to queue for HOURS this morning, we're not gonna hold a spot for you all morning, we'll be registering in like 2 seconds so run to the Town Hall now."
 	]
@@ -221,14 +210,14 @@
   ],
 
   "fish_shop_10_olly": {
-	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"speaker": "Olly", "character": "Olly", "clothes": "Black", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
 	"lines": [
 	  "Hey [NAME]! You've already sent me back almost a dozen fish, it was looking a bit empty in here before.",
 	  "Thanks again for helping me with this! You could definitely use some new FISH gear, come and see me at the shop!"
 	]
   },
   "fish_shop_10_alexander": {
-	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Black", "pill_sprite": "1Alexander", "colour": "light_blue",
 	"lines": [
 	  "Hey [NAME], you've been busy recently I see, these tanks were practically empty before you started helping out.",
 	  "Olly is already starting to clear out the basement to make room for more down there."
@@ -236,7 +225,7 @@
   },
 
   "fish_shop_25_olly": {
-	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"speaker": "Olly", "character": "Olly", "clothes": "Black", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
 	"lines": [
 	  "Hey [NAME]! That's 25 fish you've sent back to FISH!",
 	  "Research is going great thanks to you, the fish just keep flying on in!",
@@ -245,7 +234,7 @@
 	]
   },
   "fish_shop_25_alexander": {
-	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Black", "pill_sprite": "1Alexander", "colour": "light_blue",
 	"lines": [
 	  "Hey [NAME], 25 fish sent back already... you're keeping us in business.",
 	  "We've had to put a whole load of new tanks in out back, so you can send us more of each fish now.",
@@ -254,7 +243,7 @@
   },
 
   "fish_shop_50_olly": {
-	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"speaker": "Olly", "character": "Olly", "clothes": "Black", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
 	"lines": [
 	  "Hey [NAME]! 50 fish! I can't believe how fast the shop is filling up!",
 	  "I've rebuilt the tanks downstairs too, so there's room for more of every fish from the forest now.",
@@ -266,7 +255,7 @@
 	]
   },
   "fish_shop_50_alexander": {
-	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Black", "pill_sprite": "1Alexander", "colour": "light_blue",
 	"lines": [
 	  "Hey [NAME], that's 50 fish sent back. Olly's had me rebuilding the tanks downstairs all week, so there's more room for the forest fish now.",
 	  "Did Olly tell you about the new fishing spot we found out in the middle of the ocean?",
@@ -277,7 +266,7 @@
   },
 
   "fish_shop_75_olly": {
-	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"speaker": "Olly", "character": "Olly", "clothes": "Black", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
 	"lines": [
 	  "Hey [NAME]! 75 fish sent back to FISH, you're unstoppable!",
 	  "So many people are coming in just to see the tanks that I've opened up even more of the shop.",
@@ -285,7 +274,7 @@
 	]
   },
   "fish_shop_75_alexander": {
-	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Black", "pill_sprite": "1Alexander", "colour": "light_blue",
 	"lines": [
 	  "Hey [NAME], 75 fish. People are coming in just to look at the tanks now...",
 	  "So naturally I've been the one putting up even more shelves. Come and see it next time you're in."
@@ -293,7 +282,7 @@
   },
 
   "fish_shop_100_olly": {
-	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"speaker": "Olly", "character": "Olly", "clothes": "Black", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
 	"lines": [
 	  "Hey [NAME]! You've done it, 100 fish sent back to FISH!",
 	  "This is the best thing that's ever happened to the shop. I'm rebuilding the whole thing, upstairs and downstairs, bigger than ever!",
@@ -301,7 +290,7 @@
 	]
   },
   "fish_shop_100_alexander": {
-	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Black", "pill_sprite": "1Alexander", "colour": "light_blue",
 	"lines": [
 	  "Hey [NAME]... 100 fish. Olly's lost it, we're rebuilding the whole shop. Upstairs AND downstairs.",
 	  "Bigger tanks and more room for every fish you can catch. Which means even more tanks for me to clean.",
@@ -310,7 +299,7 @@
   },
 
   "fish_shop_200_olly": {
-	"speaker": "Olly", "character": "Olly", "clothes": "Jeans_Bag", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
+	"speaker": "Olly", "character": "Olly", "clothes": "Black", "pill_sprite": "1Olly_Jeans_Bag", "colour": "aqua",
 	"lines": [
 	  "Hey [NAME]! 200 fish! I've never seen such a dedicated true to heart fisher.",
 	  "I've got a special rod just for you and nobody else.",
@@ -319,7 +308,7 @@
 	]
   },
   "fish_shop_200_alexander": {
-	"speaker": "Alexander", "character": "Alexander", "clothes": "Casual", "pill_sprite": "1Alexander", "colour": "light_blue",
+	"speaker": "Alexander", "character": "Alexander", "clothes": "Black", "pill_sprite": "1Alexander", "colour": "light_blue",
 	"lines": [
 	  "Hey [NAME], 200 fish sent back. Our best customer by miles.",
 	  "I've been told that you might be interested in our new Gold Rod.",

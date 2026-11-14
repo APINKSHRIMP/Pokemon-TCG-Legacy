@@ -1,0 +1,8 @@
+{
+  "_help": "One line per phone-call sprite. Key = path under Talking_Sprites/Characters, no .png. mouth = canvas pixel [x, y] in the middle of the CLOSED mouth. pixel = size of one art pixel (8 Ellie/Alexander, 10 Olly). Optional: scale (size of the opening, 1.0 = the old talking head; default closed mouth width / 32), open_down (true = the opening only grows downwards from the top of the closed mouth), offset ([x, y] canvas pixels to nudge the opening, in the PNG as saved; callers are flipped in the call so +x moves it LEFT on screen), corners ([] or [\"up_right\", \"up_left\"]), width (closed mouth width in art pixels). Writes Mouth_1-3 (shut, half, open) and Sad_Mouth_1-3 in the style of the old Ellie talking head. Run: python make_talking_mouths.py --preview",
+  "Olly/Olly_White":           { "mouth": [410, 262], "pixel": 10, "scale": 0.58, "open_down": true },
+  "Olly/Olly_Black":           { "mouth": [344, 287], "pixel": 10, "scale": 0.58, "open_down": true },
+  "Ellie/Ellie_Hoodie":        { "mouth": [500, 300], "pixel": 8 },
+  "Ellie/Ellie_Dress":         { "mouth": [500, 300], "pixel": 8 },
+  "Alexander/Alexander_Black": { "mouth": [269, 187], "pixel": 8, "scale": 0.42, "offset": [2, 0], "open_down": true }
+}

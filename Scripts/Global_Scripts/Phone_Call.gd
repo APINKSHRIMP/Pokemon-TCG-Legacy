@@ -9,10 +9,9 @@ extends CanvasLayer
 #
 #   PHONE        the handset art. Expected to stay the same, but it is a config field so a
 #                character can call from a different model later.
-#   CHARACTER    the caller, built from PARTS stacked on one shared canvas - see PARTS. Every part
-#                lives in Talking_Sprites/Characters/<Character>/<Folder>/. Only the CLOTHES change
-#                between calls; hair, face and mouth belong to the character, so every outfit gets
-#                every expression for free.
+#   CHARACTER    the caller: ONE picture, Talking_Sprites/Characters/<Character>/<Character>_<Clothes>.png
+#                (their full sprite), with talking mouths laid over it from Talking_Sprites/Mouths/ -
+#                see THE CALLER.
 #   BACKGROUND   whatever is behind them, from Talking_Sprites/Backgrounds/. Also one name.
 #
 # Every call is a Dictionary (or an entry in Phone_Calls.json), so a new call is data, not code:
@@ -31,9 +30,9 @@ extends CanvasLayer
 # and the message box over everything.
 #
 # ── THE MOUTH ────────────────────────────────────────────────
-# The mouth frames cycle 1-2-3-2-1-2-3-2... (a ping-pong, so the loop never jumps) and ONLY while the
-# message box is actually typing letters. The moment the text stops appearing the mouth drops back
-# to frame 1, shut. Every other part holds still while a line is spoken. That is why this reads as
+# Three frames - shut, half open, open - played as a ping-pong, 1-2-3-2-1-2-3-2..., so the mouth just
+# opens and closes, the same as the old talking heads. It moves ONLY while the message box is actually
+# typing letters; the moment the text stops appearing it drops back to frame 1, shut. That is why this reads as
 # speech rather than as an idle loop - see DynamicMessageBox.is_typing(), which is the single thing
 # driving it.
 #
@@ -46,43 +45,16 @@ extends CanvasLayer
 signal finished
 
 const SPRITE_DIR     := "res://Image_Assets/Character_Sprites/Talking_Sprites/"
-const CHARACTER_DIR  := SPRITE_DIR + "Characters/"
+const CHARACTER_DIR  := SPRITE_DIR + "Characters/"   # <Character>/<Character>_<Clothes>.png
+const MOUTH_DIR      := SPRITE_DIR + "Mouths/"       # <Character>_<Clothes>_Mouth_1.png, _2, _3
 const PHONE_DIR      := SPRITE_DIR + "Phones/"
 const BACKGROUND_DIR := SPRITE_DIR + "Backgrounds/"
 const DATA_PATH      := "res://NPC_and_Opponent_Data/Phone_Calls.json"
 
-# ─── The caller's parts, BACK to FRONT ───────────────────────────────────────
-# Each part is <Character>/<folder>/<Character>_<name>.png, all drawn on the SAME canvas so they stack
-# with no offsets. A name of "" means the call's CLOTHES (`Ellie_Dress`, `Ellie_Hoodie`). The one
-# `talks` part is the mouth: numbered frames (`Ellie_Mouth_1`, `_2`, ...) cycled while text types.
-#
-# An emotion looks for `<part>_<Emotion>` in EVERY part and each falls back to its neutral art on its
-# own, so [SAD] can swap the face and the mouth while [WINK] swaps only the face.
-#
-# Adding a moving part later - eyes, say - is a row here and a folder of art, nothing else.
-const PARTS: Array[Dictionary] = [
-	{ "folder": "Hair",    "name": "Hair_Back" },
-	{ "folder": "Clothes", "name": "" },
-	{ "folder": "Face",    "name": "Face" },
-	{ "folder": "Mouths",  "name": "Mouth", "talks": true },
-	{ "folder": "Hair",    "name": "Hair_Front" },
-]
-
-# ─── ISSUE #318: the caller is their IN-BATTLE sprite ─────────────────────────
-# The talking-head PARTS above are BLOCKED OUT, not deleted: with this switch on, the caller is the
-# head and shoulders of their in-battle sprite instead, and only the PARTS mouth frames are kept,
-# laid over that sprite's own mouth. Everything else - the phone, the tree background, connecting /
-# disconnecting, the name pill, the message box - is the same either way. Flip to false to bring
-# the talking heads back exactly as they were (_build_caller and the rest of PARTS are untouched).
-const USE_BATTLE_SPRITE := true
-const BATTLE_SPRITE_DIR := "res://Image_Assets/Character_Sprites/In_Battle_Sprites/"
-# TWEAKABLE: how much of the sprite the screen shows, from the top of its visible pixels down. 0.30
-# crops off the bottom 70%, leaving the head and shoulders a video call frames.
-const BATTLE_SHOW_FRACTION : float = 0.30
-# TWEAKABLE: the mouth's width in the BATTLE SPRITE'S own pixels, when a call does not say.
-const BATTLE_MOUTH_WIDTH   : float = 24.0
-# Whose talking-head mouth frames a caller with none of their own borrows.
-const BATTLE_MOUTH_FALLBACK := "Ellie"
+# ─── TWEAKABLE: how much of the caller the screen shows ────────────────────────
+# From the top of their visible pixels down. 0.36 crops off the bottom 64%, leaving the head and
+# shoulders a video call frames. Bigger = zoomed further out. The mouth follows on its own.
+const SHOW_FRACTION : float = 0.36
 
 # Reference screen. Every figure below is an absolute pixel in this space, as everywhere else.
 const SCREEN_W : float = 1920.0
@@ -103,18 +75,8 @@ const PHONE_TOP_Y_MIN  : float = 20.0
 # to this, so it is fully off-screen either way.
 const PHONE_OFFSCREEN_PAD : float = 60.0
 
-# ─── TWEAKABLE: the caller inside the screen ─────────────────────────────────
-# The sprite is fitted by its OPAQUE BOUNDS, not by its texture size — the art is a 1024x913 canvas
-# with a lot of empty space around the character, and fitting the canvas would leave them tiny and
-# off-centre.
-#
-# A video call frames the HEAD, so the caller is deliberately scaled larger than the screen and
-# anchored from the TOP: 1.0 would fit all of them in and leave a face the size of a thumbnail.
-# 1.45 crops them at about the chest, which is the framing in the reference mock-up.
-const SPRITE_FILL       : float = 1.45  # the caller's full height, as a multiple of the screen's
-const SPRITE_TOP_INSET  : float = 0.04  # headroom above them, as a fraction of the screen's height
-# What counts as "the head" when centring them - the top of the visible picture, as a fraction of
-# its height. See _head_centre_x().
+# What counts as "the head" when there is no mouth to centre on - the top of the shown slice, as a
+# fraction of its height. See _caller_head_centre_x().
 const SPRITE_HEAD_BAND  : float = 0.333
 
 # ─── TWEAKABLE: the mouth ────────────────────────────────────────────────────
@@ -198,26 +160,21 @@ var _speaker: String = ""
 var _speaker_sprite: String = ""     # overworld sprite name for the name pill's portrait, optional
 var _colour: String = ""             # message-box theme key
 var _phone_name: String = "iPhone4"
-var _character: String = ""         # the folder under Characters/, and every part's name prefix
-var _clothes: String = ""            # the outfit, e.g. "Dress" for Ellie_Dress.png
+var _character: String = ""         # the folder under Characters/
+var _clothes: String = ""            # the outfit, e.g. "Dress" for Ellie/Ellie_Dress.png
 var _background_name: String = ""
 var _lines: Array = []
 var _auto_advance: bool = false
 var _screen_name: String = ""        # the pill over the picture; "" hides it
-# ISSUE #318 - the battle-sprite caller (USE_BATTLE_SPRITE)
-var _battle_sprite: String = ""      # In_Battle_Sprites file name, no extension
-var _battle_flip: bool = true        # most sprites face LEFT; flipped, they face into the call
-var _mouth_point: Vector2 = Vector2(-1, -1)   # the mouth's centre in the sprite's own pixels
-var _mouth_width: float = BATTLE_MOUTH_WIDTH
-var _mouth_set: String = ""          # whose Mouths/ frames to use; "" = the character's, else Ellie's
+var _sprite_name: String = ""        # the caller's file name, no extension: "Ellie_Dress"
+var _flip: bool = true               # most sprites face LEFT; flipped, they face into the call
 
 # ─── Nodes ───────────────────────────────────────────────────────────────────
 var _blocker: Control = null
 var _rig: Control = null             # the phone assembly; this is what slides
 var _screen: Control = null          # clipped to the hole in the phone
 var _bg: TextureRect = null
-var _layers: Array[TextureRect] = [] # one per PARTS row, in the same (back-to-front) order
-var _mouth: TextureRect = null       # the `talks` layer, the only one that animates
+var _mouth: TextureRect = null       # the mouth frames, laid exactly over the caller
 var _picture: Control = null         # the caller + their background, faded in as one
 var _cover: Control = null           # the phone's own screen, a child of _screen so it clips too
 var _connect_ui: Control = null      # the gradient + spinner + word, faded in over the black
@@ -229,11 +186,10 @@ var _box: DynamicMessageBox = null
 
 # ─── State ───────────────────────────────────────────────────────────────────
 var _frames: Array[Texture2D] = []          # the MOUTH frames currently being cycled
-var _mouth_index: int = -1                  # which PARTS row talks
-# A "look" is an Array with one Array[Texture2D] per PARTS row: a still part holds one texture, the
-# mouth holds its frames, and an empty entry means that part has no art (the layer is left blank).
-var _default_look: Array = []               # the neutral look, returned to between emotions
-var _emotion_looks: Dictionary = {}         # emotion -> look, each part already filled from neutral
+var _neutral_frames: Array[Texture2D] = []  # the caller's ordinary mouth set
+var _emotion_looks: Dictionary = {}         # emotion -> its mouth set (the neutral one if none drawn)
+var _show: Rect2 = Rect2()                  # the slice of the caller's canvas the screen shows
+var _sprite_size: Vector2 = Vector2.ZERO    # the caller's canvas; every mouth frame must match it
 var _screen_size: Vector2 = Vector2.ZERO    # the hole
 var _frame_order: PackedInt32Array = PackedInt32Array()
 var _frame_step: int = 0
@@ -301,7 +257,9 @@ static func load_call_data(call_id: String) -> Dictionary:
 ##
 ##   speaker      name on the message box's pill. "" gives the system box instead.
 ##   character    the caller's folder under Talking_Sprites/Characters/, e.g. "Ellie"
-##   clothes      the outfit: "Dress" loads Clothes/Ellie_Dress.png ("Ellie_Dress" works too)
+##   clothes      the outfit: "Dress" loads Characters/Ellie/Ellie_Dress.png ("Ellie_Dress" works too)
+##   sprite       name the caller's file outright instead (no extension), if it breaks the pattern
+##   flip         false for a sprite that already faces right. Default true.
 ##   background   what is behind them, from Talking_Sprites/Backgrounds/
 ##   phone        the handset art from Talking_Sprites/Phones/, default iPhone4
 ##   colour       message_colour key, as an NPC carries
@@ -315,7 +273,7 @@ func configure(config: Dictionary) -> void:
 	_phone_name      = String(config.get("phone", "iPhone4"))
 	_character       = String(config.get("character", ""))
 	_clothes         = String(config.get("clothes", ""))
-	# Forgiving of the full file name, since that is what sits in the Clothes folder.
+	# Forgiving of the full file name, since that is what sits in the character's folder.
 	if _character != "" and _clothes.begins_with(_character + "_"):
 		_clothes = _clothes.substr(_character.length() + 1)
 	_background_name = String(config.get("background", ""))
@@ -328,16 +286,8 @@ func configure(config: Dictionary) -> void:
 		var r: Array = config["screen_rect"]
 		if r.size() == 4:
 			_screen_rect = Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3]))
-	# ISSUE #318: battle_sprite defaults to the costume the character battles in - "1Ellie_Hoodie".
-	_battle_sprite = String(config.get("battle_sprite", "1%s_%s" % [_character, _clothes]))
-	_battle_flip   = bool(config.get("flip", true))
-	_mouth_width   = float(config.get("mouth_width", BATTLE_MOUTH_WIDTH))
-	_mouth_set     = String(config.get("mouth_set", ""))
-	if config.has("mouth"):
-		var m: Array = config["mouth"]
-		if m.size() == 2:
-			_mouth_point = Vector2(float(m[0]), float(m[1]))
-
+	_sprite_name = String(config.get("sprite", "%s_%s" % [_character, _clothes]))
+	_flip        = bool(config.get("flip", true))
 
 # ============================================================
 # BUILD
@@ -369,8 +319,23 @@ func _build() -> void:
 	_rig = Control.new()
 	_rig.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rig.size = _phone_size
-	_rig.position = Vector2(PHONE_CENTRE_X + UIKit.screen_extra().x * 0.5 - _phone_size.x * 0.5, _offscreen_y())
+	# Whole pixels: the handset is 39px wide, so half of it is a fraction, and a phone on a half pixel
+	# rasterises its hole one pixel off from the screen drawn behind it.
+	_rig.position = Vector2(round(PHONE_CENTRE_X + UIKit.screen_extra().x * 0.5 - _phone_size.x * 0.5), _offscreen_y())
 	add_child(_rig)
+
+	# BLACK ALL THE WAY DOWN, behind everything and never moved. The cover that hides the caller
+	# SLIDES AWAY, so without this the screen it uncovers would be the transparent hole in the
+	# handset - i.e. the map showing through the phone - and the caller would have nothing to fade
+	# up from. This is the "switched off" the screen falls back to at both ends of the call.
+	# It sits OUTSIDE the clipped screen and runs one art pixel under the bezel on every side, so no
+	# rounding of the moving phone can ever open a sliver of map at the edge of the hole.
+	var backdrop := ColorRect.new()
+	backdrop.color = Color.BLACK
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backdrop.position = hole.position - Vector2.ONE * PHONE_SCALE
+	backdrop.size = hole.size + Vector2.ONE * PHONE_SCALE * 2.0
+	_rig.add_child(backdrop)
 
 	# ── The screen: everything inside it is clipped to the hole ──
 	_screen = Control.new()
@@ -379,17 +344,6 @@ func _build() -> void:
 	_screen.position = hole.position
 	_screen.size = hole.size
 	_rig.add_child(_screen)
-
-	# BLACK ALL THE WAY DOWN, behind everything and never moved. The cover that hides the caller
-	# SLIDES AWAY, so without this the screen it uncovers would be the transparent hole in the
-	# handset - i.e. the map showing through the phone - and the caller would have nothing to fade
-	# up from. This is the "switched off" the screen falls back to at both ends of the call.
-	var backdrop := ColorRect.new()
-	backdrop.color = Color.BLACK
-	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	backdrop.position = Vector2.ZERO
-	backdrop.size = hole.size
-	_screen.add_child(backdrop)
 
 	# One wrapper for the caller, their background and their name pill, so a single alpha fades the
 	# whole picture up from that black as the screen slides away - rather than three nodes to keep
@@ -402,10 +356,7 @@ func _build() -> void:
 	_screen.add_child(_picture)
 
 	_build_background(hole.size)
-	if USE_BATTLE_SPRITE:
-		_build_battle_caller(hole.size)   # ISSUE #318
-	else:
-		_build_caller(hole.size)
+	_build_caller(hole.size)
 	_build_name_pill(hole.size)
 	_build_cover(hole.size)
 
@@ -462,84 +413,6 @@ func _build_background(screen_size: Vector2) -> void:
 	_picture.add_child(_bg)
 
 
-## The caller: one TextureRect per PARTS row, added back to front so child order IS the stacking
-## order. Every part shares one canvas, so every layer gets the same size and position and the parts
-## line up with no per-part offsets.
-func _build_caller(screen_size: Vector2) -> void:
-	_screen_size = screen_size
-	_default_look = _load_look("")
-	var has_art := false
-	for frames: Array in _default_look:
-		has_art = has_art or not frames.is_empty()
-	if not has_art:
-		push_warning("PhoneCall: no parts found for character '%s' in %s%s/"
-			% [_character, CHARACTER_DIR, _character])
-		return
-
-	for i in PARTS.size():
-		var rect := TextureRect.new()
-		# EXPAND_IGNORE_SIZE IS LOAD-BEARING. A TextureRect's minimum size is its TEXTURE's size
-		# unless this is set, and a Control can never be smaller than its minimum - so the size
-		# computed in _fit_caller() was silently clamped back up to the full 1024px canvas and the
-		# caller was drawn at native size, which inside a 261px screen is a close-up of her hair.
-		# Setting the size is not enough on its own; the two go together.
-		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		rect.stretch_mode = TextureRect.STRETCH_SCALE
-		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_picture.add_child(rect)
-		_layers.append(rect)
-		if PARTS[i].get("talks", false):
-			_mouth = rect
-			_mouth_index = i
-			if (_default_look[i] as Array).is_empty():
-				push_warning("PhoneCall: no mouth frames for '%s' - wanted %s_1.png. The caller will not talk."
-					% [_character, _part_name(PARTS[i])])
-
-	_fit_caller()
-	_use_look(_default_look)
-
-
-## Puts a look on the caller - a texture on every layer - and restarts the mouth on frame 1.
-func _use_look(look: Array) -> void:
-	if _layers.is_empty():
-		return
-	for i in _layers.size():
-		var frames: Array = look[i]
-		_layers[i].texture = frames[0] if not frames.is_empty() else null
-	_frames.clear()
-	if _mouth_index >= 0:
-		for tex in look[_mouth_index]:
-			_frames.append(tex)
-	_frame_order = _ping_pong_order(_frames.size())
-	_frame_step = 0
-	_mouth_timer = 0.0
-
-
-## Sizes and places the caller inside the screen, ONCE, from the neutral look flattened into one
-## image - the whole character, hair and all, is what gets framed. Emotions are drawn on the same
-## canvas, so they never need re-fitting. See _head_centre_x() for the horizontal rule and
-## SPRITE_FILL / SPRITE_TOP_INSET for the vertical one.
-func _fit_caller() -> void:
-	var img := _composite_image(_default_look)
-	if img == null:
-		return
-	var src := Vector2(img.get_width(), img.get_height())
-	var used := img.get_used_rect()
-	var bounds := Rect2(used.position, used.size) if used.size.x > 0 and used.size.y > 0 \
-		else Rect2(Vector2.ZERO, src)
-	var scale: float = _screen_size.y * SPRITE_FILL / maxf(1.0, bounds.size.y)
-	var centre_x := _head_centre_x(img, bounds, scale, _screen_size.y)
-	# Their HEAD goes in the middle of the screen, near its top edge, and the layers are placed so
-	# that lands there. Anchored from the top because the caller is taller than the screen: whatever
-	# does not fit is cropped off their feet, never their face.
-	var pos := Vector2(
-		_screen_size.x * 0.5 - centre_x * scale,
-		_screen_size.y * SPRITE_TOP_INSET - bounds.position.y * scale)
-	for rect in _layers:
-		rect.size = src * scale
-		rect.position = pos
-
-
 ## The caller's name, over the bottom-right of the picture. Added BEFORE the cover, so it is both
 ## clipped by the screen and hidden by it while the call is connecting.
 func _build_name_pill(screen_size: Vector2) -> void:
@@ -580,37 +453,6 @@ func _build_name_pill(screen_size: Vector2) -> void:
 	var pill_size := Vector2(text_w + NAME_PILL_PAD_X * 2.0, text_h + NAME_PILL_PAD_Y * 2.0)
 	_name_pill.size = pill_size
 	_name_pill.position = screen_size - pill_size - Vector2(NAME_PILL_INSET, NAME_PILL_INSET)
-
-
-## Where the caller's HEAD sits across the art, in the art's own pixels.
-##
-## NOT the centre of their opaque bounds. A swept ponytail, a bag strap or an outstretched arm drags
-## that centre away from the face - Ellie's silhouette centres at x 488 while her head centres at
-## 540 - and the face is the one thing the player is looking at, so centring the silhouette leaves
-## her visibly off to one side.
-##
-## In any head-and-shoulders framing the top slice of the PICTURE is the head, so that is what gets
-## measured: take the band of art the screen will actually show down to SPRITE_HEAD_BAND of its
-## height, and centre on whatever is opaque in it. No per-sprite numbers, so a new caller in a new
-## pose frames itself.
-##
-## get_region().get_used_rect() rather than a GDScript pixel loop: both are C++, and scanning a
-## 1024px-wide band by hand is a visible hitch.
-func _head_centre_x(img: Image, bounds: Rect2, scale: float, screen_h: float) -> float:
-	var fallback: float = bounds.position.x + bounds.size.x * 0.5
-	if img == null or scale <= 0.0:
-		return fallback
-
-	# The art the screen shows, in art pixels, starting above their head by the top inset.
-	var top: int = int(bounds.position.y - screen_h * SPRITE_TOP_INSET / scale)
-	var band_h: int = int(screen_h / scale * SPRITE_HEAD_BAND)
-	top = clampi(top, 0, img.get_height() - 1)
-	band_h = clampi(band_h, 1, img.get_height() - top)
-
-	var head := img.get_region(Rect2i(0, top, img.get_width(), band_h)).get_used_rect()
-	if head.size.x <= 0:
-		return fallback
-	return float(head.position.x) + float(head.size.x) * 0.5
 
 
 ## The caller's colour at pill strength. Their message_colour, which is the same colour their box
@@ -929,8 +771,8 @@ func _offscreen_y() -> float:
 # THE MOUTH
 # ============================================================
 
-# Frames step ONLY while letters are landing. When the box is not typing — between lines, during the
-# reading hold, before the first line — the caller resets to frame 1 with their mouth closed.
+# Frames step ONLY while letters are landing. When the box is not typing - between lines, during the
+# reading hold, before the first line, on a punctuation beat - the caller drops back to frame 1, shut.
 func _process(delta: float) -> void:
 	if _mouth == null or _frames.size() < 2:
 		return
@@ -954,17 +796,9 @@ func _process(delta: float) -> void:
 #     "[HAPPY]Oh hey! So you're just coming round the corner then?"
 #     "I just saw the movers come and go..."          <- back to the neutral face
 #
-# An emotion looks for every PART separately, and each falls back to its neutral art on its own:
-#
-#     [SAD]   Face/Ellie_Face_Sad.png            -> else Face/Ellie_Face.png
-#             Mouths/Ellie_Mouth_Sad_1.png, _2 ... -> else Mouths/Ellie_Mouth_1.png, _2 ...
-#             Clothes/Ellie_Dress_Sad.png        -> else Clothes/Ellie_Dress.png   (and so on)
-#
-# So a wink is just Ellie_Face_Wink talking with the ordinary mouth, and because the clothes are only
-# one part, every outfit gets every expression. Casing is forgiving - [SAD] finds Sad, SAD or sad.
-#
-# Missing art is a warning and the neutral face, never a broken call: an emotion nobody has drawn
-# yet simply does not change the expression, and the tag is still stripped out of the dialogue.
+# An expression swaps the MOUTH set for that line: Mouths/<Character>_<Clothes>_<Emotion>_Mouth_1.png...
+# (Olly_White_Sad_Mouth_1.png). Casing is forgiving - [SAD] finds Sad, SAD or sad. An expression
+# nobody has drawn yet keeps the ordinary mouth, and the tag is still stripped out of the dialogue.
 
 ## Tags that are NOT expressions. [TIME] and [NAME] are dialogue tokens the message box substitutes
 ## (see DynamicMessageBox._resolve_tokens), and anything in lower case is bbcode - [center], [b] -
@@ -1003,69 +837,20 @@ func _is_emotion_tag(tag: String) -> bool:
 	return true
 
 
-## Puts the named expression on the caller for the line about to be spoken. "" restores the neutral
-## set, which is what a line with no tag gets.
+## Puts the named expression's mouth set on the caller for the line about to be spoken. "" restores
+## the ordinary set, which is what a line with no tag gets. Loaded once per emotion and remembered.
 func _set_emotion(emotion: String) -> void:
-	if USE_BATTLE_SPRITE:
-		_set_battle_emotion(emotion)   # ISSUE #318: only the mouth has expressions now
+	if _mouth == null:
 		return
-	if _layers.is_empty():
+	if emotion == "":
+		_use_mouth(_neutral_frames)
 		return
-	_use_look(_default_look if emotion == "" else _look_for_emotion(emotion))
-
-
-## The look for an emotion, loaded once and remembered - a call that swings between two moods does
-## not go back to the filesystem every line. Each part falls back to its neutral art on its own, and
-## the warning is printed once, only when NO part has any art for the emotion.
-func _look_for_emotion(emotion: String) -> Array:
-	if _emotion_looks.has(emotion):
-		return _emotion_looks[emotion]
-
-	var look := _load_look(emotion)
-	var found := false
-	for i in look.size():
-		if (look[i] as Array).is_empty():
-			look[i] = _default_look[i]
-		else:
-			found = true
-	if not found:
-		push_warning("PhoneCall: no art for expression '%s' on '%s' - no part has a _%s version. Using the neutral face."
-			% [emotion, _character, _emotion_spellings(emotion)[0]])
-	_emotion_looks[emotion] = look
-	return look
-
-
-## One entry per PARTS row, for an emotion ("" = neutral). An entry is EMPTY where that part has no
-## art for the emotion; the caller decides what to fall back to.
-func _load_look(emotion: String) -> Array:
-	var look := []
-	for part: Dictionary in PARTS:
-		var frames: Array[Texture2D] = []
-		var suffixes: Array = [""] if emotion == "" else _emotion_spellings(emotion).map(
-			func(s): return "_" + String(s))
-		for suffix in suffixes:
-			var art_name := _part_name(part) + String(suffix)
-			var folder := _part_folder(part)
-			if part.get("talks", false):
-				frames = _load_numbered_frames(folder, art_name)
-			else:
-				var tex := _load_art(folder, art_name)
-				if tex != null:
-					frames = [tex]
-			if not frames.is_empty():
-				break
-		look.append(frames)
-	return look
-
-
-## A part's file name without extension or frame number: "Ellie_Face", "Ellie_Dress".
-func _part_name(part: Dictionary) -> String:
-	var part_name := String(part["name"])
-	return "%s_%s" % [_character, _clothes if part_name == "" else part_name]
-
-
-func _part_folder(part: Dictionary) -> String:
-	return "%s%s/%s/" % [CHARACTER_DIR, _character, part["folder"]]
+	if not _emotion_looks.has(emotion):
+		var found := _mouth_frames(emotion)
+		_emotion_looks[emotion] = found if not found.is_empty() else _neutral_frames
+	var chosen: Array[Texture2D] = []
+	chosen.assign(_emotion_looks[emotion])
+	_use_mouth(chosen)
 
 
 ## How an emotion tag might be spelled in a filename, best guess first: Happy, then HAPPY as typed,
@@ -1095,87 +880,106 @@ func _ping_pong_order(count: int) -> PackedInt32Array:
 
 
 # ============================================================
-# THE BATTLE-SPRITE CALLER (ISSUE #318)
+# THE CALLER
 # ============================================================
-# One TextureRect of the in-battle sprite, cropped to the top BATTLE_SHOW_FRACTION of its visible
-# pixels, flipped to face into the call, and sized so that slice fills the screen's HEIGHT. Wider
-# than the screen is fine - the screen clips it - so it is centred on the MOUTH (which is on the
-# face), never on the silhouette: Olly's white-top pose holds a fishing rod out to one side.
+# One picture: Talking_Sprites/Characters/<Character>/<Character>_<Clothes>.png, their full sprite.
+# It is cropped to the top SHOW_FRACTION of its visible pixels, flipped to face into the call, and
+# sized so that slice fills the screen's HEIGHT. Wider than the screen is fine - the screen clips it -
+# so it is centred on the MOUTH (on the face), never on the silhouette: a fishing rod or a swept
+# ponytail would drag a silhouette centre off the face.
 #
-# Over it, the talking-head mouth frames, cropped to their own drawn pixels and scaled to
-# `mouth_width` sprite pixels, centred on `mouth`. Those two are per call because every sprite's face
-# sits somewhere different on its canvas; measure them on the UNFLIPPED sprite.
+# The mouth is a second TextureRect with EXACTLY the same crop, size, position and flip, showing one of
+# Talking_Sprites/Mouths/<Character>_<Clothes>_Mouth_1.png, _2, _3. Those frames are drawn on the
+# caller's own canvas, transparent except the mouth, so they line up with nothing to measure.
+# Scripts/Utilities/make_talking_mouths.py draws them for a new sprite.
 
-func _build_battle_caller(screen_size: Vector2) -> void:
+func _build_caller(screen_size: Vector2) -> void:
 	_screen_size = screen_size
-	var tex := _load_battle_sprite(_battle_sprite)
+	var tex := _load_caller_sprite()
 	if tex == null:
-		push_warning("PhoneCall: no in-battle sprite '%s' in %s" % [_battle_sprite, BATTLE_SPRITE_DIR])
+		push_warning("PhoneCall: no caller sprite '%s.png' in %s%s/" % [_sprite_name, CHARACTER_DIR, _character])
 		return
+	_sprite_size = tex.get_size()
 	var img := _readable_image(tex)
-	var used := Rect2(Vector2.ZERO, tex.get_size())
+	var used := Rect2(Vector2.ZERO, _sprite_size)
 	if img != null:
 		var r := img.get_used_rect()
 		if r.size.x > 0 and r.size.y > 0:
 			used = Rect2(r)
-	var show := Rect2(used.position, Vector2(used.size.x, maxf(1.0, round(used.size.y * BATTLE_SHOW_FRACTION))))
-	var scale: float = screen_size.y / show.size.y
+	_show = Rect2(used.position, Vector2(used.size.x, maxf(1.0, round(used.size.y * SHOW_FRACTION))))
+	var scale: float = screen_size.y / _show.size.y
 
-	# Centre on the mouth; with no mouth given, on the head (the top band's visible pixels).
-	var centre_x: float = _mouth_point.x if _mouth_point.x >= 0.0 else _battle_head_centre_x(img, show)
-	var pos_x: float = screen_size.x * 0.5 - _battle_local_x(centre_x, show) * scale
-	var width: float = show.size.x * scale
+	_neutral_frames = _mouth_frames("")
+	# Centre on the mouth; with no mouth frames, on the head (the top band's visible pixels).
+	var centre_x: float = _mouth_centre_x(_neutral_frames)
+	if centre_x < 0.0:
+		centre_x = _caller_head_centre_x(img, _show)
+	var pos_x: float = screen_size.x * 0.5 - _caller_local_x(centre_x) * scale
+	var width: float = _show.size.x * scale
 	# Never leave a strip of black at either edge when the picture is wide enough to cover them.
 	if width >= screen_size.x:
 		pos_x = clampf(pos_x, screen_size.x - width, 0.0)
 
-	var cropped := AtlasTexture.new()
-	cropped.atlas = tex
-	cropped.region = show
-	var rect := TextureRect.new()
-	rect.texture = cropped
-	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # load-bearing, see _build_caller
-	rect.stretch_mode = TextureRect.STRETCH_SCALE
-	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	rect.flip_h = _battle_flip
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rect.size = show.size * scale
-	rect.position = Vector2(pos_x, 0.0)
+	var rect := _caller_rect(_cropped(tex), Vector2(pos_x, 0.0), _show.size * scale)
 	_picture.add_child(rect)
 
-	# The mouth, over the sprite's own.
-	var frames := _battle_mouth_frames("")
-	if frames.is_empty():
-		push_warning("PhoneCall: no mouth frames for '%s' or %s - the caller will not talk."
-			% [_mouth_character(), BATTLE_MOUTH_FALLBACK])
+	if _neutral_frames.is_empty():
+		push_warning("PhoneCall: no mouth frames %s%s_Mouth_1.png - the caller will not talk. Run Scripts/Utilities/make_talking_mouths.py."
+			% [MOUTH_DIR, _sprite_name])
 		return
-	if _mouth_point.x < 0.0:
-		push_warning("PhoneCall: the call for '%s' has no mouth point - the mouth is not drawn." % _battle_sprite)
-		return
-	var frame_size := frames[0].get_size()
-	var mouth_w: float = _mouth_width * scale
-	var mouth_size := Vector2(mouth_w, mouth_w * frame_size.y / maxf(1.0, frame_size.x))
-	var mouth_centre := Vector2(pos_x + _battle_local_x(_mouth_point.x, show) * scale,
-		(_mouth_point.y - show.position.y) * scale)
-	_mouth = TextureRect.new()
-	_mouth.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_mouth.stretch_mode = TextureRect.STRETCH_SCALE
-	_mouth.flip_h = _battle_flip
-	_mouth.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_mouth.size = mouth_size
-	_mouth.position = mouth_centre - mouth_size * 0.5
+	# The mouth: the same crop of the same-sized canvas in the same rect, so it sits exactly on the face.
+	_mouth = _caller_rect(_neutral_frames[0], rect.position, rect.size)
 	_picture.add_child(_mouth)
-	_use_battle_mouth(frames)
+	_use_mouth(_neutral_frames)
+
+
+## One layer of the caller - the sprite or the mouth. Both are built here so they can never disagree.
+func _caller_rect(tex: Texture2D, pos: Vector2, rect_size: Vector2) -> TextureRect:
+	var rect := TextureRect.new()
+	rect.texture = tex
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # load-bearing: see _build_background
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rect.flip_h = _flip
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.size = rect_size
+	rect.position = pos
+	return rect
+
+
+## The shown slice of a caller-sized canvas.
+func _cropped(tex: Texture2D) -> AtlasTexture:
+	var crop := AtlasTexture.new()
+	crop.atlas = tex
+	crop.region = _show
+	return crop
 
 
 ## A sprite x (in its own pixels) as an x inside the shown slice, with the flip applied.
-func _battle_local_x(sprite_x: float, show: Rect2) -> float:
-	var local := sprite_x - show.position.x
-	return show.size.x - local if _battle_flip else local
+func _caller_local_x(sprite_x: float) -> float:
+	var local := sprite_x - _show.position.x
+	return _show.size.x - local if _flip else local
 
 
-## The visible centre of the top third of the shown slice - the head, in a head-and-shoulders crop.
-func _battle_head_centre_x(img: Image, show: Rect2) -> float:
+## The middle of the pixels the mouth frames draw, in the sprite's own pixels; -1 with none.
+func _mouth_centre_x(frames: Array[Texture2D]) -> float:
+	var union := Rect2i()
+	for f in frames:
+		var at := f as AtlasTexture
+		var img := _readable_image(at.atlas if at != null else f)
+		if img == null:
+			continue
+		var r := img.get_used_rect()
+		if r.size.x <= 0:
+			continue
+		union = r if union.size.x <= 0 else union.merge(r)
+	if union.size.x <= 0:
+		return -1.0
+	return float(union.position.x) + float(union.size.x) * 0.5
+
+
+## The visible centre of the top band of the shown slice - the head, in a head-and-shoulders crop.
+func _caller_head_centre_x(img: Image, show: Rect2) -> float:
 	var fallback := show.position.x + show.size.x * 0.5
 	if img == null:
 		return fallback
@@ -1186,63 +990,45 @@ func _battle_head_centre_x(img: Image, show: Rect2) -> float:
 	return show.position.x + float(head.position.x) + float(head.size.x) * 0.5
 
 
-## The in-battle sprite by name. Matched ignoring spaces at either end, because some files carry a
-## stray one ("1Alexander .png") that nobody can see in a JSON value.
-func _load_battle_sprite(sprite_name: String) -> Texture2D:
-	var direct := _load_art(BATTLE_SPRITE_DIR, sprite_name)
+## Characters/<Character>/<sprite>.png. Matched ignoring case and stray spaces too, and the name the
+## file really has is kept, so the mouth frames are looked up under the same spelling.
+func _load_caller_sprite() -> Texture2D:
+	var folder := "%s%s/" % [CHARACTER_DIR, _character]
+	var direct := _load_art(folder, _sprite_name)
 	if direct != null:
 		return direct
-	var wanted := sprite_name.strip_edges().to_lower()
-	for fname in DirAccess.get_files_at(BATTLE_SPRITE_DIR):
+	var wanted := _sprite_name.strip_edges().to_lower()
+	for fname in DirAccess.get_files_at(folder):
 		var clean := fname.trim_suffix(".import").trim_suffix(".remap")
 		if clean.get_extension().to_lower() == "png" and clean.get_basename().strip_edges().to_lower() == wanted:
-			return load(BATTLE_SPRITE_DIR + clean) as Texture2D
+			_sprite_name = clean.get_basename()
+			return load(folder + clean) as Texture2D
 	return null
 
 
-func _mouth_character() -> String:
-	return _mouth_set if _mouth_set != "" else _character
-
-
-## The mouth frames for an emotion ("" = neutral) - the character's own, else the fallback
-## character's - each cropped to the pixels the frames actually draw. They are drawn on the 1024px
-## talking-head canvas; one shared crop keeps every frame lined up with the others.
-func _battle_mouth_frames(emotion: String) -> Array[Texture2D]:
+## The caller's mouth frames for an emotion ("" = ordinary), each cropped to the shown slice. Empty if
+## there are none, or if they were not drawn on the caller's own canvas (then they cannot line up).
+func _mouth_frames(emotion: String) -> Array[Texture2D]:
+	var out: Array[Texture2D] = []
 	var raw: Array[Texture2D] = []
-	for who in [_mouth_character(), BATTLE_MOUTH_FALLBACK]:
-		var folder := "%s%s/Mouths/" % [CHARACTER_DIR, who]
-		var suffixes: Array = [""] if emotion == "" else _emotion_spellings(emotion).map(
-			func(e): return "_" + String(e))
-		for suffix in suffixes:
-			raw = _load_numbered_frames(folder, "%s_Mouth%s" % [who, suffix])
+	if emotion == "":
+		raw = _load_numbered_frames(MOUTH_DIR, "%s_Mouth" % _sprite_name)
+	else:
+		for e in _emotion_spellings(emotion):
+			raw = _load_numbered_frames(MOUTH_DIR, "%s_%s_Mouth" % [_sprite_name, String(e)])
 			if not raw.is_empty():
 				break
-		if not raw.is_empty():
-			break
-	if raw.is_empty():
-		return raw
-	var union := Rect2i()
 	for tex in raw:
-		var img := _readable_image(tex)
-		if img == null:
-			continue
-		var r := img.get_used_rect()
-		if r.size.x <= 0:
-			continue
-		union = r if union.size.x <= 0 else union.merge(r)
-	var out: Array[Texture2D] = []
-	for tex in raw:
-		if union.size.x <= 0:
-			out.append(tex)
-			continue
-		var crop := AtlasTexture.new()
-		crop.atlas = tex
-		crop.region = Rect2(union)
-		out.append(crop)
+		if tex.get_size() != _sprite_size:
+			push_warning("PhoneCall: %s mouth frames are %s but %s.png is %s - mouths must be drawn on the sprite's own canvas."
+				% [_sprite_name, tex.get_size(), _sprite_name, _sprite_size])
+			out.clear()
+			return out
+		out.append(_cropped(tex))
 	return out
 
 
-func _use_battle_mouth(frames: Array[Texture2D]) -> void:
+func _use_mouth(frames: Array[Texture2D]) -> void:
 	if _mouth == null or frames.is_empty():
 		return
 	_frames = frames
@@ -1250,19 +1036,6 @@ func _use_battle_mouth(frames: Array[Texture2D]) -> void:
 	_frame_order = _ping_pong_order(_frames.size())
 	_frame_step = 0
 	_mouth_timer = 0.0
-
-
-## [SAD] and friends swap the mouth set when there is one for the emotion (Ellie_Mouth_Sad_1...);
-## anything else keeps the neutral mouth. The sprite itself has no expressions.
-func _set_battle_emotion(emotion: String) -> void:
-	if _mouth == null:
-		return
-	if not _emotion_looks.has(emotion):
-		var found := _battle_mouth_frames(emotion)
-		_emotion_looks[emotion] = found if not found.is_empty() else _battle_mouth_frames("")
-	var chosen: Array[Texture2D] = []
-	chosen.assign(_emotion_looks[emotion])
-	_use_battle_mouth(chosen)
 
 
 # ============================================================
@@ -1329,27 +1102,6 @@ func _load_numbered_frames(folder: String, base: String) -> Array[Texture2D]:
 			break
 		out.append(tex)
 		n += 1
-	return out
-
-
-## Every part of a look flattened into one image, back to front, so the caller is framed by the
-## WHOLE character - hair included - rather than by whichever part happens to be biggest. blend_rect
-## is C++, so this is quick even on a 1024px canvas. Null if no part has readable art.
-func _composite_image(look: Array) -> Image:
-	var out: Image = null
-	for frames: Array in look:
-		if frames.is_empty():
-			continue
-		var img := _readable_image(frames[0])
-		if img == null:
-			continue
-		if img.get_format() != Image.FORMAT_RGBA8:
-			img = img.duplicate()
-			img.convert(Image.FORMAT_RGBA8)
-		if out == null:
-			out = img.duplicate()
-		else:
-			out.blend_rect(img, Rect2i(Vector2i.ZERO, img.get_size()), Vector2i.ZERO)
 	return out
 
 
