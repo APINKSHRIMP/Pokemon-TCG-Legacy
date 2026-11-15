@@ -11,6 +11,7 @@ extends Node
 #
 
 var main: Node
+const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")   # CPU v2 rule switches
 
 # ── Power dispatch registry ────────────────────────────────────────────────────
 # Maps ability name → async Callable(pokemon). Player path only; CPU path is separate.
@@ -2583,6 +2584,14 @@ func cpu_phase_activate_powers() -> void:
 		if not is_power_blocked_by_status(kadabra) and not toxic_gas:
 			if main.opponent_hand.size() >= 2 and main.opponent_deck.size() > 0:
 				var to_discard = main.trainer_effects.cpu_get_discard_priority(main.opponent_hand, 1)
+				# CPU v2 (think like a person): only cycle a card that is really junk (spare Energy, a dead line, a
+				# duplicate Basic) - and, with foresight, only when the card it draws is worth having.
+				if to_discard.size() > 0 and CpuWeights.on("rule.v2_discard"):
+					var junk: float = main.trainer_effects._score_card_for_discard(to_discard[0])
+					var nxt: Array = main.cpu_ai.cpu_next_draws(1)
+					if junk >= 40.0 or (not nxt.is_empty() and main.cpu_ai.cpu_rank_keep_value(nxt[0]) < 30.0):
+						print("CPU v2: Matter Exchange skipped - ", to_discard[0].metadata.get("name", ""), " is worth keeping (", int(junk), ")")
+						to_discard = []
 				if to_discard.size() > 0:
 					# ISSUE #106: announce -> explain -> discard/draw + animate.
 					kadabra.power_used_this_turn = true

@@ -142,6 +142,7 @@ func cpu_turn_orchestrator() -> void:
 	cpu_final_power_check = false
 	cpu_undeveloped_draw = false       # ISSUE #398
 	_turn_start_active = main.opponent_active_pokemon   # ISSUE #366
+	cpu_v2_turn_begin()                # CPU v2: Oak count, stale-hand count, search plan reset
 	# Phase 0: Activate beneficial Pokemon Powers (Rain Dance, Energy Trans, Damage Swap)
 	await main.powers_and_bodies.cpu_phase_activate_powers()
 	if main._should_bail(): return
@@ -323,6 +324,13 @@ func cpu_turn_orchestrator() -> void:
 		if main._should_bail(): return
 		await main.inbetween_turn_checks(false)
 		return
+	# CPU v2: lock pieces held back earlier this turn (Dark Vileplume, Aerodactyl, Muk) go on now, last of all.
+	if cpu_lock_deferred:
+		cpu_lock_pass = true
+		await cpu_phase_evolution()
+		cpu_lock_pass = false
+		cpu_lock_deferred = false
+		if main._should_bail(): return
 
 	invalidate_cpu_evaluation()
 	cpu_eval = get_cpu_evaluation()
@@ -1504,6 +1512,12 @@ func evaluate_evolution_pair(evo_card: card_object, target: card_object) -> Dict
 			score += EVOLUTION_LOSES_KO_PENALTY
 			reasons.append("Would give up a sure Knock Out this turn (" + str(EVOLUTION_LOSES_KO_PENALTY) + " pts)")
 
+	# CPU v2: evolving cures every Special Condition - worth most when it lets a Paralyzed / Asleep Active attack.
+	if CpuWeights.on("rule.v2_locks") and target == main.opponent_active_pokemon and (target.special_condition != "" or target.is_poisoned or target.is_burned):
+		var cure := 60.0 + (60.0 if target.special_condition in ["Paralyzed", "Asleep"] and has_usable_attack_after else 0.0)
+		score += cure
+		reasons.append("Evolving cures " + (target.special_condition if target.special_condition != "" else "Poison/Burn") + " (+" + str(cure) + " pts)")
+
 	# Active pokemon bonus: evolving the active is more urgent
 	if target.current_location == "active":
 		score += 75.0
@@ -2251,6 +2265,14 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 				"score": score
 			})
 
+	# CPU v2 (user, 2026-11-14: "don't end the turn without attaching if it can"): drop the pairs the rules would refuse
+	# BEFORE choosing - the best pair used to be picked first and, if a Special Energy rule / Pure Body / Anti-Lightning /
+	# type immunity / Freeze Lock refused it, the phase returned with nothing attached at all.
+	scored_pairs = scored_pairs.filter(func(sp): return _cpu_attach_refused(sp["energy_card"], sp["pokemon"]) == "")
+	# CPU v2: never onto something that can't use Energy at all (Clefairy Doll, a Fossil with nothing to evolve into) -
+	# kept in hand it can still go on the next real attacker.
+	if CpuWeights.on("rule.energy_tryon"):
+		scored_pairs = scored_pairs.filter(func(sp): return not _cpu_energy_dead_target(sp["pokemon"], sp["energy_card"]))
 	if scored_pairs.is_empty():
 		print("CPU: Not attaching Energy — holding energy cards but every attachment is blocked (e.g. Cursed Glare)")
 		return
@@ -2547,7 +2569,30 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 				break
 		if not has_2_colorless_attack:
 			return -500.0  # Hard disqualification: this pokemon can't effectively use DCE
-	
+
+	# CPU v2 ENERGY TRY-ON (user, 2026-11-14 - the Rhyhorn turn): attach it for a moment and see whether ANY attack gets
+	# closer to paid (or a scaling attack hits harder, or an evolution in hand/deck needs it). Grass then Fire then Grass
+	# then Fire on a Rhyhorn that only lacked a Fighting scored as "fills a Colorless slot" every time, because the old
+	# checks asked "does the cost have a Colorless slot?" not "is that slot still empty?". An Energy that pays nothing
+	# goes last - any Pokémon it does help wins.
+	var tryon := {}
+	if CpuWeights.on("rule.energy_tryon"):
+		tryon = cpu_energy_tryon(pokemon, energy_card)
+		if not tryon["now"] and int(tryon["evo"]) == 0 and util_penalty <= 0.0:
+			# ...except toward the retreat of a stranded Active (can't attack, can't yet pay to leave, someone to swap in).
+			if is_active and not bool(pokemon_data.get("can_attack", false)) and not main.opponent_bench.is_empty() \
+					and main.get_retreat_cost(pokemon) > pokemon.attached_energies.size():
+				return -140.0
+			return -260.0 + (6.0 if is_active else 0.0) + float(pokemon.current_hp) * 0.02
+		if tryon["now"] and tryon["typed"]:
+			score += 15.0     # pays a typed slot: the scarcer Energy goes where only it will do
+		# Only an evolution still in the DECK could use it, and this Pokémon can already attack: a Benched Pokémon it
+		# helps right now comes first (the Rhyhorn that kept taking Fighting for a Rhydon it hadn't drawn).
+		if not tryon["now"] and int(tryon["evo"]) == 1 and bool(pokemon_data.get("can_attack", false)):
+			score -= 120.0
+		if is_active and tryon["unlock"] and _cpu_active_can_attack_or_could(pokemon):
+			score += 40.0     # it attacks THIS turn
+
 	# Flat active/bench modifier: active pokemon almost always takes priority.
 	# ISSUE #36 FIX: bumped the Active bonus by +50 (40 -> 90) to put more weight on keeping the
 	# Active powered up rather than feeding the bench.
@@ -2568,10 +2613,13 @@ func score_energy_pair(pokemon: card_object, energy_card: card_object, cpu_eval:
 			score -= hp_penalty_35
 	
 	# 2.1, 2.2, 2.3: Energy type matching (can disqualify a pair)
-	score += score_energy_type_match(pokemon, energy_types, pokemon_data, is_active)
+	# CPU v2: an Energy that only helps a future evolution is scored by score_evolution_potential, not as a match now.
+	var helps_now: bool = tryon.is_empty() or bool(tryon["now"])
+	if helps_now:
+		score += score_energy_type_match(pokemon, energy_types, pokemon_data, is_active)
 
 	# 2.4, 2.5: Active pokemon needs energy
-	if is_active:
+	if is_active and helps_now:
 		score += score_active_needs_energy(pokemon, energy_types, pokemon_data)
 
 	# 2.6: Active pokemon already fully powered
@@ -5065,6 +5113,9 @@ func cpu_phase_bench_play() -> void:
 		# Venusaur sat for 15 turns while a Bulbasaur stayed in hand at "340 < 350").
 		if not _cpu_active_can_attack() and not main.opponent_hand.any(func(c): return c.metadata.get("supertype", "") == "Energy"):
 			score_threshold = mini(score_threshold, int(CpuWeights.g("bench.stranded_threshold", 150.0)))
+		# CPU v2: Professor Oak is about to throw the hand away - a Basic benched now is a Basic kept.
+		if cpu_bench_before_wipe:
+			score_threshold = mini(score_threshold, int(CpuWeights.g("bench.before_wipe", 60.0)))
 
 		# Score all basic pokemon in hand using existing priority criteria
 		var best_card: card_object = null
@@ -5232,7 +5283,23 @@ func cpu_phase_evolution() -> void:
 
 		# Sort by score descending and pick the best pair
 		scored_pairs.sort_custom(func(a, b): return a["score"] > b["score"])
+		# CPU v2 (user, 2026-11-14): a lock piece goes on LAST - Aerodactyl after the other evolutions, Dark Vileplume after
+		# the Trainers worth playing, Muk after our own Powers. Deferred ones are played by the lock pass before the attack.
+		if CpuWeights.on("rule.v2_locks") and not cpu_lock_pass:
+			var deferred: Array = scored_pairs.filter(func(p): return cpu_should_defer_lock(p["evo_card"], scored_pairs))
+			if not deferred.is_empty():
+				for p in deferred:
+					print("CPU v2: holding ", p["evo_card"].metadata.get("name", ""), " (", cpu_lock_kind(p["evo_card"]), ") until the rest of the turn is done")
+				cpu_lock_deferred = true
+				scored_pairs = scored_pairs.filter(func(p): return not deferred.has(p))
+				if scored_pairs.is_empty():
+					break
 		var best = scored_pairs[0]
+		# CPU v2: the -600 "gives up a sure KO" / -250 "pointless" penalties used to only reorder evolutions - every legal
+		# one was still played. Below -200 the CPU now keeps the card.
+		if CpuWeights.on("rule.v2_locks") and float(best["score"]) < -200.0:
+			print("CPU v2: not evolving ", best["target"].metadata["name"], " into ", best["evo_card"].metadata["name"], " (", int(best["score"]), ") - ", best["reasons"].back())
+			break
 
 		print("CPU evolving " + best["target"].metadata["name"] + " into " + best["evo_card"].metadata["name"] + " (Score: " + str(int(best["score"])) + ")")
 		if scored_pairs.size() > 1:
@@ -6107,6 +6174,8 @@ func _cpu_score_neo2_ruin_wall() -> float:
 	return -50.0
 
 func _cpu_score_professor_oak(card: card_object) -> float:
+	if CpuWeights.on("rule.v2_oak"):
+		return _cpu_score_professor_oak_v2(card)
 	var hand = main.opponent_hand
 	# ISSUE #363: a known strong top 7 (seen with Pokédex) makes the refresh worth more, a weak one less.
 	var known_adj: float = clampf(cpu_known_draw_delta(7) * 0.4, -40.0, 40.0)
@@ -6148,6 +6217,8 @@ func _cpu_score_evolution_search() -> float:
 	return -100.0
 
 func _cpu_score_computer_search(card: card_object) -> float:
+	if CpuWeights.on("rule.v2_search"):
+		return _cpu_score_computer_search_v2(card)
 	if main.opponent_hand.size() < 3: return 0.0
 	return 60.0
 
@@ -6346,6 +6417,11 @@ func _cpu_score_surprise_time_machine() -> float:
 	return 35.0 + best * 0.5 if best >= 20.0 else -100.0
 
 func _cpu_score_impostor_prof_oak() -> float:
+	# CPU v2 (think like a person): the deck-out play - they shuffle their hand in and must draw 7; with fewer than 8
+	# cards left (hand included) they run out next turn or the one after.
+	if CpuWeights.on("rule.v2_search") and main.player_deck.size() + main.player_hand.size() <= 8:
+		print("CPU v2: Impostor Professor Oak for the deck-out (", main.player_deck.size() + main.player_hand.size(), " cards left)")
+		return 95.0
 	if main.player_hand.size() >= 7:
 		return 50.0 + (main.player_hand.size() - 7) * 10.0
 	return 0.0
@@ -6357,6 +6433,17 @@ func _cpu_score_item_finder() -> float:
 		if main.trainer_effects.is_trainer_card(c):
 			trainers_in_discard.append(c)
 	if trainers_in_discard.size() == 0: return 0.0
+	# CPU v2: same rule as Computer Search - a Trainer the board needs now, worth more than the two discards.
+	if CpuWeights.on("rule.v2_search"):
+		var src: card_object = null
+		for h in main.opponent_hand:
+			if h.metadata.get("name", "") == "Item Finder":
+				src = h
+				break
+		var plan := cpu_plan_search(src, trainers_in_discard, 2)
+		if plan.is_empty() or float(plan["net"]) < CpuWeights.g("search.cs_min_net", CPU_SEARCH_MIN_NET):
+			return 10.0
+		return clampf(40.0 + float(plan["net"]) * 0.6, 40.0, 95.0)
 	var best = 0.0
 	for t in trainers_in_discard:
 		best = max(best, cpu_score_trainer_card(t))
@@ -6567,6 +6654,9 @@ func _er_trade_score(card_name: String, n_discard: int, n_take: int) -> float:
 	var gain := 0.0
 	for e in taken:
 		gain += _er_retrieved_value(e)
+	if CpuWeights.on("rule.energy_tryon") and taken.all(func(e): return cpu_energy_fetch_value(e) <= 0.0):
+		print("CPU v2: ", card_name, " held - the Energy in hand already covers every cost")
+		return 0.0
 	var hand_energy: int = others.filter(func(c): return c.metadata.get("supertype", "") == "Energy" and not (c in picks)).size()
 	if taken.size() == 1:
 		if hand_energy > 0 or not _er_energy_finishes_attack(taken[0]):
@@ -6582,6 +6672,10 @@ func _er_trade_score(card_name: String, n_discard: int, n_take: int) -> float:
 ## ISSUE #486: one Energy coming back from the discard, on the discard-keep scale. A type the board
 ## still needs is worth 20 + its need; one nothing uses is nearly worthless.
 func _er_retrieved_value(e: card_object) -> float:
+	# CPU v2: worth only what the hand's own Energy doesn't already cover (Ellie retrieved 4 Energy into a hand of 6).
+	if CpuWeights.on("rule.energy_tryon"):
+		var fv := cpu_energy_fetch_value(e)
+		return 8.0 if fv <= 0.0 else 25.0 + fv
 	var need := cpu_energy_need_value(e)   # 10 base, +6 per unmet typed cost it pays, +1 per Colorless
 	if need <= 10.5:
 		return 8.0
@@ -6631,6 +6725,9 @@ func cpu_note_known_top(cards: Array) -> void:
 ## The cards still known to be on top of the CPU's deck, top first. [] when it knows nothing.
 func cpu_known_top() -> Array:
 	var deck: Array = main.opponent_deck
+	# CPU v2 (user, 2026-11-14): foresight on - the CPU knows its whole deck order (read-only: callers never edit it).
+	if CpuWeights.cheat_cards >= 1.0:
+		return deck
 	while not _known_top.is_empty() and not deck.has(_known_top[0]):
 		_known_top.pop_front()        # drawn (or otherwise taken) since
 	for i in _known_top.size():
@@ -6641,18 +6738,36 @@ func cpu_known_top() -> Array:
 
 ## How much better (+) or worse (-) the next `n` known draws are than a random card from the rest of the
 ## deck, summed, on the Pokédex priority scale. 0.0 when nothing is known.
+var _cpu_in_draw_delta := false   # CPU v2: draw-quality -> card need -> Oak need -> draw-quality would recurse forever
 func cpu_known_draw_delta(n: int) -> float:
+	if _cpu_in_draw_delta:
+		return 0.0
+	_cpu_in_draw_delta = true
+	var d := _cpu_known_draw_delta_inner(n)
+	_cpu_in_draw_delta = false
+	return d
+
+func _cpu_known_draw_delta_inner(n: int) -> float:
 	var known: Array = cpu_known_top()
 	if known.is_empty():
 		return 0.0
-	var rest: Array = main.opponent_deck.filter(func(c): return not known.has(c))
+	# CPU v2: each distinct card is rated once (a 60-card deck is ~20 different cards), and with foresight - when "known"
+	# is the whole deck - the next n draws are compared with the deck's real average (it used to fall back to a flat 40).
+	var deck: Array = main.opponent_deck
+	var rated := {}
+	var rate := func(c: card_object) -> float:
+		var u: String = c.uid
+		if not rated.has(u):
+			rated[u] = main.trainer_effects._cpu_pokedex_priority(c)
+		return float(rated[u])
+	var rest: Array = deck.slice(mini(n, known.size())) if known.size() >= deck.size() else deck.filter(func(c): return not known.has(c))
 	var avg := 0.0
 	for c in rest:
-		avg += main.trainer_effects._cpu_pokedex_priority(c)
+		avg += rate.call(c)
 	avg = avg / float(rest.size()) if not rest.is_empty() else 40.0
 	var delta := 0.0
 	for i in mini(n, known.size()):
-		delta += main.trainer_effects._cpu_pokedex_priority(known[i]) - avg
+		delta += float(rate.call(known[i])) - avg
 	return delta
 
 ## ISSUE #363: is a card with this name among the next `n` known draws? (Safe to discard the copy in hand.)
@@ -6707,6 +6822,11 @@ func _cpu_score_pluspower() -> float:
 	if enables_ko:
 		return 90.0
 	if fewer_hits:
+		# CPU v2 (think like a person): 3 hits -> 2 hits now is the same KO turn as saving it for the finishing blow, and a
+		# held PlusPower can still go on another attacker if this one retreats or falls. Play it only when this is the
+		# Active's last attack anyway.
+		if CpuWeights.on("rule.v2_search") and not bool(evaluate_ko_threats().get("cpu_active_guaranteed_ko", false)):
+			return 20.0
 		return 30.0
 	return 0.0
 
@@ -7042,6 +7162,20 @@ func _cpu_score_energy_fetch(n: int, supporter: bool) -> float:
 	var need := 0
 	for p in get_all_cpu_field_pokemon():
 		need += main.powers_and_bodies._cpu_unmet_energy(p)
+	# CPU v2 (user, 2026-11-14): Energy Search with three Energy already in hand. When the hand's Energy covers every
+	# cost the board is building towards, hold it for the turn an Energy is really missing.
+	if CpuWeights.on("rule.energy_tryon"):
+		var best_fv := 0.0
+		var seen := {}
+		for c in main.opponent_deck:
+			if c.metadata.get("supertype", "") == "Energy" and "Basic" in c.metadata.get("subtypes", []) and not seen.has(c.metadata.get("name", "")):
+				seen[c.metadata.get("name", "")] = true
+				best_fv = maxf(best_fv, cpu_energy_fetch_value(c))
+		if best_fv <= 0.0 and hand_e >= 1:
+			return 18.0 if not supporter else 5.0
+		if best_fv > 0.0:
+			var v2 := 30.0 + best_fv + (20.0 if hand_e == 0 and not main.opponent_energy_played_this_turn else 0.0)
+			return clampf(v2 - (10.0 if supporter else 0.0), 15.0, 80.0)
 	# OLD ISSUE 375 LAB FINDING: playing Energy Search beat holding it (z +3.8, n 3,399) — it scored 20-25, under the play
 	# threshold, whenever Energy was already in hand. Banking Energy and thinning the deck is worth a card.
 	var es_fix: bool = CpuWeights.on("rule.trainer_value_fix") and not supporter
@@ -7239,12 +7373,21 @@ func cpu_phase_play_trainer_cards_priority() -> void:
 				break
 			print("CPU playing trainer card " + best_card.metadata["name"] + " (Score: " + str(int(trainer_scores[best_card])) + ")")
 			var _was_replacer := cpu_is_hand_replacer(best_card)
+			if await _cpu_bench_before_wipe(best_card):
+				if main._should_bail(): return
+				# The bench changed (a Basic for a Stage 1 in hand?) - score Oak again before throwing the hand away.
+				if cpu_score_trainer_for_play(best_card) <= CPU_TRAINER_PLAY_THRESHOLD:
+					print("CPU v2: not playing ", best_card.metadata["name"], " after all - the new bench makes the hand worth keeping")
+					played = true
+					continue
+			if main._should_bail(): return
 			await main.trainer_effects.play_trainer_card(best_card, true)
 			if main._should_bail(): return
 			if main.opponent_turn_force_end:
 				return  # turn was force-ended by a trainer card; let the orchestrator wrap up
 			if _was_replacer:
 				cpu_undeveloped_draw = true   # ISSUE #398: develop the new hand before another Oak
+				cpu_replacers_this_turn += 1  # CPU v2: a second one this turn only into a dead hand
 			played = true
 		elif not trainer_scores.is_empty():
 			for card in trainer_scores:
@@ -7282,6 +7425,14 @@ func cpu_phase_play_trainer_cards_remaining() -> void:
 				break
 			print("CPU playing trainer card " + best_card.metadata["name"] + " (Score: " + str(int(best_score)) + ") [post-energy/retreat re-check]")
 			var _was_replacer := cpu_is_hand_replacer(best_card)
+			if await _cpu_bench_before_wipe(best_card):
+				if main._should_bail(): return
+				# The bench changed (a Basic for a Stage 1 in hand?) - score Oak again before throwing the hand away.
+				if cpu_score_trainer_for_play(best_card) <= CPU_TRAINER_PLAY_THRESHOLD:
+					print("CPU v2: not playing ", best_card.metadata["name"], " after all - the new bench makes the hand worth keeping")
+					played = true
+					continue
+			if main._should_bail(): return
 			await main.trainer_effects.play_trainer_card(best_card, true)
 			if main._should_bail(): return
 			if main.opponent_turn_force_end:
@@ -7290,6 +7441,7 @@ func cpu_phase_play_trainer_cards_remaining() -> void:
 				# ISSUE #398 (retest): stop here so the orchestrator evolves / benches / attaches with the new hand
 				# before any further Trainer - it used to loop straight into a second Oak.
 				cpu_undeveloped_draw = true
+				cpu_replacers_this_turn += 1  # CPU v2
 				print("ISSUE #398 FIX ACTIVE: ", best_card.metadata["name"], " refilled the hand - developing before more Trainers")
 				return
 			played = true
@@ -7329,6 +7481,9 @@ func cpu_search_deck_for_best_card(deck: Array) -> card_object:
 	var explored = CpuWeights.explore_pick(deck)
 	if explored != null:
 		return explored
+	# CPU v2 (user, 2026-11-14): the card the board needs right now (never Bill when anything else is wanted).
+	if CpuWeights.on("rule.v2_search") and not deck.is_empty():
+		return cpu_pick_by_need(deck)
 	var best: card_object = null
 	var best_score = -1.0
 	for card in deck:
@@ -7363,6 +7518,8 @@ func cpu_search_deck_for_best_pokemon(pokemon_list: Array) -> card_object:
 			var result = evaluate_opponents_start_setup_pokemon_choices(card, main.opponent_hand)
 			score = result.get("total_score", 0) / 10.0
 		score += cpu_synergy_bonus(card) + cpu_counter_bonus(card)   # OLD ISSUE 375: learned card synergy / counters
+		if CpuWeights.on("rule.v2_search"):
+			score += float(cpu_card_need(card)["v"])   # CPU v2: what the board needs right now comes first
 		if score > best_score:
 			best_score = score
 			best = card
@@ -7719,8 +7876,11 @@ func cpu_pick_best_keep(pool: Array) -> card_object:
 		return explored
 	var best: card_object = null
 	var best_s := -INF
+	var use_need: bool = CpuWeights.on("rule.v2_search") and pool.size() <= 70
 	for c in pool:
 		var s := cpu_rank_keep_value(c)
+		if use_need:
+			s += float(cpu_card_need(c)["v"]) * 0.8   # CPU v2: what the board needs right now comes first
 		if s > best_s:
 			best_s = s
 			best = c
@@ -8977,6 +9137,8 @@ func cpu_hand_is_stuck(exclude: card_object = null) -> bool:
 func _cpu_score_draw_card(card: card_object) -> float:
 	var uid := card.uid.to_lower()
 	var mode: String = CPU_DRAW_CARDS.get(uid, "add")
+	if uid == "base1-88" and CpuWeights.on("rule.v2_oak"):
+		return _cpu_score_professor_oak_v2(card)   # CPU v2
 	var hand_others: int = main.opponent_hand.size() - 1
 	var new_cards := _cpu_draw_card_count(uid, hand_others)
 	var deck_n: int = main.opponent_deck.size()
@@ -9017,6 +9179,9 @@ func _cpu_score_draw_card(card: card_object) -> float:
 			score -= cpu_hand_loss_value(card) * 0.7
 			if cpu_hand_is_stuck(card): score += 15.0
 			if uid == "base3-60": score -= 15.0                                   # Gambler: tails = 1 card
+			# CPU v2: Gambler averages 4.5 cards - shuffling away 4+ cards (even poor ones) for that is a loss on average.
+			if uid == "base3-60" and CpuWeights.on("rule.v2_oak") and hand_others >= 4:
+				score -= float(hand_others - 3) * 12.0
 			if uid == "neo1-96": score -= 5.0                                     # Elm: no more Trainers this turn
 			if uid == "ecard3-123" and main.player_hand.size() <= 3: score -= 10.0  # Desert Shaman refills them too
 			if uid == "ex7-86" and main.player_prize_cards.size() > main.opponent_prize_cards.size(): score -= 15.0
@@ -9045,9 +9210,25 @@ func cpu_score_trainer_for_play(card: card_object) -> float:
 	if cpu_trainer_phase != "late" and cpu_is_attach_for_turn(card):
 		print("ISSUE #413 FIX ACTIVE: CPU holds ", card.metadata.get("name", ""), " (", int(s), ") until evolving/Energy/retreat are done")
 		return -50.0
+	# CPU v2 (think like a person): Computer Search that would throw away an Energy we could attach this turn waits until
+	# the attach is done (attach one, then discard the spares) - unless what it fetches IS Energy (a DCE must come first).
+	if CpuWeights.on("rule.v2_search") and card.uid.to_lower() == "base1-71" and cpu_trainer_phase != "late" \
+			and not main.opponent_energy_played_this_turn and _cpu_search_plan.get("source") == card \
+			and main.opponent_hand.size() >= 4:   # after the attach it must still have 2 cards to discard
+		var tgt: card_object = _cpu_search_plan["card"]
+		if tgt.metadata.get("supertype", "") != "Energy":   # evolutions / Trainers still land before the attack (late redevelop)
+			for d in _cpu_search_plan["discards"]:
+				if d.metadata.get("supertype", "") == "Energy" and get_all_cpu_field_pokemon().any(func(p): return cpu_energy_tryon(p, d)["now"]):
+					print("CPU v2: Computer Search waits until the Energy is attached (it would discard ", d.metadata.get("name", ""), ")")
+					return -50.0
 	if CpuWeights.on("rule.hold_draw_cards") and cpu_is_hand_replacer(card):
 		var stuck := cpu_hand_is_stuck(card)
 		var reason := ""
+		# CPU v2 (user, 2026-11-14): a second Oak in the same turn only when the hand it would throw away is completely
+		# dead. Two Potions, four Energy and an Oak is NOT dead - attach next turn, Potion after their attack, see the draw.
+		if CpuWeights.on("rule.v2_oak") and cpu_replacers_this_turn >= 1 and not cpu_hand_is_dead(card):
+			print("CPU v2: holding ", card.metadata.get("name", ""), " - already refreshed the hand this turn and it isn't dead")
+			return -60.0
 		# ISSUE #398: a card that throws the hand away (Professor Oak, Birch...) waits for the LATE phase -
 		# after Bill and the other Trainers, evolving, benching, the Energy attachment and retreat - unless
 		# nothing in the hand can be used at all. It used to be allowed in the "mid" phase whenever there
@@ -9290,6 +9471,13 @@ func _cpu_score_poke_ball() -> float:
 	# Good when CPU needs evolutions or bench setup, but coin-flip dependent (50% fail)
 	var bench = main.opponent_bench
 	var hand = main.opponent_hand
+	# CPU v2: a free (coin-flip) search - worth playing whenever a Pokémon in the deck is wanted at all; with foresight
+	# it knows the flip is fair but the deck holds what it needs.
+	if CpuWeights.on("rule.v2_search"):
+		var need := cpu_best_need(main.opponent_deck.filter(func(c): return c.metadata.get("supertype", "") == "Pokémon"))
+		if need >= 12.0:
+			return clampf(30.0 + need * 0.5, 31.0, 80.0)
+		return 20.0
 	# Higher priority if bench is empty or CPU has evolutions to find
 	var has_evolvable = false
 	var all_pokemon = get_all_cpu_field_pokemon()
@@ -9505,7 +9693,23 @@ func _cpu_score_gym1_erikas_maids() -> float:
 	return -100.0
 
 func _cpu_score_gym1_erikas_perfume() -> float:
-	# CPU rarely benefits from auto-benching opponent's basics.
+	# CPU v2 (think like a person): pull a weak Basic out of their hand onto the Bench when we can then Gust it up (or
+	# hit the Bench) and Knock it Out for an easy Prize. Foresight lets the CPU see their hand; otherwise it never plays.
+	if not (CpuWeights.on("rule.v2_search") and CpuWeights.cheat_cards >= 1.0):
+		return -100.0
+	var me = main.opponent_active_pokemon
+	if me == null or main.player_bench.size() >= main.get_max_bench_size() or not _cpu_active_can_attack():
+		return -100.0
+	var has_gust: bool = main.opponent_hand.any(func(c): return c.metadata.get("name", "") in ["Gust of Wind", "Pokémon Reversal"])
+	if not has_gust:
+		return -100.0
+	var foe = main.player_active_pokemon
+	if foe != null and _cpu_best_damage(me, me.attached_energies, foe) >= foe.current_hp:
+		return -100.0   # we already take a Prize this turn
+	for c in main.player_hand:
+		if main.is_basic_pokemon(c) and _cpu_best_damage(me, me.attached_energies, c) >= c.get_max_hp():
+			print("CPU v2: Erika's Perfume - benching their ", c.metadata.get("name", ""), " to Gust and Knock Out")
+			return 55.0
 	return -100.0
 
 func _cpu_score_gym1_good_manners(card: card_object) -> float:
@@ -9806,6 +10010,11 @@ func _cpu_score_gym2_koga_ninja_trick() -> float:
 func _cpu_score_gym2_master_ball() -> float:
 	if main.opponent_deck.size() == 0:
 		return -100.0
+	# CPU v2: worth what the best Pokémon it can find is needed for. With foresight it knows the top 7 exactly.
+	if CpuWeights.on("rule.v2_search"):
+		var pool: Array = cpu_next_draws(7) if not cpu_known_top().is_empty() else main.opponent_deck
+		var need := cpu_best_need(pool.filter(func(c): return c.metadata.get("supertype", "") == "Pokémon"))
+		return 32.0 + need * 0.6 if need >= 15.0 else 15.0
 	# Strong tutor — 7 cards is a lot of pickup space
 	if main.opponent_hand.size() <= 4:
 		return 65.0
@@ -9861,6 +10070,11 @@ func _cpu_score_gym2_rockets_secret_experiment() -> float:
 	# OLD ISSUE 375 (user: think like a person): heads = take ANY card from the deck; tails = no Trainers until the end of
 	# next turn. Worth it when the deck holds something the board really needs, and when few Trainers in hand would be
 	# locked out — so it is naturally played after the other Trainers this turn (they score higher).
+	if CpuWeights.on("rule.v2_search"):
+		var need := cpu_best_need(main.opponent_deck)
+		var held: int = main.opponent_hand.filter(func(c): return c.metadata.get("supertype", "") == "Trainer").size() - 1
+		var v := 22.0 + need * 0.5 - float(maxi(0, held)) * 6.0
+		return v if need >= 35.0 and v > CPU_TRAINER_PLAY_THRESHOLD else -50.0
 	var want := 0.0
 	var names: Array = []
 	for p in get_all_cpu_field_pokemon():
@@ -10160,3 +10374,841 @@ func _cpu_score_gym2_viridian_city_gym() -> float:
 	if cpu_giovanni == 0 and giovanni_in_deck_hand == 0:
 		return -100.0
 	return 15.0 + cpu_giovanni * 15.0 + giovanni_in_deck_hand * 3.0
+
+
+######################################################################################################################################################
+################################## CPU v2 (2026-11-14): FORESIGHT, ENERGY TRY-ON, CARD NEED, SEARCH PLANS, OAK DISCIPLINE ###########################
+######################################################################################################################################################
+# The user's rules (2026-11-14, "think like a human, analyse every card"):
+#   * Energy goes where it actually PAYS a cost (Grass on a Rhyhorn whose Colorless slots are full does nothing).
+#   * Computer Search & co. are played only when a card in the deck is needed RIGHT NOW (Stage 2 onto a Stage 1, Oak
+#     onto a stale hand, a DCE that unlocks an attack, a Basic for the Stage 1 in hand, a status-curing evolution, a KO-
+#     saving Trainer, a KO-making PlusPower...) and that need beats what the discards cost. Never for Bill.
+#   * One hand-replacer (Oak) a turn unless the new hand is completely dead.
+#   * Foresight: the CPU sees its own deck order and Prizes (CpuWeights.cheat_cards, on by default) and plans with it.
+# Switches (CpuWeights rules, all on): rule.energy_tryon, rule.v2_search, rule.v2_oak, rule.v2_discard.
+
+var cpu_replacers_this_turn := 0     # Oak-style hand replacers the CPU has played this turn
+var cpu_stale_turns := 0             # consecutive CPU turns that began with nothing playable in hand except Energy
+var _cpu_search_plan: Dictionary = {}  # {"source", "card", "discards", "turn"} - what a search Trainer was played for
+
+const CPU_ANSWER_TRAINERS := ["Potion", "Super Potion", "Switch", "Gust of Wind", "Defender", "PlusPower", "Scoop Up",
+	"Super Scoop Up", "Full Heal", "Energy Removal", "Super Energy Removal", "Pokémon Center", "Bill", "Computer Search",
+	"Item Finder", "Energy Retrieval", "Super Energy Retrieval", "Energy Search", "Pokémon Breeder", "Revive", "Mr. Fuji",
+	"Pokémon Trader", "Poké Ball", "Master Ball", "Devolution Spray", "Pokédex", "Maintenance"]
+
+
+# ── turn bookkeeping ────────────────────────────────────────────────────────────────────────────────────────────────
+## Called at the top of every CPU turn (cpu_turn_orchestrator).
+func cpu_v2_turn_begin() -> void:
+	cpu_replacers_this_turn = 0
+	_cpu_search_plan = {}
+	if _cpu_hand_nonenergy_actionable() == 0:
+		cpu_stale_turns += 1
+	else:
+		cpu_stale_turns = 0
+	if cpu_stale_turns > 0:
+		print("CPU v2: hand stale for ", cpu_stale_turns, " turn(s)")
+
+## Non-Energy cards in hand the CPU can use this turn (bench a Basic, evolve, a Trainer worth playing).
+func _cpu_hand_nonenergy_actionable() -> int:
+	var n := 0
+	var room: bool = main.opponent_bench.size() < main.get_max_bench_size()
+	for c in main.opponent_hand:
+		var st: String = c.metadata.get("supertype", "")
+		if st == "Pokémon":
+			if main.is_basic_pokemon(c):
+				if room: n += 1
+			elif not main.get_valid_evolution_targets(c, true).is_empty():
+				n += 1
+		elif st == "Trainer":
+			if c.uid != LASS_UID and cpu_score_trainer_card(c) > CPU_TRAINER_PLAY_THRESHOLD:
+				n += 1
+	return n
+
+
+# ── foresight ───────────────────────────────────────────────────────────────────────────────────────────────────────
+## True when the CPU is allowed to look at its own deck order (foresight dial; Pokédex knowledge is separate).
+func cpu_sees_deck() -> bool:
+	return CpuWeights.cheat_cards >= 1.0 or CpuWeights.cheating_cards()
+
+## The next `n` cards the CPU will draw, if it knows them (foresight, or a Pokédex look) - else [].
+func cpu_next_draws(n: int) -> Array:
+	var known: Array = cpu_known_top()
+	return known.slice(0, mini(n, known.size()))
+
+## Is a card named `card_name` among the next `n` draws the CPU knows about?
+func cpu_coming_soon(card_name: String, n: int) -> bool:
+	for c in cpu_next_draws(n):
+		if c.metadata.get("name", "") == card_name:
+			return true
+	return false
+
+
+# ── Energy try-on ───────────────────────────────────────────────────────────────────────────────────────────────────
+## Attach `energy` to `pokemon` for a moment and see what it really does: "now" = some attack is closer to paid (or a
+## scaling attack hits harder), "unlock" = an attack becomes usable, "typed" = it pays a typed slot, "evo" = it only helps
+## an evolution (2 = one in hand, 1 = one in the deck).
+func cpu_energy_tryon(pokemon: card_object, energy: card_object) -> Dictionary:
+	var out := {"now": false, "unlock": false, "unlock_dmg": 0, "typed": false, "evo": 0}
+	if pokemon == null or energy == null:
+		return out
+	var attacks: Array = main.get_attacks_for_card(pokemon)
+	var before: Array = []
+	var before_t: Array = []
+	for a in attacks:
+		before.append(get_unmet_energy_count(a, pokemon))
+		before_t.append(get_unmet_energy_count(_cpu_typed_only(a), pokemon))
+	pokemon.attached_energies.append(energy)
+	for i in attacks.size():
+		var after := get_unmet_energy_count(attacks[i], pokemon)
+		if after < int(before[i]):
+			out["now"] = true
+			if get_unmet_energy_count(_cpu_typed_only(attacks[i]), pokemon) < int(before_t[i]):
+				out["typed"] = true
+			if after == 0:
+				out["unlock"] = true
+				var foe = main.player_active_pokemon
+				var ex := int(main.attack_effects.estimate_attack_damage_range(attacks[i], pokemon, foe).get("expected", 0))
+				out["unlock_dmg"] = maxi(int(out["unlock_dmg"]), ex)
+	pokemon.attached_energies.erase(energy)
+	if not out["now"]:
+		for i in attacks.size():
+			if int(before[i]) == 0 and _cpu_attack_scales_with_energy(attacks[i], pokemon, energy):
+				out["now"] = true
+				break
+	if not out["now"]:
+		out["evo"] = _cpu_energy_helps_evolution(pokemon, energy)
+	return out
+
+func _cpu_typed_only(attack: Dictionary) -> Dictionary:
+	return {"name": attack.get("name", ""), "cost": attack.get("cost", []).filter(func(c): return c != "Colorless")}
+
+## An attack that does more damage for each extra Energy of this kind on the attacker, still under its cap.
+func _cpu_attack_scales_with_energy(attack: Dictionary, pokemon: card_object, energy: card_object) -> bool:
+	var t := String(attack.get("text", "")).to_lower()
+	if not ("for each" in t and "energy attached to" in t):
+		return false
+	var nm := String(pokemon.metadata.get("name", "")).to_lower()
+	if not ("energy attached to " + nm in t or "energy attached to this pokémon" in t):
+		return false
+	var provided: Array = main.get_energy_provided_by_card(energy)
+	var typed := ""
+	for tk in ["grass", "fire", "water", "lightning", "psychic", "fighting", "darkness", "metal"]:
+		if "for each " + tk + " energy" in t:
+			typed = tk.capitalize()
+	if typed != "" and not (typed in provided or "Any" in provided):
+		return false
+	var cap := 99
+	var m := RegEx.create_from_string("can't add more than ([0-9]+)")
+	var r = m.search(t)
+	if r != null:
+		cap = int(r.get_string(1)) / 10
+	var extra := 0
+	for e in pokemon.attached_energies:
+		if typed == "" or typed in main.get_energy_provided_by_card(e):
+			extra += 1
+	extra -= attack.get("cost", []).filter(func(c): return typed == "" or c == typed).size()
+	return extra < cap
+
+## 2 = an evolution in hand would get closer to an attack with this Energy, 1 = one still in the deck, 0 = neither.
+func _cpu_energy_helps_evolution(pokemon: card_object, energy: card_object) -> int:
+	var names := [String(pokemon.metadata.get("name", ""))]
+	var best := 0
+	for depth in 2:   # Stage 1, then Stage 2
+		var next_names: Array = []
+		for src in [main.opponent_hand, main.opponent_deck]:
+			for evo in src:
+				if not (String(evo.metadata.get("evolvesFrom", "")) in names):
+					continue
+				next_names.append(String(evo.metadata.get("name", "")))
+				var saved: Array = evo.attached_energies
+				evo.attached_energies = pokemon.attached_energies.duplicate()
+				var helps := false
+				for a in main.get_attacks_for_card(evo):
+					var b := get_unmet_energy_count(a, evo)
+					if b <= 0:
+						continue
+					evo.attached_energies.append(energy)
+					var af := get_unmet_energy_count(a, evo)
+					evo.attached_energies.pop_back()
+					if af < b:
+						helps = true
+						break
+				evo.attached_energies = saved
+				if helps:
+					best = maxi(best, 2 if src == main.opponent_hand else 1)
+		if best == 2 or next_names.is_empty():
+			break
+		names = next_names
+	return best
+
+
+# ── Energy deficit (which Energy the board is still SHORT of, after what the hand already holds) ─────────────────────
+## The form a Pokémon is building towards: an evolution in hand takes over the plan.
+func _cpu_goal_form(p: card_object) -> card_object:
+	for c in main.opponent_hand:
+		if String(c.metadata.get("evolvesFrom", "")) == String(p.metadata.get("name", "")):
+			return c
+	return p
+
+## The attack a form is building towards: its best-damage attack (an effect-only attack is the fallback goal).
+func _cpu_goal_attack(form: card_object) -> Dictionary:
+	var best: Dictionary = {}
+	var best_v := -1.0
+	for a in main.get_attacks_for_card(form):
+		var r: Dictionary = main.attack_effects.estimate_attack_damage_range(a, form, main.player_active_pokemon)
+		var v := float(r.get("expected", 0)) + float(a.get("cost", []).size()) * 0.1   # ties -> the bigger attack
+		if float(r.get("expected", 0)) <= 0:
+			v = 5.0 + float(a.get("cost", []).size()) * 0.1
+		if v > best_v:
+			best_v = v
+			best = a
+	return best
+
+## How much fetching / keeping Energy `e` is worth: does any Pokémon still need it once the hand's other Energy has
+## been handed out? 0 = the hand already covers everything it could do.
+func cpu_energy_fetch_value(e: card_object, ignore_hand: Array = []) -> float:
+	if e == null:
+		return 0.0
+	var field: Array = get_all_cpu_field_pokemon()
+	var hand_e: Array = main.opponent_hand.filter(func(c): return c != e and c.metadata.get("supertype", "") == "Energy" and not ignore_hand.has(c))
+	var forms: Array = []
+	var saved: Array = []
+	for p in field:
+		var f: card_object = _cpu_goal_form(p)
+		if forms.has(f):
+			f = p
+		forms.append(f)
+		saved.append(f.attached_energies)
+		f.attached_energies = p.attached_energies.duplicate()
+	var goals: Array = []
+	for f in forms:
+		goals.append(_cpu_goal_attack(f))
+	# Hand Energy goes to the Active's plan first, then the Bench.
+	for i in forms.size():
+		if goals[i].is_empty():
+			continue
+		for h in hand_e.duplicate():
+			var b := get_unmet_energy_count(goals[i], forms[i])
+			if b <= 0:
+				break
+			forms[i].attached_energies.append(h)
+			if get_unmet_energy_count(goals[i], forms[i]) < b:
+				hand_e.erase(h)
+			else:
+				forms[i].attached_energies.pop_back()
+	var best := 0.0
+	for i in forms.size():
+		if goals[i].is_empty():
+			continue
+		var b := get_unmet_energy_count(goals[i], forms[i])
+		if b <= 0:
+			continue
+		var bt := get_unmet_energy_count(_cpu_typed_only(goals[i]), forms[i])
+		forms[i].attached_energies.append(e)
+		var a := get_unmet_energy_count(goals[i], forms[i])
+		var at := get_unmet_energy_count(_cpu_typed_only(goals[i]), forms[i])
+		forms[i].attached_energies.pop_back()
+		if a < b:
+			var w := (30.0 if field[i] == main.opponent_active_pokemon else 18.0) + (15.0 if a == 0 else 0.0) - float(a) * 3.0 + (6.0 if at < bt else 0.0)
+			best = maxf(best, w)
+	for i in forms.size():
+		forms[i].attached_energies = saved[i]
+	return best
+
+
+# ── DCE: is anything going to use it? ───────────────────────────────────────────────────────────────────────────────
+## Keep value of a DCE in hand: 88 = something in play / hand / the next known draws uses 2+ Colorless, 65 = only the
+## deck still holds such a Pokémon (a person knows their own list), 15 = nothing in the deck ever will.
+func cpu_dce_keep_value() -> float:
+	if cpu_dce_useful():
+		return 88.0
+	for c in main.opponent_deck:
+		if c.metadata.get("supertype", "") == "Pokémon" and main.get_attacks_for_card(c).any(func(a): return a.get("cost", []).count("Colorless") >= 2):
+			return 65.0
+	return 15.0
+
+func cpu_dce_useful() -> bool:
+	var forms: Array = get_all_cpu_field_pokemon()
+	for c in main.opponent_hand:
+		if c.metadata.get("supertype", "") == "Pokémon":
+			forms.append(c)
+	for c in cpu_next_draws(4):
+		if c.metadata.get("supertype", "") == "Pokémon":
+			forms.append(c)
+	for p in forms:
+		var in_play: bool = p == main.opponent_active_pokemon or main.opponent_bench.has(p)
+		for a in main.get_attacks_for_card(p):
+			if a.get("cost", []).count("Colorless") < 2:
+				continue
+			if not in_play or get_unmet_energy_count(a, p) >= 2:
+				return true
+	return false
+
+
+# ── Stage 2 / evolution holding (the user's rule) ──────────────────────────────────────────────────────────────────
+## Should the CPU refuse to throw `evo` away (Oak, Computer Search discards)? Stage 2s are kept unless the line is dead,
+## the hand has been stuck for a while, foresight shows the missing piece isn't coming soon, or the CPU is about to lose.
+func cpu_hold_evolution(evo: card_object) -> bool:
+	if evo == null or evo.metadata.get("supertype", "") != "Pokémon" or main.is_basic_pokemon(evo):
+		return false
+	var state := cpu_evolution_line_state(evo)
+	if state < 0:
+		return false
+	if state == 3:
+		return true                               # it goes on this turn or next
+	var losing: bool = main.player_prize_cards.size() <= 1 or main.player_prize_cards.size() + 2 <= main.opponent_prize_cards.size()
+	var piece := String(evo.metadata.get("evolvesFrom", ""))   # the card it is waiting for
+	var coming: bool = cpu_coming_soon(piece, 2)
+	if not coming and "Stage 2" in evo.metadata.get("subtypes", []) and state <= 1:
+		for c in cpu_next_draws(2):
+			if main.is_basic_pokemon(c) and main.trainer_effects._basic_matches_stage2(c, evo):
+				coming = true
+	var foresight: bool = not cpu_known_top().is_empty()
+	if coming:
+		return true
+	if losing:
+		return false
+	if foresight:
+		# It can see the next draws and the piece isn't in them: stuck for 2+ turns. Keep it only while the hand is fresh.
+		return state >= 1 and cpu_stale_turns == 0
+	return state >= 1 and cpu_stale_turns < 2
+
+## Every other card in hand is useless (bar Energy for next turn) - the only time a second Oak in one turn is right.
+func cpu_hand_is_dead(exclude: card_object) -> bool:
+	var room: bool = main.opponent_bench.size() < main.get_max_bench_size()
+	for c in main.opponent_hand:
+		if c == exclude:
+			continue
+		var st: String = c.metadata.get("supertype", "")
+		if st == "Energy":
+			if main.trainer_effects.is_double_colorless_energy(c) and cpu_dce_useful():
+				return false
+			if not main.opponent_energy_played_this_turn:
+				return false
+			continue
+		if st == "Pokémon":
+			if main.is_basic_pokemon(c):
+				if room: return false
+			elif cpu_evolution_line_state(c) >= 1:
+				return false
+			continue
+		if cpu_is_hand_replacer(c) or c.uid == LASS_UID:
+			continue
+		if String(c.metadata.get("name", "")) in CPU_ANSWER_TRAINERS:
+			return false
+		if cpu_score_trainer_card(c) > 0.0:
+			return false
+	return true
+
+
+# ── discard cost on the search scale ────────────────────────────────────────────────────────────────────────────────
+func _cpu_discard_loss(c: card_object) -> float:
+	return maxf(0.0, main.trainer_effects._score_card_for_discard(c) - 25.0) * 0.6
+
+
+# ── CARD NEED: what a card is worth if it were in hand RIGHT NOW ────────────────────────────────────────────────────
+## {"v": value (0 = nothing, ~60 strong, ~100 game-changing), "urgent": it changes THIS turn's attack / survival,
+##  "why": text}. `remaining` = the hand as it will be (for draw cards like Oak), null = the current hand.
+func cpu_card_need(card: card_object, remaining = null) -> Dictionary:
+	if card == null:
+		return {"v": 0.0, "urgent": false, "why": ""}
+	var ck := _cpu_v2_board_key() + "|need|" + str(card.get_instance_id())
+	if remaining is Array:
+		for h in remaining:
+			ck += "," + str(h.get_instance_id())
+	else:
+		ck += "|hand"
+	if _cpu_v2_cache.has(ck):
+		return _cpu_v2_cache[ck]
+	var res := _cpu_card_need_uncached(card, remaining)
+	if not _cpu_in_draw_delta:   # values worked out inside the draw-quality check skip foresight - don't keep them
+		_cpu_v2_cache[ck] = res
+	return res
+
+func _cpu_card_need_uncached(card: card_object, remaining = null) -> Dictionary:
+	var out := {"v": 0.0, "urgent": false, "why": ""}
+	var hand: Array = remaining if remaining is Array else main.opponent_hand
+	var st: String = card.metadata.get("supertype", "")
+	var nm: String = card.metadata.get("name", "")
+	var me = main.opponent_active_pokemon
+	var threats: Dictionary = _cpu_v2_threats()
+	var doomed: bool = me != null and bool(threats.get("cpu_active_guaranteed_ko", false)) and not bool(threats.get("cpu_active_dies_to_status", false))
+	var ko_prizes := (2 if me != null and main.is_ex_pokemon(me) else 1)
+	var about_to_lose: bool = doomed and (main.player_prize_cards.size() <= ko_prizes or main.opponent_bench.is_empty())
+	if st == "Pokémon":
+		if main.is_basic_pokemon(card):
+			_cpu_need_basic(card, hand, out, about_to_lose)
+		else:
+			_cpu_need_evolution(card, out, doomed)
+	elif st == "Energy":
+		_cpu_need_energy(card, hand, out)
+	else:
+		_cpu_need_trainer(card, hand, out, doomed, about_to_lose, remaining)
+	# Coming anyway: the same card is the next draw - setup can wait a turn, an urgent need can't. (Not for a search: the
+	# search shuffles the deck, so what it "knows" about the next draw stops being true.)
+	if not (remaining is Array) and not out["urgent"] and float(out["v"]) > 0.0 and cpu_coming_soon(nm, 1):
+		out["v"] = float(out["v"]) * 0.4
+		out["why"] += " (drawn next turn anyway)"
+	# Already holding one that does the job.
+	if float(out["v"]) > 0.0 and st != "Energy" and hand.any(func(h): return h != card and h.metadata.get("name", "") == nm):
+		out["v"] = float(out["v"]) * 0.25
+		out["why"] += " (one already in hand)"
+	return out
+
+func _cpu_need_basic(card: card_object, hand: Array, out: Dictionary, about_to_lose: bool) -> void:
+	var bench_n: int = main.opponent_bench.size()
+	if bench_n >= main.get_max_bench_size():
+		return
+	var nm: String = card.metadata.get("name", "")
+	var in_play: bool = get_all_cpu_field_pokemon().any(func(p): return p.metadata.get("name", "") == nm)
+	var v := 0.0
+	if not in_play:
+		for h in hand:
+			if String(h.metadata.get("evolvesFrom", "")) == nm:
+				v = maxf(v, 50.0)
+				out["why"] = "Basic for the " + String(h.metadata.get("name", "")) + " in hand"
+			elif "Stage 2" in h.metadata.get("subtypes", []) and main.trainer_effects._basic_matches_stage2(card, h):
+				v = maxf(v, 35.0)
+				out["why"] = "start of the " + String(h.metadata.get("name", "")) + " line"
+	if bench_n == 0:
+		v += 70.0 if about_to_lose else 22.0   # insurance only becomes urgent when the Active is about to fall
+		out["why"] += " bench insurance"
+		out["urgent"] = about_to_lose
+	out["v"] = v
+
+func _cpu_need_evolution(card: card_object, out: Dictionary, doomed: bool) -> void:
+	var targets: Array = main.get_valid_evolution_targets(card, true)
+	var is_s2: bool = "Stage 2" in card.metadata.get("subtypes", [])
+	if targets.is_empty():
+		# Pokémon Breeder in hand + a Basic that may evolve now.
+		if is_s2 and main.opponent_hand.any(func(h): return h.uid.to_lower() == "base1-76"):
+			for p in main.get_pokemon_that_may_evolve_now(true):
+				if main.is_basic_pokemon(p) and main.trainer_effects._basic_matches_stage2(p, card):
+					out["v"] = 55.0
+					out["why"] = "Breeder onto " + String(p.metadata.get("name", ""))
+					return
+		if cpu_evolution_line_state(card) == 3:
+			out["v"] = 12.0      # its base came into play this turn: next turn
+			out["why"] = "evolves next turn"
+		return
+	var foe = main.player_active_pokemon
+	var best := 0.0
+	for t in targets:
+		var v := 68.0 if is_s2 else 42.0
+		var why := "evolve " + String(t.metadata.get("name", ""))
+		var evo_hp: int = card.get_max_hp() - (t.get_max_hp() - t.current_hp)
+		if t == main.opponent_active_pokemon and foe != null:
+			var stopped: bool = t.special_condition in ["Paralyzed", "Asleep"]
+			if t.special_condition != "" or t.is_poisoned or t.is_burned:
+				v += 30.0 + (15.0 if stopped else 0.0)
+				why += ", cures " + (t.special_condition if t.special_condition != "" else "Poison/Burn")
+				out["urgent"] = true
+			var before: int = 0 if stopped else _cpu_best_damage_with_attach(t, t.attached_energies, foe)
+			var after: int = _cpu_best_damage_with_attach(card, t.attached_energies, foe) if main.turn_number > 1 else 0
+			if after > 0:
+				v += 10.0         # it can attack this turn as the new form
+			if after > before:
+				v += minf(float(after - before), 80.0) * 0.5
+				out["urgent"] = true
+			if after >= foe.current_hp and before < foe.current_hp:
+				v += 45.0
+				why += ", Knocks Out " + String(foe.metadata.get("name", ""))
+			var incoming := _player_effective_damage_against(t, true)
+			if doomed and incoming < evo_hp:
+				v += 30.0
+				why += ", survives the next attack"
+				out["urgent"] = true
+		else:
+			var saved: Array = card.attached_energies
+			card.attached_energies = t.attached_energies.duplicate()
+			var lowest := 99
+			for a in main.get_attacks_for_card(card):
+				lowest = mini(lowest, get_unmet_energy_count(a, card))
+			card.attached_energies = saved
+			v += 22.0 if lowest == 0 else (10.0 if lowest == 1 else 0.0)
+		v += maxf(0.0, float(card.get_max_hp() - t.get_max_hp())) * 0.15
+		if v > best:
+			best = v
+			out["why"] = why
+	out["v"] = best
+
+func _cpu_need_energy(card: card_object, hand: Array, out: Dictionary) -> void:
+	var me = main.opponent_active_pokemon
+	var foe = main.player_active_pokemon
+	var fetch := cpu_energy_fetch_value(card)
+	if main.opponent_energy_played_this_turn:
+		out["v"] = fetch * 0.3
+		out["why"] = "Energy for next turn"
+		return
+	# Unlocks the Active's attack THIS turn where no Energy in hand does.
+	if me != null and foe != null and _cpu_active_can_attack_or_could(me) and not _cpu_active_can_attack():
+		var tr := cpu_energy_tryon(me, card)
+		if tr["unlock"]:
+			var hand_unlocks := false
+			# ...unless an Energy already in hand unlocks an attack that hits as hard (a basic that only opens Lullaby
+			# doesn't replace the DCE that opens Pound).
+			for h in hand:
+				if h != card and h.metadata.get("supertype", "") == "Energy":
+					var htr := cpu_energy_tryon(me, h)
+					if htr["unlock"] and int(htr["unlock_dmg"]) >= int(tr["unlock_dmg"]):
+						hand_unlocks = true
+						break
+			if not hand_unlocks:
+				var dmg: int = int(main.calculate_final_damage(int(tr["unlock_dmg"]), me.get_effective_types(), foe, me).get("damage", 0))
+				out["v"] = 45.0 + (45.0 if dmg >= foe.current_hp else minf(float(dmg), 60.0) * 0.3)
+				out["urgent"] = true
+				out["why"] = String(card.metadata.get("name", "")) + " lets " + String(me.metadata.get("name", "")) + " attack now"
+				return
+	out["v"] = fetch * 0.5   # basic Energy that does not unlock an attack now: a plain draw, never worth a Computer Search
+	out["why"] = "Energy the board is short of" if fetch > 0.0 else ""
+
+func _cpu_need_trainer(card: card_object, hand: Array, out: Dictionary, doomed: bool, about_to_lose: bool, remaining = null) -> void:
+	var nm: String = card.metadata.get("name", "")
+	var uid := card.uid.to_lower()
+	var me = main.opponent_active_pokemon
+	var foe = main.player_active_pokemon
+	var can_hit: bool = me != null and foe != null and _cpu_active_can_attack()
+	if uid == "base1-91" or nm == "Bill":
+		out["v"] = 0.0   # the user's rule: never search for Bill (2 discarded for +2 drawn is a net loss)
+		return
+	if cpu_is_hand_replacer(card) and CPU_DRAW_CARDS.get(uid, "") == "wipe":
+		out["v"] = _cpu_oak_need(card, hand, not (remaining is Array))
+		out["why"] = "Oak onto a " + str(hand.size()) + "-card hand"
+		return
+	match nm:
+		"PlusPower":
+			if can_hit:
+				var dmg := _cpu_best_damage(me, me.attached_energies, foe)
+				if dmg > 0 and dmg < foe.current_hp and dmg + 10 >= foe.current_hp:
+					out["v"] = 72.0 + (40.0 if main.opponent_prize_cards.size() <= (2 if main.is_ex_pokemon(foe) else 1) else 0.0)
+					out["urgent"] = true
+					out["why"] = "PlusPower turns " + str(dmg) + " into a Knock Out"
+		"Gust of Wind":
+			if can_hit and _cpu_best_damage(me, me.attached_energies, foe) < foe.current_hp:
+				for b in main.player_bench:
+					if _cpu_best_damage(me, me.attached_energies, b) >= b.current_hp:
+						out["v"] = maxf(float(out["v"]), 62.0 + (40.0 if main.opponent_prize_cards.size() <= 1 else 0.0) + (15.0 if main.is_ex_pokemon(b) else 0.0))
+						out["urgent"] = true
+						out["why"] = "Gust " + String(b.metadata.get("name", "")) + " for a Knock Out"
+			if about_to_lose and float(out["v"]) < 60.0:
+				for b in main.player_bench:
+					if _cpu_damage_from(b, me) < me.current_hp:
+						out["v"] = 60.0
+						out["urgent"] = true
+						out["why"] = "Gust away the attacker that wins them the game"
+						break
+		"Pokémon Center":
+			out["v"] = maxf(0.0, _cpu_score_pokemon_center() - 35.0) * 1.4
+			out["why"] = "big heal"
+		"Full Heal":
+			if me != null and me.special_condition in ["Paralyzed", "Asleep"] and me.attached_energies.size() > 0:
+				out["v"] = 35.0
+				out["urgent"] = true
+				out["why"] = "cure so it can attack"
+	if doomed and me != null and float(out["v"]) < 45.0:
+		var saves := false
+		match nm:
+			"Potion":
+				saves = _cpu_heal_prevents_ko(me, mini(20, me.get_max_hp() - me.current_hp))
+			"Super Potion":
+				saves = me.attached_energies.size() > 0 and _cpu_heal_prevents_ko(me, mini(40, me.get_max_hp() - me.current_hp))
+			"Defender":
+				saves = _player_effective_damage_against(me, false) - 20 < me.current_hp - status_damage_before_next_attack(me, true)
+			"Switch":
+				saves = main.opponent_bench.any(func(b): return _player_effective_damage_against(b, true) < b.current_hp)
+			"Scoop Up", "Super Scoop Up":
+				saves = not main.opponent_bench.is_empty()
+			"Energy Removal", "Super Energy Removal":
+				saves = foe != null and cpu_removal_delays_attack(foe, 1 if nm == "Energy Removal" else 2)
+		if saves:
+			out["v"] = 80.0 if about_to_lose else 45.0
+			out["urgent"] = true
+			out["why"] = nm + " saves the Active from the Knock Out"
+
+## Damage `attacker` (the player's) could do to `target` with what it has attached.
+func _cpu_damage_from(attacker: card_object, target: card_object) -> int:
+	if attacker == null or target == null:
+		return 0
+	var best := 0
+	for a in main.get_attacks_for_card(attacker):
+		if get_unmet_energy_count(a, attacker) > 0:
+			continue
+		var ex := int(main.attack_effects.estimate_attack_damage_range(a, attacker, target).get("max", 0))
+		best = maxi(best, int(main.calculate_final_damage(ex, attacker.get_effective_types(), target, attacker).get("damage", ex)))
+	return best
+
+## Professor Oak onto `hand` (the cards that would still be there): 7 fresh cards against what the wipe throws away.
+func _cpu_oak_need(card: card_object, hand: Array, use_foresight: bool = true) -> float:
+	var others: Array = hand.filter(func(c): return c != card)
+	if main.opponent_deck.size() <= 9:
+		return 0.0
+	var loss := 0.0
+	for c in others:
+		if c.metadata.get("supertype", "") == "Pokémon" and not main.is_basic_pokemon(c) and cpu_hold_evolution(c):
+			return 0.0
+		loss += _cpu_discard_loss(c)
+	var v := 62.0 - loss - maxf(0.0, float(others.size()) - 2.0) * 6.0
+	if use_foresight:
+		v += clampf(cpu_known_draw_delta(7) * 0.3, -30.0, 30.0)
+	return maxf(0.0, v)
+
+
+# ── SEARCH PLANS: which deck card to take, what to throw away, and whether it's worth it at all ─────────────────────
+## Partner cards in hand a target needs kept (the Stage 1 a fetched Basic is for, Breeder for a Stage 2...).
+func _cpu_need_partners(target: card_object) -> Array:
+	var keep: Array = []
+	var nm: String = target.metadata.get("name", "")
+	for h in main.opponent_hand:
+		if String(h.metadata.get("evolvesFrom", "")) == nm:
+			keep.append(h)
+		elif "Stage 2" in target.metadata.get("subtypes", []) and h.uid.to_lower() == "base1-76":
+			keep.append(h)
+	return keep
+
+## The best card in `pool` for `source` (a search Trainer) that costs `discard_n` other hand cards.
+## {"card", "net", "need", "why", "discards", "cost"} - net = need - discard cost. {} when nothing qualifies.
+func cpu_plan_search(source: card_object, pool: Array, discard_n: int) -> Dictionary:
+	var others: Array = main.opponent_hand.filter(func(c): return c != source)
+	if others.size() < discard_n or pool.is_empty():
+		return {}
+	var ck := _cpu_v2_board_key() + "|plan|" + str(source.get_instance_id() if source != null else 0) + "|" + str(pool.size()) + "|" + str(discard_n)
+	if _cpu_v2_cache.has(ck):
+		return _cpu_v2_cache[ck]
+	var res := _cpu_plan_search_uncached(source, pool, discard_n, others)
+	_cpu_v2_cache[ck] = res
+	return res
+
+func _cpu_plan_search_uncached(source: card_object, pool: Array, discard_n: int, others: Array) -> Dictionary:
+	var seen := {}
+	var best: Dictionary = {}
+	for c in pool:
+		var u: String = c.uid.to_lower()
+		if seen.has(u):
+			continue
+		seen[u] = true
+		var protect: Array = _cpu_need_partners(c)
+		var disc: Array = []
+		if discard_n > 0:
+			disc = main.trainer_effects.cpu_get_discard_priority(others.filter(func(h): return not protect.has(h)), discard_n, source)
+			if disc.size() < discard_n:
+				continue
+		var remaining: Array = others.filter(func(h): return not disc.has(h))
+		var need := cpu_card_need(c, remaining)
+		var cost := 0.0
+		for d in disc:
+			cost += _cpu_discard_loss(d)
+		var net: float = float(need["v"]) - cost + cpu_rank_keep_value(c) * 0.05
+		if best.is_empty() or net > float(best["net"]):
+			best = {"card": c, "net": net, "need": float(need["v"]), "why": need["why"], "discards": disc, "cost": cost}
+	return best
+
+## Computer Search: play it only for a real need that beats the two discards (and the search held for later).
+const CPU_SEARCH_MIN_NET := 32.0      # TWEAKABLE: net value a Computer Search must reach to be played
+func _cpu_score_computer_search_v2(card: card_object) -> float:
+	if main.opponent_hand.size() < 3 or main.opponent_deck.is_empty():
+		return -100.0
+	var plan := cpu_plan_search(card, main.opponent_deck, 2)
+	if plan.is_empty():
+		return -100.0
+	var net: float = float(plan["net"])
+	if net < CpuWeights.g("search.cs_min_net", CPU_SEARCH_MIN_NET):
+		print("CPU v2: holding Computer Search - best is ", plan["card"].metadata.get("name", ""), " (need ", int(plan["need"]), ", discards cost ", int(plan["cost"]), ")")
+		return 10.0
+	_cpu_search_plan = {"source": card, "card": plan["card"], "discards": plan["discards"], "turn": main.turn_number}
+	print("CPU v2: Computer Search for ", plan["card"].metadata.get("name", ""), " - ", plan["why"], " (net ", int(net), ")")
+	return clampf(40.0 + net * 0.6, 40.0, 95.0)
+
+## Used by the Computer Search effect: the planned pick + discards when still valid, else a fresh plan.
+func cpu_computer_search_choice(played: card_object) -> Dictionary:
+	var hand: Array = main.opponent_hand
+	if not _cpu_search_plan.is_empty() and _cpu_search_plan.get("source") == played and int(_cpu_search_plan.get("turn", -1)) == main.turn_number \
+			and main.opponent_deck.has(_cpu_search_plan["card"]) and _cpu_search_plan["discards"].all(func(d): return hand.has(d) and d != played):
+		var p := _cpu_search_plan
+		_cpu_search_plan = {}
+		return p
+	return cpu_plan_search(played, main.opponent_deck, 2)
+
+## Best card for a free search (no discard cost) from `pool` - need first, keep value as tie-break; never Bill if
+## anything else is wanted.
+func cpu_pick_by_need(pool: Array) -> card_object:
+	var best: card_object = null
+	var best_v := -INF
+	var seen := {}
+	for c in pool:
+		var u: String = c.uid.to_lower()
+		if seen.has(u):
+			continue
+		seen[u] = true
+		var v: float = float(cpu_card_need(c)["v"]) + cpu_rank_keep_value(c) * 0.15
+		if c.metadata.get("name", "") == "Bill":
+			v -= 20.0
+		if v > best_v:
+			best_v = v
+			best = c
+	return best
+
+## The best need among `pool` (search Trainer scoring).
+func cpu_best_need(pool: Array) -> float:
+	var best := 0.0
+	var seen := {}
+	for c in pool:
+		var u: String = c.uid.to_lower()
+		if seen.has(u):
+			continue
+		seen[u] = true
+		best = maxf(best, float(cpu_card_need(c)["v"]))
+	return best
+
+## CPU v2 Professor Oak: seven fresh cards against what the wipe throws away. Stage 2s are kept by the user's rule
+## (cpu_hold_evolution), an evolution coming back in the 7 known draws costs nothing, and a second Oak in hand (or one
+## about to be drawn) makes playing this one nearly free.
+func _cpu_score_professor_oak_v2(card: card_object) -> float:
+	var others: Array = main.opponent_hand.filter(func(c): return c != card)
+	if main.opponent_deck.size() <= 9:
+		return -100.0
+	var known_adj: float = clampf(cpu_known_draw_delta(7) * 0.4, -40.0, 40.0)
+	var in_play: Array = []
+	for p in get_all_cpu_field_pokemon():
+		in_play.append(String(p.metadata.get("name", "")))
+	var loss := 0.0
+	var copies := 0
+	for c in others:
+		var cname: String = c.metadata.get("name", "")
+		if cname == card.metadata.get("name", ""):
+			copies += 1
+			continue
+		if c.metadata.get("supertype", "") == "Pokémon":
+			if cpu_knows_upcoming(cname, 7):
+				continue                     # it comes straight back in the seven
+			if not main.is_basic_pokemon(c) and cpu_hold_evolution(c):
+				print("CPU v2: holding Professor Oak - keeping ", cname)
+				return -60.0
+			var from := String(c.metadata.get("evolvesFrom", ""))
+			if from != "" and from in in_play:
+				print("CPU v2: holding Professor Oak - ", cname, " evolves from ", from, " in play")
+				return -70.0
+		loss += _cpu_discard_loss(c)
+	var v := 92.0 - loss - maxf(0.0, float(others.size() - copies) - 2.0) * 7.0
+	if cpu_hand_is_stuck(card):
+		v += 15.0
+	if copies > 0:
+		v += 8.0                             # the other copy is still there for later
+	elif cpu_coming_soon(card.metadata.get("name", ""), 2):
+		v += 15.0                            # a second Oak is about to be drawn - two in hand is one dead card
+	return clampf(v + known_adj, -100.0, 95.0)
+
+## Best damage `form` could do this turn with `energies` plus (if the attach is still free) the best Energy from hand.
+func _cpu_best_damage_with_attach(form: card_object, energies: Array, foe: card_object) -> int:
+	var best := _cpu_best_damage(form, energies, foe)
+	if main.opponent_energy_played_this_turn:
+		return best
+	for h in main.opponent_hand:
+		if h.metadata.get("supertype", "") == "Energy":
+			best = maxi(best, _cpu_best_damage(form, energies + [h], foe))
+	return best
+
+
+# ── LOCK PIECES (user, 2026-11-14): Dark Vileplume after the Trainers, Aerodactyl after the other evolutions ──────────
+var cpu_lock_deferred := false   # a lock piece was held back this turn
+var cpu_lock_pass := false       # the end-of-turn pass that plays them
+
+## "trainer" (Hay Fever: no Trainers for anyone), "evolve" (Prehistoric Power: no more evolving), "power" (Toxic Gas,
+## Stench...: Powers off for both sides), "" = not a lock. Read from the Power / Body text, so every set is covered.
+func cpu_lock_kind(card: card_object) -> String:
+	if card == null:
+		return ""
+	for ab in card.metadata.get("abilities", []):
+		var t := String(ab.get("text", "")).to_lower()
+		if "no trainer cards can be played" in t or ("each player" in t and "trainer card" in t and ("can't" in t or "cannot" in t)):
+			return "trainer"
+		if "no more evolution cards can be played" in t or ("evolution cards" in t and "can't be played" in t):
+			return "evolve"
+		if "ignore all pokémon powers" in t or ("each player's pokémon" in t and "can't use any poké-powers" in t):
+			return "power"
+	return ""
+
+## Should `evo` wait for the lock pass? Only when something the lock would block is still worth doing this turn.
+func cpu_should_defer_lock(evo: card_object, pairs: Array) -> bool:
+	match cpu_lock_kind(evo):
+		"trainer":
+			for c in main.opponent_hand:
+				if main.trainer_effects.is_trainer_card(c) and c.uid != LASS_UID and cpu_score_trainer_card(c) > CPU_TRAINER_PLAY_THRESHOLD \
+						and main.trainer_effects.validate_trainer_can_be_played(c, true) == "":
+					return true
+			return false
+		"evolve":
+			return pairs.any(func(p): return cpu_lock_kind(p["evo_card"]) != "evolve" and float(p["score"]) > 0.0)
+		"power":
+			for p in get_all_cpu_field_pokemon():
+				for ab in p.metadata.get("abilities", []):
+					if String(ab.get("type", "")) in ["Pokémon Power", "Poké-Power"] and not p.power_used_this_turn:
+						return true
+			return false
+	return false
+
+
+# ── CPU v2 cache: the search planner is asked many times a turn (play loop, hand-stuck checks, discard scoring) on
+# the same board. Results are kept until anything a plan depends on changes. ──────────────────────────────────────
+var _cpu_v2_cache: Dictionary = {}
+var _cpu_v2_cache_key := ""
+
+func _cpu_v2_board_key() -> String:
+	var k := str(main.turn_number) + ":" + str(main.opponent_energy_played_this_turn) + ":" + str(main.opponent_deck.size()) + ":" + str(main.opponent_discard_pile.size())
+	for c in main.opponent_hand:
+		k += "," + str(c.get_instance_id())
+	for p in get_all_cpu_field_pokemon():
+		k += ";" + str(p.get_instance_id()) + "/" + str(p.current_hp) + "/" + str(p.attached_energies.size()) + "/" + p.special_condition + str(p.is_poisoned)
+	var f = main.player_active_pokemon
+	if f != null:
+		k += "|" + str(f.get_instance_id()) + "/" + str(f.current_hp) + "/" + str(f.attached_energies.size())
+	k += "|" + str(main.player_bench.size()) + "|" + str(main.player_hand.size()) + "|" + str(main.opponent_prize_cards.size()) + str(main.player_prize_cards.size())
+	if k != _cpu_v2_cache_key:
+		_cpu_v2_cache_key = k
+		_cpu_v2_cache.clear()
+	return k
+
+func _cpu_v2_threats() -> Dictionary:
+	var ck := _cpu_v2_board_key() + "|threats"
+	if not _cpu_v2_cache.has(ck):
+		_cpu_v2_cache[ck] = evaluate_ko_threats()
+	return _cpu_v2_cache[ck]
+
+## CPU v2: why the rules would refuse attaching `energy` to `target` from hand ("" = allowed). The same checks the
+## attach itself makes in cpu_phase_energy_attachment.
+func _cpu_attach_refused(energy: card_object, target: card_object) -> String:
+	if "Special" in energy.metadata.get("subtypes", []):
+		var chk: Dictionary = main.special_energy_effects.can_attach_to(energy, target)
+		if not chk.get("allowed", true):
+			return String(chk.get("reason", "special"))
+	if main.powers_and_bodies.check_pure_body_block(energy, target):
+		return "Pure Body"
+	if main.powers_and_bodies.check_anti_lightning_block(energy, target):
+		return "Anti-Lightning"
+	if main.powers_and_bodies.check_ecard3_type_immunity_block(energy, target):
+		return "type immunity"
+	if target.has_effect("ex5_energy_lock"):
+		return "Freeze Lock"
+	return ""
+
+
+## CPU v2 (think like a person): bench the Basics in hand before Professor Oak discards them.
+var cpu_bench_before_wipe := false
+func _cpu_bench_before_wipe(card: card_object) -> bool:
+	if not CpuWeights.on("rule.v2_oak") or CPU_DRAW_CARDS.get(card.uid.to_lower(), "") != "wipe":
+		return false
+	if main.opponent_bench.size() >= main.get_max_bench_size() or not main.opponent_hand.any(func(c): return c != card and main.is_basic_pokemon(c)):
+		return false
+	print("CPU v2: benching Basics before ", card.metadata.get("name", ""), " throws them away")
+	var before: int = main.opponent_bench.size()
+	cpu_bench_before_wipe = true
+	await cpu_phase_bench_play()
+	cpu_bench_before_wipe = false
+	return main.opponent_bench.size() != before
+
+## CPU v2: a target that can never use this Energy - a bench token / attack-less Pokémon with no evolution that could.
+func _cpu_energy_dead_target(p: card_object, e: card_object) -> bool:
+	if not (p.is_bench_token or main.get_attacks_for_card(p).is_empty()):
+		return false
+	return _cpu_energy_helps_evolution(p, e) == 0

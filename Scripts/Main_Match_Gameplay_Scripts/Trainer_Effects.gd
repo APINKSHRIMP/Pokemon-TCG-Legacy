@@ -9,6 +9,7 @@ extends Node
 #
 
 var main: Node
+const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")   # CPU v2 rule switches
 
 # ── Trainer dispatch registry ──────────────────────────────────────────────────
 # Maps lowercased card UID → async Callable(card, is_opponent).
@@ -980,6 +981,30 @@ func _score_card_for_discard(card: card_object) -> float:
 		if already_in_play and main.opponent_bench.size() >= 2:
 			return 10.0
 	
+	# CPU v2 (user, 2026-11-14) discard rules:
+	#   Bill is never thrown away - played, it is always +1 card.
+	#   Double Colorless is two Energy in one: kept while anything in play / hand / the next few draws can use it,
+	#   and the first thing to go when nothing can.
+	#   Evolutions follow cpu_hold_evolution: a live Stage 2 stays unless the hand is stuck or the piece isn't coming.
+	if CpuWeights.on("rule.v2_discard"):
+		if card.uid.to_lower() == "base1-91" and not main.trainer_effects.opponent_trainer_locked:
+			return 99.0
+		# Two Professor Oaks in hand = one of them is dead weight (only one hand can be thrown away a turn): the spare
+		# copy is ideal Computer Search / Maintenance fodder.
+		if main.cpu_ai.cpu_is_hand_replacer(card):
+			var copies: Array = main.opponent_hand.filter(func(h): return h.metadata.get("name", "") == card.metadata.get("name", ""))
+			if copies.size() >= 2 and copies[0] != card:
+				return 24.0   # only the spare copy - the first one is still the turn's refresh
+		if supertype == "energy" and is_double_colorless_energy(card):
+			return main.cpu_ai.cpu_dce_keep_value()
+		if supertype == "pokémon" and not main.is_basic_pokemon(card):
+			if main.cpu_ai.cpu_hold_evolution(card):
+				return 95.0 if "Stage 2" in subtypes else 82.0
+			var ls: int = main.cpu_ai.cpu_evolution_line_state(card)
+			if ls < 0:
+				return 12.0
+			return 40.0 if "Stage 2" in subtypes else 34.0
+
 	# Priority 2: Energy — OLD ISSUE 373: valued by what the board still needs (an Energy type nothing uses goes
 	# first, a needed type stays, the last Energy in hand stays).
 	if supertype == "energy":
@@ -1082,7 +1107,11 @@ func _cpu_pokedex_priority(card: card_object) -> float:
 	var score = 0.0
 	var name = card.metadata.get("name", "").to_lower()
 	var supertype = card.metadata.get("supertype", "").to_lower()
-	
+	# CPU v2: the card the board needs right now (evolution onto a ready line, the missing Energy, the KO PlusPower...);
+	# Bill stays near the top - drawn, it always nets a card.
+	if CpuWeights.on("rule.v2_search"):
+		return 20.0 + float(main.cpu_ai.cpu_card_need(card)["v"]) + main.cpu_ai.cpu_rank_keep_value(card) * 0.4 + (45.0 if name == "bill" else 0.0)
+
 	if name == "bill" or name == "professor oak":
 		score += 100.0
 	elif supertype == "energy":
@@ -1960,6 +1989,15 @@ func effect_computer_search(played_card: card_object, is_opponent: bool) -> void
 	if is_opponent:
 		# CPU: use discard priority and search priority
 		var to_discard = cpu_get_discard_priority(hand, 2, played_card)
+		# CPU v2 (user, 2026-11-14): take the card the play was planned for (never Bill), and keep the cards that plan
+		# needs (the Stage 1 a fetched Basic is for) out of the discards.
+		var cs_pick: card_object = null
+		if CpuWeights.on("rule.v2_search"):
+			var plan: Dictionary = main.cpu_ai.cpu_computer_search_choice(played_card)
+			if not plan.is_empty() and plan.get("discards", []).size() >= mini(2, hand.size() - 1):
+				to_discard = plan["discards"]
+				cs_pick = plan["card"]
+				print("CPU v2: Computer Search takes ", cs_pick.metadata.get("name", ""), " - ", plan.get("why", ""))
 		for card in to_discard:
 			hand.erase(card)
 			card.current_location = "discard"
@@ -1967,7 +2005,7 @@ func effect_computer_search(played_card: card_object, is_opponent: bool) -> void
 		main.refresh_hand_display(true)
 		
 		# CPU search logic
-		var search_card = main.cpu_ai.cpu_search_deck_for_best_card(deck)
+		var search_card = cs_pick if cs_pick != null and deck.has(cs_pick) else main.cpu_ai.cpu_search_deck_for_best_card(deck)
 		if search_card != null:
 			deck.erase(search_card)
 			search_card.current_location = "hand"
@@ -2169,6 +2207,13 @@ func effect_item_finder(played_card: card_object, is_opponent: bool) -> void:
 	
 	if is_opponent:
 		var to_discard = cpu_get_discard_priority(hand, 2, played_card)
+		# CPU v2: the Trainer the play was planned for (Oak onto the emptied hand, PlusPower for a KO...), with the
+		# discards that plan chose.
+		var if_plan: Dictionary = {}
+		if CpuWeights.on("rule.v2_search"):
+			if_plan = main.cpu_ai.cpu_plan_search(played_card, trainers_in_discard, 2)
+			if not if_plan.is_empty():
+				to_discard = if_plan["discards"]
 		for card in to_discard:
 			hand.erase(card)
 			card.current_location = "discard"
@@ -2182,6 +2227,8 @@ func effect_item_finder(played_card: card_object, is_opponent: bool) -> void:
 			if score > best_score:
 				best_score = score
 				best_trainer = t
+		if not if_plan.is_empty() and discard.has(if_plan["card"]):
+			best_trainer = if_plan["card"]
 		if best_trainer != null:
 			discard.erase(best_trainer)
 			best_trainer.current_location = "hand"
@@ -2439,13 +2486,20 @@ func effect_pokemon_trader(played_card: card_object, is_opponent: bool) -> void:
 		# the Pokémon shuffled in and the one taken out, with a message + animation for each step:
 		#   1) message "shuffled X into their deck" 2) fly X (face-up) hand->deck 3) shuffle animation
 		#   4) message "added Y to their hand"      5) fly Y (face-up) deck->hand.
-		var trade_away = cpu_get_discard_priority(pokemon_in_hand, 1, played_card)
-		if trade_away.size() == 0:
-			return
-		var card_to_trade = trade_away[0]
+		# CPU v2: choose what to take FIRST, then never trade away the card it is for (Ivysaur out, Bulbasaur in).
 		var search_card = main.cpu_ai.cpu_search_deck_for_best_pokemon(pokemon_in_deck)
 		if search_card == null:
 			return
+		var trade_pool: Array = pokemon_in_hand
+		if CpuWeights.on("rule.v2_search"):
+			var partners: Array = main.cpu_ai._cpu_need_partners(search_card)
+			var unprotected: Array = pokemon_in_hand.filter(func(c): return not partners.has(c))
+			if not unprotected.is_empty():
+				trade_pool = unprotected
+		var trade_away = cpu_get_discard_priority(trade_pool, 1, played_card)
+		if trade_away.size() == 0:
+			return
+		var card_to_trade = trade_away[0]
 		# Step 1-3: shuffle the hand Pokémon into the deck. ISSUE #45: pop the card up full-screen WITH
 		# the message first (like a played trainer), hide it, THEN animate it moving to the deck.
 		await show_card_with_message(card_to_trade, "Opponent shuffled " + card_to_trade.metadata.get("name", "") + " into their deck!")
@@ -3619,6 +3673,10 @@ func effect_energy_search(is_opponent: bool) -> void:
 		var best_v := -INF
 		for e in basic_energies:
 			var v = main.cpu_ai.cpu_energy_need_value(e)
+			# CPU v2 (user, 2026-11-14): the type the board is still SHORT of once the hand's Energy is counted - it took
+			# a second Grass for a Rhyhorn that needed Fighting because Paras also "wanted" Grass already in hand.
+			if CpuWeights.on("rule.energy_tryon"):
+				v = main.cpu_ai.cpu_energy_fetch_value(e) * 10.0 + v * 0.1
 			if v > best_v:
 				best_v = v
 				chosen = e
@@ -4996,16 +5054,39 @@ func gym1_search_deck_by_name_substring(is_opponent: bool, substr: String, heade
 func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 	var opp_hand = main.player_hand if is_opponent else main.opponent_hand
 	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
-	var opp_is_player = is_opponent  # the SIDE being looked at
+	var opp_is_player = not is_opponent  # display flag (is_opponent) of the SIDE being looked at - CPU v2: was inverted
 	var basics_in_opp_hand: Array = []
 	for c in opp_hand:
 		if main.is_basic_pokemon(c):
 			basics_in_opp_hand.append(c)
 
 	if is_opponent:
-		# CPU plays the card: chooses nothing (no tactical benefit to gifting bench setup). Just reveals + ends.
-		await main.show_message("OPPONENT LOOKED AT YOUR HAND — NOTHING WAS BENCHED")
+		# CPU v2: it plays this to bench a Basic it can Gust up and Knock Out (see _cpu_score_gym1_erikas_perfume):
+		# bench exactly the Basics its Active can KO in one hit.
+		var me = main.opponent_active_pokemon
+		var picks: Array = []
+		for c in basics_in_opp_hand:
+			if opp_bench.size() + picks.size() >= main.get_max_bench_size():
+				break
+			if me != null and main.cpu_ai._cpu_best_damage(me, me.attached_energies, c) >= c.get_max_hp():
+				picks.append(c)
+		if picks.is_empty():
+			await main.show_message("OPPONENT LOOKED AT YOUR HAND — NOTHING WAS BENCHED")
+			if main._should_bail(): return
+			return
+		for c in picks:
+			opp_hand.erase(c)
+			c.current_hp = c.get_max_hp()
+			c.current_location = "bench"
+			c.placed_on_field_this_turn = true
+			opp_bench.append(c)
+		main.refresh_hand_display(false)
+		main.display_pokemon(false)
+		await main.show_message("ERIKA'S PERFUME — OPPONENT PUT " + str(picks.size()) + " OF YOUR BASIC(S) ON YOUR BENCH!")
 		if main._should_bail(): return
+		for c in picks:
+			await gym2_minefield_gym_trigger(c, false)
+			if main._should_bail(): return
 		return
 
 	# Player plays the card: shows opp hand face-up, then picks basics to bench

@@ -11629,6 +11629,9 @@ func load_opponent_data_by_name(opp_name: String):
 			opponent_data = GameState.autotest_opponent_data.duplicate(true)   # AUTOTEST --real: a real opponent's rules
 		# Reset per match, or a "never retreat" opponent's setting would carry into a test match.
 		CpuWeights.retreat_rate = clampf(float(opponent_data.get("cpu_retreat_rate", 1.0)), 0.0, 1.0)
+		# CPU v2: foresight off unless the opponent says otherwise (A/B 2026-11-14: on = -1.3 pt). The autotester sets its own.
+		if GameState.autotest == null:
+			CpuWeights.cheat_cards = clampf(float(opponent_data.get("cpu_cheat_cards", 0.0)), 0.0, 1.0)
 		return
 
 	opponent_data = CharacterSchedule.find_opponent(
@@ -11638,7 +11641,7 @@ func load_opponent_data_by_name(opp_name: String):
 	opponent_data.merge(GameState.forced_opponent_overrides, true)
 	# OLD ISSUE 375 foresight dials (0.0-1.0): "cpu_cheat_cards" = sees its Prizes + the player's hand/next draw (subtle);
 	# "cpu_cheat_coins" = knows its coin results before choosing (obvious — keep separate).
-	CpuWeights.cheat_cards = clampf(float(opponent_data.get("cpu_cheat_cards", 0.0)), 0.0, 1.0)
+	CpuWeights.cheat_cards = clampf(float(opponent_data.get("cpu_cheat_cards", 0.0)), 0.0, 1.0)   # CPU v2: off by default (A/B)
 	CpuWeights.cheat_coins = clampf(float(opponent_data.get("cpu_cheat_coins", 0.0)), 0.0, 1.0)
 	# OLD ISSUE 375 phase 3: "cpu_plan_turns" — how many turns ahead this opponent plans (0 = off).
 	CpuWeights.plan_turns = int(opponent_data.get("cpu_plan_turns", 0))

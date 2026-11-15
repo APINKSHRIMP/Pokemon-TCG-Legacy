@@ -135,7 +135,7 @@ static func set_learned(table: Dictionary) -> void:
 #                 for a flip that will fail), so it is a separate switch.
 # Between 0 and 1 each decision uses the knowledge with that probability (sometimes it still makes the "honest" choice).
 # Opponent JSON: "cpu_cheat_cards" / "cpu_cheat_coins" (Main loads them); autotester: --cheat-cards= / --cheat-coins=.
-static var cheat_cards := 0.0
+static var cheat_cards := 0.0   # CPU v2: foresight tested 2026-11-14 (A/B -1.3 pt vs off) - off by default, per-opponent "cpu_cheat_cards" turns it on
 static var cheat_coins := 0.0
 static var _cheat_rng := RandomNumberGenerator.new()
 

@@ -75,7 +75,7 @@ var opt_weights_path := ""         # --weights=<abs path>: CPU weight multiplier
 var opt_result_path := ""          # --result=<abs path>: one JSON line per match, then {"done": true}
 var opt_synergy_path := ""        # --synergy=<abs path>: learned synergy table for this job ("" = none)
 var opt_branch_plan: Dictionary = {}   # --branch-plan=<abs path>: {"seed": decision number to branch at} (lab)
-var opt_cheat_cards := 0.0         # --cheat-cards=0..1: CPU sees Prizes + player hand/next draw (OLD ISSUE 375)
+var opt_cheat_cards := 0.0        # --cheat-cards=0..1: CPU sees Prizes + player hand/next draw (OLD ISSUE 375)
 var opt_cheat_coins := 0.0         # --cheat-coins=0..1: CPU knows its coin results (OLD ISSUE 375)
 var opt_counters_path := ""        # --counters=<abs path>: learned counter table for this job
 var opt_record := false            # --record: also run the dev match recorder (to test it)
@@ -349,7 +349,7 @@ func _play_match(i: int) -> void:
 	match_seed = opt_seed + i
 	seed(match_seed)
 	CpuWeights.seed_explore(match_seed * 7919 + 13)
-	CpuWeights.cheat_cards = opt_cheat_cards if opt_tune else 0.0
+	CpuWeights.cheat_cards = opt_cheat_cards   # CPU v2: --cheat-cards=1 = foresight (off by default, like the game)
 	CpuWeights.cheat_coins = opt_cheat_coins if opt_tune else 0.0
 	CpuWeights.plan_turns = opt_plan_turns
 	CpuWeights.plan_ms_total = 0.0
