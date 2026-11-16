@@ -303,9 +303,18 @@ func cpu_turn_orchestrator() -> void:
 	# can each unlock a power that wasn't usable earlier in the turn — see ISSUE base1-2.
 	print("ISSUE base1-2 FIX ACTIVE: final CPU power re-check before attack")
 	cpu_final_power_check = true   # OLD ISSUE 373: turn-ending powers are only weighed here
+	var energy_before_final: int = main.opponent_hand.filter(func(c): return c.metadata.get("supertype", "") == "Energy").size()
 	await main.powers_and_bodies.cpu_phase_activate_powers()
 	cpu_final_power_check = false
 	if main._should_bail(): return
+	# AUDIT 2026-11-16: that pass can put Energy into the hand (Energy Stadium heads) after the Energy step - the CPU
+	# then ended the turn holding a Fire Energy its Pokémon needed. Attach it now if the turn's attach is unused.
+	var energy_after_final: int = main.opponent_hand.filter(func(c): return c.metadata.get("supertype", "") == "Energy").size()
+	if energy_after_final > energy_before_final and not main.opponent_energy_played_this_turn and not main.opponent_turn_force_end:
+		print("AUDIT 2026-11-16 FIX ACTIVE: Energy arrived in the final power pass - re-running the Energy step")
+		invalidate_cpu_evaluation()
+		await cpu_phase_energy_attachment(get_cpu_evaluation())
+		if main._should_bail(): return
 	if main.opponent_turn_force_end:
 		main.opponent_turn_force_end = false
 		await get_tree().create_timer(GameState.match_time(0.5)).timeout
@@ -2273,6 +2282,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# kept in hand it can still go on the next real attacker.
 	if CpuWeights.on("rule.energy_tryon"):
 		scored_pairs = scored_pairs.filter(func(sp): return not _cpu_energy_dead_target(sp["pokemon"], sp["energy_card"]))
+	scored_pairs = scored_pairs.filter(func(sp): return not _cpu_one_turn_energy_wasted(sp["pokemon"], sp["energy_card"]))
 	if scored_pairs.is_empty():
 		print("CPU: Not attaching Energy — holding energy cards but every attachment is blocked (e.g. Cursed Glare)")
 		return
@@ -3201,7 +3211,13 @@ func score_parsed_effects(effects: Array, defender: card_object) -> float:
 			score += 20.0 * flip_mult
 
 		if effect["type"] == "draw":
-			score += 15.0 * effect.get("count", 1)
+			# AUDIT 2026-11-16: drawing the last card(s) means losing at the next turn's draw (the CPU used Lap Up
+			# with 1 card left). Value only the cards the deck can give, and never empty it.
+			var d_count: int = int(effect.get("count", 1))
+			if main.opponent_deck.size() <= d_count:
+				score -= 100.0
+			else:
+				score += 15.0 * d_count
 
 		if effect["type"] == "self_heal":
 			var max_hp = int(effects[0].get("damage", 0)) if false else 0
@@ -4880,6 +4896,12 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 				print("ISSUE #455 FIX ACTIVE: CPU skips ", entry["name"], " - no Benched Pokemon is a better target than the Active; ending the turn")
 				cpu_skip_reason = "pointless_switch"
 				return
+	# AUDIT 2026-11-16: a no-damage draw attack that empties our own deck loses the game at the next draw (Lap Up with 1
+	# card left) - a person ends the turn instead. Even the only payable attack is skipped.
+	if not _scripted_attack and _cpu_attack_decks_out(attacks[best_attack_index]):
+		print("AUDIT 2026-11-16 FIX ACTIVE: CPU skips ", attacks[best_attack_index].get("name", ""), " - it would draw its deck empty")
+		cpu_skip_reason = "deck_out_draw"
+		return
 	# Execute the chosen attack
 	var chosen_attack = attacks[best_attack_index]
 	var chosen_name = chosen_attack.get("name", "")
@@ -11208,7 +11230,38 @@ func _cpu_bench_before_wipe(card: card_object) -> bool:
 	return main.opponent_bench.size() != before
 
 ## CPU v2: a target that can never use this Energy - a bench token / attack-less Pokémon with no evolution that could.
+## AUDIT 2026-11-16: get_attacks_for_card() is EMPTY while an attack lock holds (Power Saver, Mark of Antiquity,
+## Intimidating Ring/Armor), so Team Magma's Groudon / Team Aqua's Kyogre counted as "can never use Energy" and the CPU
+## sat 13+ turns holding Energy. Only a Pokémon with no PRINTED attacks (and nothing granting one) is dead.
 func _cpu_energy_dead_target(p: card_object, e: card_object) -> bool:
-	if not (p.is_bench_token or main.get_attacks_for_card(p).is_empty()):
-		return false
+	if not p.is_bench_token:
+		if not p.metadata.get("attacks", []).is_empty() or not main.get_attacks_for_card(p).is_empty():
+			return false
 	return _cpu_energy_helps_evolution(p, e) == 0
+
+## AUDIT 2026-11-16: true when `atk` does no damage and its "draw N cards" would empty the CPU's deck.
+func _cpu_attack_decks_out(atk: Dictionary) -> bool:
+	var me = main.opponent_active_pokemon
+	var foe = main.player_active_pokemon
+	if me == null or foe == null:
+		return false
+	var draws := 0
+	for e in main.attack_effects.parse_card_text_effects(String(atk.get("text", "")), me.metadata.get("name", "")):
+		if e.get("type", "") == "draw":
+			draws += int(e.get("count", 1))
+	if draws <= 0 or main.opponent_deck.size() > draws:
+		return false
+	return int(main.attack_effects.estimate_attack_damage_range(atk, me, foe).get("max", 0)) <= 0
+
+## AUDIT 2026-11-16: R / Boost / Miracle Energy are discarded at the end of the turn (they used to stay forever).
+## Only worth attaching to the Active, when it can attack this turn and the Energy adds damage (unlocks an attack,
+## or R Energy's +10).
+func _cpu_one_turn_energy_wasted(p: card_object, e: card_object) -> bool:
+	if not main.special_energy_effects.must_discard_end_of_turn(e.metadata.get("name", "")):
+		return false
+	var foe = main.player_active_pokemon
+	if p != main.opponent_active_pokemon or foe == null or not _cpu_active_can_attack_or_could(p):
+		return true
+	var with_e: Array = p.attached_energies.duplicate()
+	with_e.append(e)
+	return _cpu_best_damage(p, with_e, foe) <= _cpu_best_damage(p, p.attached_energies, foe)

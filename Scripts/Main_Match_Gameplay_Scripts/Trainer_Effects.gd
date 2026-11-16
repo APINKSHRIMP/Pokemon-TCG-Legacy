@@ -1174,7 +1174,9 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 		return "Primal Lock: you can't play Pokémon Tool cards!"
 
 	# Team Aqua / Team Magma Belt: "Attach ... to 1 of your Pokémon with Team X in its name".
-	var team_ok := tool_team_filter(card)
+	# AUDIT 2026-11-16: Tools only. The text test also matched Archie, Maxie, the Schemers and the Conspirators
+	# ("a Pokémon with Team Aqua in its name"), so those Supporters were refused unless a Team Pokémon was in play.
+	var team_ok := tool_team_filter(card) if "Pokémon Tool" in card.metadata.get("subtypes", []) else Callable()
 	if team_ok.is_valid() and not build_field_pokemon_array(is_opponent).any(func(p): return team_ok.call(p)):
 		return "You have no Pokémon this Tool can be attached to!"
 
@@ -4227,6 +4229,11 @@ func gym1_prompt_yes_no(anchor_card: card_object, header_text: String, hint_text
 	# cancel path emits the same signal) — the flag must not outlive the question
 	# or it would keep those keys bound for the rest of the match.
 	main.yes_no_prompt_active = true
+	# FIX 2026-11-16: perform_attack() raises the full-screen opponent_blocker the moment an attack is chosen, so a
+	# "you may" question asked mid-attack (Dark Bind's discard) showed but its buttons couldn't be clicked.
+	# Same remember/hide/restore as card_ops.prompt_select_card.
+	var restore_opponent_blocker: bool = main.opponent_blocker.visible
+	main.opponent_blocker.visible = false
 	main.show_enlarged_array_selection_mode([anchor_card])
 	main.header_label.text = header_text
 	main.hint_label.text = hint_text
@@ -4244,6 +4251,7 @@ func gym1_prompt_yes_no(anchor_card: card_object, header_text: String, hint_text
 	main.hide_selection_mode_display_main()
 	main.cancel_button.text = "Cancel"
 	main.cancel_button.theme = main.theme_negative   # ISSUE #292
+	main.opponent_blocker.visible = restore_opponent_blocker
 	return pressed_yes
 
 # Called from inbetween_turn_checks at end of the side's own turn. Handles Charity return-to-hand, Sabrina's ESP discard,
@@ -4693,6 +4701,10 @@ func prompt_option_buttons(message: String, labels: Array) -> int:
 		return -1
 	main.special_attack_selection_active = true
 	main.buttons_only_blocker.visible = true
+	# FIX 2026-11-16: mid-attack the full-screen opponent_blocker is up (perform_attack), covering these buttons -
+	# the same trap ISSUE #3 fixed for Metronome's list. Hidden while the choice is open, restored after.
+	var restore_opponent_blocker: bool = main.opponent_blocker.visible
+	main.opponent_blocker.visible = false
 	main.attack_buttons_container.visible = true
 	main.main_buttons_container.visible = false
 	for child in main.attack_buttons_container.get_children():
@@ -4721,6 +4733,7 @@ func prompt_option_buttons(message: String, labels: Array) -> int:
 	main.main_buttons_container.visible = true
 	main.special_attack_selection_active = false
 	main.buttons_only_blocker.visible = false
+	main.opponent_blocker.visible = restore_opponent_blocker
 	return selected_index
 
 # OLD ISSUE 308: "draw up to N" for either side. Player picks 0..max_n from buttons; the CPU draws as many as

@@ -22,7 +22,14 @@ func draw_n(is_opponent: bool, count: int) -> void:
 	# in this batch, so redrawing a full hand doesn't take as long as drawing that many cards
 	# individually would.
 	var speed_multiplier = main.draw_animation_speed_multiplier(count)
+	var deck: Array = main.opponent_deck if is_opponent else main.player_deck
 	for i in range(count):
+		# AUDIT 2026-11-16: an effect that draws more cards than the deck holds just draws what is there.
+		# draw_card_from_deck() ends the game on an empty deck - right for the start-of-turn draw (which calls it
+		# directly), wrong here: Lap Up with 1 card left made the CPU lose mid-attack.
+		if deck.is_empty():
+			print("AUDIT 2026-11-16 FIX ACTIVE: effect draw stopped at an empty deck (", count - i, " card(s) not drawn)")
+			break
 		await main.draw_card_from_deck(is_opponent, speed_multiplier)
 		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
@@ -657,6 +664,10 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 		# Player chooses which energy to discard. When cancelable, the Cancel button aborts the
 		# whole effect (returns null so the caller can refund) — ISSUE #26.
 		main.defender_energy_discard_active = true
+		# FIX 2026-11-16: asked mid-attack (Energy costs, Energy removal) - lower the attack-time opponent_blocker
+		# like prompt_select_card does, or the picker can't be clicked.
+		var restore_opponent_blocker: bool = main.opponent_blocker.visible
+		main.opponent_blocker.visible = false
 		main.show_enlarged_array_selection_mode(target.attached_energies)
 		main.header_label.text = "DISCARD AN ENERGY"
 		main.hint_label.text = "Choose which energy to discard"
@@ -672,6 +683,7 @@ func remove_one_energy(target: card_object, target_owner_is_opponent: bool,
 		chosen = await main.defender_energy_chosen
 		main.defender_energy_discard_active = false
 		main.hide_selection_mode_display_main()
+		main.opponent_blocker.visible = restore_opponent_blocker
 		if main._should_bail(): return null
 
 	if chosen == null:

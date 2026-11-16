@@ -2053,6 +2053,14 @@ func execute_mirror_move(attacker: card_object, defender: card_object, is_oppone
 	await main.check_all_knockouts()
 
 # AMNESIA (Poliwhirl): Disable one of the opponent's attacks for next turn
+## FIX 2026-11-16: perform_attack() raises the full-screen opponent_blocker the moment the player picks an attack, so
+## any button row / picker the attack then opens for the player sat UNDER it and couldn't be clicked (the ISSUE #3
+## Metronome trap; Dark Bind's yes/no). Lower it while the player chooses; the caller restores the returned state.
+func _lower_attack_blocker() -> bool:
+	var was: bool = main.opponent_blocker.visible
+	main.opponent_blocker.visible = false
+	return was
+
 func execute_amnesia(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
 	var defender_attacks = main.get_attacks_for_card(defender)
 	if defender_attacks.size() == 0:
@@ -2081,6 +2089,7 @@ func execute_amnesia(attacker: card_object, defender: card_object, is_opponent: 
 	else:
 		main.special_attack_selection_active = true
 		main.buttons_only_blocker.visible = true
+		var _atk_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16: buttons were under the attack blocker
 		
 		for child in main.attack_buttons_container.get_children():
 			if child.name == "cancel_attack_mode_button":
@@ -2115,6 +2124,7 @@ func execute_amnesia(attacker: card_object, defender: card_object, is_opponent: 
 		main.main_buttons_container.visible = true
 		main.special_attack_selection_active = false
 		main.buttons_only_blocker.visible = false
+		main.opponent_blocker.visible = _atk_ob
 	
 	if chosen_attack_name != "":
 		defender.disabled_attacks[chosen_attack_name] = "end_of_turn"
@@ -2166,6 +2176,7 @@ func execute_conversion(attacker: card_object, defender: card_object, is_opponen
 		
 		if energy_cards.size() > 0:
 			main.energy_type_selection_active = true
+			var _cv_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16
 			main.show_enlarged_array_selection_mode(energy_cards)
 			main.cancel_button.visible = false
 			if is_conversion_1:
@@ -2181,6 +2192,7 @@ func execute_conversion(attacker: card_object, defender: card_object, is_opponen
 			chosen_type = main.selected_card_for_action.metadata.get("name", "").replace(" Energy", "").strip_edges() if main.selected_card_for_action else ""
 			main.energy_type_selection_active = false
 			main.hide_selection_mode_display_main()
+			main.opponent_blocker.visible = _cv_ob
 	
 	if chosen_type != "" and chosen_type != "Colorless":
 		if is_conversion_1:
@@ -3893,6 +3905,7 @@ func execute_prophecy(attacker: card_object, is_opponent: bool) -> void:
 		
 		main.special_attack_selection_active = true
 		main.buttons_only_blocker.visible = true
+		var _atk_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16: buttons were under the attack blocker
 		main.attack_buttons_container.visible = true
 		main.main_buttons_container.visible = false
 		for child in main.attack_buttons_container.get_children():
@@ -3926,6 +3939,7 @@ func execute_prophecy(attacker: card_object, is_opponent: bool) -> void:
 		main.main_buttons_container.visible = true
 		main.special_attack_selection_active = false
 		main.buttons_only_blocker.visible = false
+		main.opponent_blocker.visible = _atk_ob
 		
 		var deck = main.player_deck if deck_choice == 0 else main.opponent_deck
 		var deck_name = "YOUR" if deck_choice == 0 else "OPPONENT'S"
@@ -4805,6 +4819,7 @@ func execute_flame_pillar(attacker: card_object, defender: card_object, is_oppon
 			# Player chooses: show yes/no via attack selection buttons
 			main.special_attack_selection_active = true
 			main.buttons_only_blocker.visible = true
+			var _atk_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16: buttons were under the attack blocker
 			main.attack_buttons_container.visible = true
 			main.main_buttons_container.visible = false
 			for child in main.attack_buttons_container.get_children():
@@ -4842,6 +4857,7 @@ func execute_flame_pillar(attacker: card_object, defender: card_object, is_oppon
 			main.main_buttons_container.visible = true
 			main.special_attack_selection_active = false
 			main.buttons_only_blocker.visible = false
+			main.opponent_blocker.visible = _atk_ob
 		
 		if do_discard:
 			# OLD ISSUE 371: the owner picks which Fire Energy card (a basic one was picked automatically).
@@ -5904,6 +5920,7 @@ func execute_magic_pollen(attacker: card_object, defender: card_object, is_oppon
 	else:
 		main.special_attack_selection_active = true
 		main.buttons_only_blocker.visible = true
+		var _atk_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16: buttons were under the attack blocker
 		main.attack_buttons_container.visible = true
 		main.main_buttons_container.visible = false
 		for child in main.attack_buttons_container.get_children():
@@ -5930,6 +5947,7 @@ func execute_magic_pollen(attacker: card_object, defender: card_object, is_oppon
 		main.main_buttons_container.visible = true
 		main.special_attack_selection_active = false
 		main.buttons_only_blocker.visible = false
+		main.opponent_blocker.visible = _atk_ob
 	var effect = {"type": "status", "target": "defender", "status": chosen, "flip": "none"}
 	await main.apply_status_effect(effect, attacker, defender, is_opponent)
 	if main._should_bail(): return
@@ -12274,13 +12292,14 @@ func execute_neo3_core_stream(attacker: card_object, is_opponent: bool) -> void:
 				best_count = count
 				chosen_type = et
 	else:
-		var opts: Array = []
+		# FIX 2026-11-16: same blank-screen bug as the Special Condition chooser (art-less fake "cards") - buttons now.
+		var type_labels: Array = []
 		for t in energy_types:
-			opts.append(card_object.new("type_" + t, {"name": t}))
-		var pick = await main.card_ops.prompt_select_card(opts, "CORE STREAM!", "Choose an Energy type to deal 20 damage to each opponent Pokemon with that Energy", "SELECT", false)
+			type_labels.append(String(t).to_upper())
+		var t_idx: int = await main.trainer_effects.prompt_option_buttons("CORE STREAM! CHOOSE AN ENERGY TYPE - 20 DAMAGE TO EACH OPPONENT POKEMON WITH THAT ENERGY", type_labels)
 		if main._should_bail(): return
-		if pick != null:
-			chosen_type = pick.metadata.get("name","Fire")
+		if t_idx >= 0 and t_idx < energy_types.size():
+			chosen_type = energy_types[t_idx]
 	var opp_active2 = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
 	var opp_bench2 = main.player_bench if is_opponent else main.opponent_bench
 	var all_targets: Array = []
@@ -22590,13 +22609,16 @@ func choose_special_condition(is_opponent: bool, header: String, cpu_pick: Strin
 		# OLD ISSUE 375: the CPU picks the condition worth most on THIS board (shared status maths), not a fixed one.
 		var smart: String = main.cpu_ai.cpu_pick_status(allowed)
 		return smart if smart != "" else cpu_pick
-	var options: Array = []
+	# FIX 2026-11-16: the choices used to be fake "cards" (uid "opt_asleep"...) in the card picker - they have no
+	# art, so the player saw a blank screen (Team Aqua TM Miracle). One labelled button per condition instead.
+	var labels: Array = []
 	for s in allowed:
-		options.append(card_object.new("opt_" + s.to_lower(), {"name": s}))
-	var chosen = await main.card_ops.prompt_select_card(options, header, "Choose a Special Condition", "SELECT", false)
+		labels.append(String(s).to_upper())
+	var prompt_text: String = header if "CONDITION" in header.to_upper() else header + " CHOOSE A SPECIAL CONDITION"
+	var idx: int = await main.trainer_effects.prompt_option_buttons(prompt_text, labels)
 	if main._should_bail(): return cpu_pick
-	if chosen != null:
-		return chosen.metadata.get("name", cpu_pick)
+	if idx >= 0 and idx < allowed.size():
+		return String(allowed[idx])
 	return cpu_pick
 
 # MIRACLE POWDER (Bellossom ex5-16): base damage, then flip — heads: choose 1 Special Condition and
@@ -27109,6 +27131,7 @@ func _ex10_choose_int(header: String, hint: String, options: Array) -> int:
 func _ex10_choose_index(header: String, hint: String, options: Array) -> int:
 	main.special_attack_selection_active = true
 	main.buttons_only_blocker.visible = true
+	var _atk_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16: buttons were under the attack blocker
 	for child in main.attack_buttons_container.get_children():
 		if child.name == "cancel_attack_mode_button": continue
 		child.queue_free()
@@ -27134,6 +27157,7 @@ func _ex10_choose_index(header: String, hint: String, options: Array) -> int:
 	main.main_buttons_container.visible = true
 	main.special_attack_selection_active = false
 	main.buttons_only_blocker.visible = false
+	main.opponent_blocker.visible = _atk_ob
 	return int(idx)
 
 # Star "if you have fewer Prize cards left than your opponent" self-penalty attacks (Suicune/Entei/Raikou ★).

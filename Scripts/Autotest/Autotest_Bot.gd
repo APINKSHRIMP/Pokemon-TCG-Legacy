@@ -88,13 +88,27 @@ func _answer_prompts() -> bool:
 		return true
 	# 3. A row of buttons (option prompts, attack copy menus, the Power menu).
 	if main.attack_buttons_container.visible:
+		_check_input_blocked("button row")
 		return _answer_buttons()
 	# 4. The card selection screen.
 	if main.card_selection_mode_enabled:
+		_check_input_blocked("selection screen")
 		return _answer_selection()
 	_prompt_key = ""
 	_prompt_attempts = 0
 	return false
+
+
+## 2026-11-16: the bot answers by emitting signals, so a prompt a PERSON couldn't click was invisible to it (Dark
+## Bind's yes/no sat under the full-screen opponent_blocker that perform_attack raises). Any prompt waiting for an
+## answer while that blocker is up is reported - one report per prompt header per match.
+func _check_input_blocked(kind: String) -> void:
+	if runner == null or not main.opponent_blocker.visible:
+		return
+	var header: String = str(main.header_label.text) if kind == "selection screen" else "buttons: " + ", ".join(PackedStringArray(
+		main.attack_buttons_container.get_children().filter(func(c): return c is Button and c.visible).map(func(c): return c.text)))
+	runner._problem("INPUT BLOCKED", "a %s was waiting for the player but opponent_blocker covered it — %s" % [kind, header],
+		"blocked" + kind + header.left(60))
 
 
 func _answer_buttons() -> bool:

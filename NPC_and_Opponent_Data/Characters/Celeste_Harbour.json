@@ -3102,6 +3102,46 @@
           "times": "E"
         }
       ]
+    },
+    "Team Magma Archie": {
+      "says": {
+        "meet": "Hm",
+        "repeat": "Hmm",
+        "first_win": "Hmmm",
+        "rematch_win": "Hmmmmm",
+        "loss": "Hmmmmmmmmmm"
+      },
+      "sleeve": "Team_Magma",
+      "move": "idle_random",
+      "days": "12",
+      "times": "B",
+      "at": [-135, 684]
+    },
+    "Team Magma Maxie": {
+      "says": {
+        "meet": "........",
+        "repeat": "........",
+        "first_win": "........",
+        "rematch_win": "........",
+        "loss": "........"
+      },
+      "sleeve": "Team_Magma",
+      "move": "idle_random",
+      "times": "M,A,E,N",
+      "at": [-17, 734]
+    },
+    "Team Aqua Archie": {
+      "says": {
+        "meet": "asdadas",
+        "repeat": "asdadas",
+        "first_win": "asdadas",
+        "rematch_win": "asdadas",
+        "loss": "asdadas"
+      },
+      "sleeve": "Team_Aqua",
+      "move": "idle_random",
+      "times": "M,A,E,N",
+      "at": [87, 741]
     }
   }
 }

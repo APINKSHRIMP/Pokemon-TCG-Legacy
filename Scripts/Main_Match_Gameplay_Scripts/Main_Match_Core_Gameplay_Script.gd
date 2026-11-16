@@ -3217,9 +3217,23 @@ func refresh_both_hands() -> void:
 
 func refresh_hand_display(is_opponent: bool) -> void:
 	if is_opponent:
-		display_hand_cards_array(opponent_hand, opponent_hand_container, OPP_HAND_CARD, hide_hidden_cards, 400, 7, opponent_sleeve_small)
+		_clairvoyance_shown = _clairvoyance_on()
+		display_hand_cards_array(opponent_hand, opponent_hand_container, OPP_HAND_CARD, hide_hidden_cards and not _clairvoyance_shown, 400, 7, opponent_sleeve_small)
 	else:
 		display_hand_cards_array(player_hand, player_hand_container, card_scales[11])
+
+## AUDIT 2026-11-16: Clairvoyance (base3-52 Omanyte) - "Your opponent plays with his or her hand face up." Its check
+## (is_clairvoyance_active) was never called, so the Power did nothing. While the player's Omanyte has it working,
+## the CPU's hand is drawn face up. (A CPU Omanyte needs nothing: the CPU never hides information from itself.)
+var _clairvoyance_shown := false
+func _clairvoyance_on() -> bool:
+	return powers_and_bodies != null and powers_and_bodies.is_clairvoyance_active()
+
+## Called on every board redraw: Omanyte arriving, leaving, or falling Asleep/Confused/Paralyzed flips the hand.
+func _sync_clairvoyance_hand() -> void:
+	if _clairvoyance_on() != _clairvoyance_shown:
+		print("AUDIT 2026-11-16 FIX ACTIVE: Clairvoyance ", "on" if not _clairvoyance_shown else "off", " - redrawing the opponent's hand")
+		refresh_hand_display(true)
 
 # Display active and bench pokemon for either player or opponent. is_opponent: true for opponent, false for player
 # ISSUE #440: Fossil Ditto is ALWAYS a copy of the current Defending Pokémon. It was only
@@ -3241,6 +3255,7 @@ func display_pokemon(is_opponent: bool) -> void:
 		var after_o: String = opponent_active_pokemon.uid if opponent_active_pokemon != null else ""
 		if before_p != after_p or before_o != after_o:
 			print("ISSUE #440 FIX ACTIVE: Ditto re-synced on board redraw")
+		_sync_clairvoyance_hand()   # AUDIT 2026-11-16
 	var active_pokemon = opponent_active_pokemon if is_opponent else player_active_pokemon
 	var bench_pokemon_array = opponent_bench if is_opponent else player_bench
 	var active_container = opponent_active_container if is_opponent else player_active_container
@@ -4787,6 +4802,8 @@ const ACTIVE_HP_FONT := 24
 # Clears and rebuilds status condition icons for a pokemon's status container
 func update_status_icons(pokemon: card_object, is_opponent: bool) -> void:
 	_status_fx_diff(pokemon)
+	if not is_opponent:
+		_sync_clairvoyance_hand()   # AUDIT 2026-11-16: an Asleep / Confused / Paralyzed Omanyte stops Clairvoyance
 	var container = opponent_status_container if is_opponent else player_status_container
 	for child in container.get_children():
 		child.queue_free()
@@ -8269,6 +8286,9 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		# Discard PlusPower from player's active at end of player's turn
 		if player_active_pokemon != null:
 			await trainer_effects.discard_pluspower_from_pokemon(player_active_pokemon, false)
+		# AUDIT 2026-11-16: R / Boost / Miracle Energy go at the end of their owner's turn
+		await special_energy_effects.process_end_of_turn_discards(false)
+		if _should_bail(): return
 		# Tick down Defender on opponent's pokemon (Defender discards at end of opponent's NEXT turn)
 		await trainer_effects.tick_defender_counters(true)
 		# GYM1: handle Charity / Sabrina's ESP / Recall / Misty boost expiry for the player's side
@@ -8292,6 +8312,9 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		# Discard PlusPower from opponent's active at end of opponent's turn
 		if opponent_active_pokemon != null:
 			await trainer_effects.discard_pluspower_from_pokemon(opponent_active_pokemon, true)
+		# AUDIT 2026-11-16: R / Boost / Miracle Energy go at the end of their owner's turn
+		await special_energy_effects.process_end_of_turn_discards(true)
+		if _should_bail(): return
 		# Tick down Defender on player's pokemon
 		await trainer_effects.tick_defender_counters(false)
 		# GYM1: handle Charity / Sabrina's ESP / Recall / Misty boost expiry for the opponent's side
@@ -11321,7 +11344,8 @@ func get_retreat_cost(pokemon: card_object) -> int:
 		if side_active != null:
 			side_all.append(side_active)
 		for np in side_all:
-			if np.metadata.get("name", "") == "Nidoqueen" and not powers_and_bodies.is_power_blocked(np):
+			# AUDIT 2026-11-16: the Body, not the name - base2 / ecard3 Nidoqueen have no Family Bonds
+			if np.has_ability("Family Bonds") and not powers_and_bodies.is_power_blocked(np):
 				cost = 0
 				break
 
@@ -11382,7 +11406,8 @@ func get_retreat_cost(pokemon: card_object) -> int:
 	if opponent_active_pokemon != null: all_field_ariados.append(opponent_active_pokemon)
 	all_field_ariados.append_array(opponent_bench)
 	for p in all_field_ariados:
-		if p.metadata.get("name", "") == "Ariados" and not powers_and_bodies.is_power_blocked(p):
+		# AUDIT 2026-11-16: the Body, not the name - neo1 / ex10 Ariados have no Gluey Slime
+		if p.has_ability("Gluey Slime") and not powers_and_bodies.is_power_blocked(p):
 			cost += 1
 			break
 

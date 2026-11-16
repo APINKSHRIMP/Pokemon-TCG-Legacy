@@ -989,7 +989,8 @@ func _oracle_clean(attacker, defender) -> bool:
 		return false
 	for p in [attacker, defender]:
 		if not p.attached_cards.is_empty() or not p.active_effects.is_empty() or p.is_invincible \
-				or p.shielded_damage_threshold > 0 or p.defender_count > 0 or p.pluspower_count > 0 or p.damage_reduction_next_turn > 0:
+				or p.shielded_damage_threshold > 0 or p.defender_count > 0 or p.pluspower_count > 0 or p.damage_reduction_next_turn > 0 \
+				or p.neo4_prevent_high_damage > 0:   # AUDIT 2026-11-16: Pulse Guard (Light Jolteon) - its 0 damage is correct
 			return false
 		# Any other set flag (Scrunch, Swords Dance, Focus Energy, Tail Wag, Giant Growth...) or a Special Energy
 		# (Aqua / Magma Energy +10...) can change the damage — the oracle only judges plain board states.
@@ -1055,6 +1056,10 @@ func attack_end() -> void:
 			var hand: Array = m.opponent_hand if o["is_opp"] else m.player_hand
 			var got: int = hand.size() - int(o["hand_before"])
 			var want_n: int = mini(n, int(o["deck_before"]))
+			# AUDIT 2026-11-16: like the status check - a Confused attacker that hurts itself draws nothing, which is
+			# right; only judge clean boards (match 46: Lap Up "drew 0" after a tails Confusion flip).
+			if got != want_n and not o["clean"]:
+				return
 			oracle_stats["draw"][0] += 1
 			if got != want_n:
 				oracle_stats["draw"][1] += 1

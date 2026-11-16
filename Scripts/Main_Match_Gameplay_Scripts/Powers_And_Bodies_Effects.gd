@@ -1989,9 +1989,8 @@ func is_clairvoyance_active() -> bool:
 		for ability in abilities:
 			if ability.get("name", "") != "Clairvoyance":
 				continue
-			if is_power_blocked_by_status(p):
-				continue
-			if is_toxic_gas_active():
+			# AUDIT 2026-11-16: the full Power gate (status, Toxic Gas, Muk-style locks), as Gluey Slime uses
+			if is_power_blocked(p):
 				continue
 			return true
 	return false
@@ -10193,7 +10192,9 @@ func is_enervating_pollen_active() -> bool:
 	if main.opponent_active_pokemon != null: all_field.append(main.opponent_active_pokemon)
 	all_field.append_array(main.opponent_bench)
 	for p in all_field:
-		if p.metadata.get("name", "") == "Gloom" and not is_power_blocked(p):
+		# AUDIT 2026-11-16: the Body, not the name - only ecard2-49 Gloom has Enervating Pollen (Jungle Gloom
+		# used to weaken every Resistance in the match)
+		if p.has_ability("Enervating Pollen") and not is_power_blocked(p):
 			return true
 	return false
 
@@ -11795,7 +11796,8 @@ func _hook_ex6_power_gene(damage: int, attacker: card_object, defender: card_obj
 		return damage
 	var atk_is_opp = (attacker == main.opponent_active_pokemon or attacker in main.opponent_bench)
 	for p in main.card_ops.get_all_pokemon_in_play(atk_is_opp):
-		if p.metadata.get("name","") == "Nidoking" and not is_power_blocked_by_status(p):
+		# AUDIT 2026-11-16: the Body, not the name - base1 / ecard2 Nidoking have no Power Gene
+		if p.has_ability("Power Gene") and not is_power_blocked_by_status(p):
 			modifiers.append("POWER GENE +10")
 			return damage + 10
 	return damage

@@ -161,6 +161,13 @@ func can_attach_to(energy_card: card_object, target_pokemon: card_object) -> Dic
 ## hold for as long as the card stays attached, so discard_now_illegal() re-runs just this when the
 ## Pokémon changes (evolving into a Pokémon-ex); the attach-time rules above (Cursed Glare, Pure
 ## Body) don't apply there.
+## AUDIT 2026-11-16: "Evolved Pokémon" was tested as "not a Basic", so a Clefairy Doll / Mysterious Fossil (Trainer
+## cards in play) passed and took Boost / Scramble / Double Rainbow Energy. Evolved = a real Stage 1 / Stage 2 Pokémon.
+func _is_evolved_pokemon(p: card_object) -> bool:
+	if p == null or p.is_bench_token or not String(p.metadata.get("supertype", "")).begins_with("Pok"):
+		return false
+	return not main.is_basic_pokemon(p)
+
 func type_lock_check(energy_card: card_object, target_pokemon: card_object) -> Dictionary:
 	var card_name = energy_card.metadata.get("name", "")
 	match card_name:
@@ -169,12 +176,12 @@ func type_lock_check(energy_card: card_object, target_pokemon: card_object) -> D
 			return {"allowed": true, "reason": ""}
 		"Boost Energy":
 			# EX8: can be attached only to an Evolved Pokemon.
-			if main.is_basic_pokemon(target_pokemon):
+			if not _is_evolved_pokemon(target_pokemon):
 				return {"allowed": false, "reason": "BOOST ENERGY CAN ONLY BE ATTACHED TO AN EVOLVED POKEMON!"}
 			return {"allowed": true, "reason": ""}
 		"Scramble Energy":
 			# EX8: can be attached only to an Evolved Pokemon (excluding Pokemon-ex).
-			if main.is_basic_pokemon(target_pokemon) or main.is_ex_pokemon(target_pokemon):
+			if not _is_evolved_pokemon(target_pokemon) or main.is_ex_pokemon(target_pokemon):
 				return {"allowed": false, "reason": "SCRAMBLE ENERGY CAN ONLY BE ATTACHED TO AN EVOLVED POKEMON (NOT ex)!"}
 			return {"allowed": true, "reason": ""}
 		"R Energy":
@@ -192,7 +199,7 @@ func type_lock_check(energy_card: card_object, target_pokemon: card_object) -> D
 			return {"allowed": true, "reason": ""}
 		"Double Rainbow Energy":
 			# Only on Evolved Pokemon, excluding Pokemon-ex
-			if main.is_basic_pokemon(target_pokemon) or main.is_ex_pokemon(target_pokemon):
+			if not _is_evolved_pokemon(target_pokemon) or main.is_ex_pokemon(target_pokemon):
 				return {"allowed": false, "reason": "DOUBLE RAINBOW ENERGY CAN ONLY BE ATTACHED TO AN EVOLVED POKEMON (NOT ex)!"}
 			return {"allowed": true, "reason": ""}
 		"Bounce Energy":
@@ -419,6 +426,10 @@ func must_discard_end_of_turn(card_name: String) -> bool:
 
 # Called during end-of-turn processing. Scans all pokemon on one side and discards
 # any special energies flagged for end-of-turn removal.
+# AUDIT 2026-11-16: this was never called, and it read a field cards don't have (attached_this_turn),
+# so R / Boost / Miracle Energy stayed attached forever. Now run from inbetween_turn_checks for the side
+# whose turn just ended. Each of these can only be attached during its owner's own turn, so "the end of
+# the turn it was attached" and "when your turn ends" are both "the end of the owner's turn".
 func process_end_of_turn_discards(is_opponent: bool) -> void:
 	var all_pokemon: Array = []
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
@@ -433,20 +444,19 @@ func process_end_of_turn_discards(is_opponent: bool) -> void:
 		var to_remove: Array = []
 		for energy in pokemon.attached_energies:
 			var energy_name = energy.metadata.get("name", "")
-			# Only discard if it was attached THIS turn and is flagged for end-of-turn discard
-			if energy.attached_this_turn and must_discard_end_of_turn(energy_name):
+			if must_discard_end_of_turn(energy_name):
 				to_remove.append(energy)
-		
+
 		for energy in to_remove:
 			pokemon.attached_energies.erase(energy)
 			energy.current_location = "discard"
 			discard_pile.append(energy)
-			await main.show_message(energy.metadata.get("name", "").to_upper() + " WAS DISCARDED!")
-			if main._should_bail(): return
-		
-		if to_remove.size() > 0:
+			print("AUDIT 2026-11-16 FIX ACTIVE: end-of-turn discard of ", energy.metadata.get("name", ""), " from ", pokemon.metadata.get("name", ""))
 			main.display_active_pokemon_energies(is_opponent)
+			main.display_pokemon(is_opponent)
 			main.update_discard_pile_display(is_opponent)
+			await main.show_message(energy.metadata.get("name", "").to_upper() + " WAS DISCARDED FROM " + pokemon.metadata.get("name", "").to_upper() + "!")
+			if main._should_bail(): return
 
 ######################################################################################################################################################
 ############################################### PASSIVE DAMAGE MODIFIERS (Darkness/Metal bonus/reduction while attached) #############################

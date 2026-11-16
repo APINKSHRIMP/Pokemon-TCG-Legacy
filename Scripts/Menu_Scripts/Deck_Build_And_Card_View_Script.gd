@@ -358,6 +358,8 @@ var _load_opp_btn : Button = null
 
 # The button that opens the energy style picker overlay
 @onready var change_energy_btn : Button = $"ENERGY SECTION"/change_energy_style_button
+## True once the player owns more than the Base Set energy style (e.g. the CHT.All_Energy_Styles cheat).
+var _energy_style_btn_shown := false
 # The button that opens the deck viewer overlay
 @onready var view_deck_btn     : Button = $view_deck_button
 # Opens the card search screen — always reads "SEARCH", and reopens with the previous filters
@@ -558,7 +560,7 @@ func _compute_layout() -> void:
 ## Everything built in the sidebar band follows the right edge on a live resize
 ## (UIKit.follow_screen); the deck tools follow the bottom-right corner.
 func _pin_sidebar() -> void:
-	var tools: Array = [view_deck_btn, load_btn, empty_btn, _load_opp_btn]
+	var tools: Array = [view_deck_btn, load_btn, empty_btn, _load_opp_btn, change_energy_btn]
 	for child in get_children():
 		if child is Control and (child as Control).position.x >= SIDE_X - 2.0:
 			UIKit.follow_screen(child as Control,
@@ -664,6 +666,23 @@ func _build_chrome() -> void:
 		add_child(_load_opp_btn)
 		_load_opp_btn.pressed.connect(_on_load_deck_pressed.bind(true))
 		tools.insert(1, _load_opp_btn)
+	# Energy styles: the button only appears once the player owns a style beyond the Base Set floor -
+	# today that means the CHT.All_Energy_Styles cheat (user, 2026-11-16), later whatever grants
+	# them in play. It joins the top of the tool stack, restyled like the rest.
+	_energy_style_btn_shown = GameState.get_energy_styles().size() > 1
+	if _energy_style_btn_shown:
+		# REPARENT FIRST, like the energy icons: "ENERGY SECTION" is parked at (-2, -232), so
+		# sidebar offsets set on its child would land above the screen.
+		if change_energy_btn.get_parent() != self:
+			change_energy_btn.get_parent().remove_child(change_energy_btn)
+			add_child(change_energy_btn)
+		change_energy_btn.text = "Energy style"
+		tools.insert(0, change_energy_btn)
+	# The stack must stay below the deck-count pill under the composition box. Four tools (debug mode,
+	# or the Energy style button) used to just fit; five did not, so the buttons share the room left.
+	var stack_top_min: float = COUNT_PILL_Y + COUNT_PILL_H + TOOL_BTN_GAP
+	var n_tools: float = float(tools.size())
+	var btn_h: float = minf(TOOL_BTN_H, floorf((TOOL_STACK_BOT - stack_top_min - TOOL_BTN_GAP * (n_tools - 1.0)) / n_tools))
 	for i in tools.size():
 		var b: Button = tools[i]
 		b.theme = null
@@ -674,19 +693,17 @@ func _build_chrome() -> void:
 		b.remove_theme_font_override("font")
 		# Emptying the deck throws work away - the only destructive act here.
 		UIKit.style_button(b, "danger" if b == empty_btn else "neutral")   # ISSUE #292
-		var bottom: float = TOOL_STACK_BOT - float(tools.size() - 1 - i) * (TOOL_BTN_H + TOOL_BTN_GAP)
+		var bottom: float = TOOL_STACK_BOT - float(tools.size() - 1 - i) * (btn_h + TOOL_BTN_GAP)
 		b.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		b.offset_left = SIDE_X
 		b.offset_right = SIDE_X + SIDE_W
-		b.offset_top = bottom - TOOL_BTN_H
+		b.offset_top = bottom - btn_h
 		b.offset_bottom = bottom
 
-	# Energy styles are not granted until phase 3 (ecard era), so this button has
-	# nothing to offer yet. HIDDEN, not deleted - the picker behind it is finished
-	# and works; only the entry point is withheld.
-	# Deliberately NOT in _set_ui_visibility's toggle list — it used to be, so
-	# closing the deck viewer showed the old Kenney button again.
-	change_energy_btn.visible = false
+	# Without an extra style the picker has nothing to offer, so the entry point stays HIDDEN (not
+	# deleted - the picker behind it is finished and works). _set_ui_visibility only toggles it when
+	# _energy_style_btn_shown, so closing the deck viewer can't bring back the old hidden button.
+	change_energy_btn.visible = _energy_style_btn_shown
 
 	grid.position = Vector2(GRID_X, UIKit.CONTENT_TOP + GRID_INSET_Y)
 	grid.size = Vector2(GRID_W, UIKit.content_h() - GRID_INSET_Y * 2.0)
@@ -3860,6 +3877,8 @@ func _set_ui_visibility(visible_flag: bool) -> void:
 		nodes_to_toggle.append(_save_opp_btn)
 	if _load_opp_btn != null:
 		nodes_to_toggle.append(_load_opp_btn)
+	if _energy_style_btn_shown:
+		nodes_to_toggle.append(change_energy_btn)
 
 	for energy_type in ENERGY_TYPES:
 		nodes_to_toggle.append(energy_icons[energy_type])

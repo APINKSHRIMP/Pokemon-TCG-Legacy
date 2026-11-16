@@ -441,6 +441,34 @@ func sc_no_energy_on_clefairy_doll() -> void:
 	var dead: bool = ai._cpu_energy_dead_target(doll, m.opponent_hand[0])
 	check("Clefairy Doll is never an Energy target", dead, "dead %s" % dead)
 
+# ── AUDIT 2026-11-16 ─────────────────────────────────────────────────────────────────────────────────────────────────
+func sc_power_saver_still_takes_energy() -> void:
+	var g := cpu_active(mon("ex4-9"))   # Team Magma's Groudon: Power Saver locks its attacks for now
+	foe(mon("base1-61"))
+	hand(["base1-97"])
+	deck(["base1-97"])
+	var dead: bool = ai._cpu_energy_dead_target(g, m.opponent_hand[0])
+	check("Power Saver Groudon (attacks locked for now) still takes Energy", not dead, "dead %s" % dead)
+
+func sc_boost_energy_not_wasted_on_bench() -> void:
+	cpu_active(mon("base1-42", ["base1-102"]))
+	var bench_mon := cpu_bench(mon("base1-46"))
+	foe(mon("base1-61"))
+	var boost: card_object = hand(["ex8-93"])[0]
+	var on_bench: bool = ai._cpu_one_turn_energy_wasted(bench_mon, boost)
+	var on_active: bool = ai._cpu_one_turn_energy_wasted(m.opponent_active_pokemon, boost)
+	check("Boost Energy (gone at end of turn): not on the Bench, yes when it unlocks the Active's Bite", on_bench and not on_active, "bench wasted %s, active wasted %s" % [on_bench, on_active])
+
+func sc_no_deck_out_draw_attack() -> void:
+	cpu_active(mon("ex15-19", ["base1-97"]))   # Lickitung δ: Lap Up = draw 2, no damage
+	foe(mon("base1-61"))
+	var lap_up: Dictionary = m.opponent_active_pokemon.metadata["attacks"][0]
+	deck(["base1-97"], "base1-97", 0)
+	var last_card: bool = ai._cpu_attack_decks_out(lap_up)
+	deck(["base1-97"], "base1-97", 10)
+	var plenty: bool = ai._cpu_attack_decks_out(lap_up)
+	check("Lap Up with 1 card left is skipped, with 11 it is fine", last_card and not plenty, "1 left %s, 11 left %s" % [last_card, plenty])
+
 func sc_cs_waits_for_attach() -> void:
 	cpu_active(mon("base1-42", ["base1-102", "base1-102", "base1-102"]))
 	cpu_bench(mon("base1-63"))

@@ -2231,6 +2231,36 @@
       "card_reward": "base1-39, base1-39",
       "pack_reward": "base2_c",
       "stars": 2
+    },
+    "Team Magma Archie": {
+      "sprite": "TeamMagmaMaxie",
+      "message_colour": "dark_red",
+      "deck": "Magma Groudon",
+      "music": "Hard Battle 4 (PMDX Magma Cavern)",
+      "prize_cards": 6,
+      "cash_reward": "250",
+      "coin_reward": "Primal Groudon Red",
+      "stars": 4
+    },
+    "Team Magma Maxie": {
+      "sprite": "TeamMagmaMaxie",
+      "message_colour": "dark_red",
+      "deck": "Magma Groudon",
+      "music": "Hard Battle 3 (PMDX Mt Blaze Peak)",
+      "prize_cards": 6,
+      "cash_reward": "250",
+      "coin_reward": "Groudon Red",
+      "stars": 5
+    },
+    "Team Aqua Archie": {
+      "sprite": "TeamAquaArchie",
+      "message_colour": "dark_blue",
+      "deck": "Aqua Kyogre",
+      "music": "Hard Battle 3 (PMDX Mt Blaze Peak)",
+      "prize_cards": 6,
+      "cash_reward": "250",
+      "coin_reward": "Primal Kyogre Blue",
+      "stars": 5
     }
   }
 }
