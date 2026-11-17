@@ -14,6 +14,212 @@ extends Node
 
 var main: Node
 
+# ── Universal card flight (AUDIT 2026-11-17) ───────────────────────────────────────────────
+# Effect code that moves a card between zones itself (erase here, append there) calls this so the card is SEEN to
+# move. Purely visual: the arrays are the caller's business.
+#   from_zone / to_zone - "hand", "deck", "discard", "prize", "play" (Active / Bench), "attached", "stadium", "lost"
+#   side_from / side_to - whose zone (true = the CPU's). side_to < 0 = same as side_from.
+#   from_rect - the card's rect measured BEFORE it left a "hand" (main.hand_card_rect) or "play" / "attached"
+#               (main._card_rect_now) zone; a pile source needs nothing.
+# Call it AFTER the card is in its new array when it goes to the "hand" or "play" (the landing slot is measured from
+# the new state). For "deck", "discard", "prize" call it BEFORE the pile display is refreshed if you can, so the pile
+# does not show the card before it lands.
+const FLY_SPEED := 0.3   # TWEAKABLE: seconds per flight
+
+func fly_card(card: card_object, from_zone: String, to_zone: String, side_from: bool, side_to: int = -1, from_rect: Dictionary = {}, speed: float = FLY_SPEED) -> void:
+	if card == null or main._should_bail():
+		return
+	var to_opp: bool = side_from if side_to < 0 else bool(side_to)
+	var src := _zone_rect(card, from_zone, side_from, from_rect, true)
+	var from_node: Control = src["node"]
+	# Face up unless BOTH ends are hidden from the player (deck / prizes / a hidden CPU hand).
+	var tex: Texture2D = main.get_card_texture(card)
+	if _zone_hidden(from_zone, side_from) and _zone_hidden(to_zone, to_opp):
+		tex = main.opponent_card_back_texture if to_opp else main.card_back_texture
+	if to_zone == "hand":
+		var hand: Array = main.opponent_hand if to_opp else main.player_hand
+		if card in hand:
+			var hand_tex: Texture2D = tex
+			if to_opp and main.hide_hidden_cards:
+				hand_tex = main.opponent_card_back_texture
+			await main.animate_card_into_hand(card, to_opp, from_node, src["rect"], speed, hand_tex)
+			return
+	var dst := _zone_rect(card, to_zone, to_opp, {}, false)
+	var to_node: Control = dst["node"]
+	if to_node == null or not is_instance_valid(to_node):
+		return
+	var r_from: Dictionary = src["rect"]
+	var r_to: Dictionary = dst["rect"]
+	# A Pokemon landing in play is already drawn there (the caller redrew the board): hide it until it lands.
+	var landed: Control = main.find_card_ui_for_object(card, true) if to_zone == "play" else null
+	if landed != null and is_instance_valid(landed):
+		landed.modulate.a = 0.0
+	await main.animate_card_a_to_b(from_node if from_node != null else to_node, to_node, speed, tex,
+		r_from.get("size", main.card_scales[10]), r_to.get("size", Vector2.ZERO),
+		r_to.get("position", main._ANIM_POS_SENTINEL), false, r_from.get("position", main._ANIM_POS_SENTINEL))
+	if landed != null and is_instance_valid(landed):
+		landed.modulate.a = 1.0
+
+
+## AUDIT 2026-11-17: a Pokemon in play leaving the board (to the hand, deck, discard...). Call it BEFORE the arrays
+## change: every rect is measured now, then the flights queue (Main serialises them), so it is safe to call without
+## await from a synchronous function. `with_attached` also flies its Energy, Tools and pre-evolutions to the same
+## zone; pass false when those go somewhere else (and fly them yourself).
+func fly_pokemon_leaving(pokemon: card_object, to_zone: String, side_opp: bool, with_attached: bool = true, side_to: int = -1) -> void:
+	if pokemon == null:
+		return
+	var jobs: Array = []
+	if with_attached:
+		for c in pokemon.attached_energies + pokemon.attached_cards + pokemon.attached_pre_evolutions:
+			if c is card_object and c != pokemon:
+				jobs.append([c, "attached", capture_rect(c, "attached", side_opp)])
+	jobs.append([pokemon, "play", capture_rect(pokemon, "play", side_opp)])
+	for j in jobs:
+		await fly_card(j[0], j[1], to_zone, side_opp, side_to, j[2])
+
+
+## AUDIT 2026-11-17: BATCH FLIGHTS ("shuffle your hand into your deck", "discard the top N", "put N back").
+## Step 1 - BEFORE the arrays change: jobs = lift_cards(cards, from_zone, side) measures where each card is (a hand
+## card's slot is lifted so it is not drawn twice). Step 2 - move the data and refresh as before. Step 3 -
+## await fly_lifted(jobs, to_zone, side): every flight is queued at once (Main plays them one after another, quicker
+## the more there are - the same scale as a batch draw) and it returns when the last has landed.
+func lift_cards(cards: Array, from_zone: String, side_opp: bool) -> Array:
+	var jobs: Array = []
+	for c in cards:
+		if c is card_object:
+			jobs.append([c, from_zone, capture_rect(c, from_zone, side_opp)])
+	return jobs
+
+
+func fly_lifted(jobs: Array, to_zone: String, side_opp: bool, side_to: int = -1) -> void:
+	if jobs.is_empty() or main._should_bail():
+		return
+	var spd: float = FLY_SPEED * main.draw_animation_speed_multiplier(jobs.size())
+	for i in jobs.size():
+		var j: Array = jobs[i]
+		if i < jobs.size() - 1:
+			fly_card(j[0], j[1], to_zone, side_opp, side_to, j[2], spd)
+		else:
+			await fly_card(j[0], j[1], to_zone, side_opp, side_to, j[2], spd)
+
+
+## AUDIT 2026-11-17: a card in EITHER hand, measured (and lifted) before it leaves - {} when it is in no hand.
+func capture_rect_any(card: card_object) -> Dictionary:
+	if card in main.player_hand:
+		return capture_rect(card, "hand", false)
+	if card in main.opponent_hand:
+		return capture_rect(card, "hand", true)
+	return {}
+
+
+## AUDIT 2026-11-17: a card that has JUST been attached to a Pokemon (Energy from the deck / discard / hand, a Tool from
+## the deck) flies from where it came from onto its holder. The side is the holder's; from_side >= 0 when the card
+## came from the OTHER player's pile.
+func fly_attach(card: card_object, from_zone: String, from_rect: Dictionary = {}, from_side: int = -1) -> void:
+	var holder: card_object = _holder_of(card)
+	if holder == null:
+		return
+	var side: bool = holder in get_all_pokemon_in_play(true)
+	var fs: bool = side if from_side < 0 else bool(from_side)
+	await fly_card(card, from_zone, "attached", fs, int(side), from_rect)
+
+
+## AUDIT 2026-11-17: the whole hand into the deck, animated (the data move is done here too). Shuffles the deck,
+## refreshes the hand and the deck icon. Returns how many cards went.
+func shuffle_hand_into_deck(side_opp: bool) -> int:
+	var hand: Array = main.opponent_hand if side_opp else main.player_hand
+	var deck: Array = main.opponent_deck if side_opp else main.player_deck
+	var n: int = hand.size()
+	if n == 0:
+		return 0
+	var jobs := lift_cards(hand, "hand", side_opp)
+	for c in hand.duplicate():
+		c.current_location = "deck"
+		deck.append(c)
+	hand.clear()
+	deck.shuffle()
+	main.refresh_hand_display(side_opp)
+	await fly_lifted(jobs, "deck", side_opp)
+	main.update_deck_icon(side_opp)
+	return n
+
+
+## Where `card` is on screen right now in `zone` - call BEFORE it leaves a hand / play / attached zone and pass the
+## result to fly_card as from_rect. {} for piles (fly_card uses the pile icon).
+func capture_rect(card: card_object, zone: String, side_opp: bool) -> Dictionary:
+	if card == null:
+		return {}
+	if zone == "hand":
+		# Lifted: its slot goes transparent (keeping its width) so it is not drawn in the hand AND in the air.
+		var hand: Array = main.opponent_hand if side_opp else main.player_hand
+		return main.lift_card_from_hand(card, side_opp) if card in hand else {}
+	if zone in ["play", "attached"]:
+		var r: Dictionary = main._card_rect_now(card)
+		if r.is_empty():
+			# An attached card that is not drawn (a Benched Pokemon's Energy, a Tool) leaves from its holder.
+			var who: card_object = card if zone == "play" else _holder_of(card)
+			if who != null:
+				r = main._card_rect_now(who)
+				if r.is_empty():
+					var loc: Dictionary = main.get_pokemon_screen_location(who)
+					if not loc.is_empty():
+						r = {"position": loc["position"], "size": loc["size"]}
+		return r
+	return {}
+
+
+## The Pokemon in play that holds `card` (Energy, Tool, pre-evolution...), or null.
+func _holder_of(card: card_object) -> card_object:
+	for side in [false, true]:
+		for p in get_all_pokemon_in_play(side):
+			if card in p.attached_energies or card in p.attached_cards or card in p.attached_pre_evolutions:
+				return p
+	return null
+
+
+func _zone_hidden(zone: String, side_opp: bool) -> bool:
+	if zone in ["deck", "prize"]:
+		return true
+	return zone == "hand" and side_opp and main.hide_hidden_cards
+
+
+## {node, rect} for a zone: the pile icon / container to fly from or to, and the card-sized rect on it.
+func _zone_rect(card: card_object, zone: String, side_opp: bool, given: Dictionary, is_source: bool) -> Dictionary:
+	var node: Control = null
+	var rect: Dictionary = given
+	match zone:
+		"deck":
+			node = main.opponent_deck_icon if side_opp else main.player_deck_icon
+		"discard", "lost":
+			node = main.opponent_discard_icon if side_opp else main.player_discard_icon
+		"prize":
+			node = main.opponent_prize_container if side_opp else main.player_prize_container
+		"stadium":
+			node = main.get_node_or_null("CARD_COLLECTIONS/stadium_card")
+		"hand":
+			node = main.opponent_hand_container if side_opp else main.player_hand_container
+			if rect.is_empty() and is_source:
+				rect = capture_rect(card, "hand", side_opp)
+		"aside":
+			# Tickling Machine's set-aside hand has no place on the board: just off the screen edge beyond the hand.
+			node = main.opponent_hand_container if side_opp else main.player_hand_container
+			if rect.is_empty() and node != null:
+				var sz: Vector2 = main.card_scales[10]
+				var y: float = -sz.y - 40.0 if side_opp else main.get_viewport().get_visible_rect().size.y + 40.0
+				rect = {"position": Vector2(node.global_position.x + node.size.x * 0.5 - sz.x * 0.5, y), "size": sz}
+		"play", "attached":
+			node = main.opponent_active_container if side_opp else main.player_active_container
+			if rect.is_empty() and not is_source and zone == "play":
+				# Landing: the slot the Pokemon now belongs to (the arrays already say where), not where it is drawn.
+				var loc: Dictionary = main.get_pokemon_screen_location(card)
+				if not loc.is_empty():
+					rect = {"position": loc["position"], "size": loc["size"]}
+			if rect.is_empty():
+				rect = capture_rect(card, zone, side_opp)
+	if rect.is_empty() and node != null:
+		rect = main.landing_rect_node(node)
+	return {"node": node, "rect": rect}
+
 # ── Drawing ───────────────────────────────────────────────────────────────────────────────
 
 # Draw N cards from deck to hand one at a time, updating the hand display after each card.
@@ -53,7 +259,7 @@ func discard_energy_animated(energy: card_object, is_owner_opp: bool) -> void:
 		from_node = main.opponent_active_container if is_owner_opp else main.player_active_container
 	var from_pos: Vector2 = from_node.global_position if from_node != null else Vector2.ZERO
 	var tex: Texture2D = main.get_card_texture(energy)
-	discard_energy_from_pokemon(energy, is_owner_opp)
+	discard_energy_from_pokemon(energy, is_owner_opp, false, false)   # flies below
 	if holder != null:
 		main.display_active_pokemon_energies(is_owner_opp)
 		if holder.current_location == "bench":
@@ -75,7 +281,12 @@ const ENERGY_DISCARD_FLIGHT := 0.2
 # Routes an energy card removed from a Pokemon to the correct pile:
 # Recycle Energy and Ecogym (non-Colorless) return to owner's hand; others go to discard.
 # Pass is_ko_discard=true for KO sequences so Ecogym protection is skipped.
-func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_discard: bool = false) -> void:
+func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_discard: bool = false, fly: bool = true) -> void:
+	# AUDIT 2026-11-17: the Energy flies to wherever it ends up (discard pile, or the hand for Recycle Energy / Ecogym).
+	# Measured now, while it is still attached; the flight queues, so synchronous callers stay synchronous. The KO
+	# sequence animates its own Energy (is_ko_discard), and a caller that already flies it passes fly = false.
+	var fly_rect: Dictionary = capture_rect(energy, "attached", is_owner_opp) if (fly and not is_ko_discard) else {}
+	var do_fly: bool = fly and not is_ko_discard
 	# OLD ISSUE 317: many callers only sent the card to the discard pile and left it attached as well (one card
 	# in two places — Searing Flames, Dark Flame, Mega Flame, Twister, Lava Flow...). Detach it here.
 	for side in [false, true]:
@@ -92,6 +303,8 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 		if not hand.has(energy):
 			hand.append(energy)
 		main.refresh_hand_display(is_owner_opp)
+		if do_fly:
+			fly_card(energy, "attached", "hand", is_owner_opp, -1, fly_rect)
 		return
 	# Ecogym (neo1-84): non-Colorless energies discarded by attack/power/trainer return to owner's hand
 	if not is_ko_discard and main.is_stadium_in_play(StadiumIds.ECOGYM):
@@ -103,10 +316,14 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 			if not hand.has(energy):
 				hand.append(energy)
 			main.refresh_hand_display(is_owner_opp)
+			if do_fly:
+				fly_card(energy, "attached", "hand", is_owner_opp, -1, fly_rect)
 			return
 	var discard = main.opponent_discard_pile if is_owner_opp else main.player_discard_pile
 	energy.current_location = "discard"
 	discard.append(energy)
+	if do_fly:
+		fly_card(energy, "attached", "discard", is_owner_opp, -1, fly_rect)
 
 ## ISSUE #301: A POKEMON THAT GOES BACK TO THE HAND IS A NEW CARD.
 ##
@@ -129,12 +346,34 @@ func reset_returned_pokemon(card: card_object, is_opponent: bool) -> void:
 	card.current_hp = card.get_max_hp()
 
 # Move a single card to the given side's discard pile. Optionally animate it.
-func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false, anim_from: Control = null) -> void:
+func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false, anim_from: Control = null, fly: bool = true) -> void:
 	# OLD ISSUE 375: a card discarded from the hand used to STAY in the hand as well (Team Aqua/Magma Schemer
 	# and every other "discard a card from your hand" caller that didn't erase it first) — found by the
 	# autotester as the same card in hand and discard pile at once. The move is now complete here.
 	var hand: Array = main.opponent_hand if is_opponent else main.player_hand
 	var in_hand: bool = card in hand
+	# AUDIT 2026-11-17: animate = false used to mean "no flight at all" (20 callers - milled cards, discarded hand
+	# cards, Berries...). It now flies from wherever the card is (its zone, else what current_location still says);
+	# fly = false only for a caller that has already flown it. Measured here, flown AFTER the data has moved (two
+	# callers don't await this, so the move must not wait on the flight).
+	var fly_zone := ""
+	var fly_rect: Dictionary = {}
+	if not animate and fly and card != null:
+		var zone := ""
+		var deck: Array = main.opponent_deck if is_opponent else main.player_deck
+		if in_hand: zone = "hand"
+		elif card in deck: zone = "deck"
+		elif _holder_of(card) != null: zone = "attached"
+		elif card in get_all_pokemon_in_play(is_opponent): zone = "play"
+		else:
+			match str(card.current_location):
+				"deck": zone = "deck"
+				"hand": zone = "hand"
+				"attached": zone = "attached"
+				"active", "bench": zone = "play"
+		if zone != "":
+			fly_zone = zone
+			fly_rect = capture_rect(card, zone, is_opponent)
 	if animate:
 		var discard_node = main.opponent_discard_icon if is_opponent else main.player_discard_icon
 		var tex = main.get_card_texture(card)
@@ -160,6 +399,9 @@ func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false
 	card.current_location = "discard"
 	if card.metadata.get("supertype", "") == "Pokémon" and card.current_hp != card.get_max_hp():
 		card.current_hp = card.get_max_hp()   # ISSUE #404: a discarded Pokemon card carries no damage
+	if fly_zone != "":
+		await fly_card(card, fly_zone, "discard", is_opponent, -1, fly_rect)
+		if main._should_bail(): return
 	main.update_discard_pile_display(is_opponent)
 
 # Move every card in an array to the given side's discard pile.
@@ -171,6 +413,7 @@ func send_array_to_discard(cards: Array, is_opponent: bool, animate: bool = fals
 # Discard all energies and pre-evolutions attached to a pokemon.
 func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var da_jobs: Array = lift_cards(pokemon.attached_pre_evolutions + pokemon.attached_cards, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 	for card in pokemon.attached_energies.duplicate():
 		discard_energy_from_pokemon(card, is_opponent)
 	pokemon.attached_energies.clear()
@@ -183,6 +426,7 @@ func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:
 		card.current_location = "discard"
 		discard.append(card)
 	pokemon.attached_cards.clear()
+	fly_lifted(da_jobs, "discard", is_opponent)   # AUDIT 2026-11-17: flight (queued: this stays synchronous)
 	main.update_discard_pile_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 
@@ -238,9 +482,12 @@ func discard_from_hand(is_opponent: bool, count: int, exclude_card: card_object 
 	if is_opponent:
 		var to_remove = main.trainer_effects.cpu_get_discard_priority(hand, count, exclude_card)
 		for card in to_remove:
+			var dr: Dictionary = capture_rect(card, "hand", true)   # AUDIT 2026-11-17: flight
 			hand.erase(card)
 			card.current_location = "discard"
 			discard.append(card)
+			await fly_card(card, "hand", "discard", true, -1, dr)
+			if main._should_bail(): return to_remove
 		main.refresh_hand_display(true)
 		main.update_discard_pile_display(true)
 		return to_remove
@@ -254,9 +501,12 @@ func discard_from_hand(is_opponent: bool, count: int, exclude_card: card_object 
 		"DISCARD " + str(count) + " CARD(S)", "", "DISCARD")
 	if main._should_bail(): return []
 	for card in discarded:
+		var dr: Dictionary = capture_rect(card, "hand", false)   # AUDIT 2026-11-17: flight
 		hand.erase(card)
 		card.current_location = "discard"
 		discard.append(card)
+		await fly_card(card, "hand", "discard", false, -1, dr)
+		if main._should_bail(): return discarded
 	main.refresh_hand_display(false)
 	main.update_discard_pile_display(false)
 	return discarded
@@ -306,6 +556,9 @@ func search_deck_to_hand(is_opponent: bool, filter_fn: Callable, prompt: String,
 		deck.erase(card)
 		card.current_location = "hand"
 		hand.append(card)
+		# AUDIT 2026-11-17: every searched card flies from the deck into its slot in the hand (83 effects use this).
+		await fly_card(card, "deck", "hand", is_opponent)
+		if main._should_bail(): return chosen
 	# ISSUE #314: "show that card to your opponent" - the CPU's pick is shown.
 	await reveal_searched_cards(chosen, is_opponent)
 	if main._should_bail(): return chosen
@@ -377,21 +630,25 @@ func cpu_reveal_added_to_hand(cards: Array) -> void:
 # ── Recover to Hand ───────────────────────────────────────────────────────────────────────
 
 # Move a card from the discard pile back to hand with display refresh.
-func recover_to_hand(card: card_object, is_opponent: bool, animate: bool = false) -> void:
+## AUDIT 2026-11-17: animates by default (24 callers passed nothing and the card just appeared), and flies from where
+## the card really was - several callers take a card from the DECK (already erased) and hand it here.
+func recover_to_hand(card: card_object, is_opponent: bool, animate: bool = true) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var hand    = main.opponent_hand if is_opponent else main.player_hand
 	# OLD ISSUE 374: Allergic Pollen (Parasect neo3-35) — discard-pile cards aren't affected by attacks or Powers.
 	if card in discard and main.powers_and_bodies.allergic_pollen_blocks_discard():
 		await main.show_message("ALLERGIC POLLEN! CARDS IN THE DISCARD PILE CAN'T BE AFFECTED!")
 		return
+	var from_zone: String = "discard" if card in discard else _zone_from_location(card.current_location)
+	if from_zone == "" or from_zone == "hand":
+		from_zone = "discard"
 	discard.erase(card)
 	card.current_location = "hand"
 	hand.append(card)
 	if animate:
-		var discard_icon = main.opponent_discard_icon if is_opponent else main.player_discard_icon
 		main.update_discard_pile_display(is_opponent)
 		# FLIGHTS: lands on the card's real slot in the hand (not the hand box's left edge)
-		await main.animate_card_into_hand(card, is_opponent, discard_icon, {}, 0.3, main.get_card_texture(card))
+		await fly_card(card, from_zone, "hand", is_opponent)
 		if main._should_bail(): return
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -495,10 +752,12 @@ func heal_pokemon(pokemon: card_object, amount: int, is_opponent: bool) -> void:
 	for i in range(circles_to_restore):
 		var partial_hp = hp_before + ((i + 1) * 10)
 		pokemon.current_hp = min(partial_hp, hp_before + actual_heal)
+		main.note_hp_feedback(pokemon)   # AUDIT 2026-11-17: each step is part of this announced heal
 		main.refresh_pokemon_hp_display(pokemon, is_opponent)
 		await main.get_tree().create_timer(GameState.match_time(HEAL_BLOCK_STEP)).timeout
 		if main._should_bail(): return
 	pokemon.current_hp = min(hp_before + actual_heal, max_hp)
+	main.note_hp_feedback(pokemon)
 	main.refresh_pokemon_hp_display(pokemon, is_opponent)
 
 # ── Status Conditions ─────────────────────────────────────────────────────────────────────
@@ -752,6 +1011,8 @@ func reveal_secret_plan(stand_in: card_object, is_opponent: bool) -> card_object
 		return real
 	# Not a Basic Pokémon: discard it and everything attached
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var sp_jobs: Array = lift_cards(stand_in.attached_energies + stand_in.attached_cards, "attached", is_opponent)   # AUDIT 2026-11-17: flight
+	sp_jobs.append([real, "play", capture_rect(stand_in, "play", is_opponent)])
 	for e in stand_in.attached_energies:
 		e.current_location = "discard"
 		discard.append(e)
@@ -766,6 +1027,8 @@ func reveal_secret_plan(stand_in: card_object, is_opponent: bool) -> card_object
 	else:
 		bench.erase(stand_in)
 	main.display_pokemon(is_opponent)
+	await fly_lifted(sp_jobs, "discard", is_opponent)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return null
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message("IT ISN'T A BASIC POKEMON — DISCARDED!")
 	return null
@@ -822,12 +1085,27 @@ func place_on_bench(pokemon: card_object, is_opponent: bool) -> bool:
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	if bench.size() >= main.get_max_bench_size():
 		return false
+	# AUDIT 2026-11-17: it flies from where it was (deck, hand, discard, prizes) to its Bench slot - every effect that
+	# benches a Pokemon goes through here, and none of them were animated.
+	var from_zone: String = _zone_from_location(pokemon.current_location)
+	var from_rect: Dictionary = capture_rect(pokemon, from_zone, is_opponent) if from_zone == "hand" else {}
 	pokemon.current_location = "bench"
 	pokemon.placed_on_field_this_turn = true
 	bench.append(pokemon)
 	main.display_pokemon(is_opponent)
 	main.powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil: a new bench Pokémon may gain/lose δ
+	if from_zone != "":
+		fly_card(pokemon, from_zone, "play", is_opponent, -1, from_rect)
 	return true
+
+
+func _zone_from_location(loc: String) -> String:
+	match loc:
+		"deck": return "deck"
+		"hand": return "hand"
+		"discard": return "discard"
+		"prize", "prizes", "prize_cards": return "prize"
+	return ""
 
 # ── Selection UI ──────────────────────────────────────────────────────────────────────────
 
@@ -1164,6 +1442,7 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool, fr
 		damage = main.powers_and_bodies.apply_relaxing_scent(damage)
 	if damage <= 0:
 		return
+	main.note_hp_feedback(pokemon)   # AUDIT 2026-11-17: announced below (bench_hit + label)
 	pokemon.current_hp = max(0, pokemon.current_hp - damage)
 	# Attack VFX: the benched card flashes and shakes under a small copy of the attack's effect. Each hit
 	# waits its turn after the last one, so several benched Pokémon go one after another.

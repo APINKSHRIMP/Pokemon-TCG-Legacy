@@ -272,6 +272,9 @@ var player_saffron_used_this_turn: bool = false           # gym2-113 Saffron Cit
 var opponent_saffron_used_this_turn: bool = false
 var player_healing_field_used_this_turn: bool = false     # neo3-61 Healing Field
 var opponent_healing_field_used_this_turn: bool = false
+# AUDIT 2026-11-17: neo4 Radio Tower / Energy Stadium / Lucky Stadium are "once during each player's turn" too.
+var player_neo4_stadium_used_this_turn: bool = false
+var opponent_neo4_stadium_used_this_turn: bool = false
 
 # Stadium one-shot attack modifiers — gym1-120 Vermilion City Gym (Lt. Surge attacker coin flip)
 var vermilion_lt_surge_bonus_damage: int = 0          # +10 added by calculate_final_damage when set, cleared after read
@@ -2393,10 +2396,16 @@ func _show_stadium_detail() -> void:
 	# Any activatable ability, in the same accent_2 row style the bench uses.
 	var y := STADIUM_DETAIL_Y - 70.0
 	if powers_and_bodies != null:
-		for entry in powers_and_bodies.printed_powers_for(current_stadium_card):
-			var ability: Dictionary = entry["ability"]
-			var btn := _make_bench_power_button(current_stadium_card, entry,
+		# AUDIT 2026-11-17: the Stadium's real actions (stadium_actions_for_player) - a Stadium card has no
+		# printed abilities, so the old printed_powers_for() loop here never drew a single button.
+		for st_ability in powers_and_bodies.stadium_actions_for_player():
+			var entry := {"pokemon": null, "ability": st_ability}
+			var btn := _make_bench_power_button(null, entry,
 				Vector2(STADIUM_DETAIL_SIZE.x, 0.0))
+			var st_usable: bool = _player_can_act_now()
+			btn.disabled = not st_usable
+			if st_usable:
+				btn.pressed.connect(func(): powers_and_bodies.activate_power(null, st_ability))
 			btn.custom_minimum_size = Vector2(STADIUM_DETAIL_SIZE.x, 48.0)
 			btn.position = Vector2(card.position.x, y)
 			btn.size = Vector2(STADIUM_DETAIL_SIZE.x, 48.0)
@@ -2743,9 +2752,76 @@ func begin_copy_pick(pool: Array) -> void:
 func end_copy_pick() -> void:
 	copy_pick_active = false
 	copy_pick_pool = []
+	option_pick_labels = []
+	option_pick_caption = ""
+	option_pick_back_index = -1
 	special_attack_selection_active = false
 	CardDisplay.input_blocked = false
 	_refresh_action_panels()
+
+
+# ── OPTION PICK (AUDIT 2026-11-17) ─────────────────────────────────────────────────
+# Every non-card choice an effect asks the player ("draw how many?", a Special Condition, "your deck or
+# the opponent's?", yes / no "you may" questions, Peek's five sources, the attack Amnesia disables...) is
+# shown as ROWS in the player's action panel beside the Active, under a caption row with the question -
+# the same place and the same lock as Metronome's copy rows (it rides copy_pick_active, so Board_Nav,
+# Hand_Drag, the autotester and _copy_pick_input all treat it the same). The old bottom-right button list
+# (attack_buttons_container) is no longer used for choices.
+#   back_index - the answer B / Backspace / Escape give (the "No" / "Skip" of an optional question).
+#                -1 = the choice is FORCED: no key, pad button or click outside the rows closes it.
+var option_pick_labels: Array = []
+var option_pick_caption: String = ""
+var option_pick_back_index: int = -1
+
+func option_pick_active() -> bool:
+	return copy_pick_active and not option_pick_labels.is_empty()
+
+
+## The player picks one of `labels`; returns its index. Works on either side's turn and mid-attack.
+func pick_option(caption: String, labels: Array, back_index: int = -1) -> int:
+	if labels.is_empty():
+		return -1
+	if labels.size() == 1 and back_index < 0:
+		# Nothing to choose. Still say what happened.
+		print("OPTION PICK: only one answer, taken: ", labels[0])
+		return 0
+	# The full-screen blockers would cover the panel (perform_attack raises opponent_blocker the moment an
+	# attack is chosen; a card flight raises animation_blocker). _copy_pick_input does the blocking instead.
+	var restore_opp: bool = opponent_blocker.visible
+	var restore_btn: bool = buttons_only_blocker.visible
+	opponent_blocker.visible = false
+	buttons_only_blocker.visible = false
+	option_pick_caption = caption
+	option_pick_labels = labels.duplicate()
+	option_pick_back_index = back_index
+	copy_pick_pool = []
+	copy_pick_active = true
+	special_attack_selection_active = true
+	CardDisplay.input_blocked = true
+	if hand_drag != null:
+		hand_drag.clear_bar_selection()
+	if _player_action_panel != null and is_instance_valid(_player_action_panel):
+		_player_action_panel.visible = true
+	_log_option_question(caption)
+	print("OPTION PICK: '", caption, "' -> ", labels, " (back ", back_index, ")")
+	_refresh_action_panels()
+	var idx: int = int(await special_attack_selected)
+	end_copy_pick()
+	opponent_blocker.visible = restore_opp
+	buttons_only_blocker.visible = restore_btn
+	idx = clampi(idx, 0, labels.size() - 1)
+	print("OPTION PICK: chose ", labels[idx])
+	return idx
+
+
+## Yes / No as two option rows. B / Backspace / Escape answer No.
+func pick_yes_no(caption: String, yes_text: String = "Yes", no_text: String = "No") -> bool:
+	return await pick_option(caption, [yes_text, no_text], 1) == 0
+
+
+func _log_option_question(caption: String) -> void:
+	if caption.strip_edges() != "":
+		_log_match_message(caption.to_upper())
 
 
 ## While a copy pick is up: a click lands only inside the player's action panel (where only the
@@ -2790,6 +2866,19 @@ func _build_action_panel(is_opponent: bool) -> void:
 		holder.remove_child(c)
 		c.queue_free()
 
+	# AUDIT 2026-11-17: an option pick owns the player's panel - the question and its answers, nothing else.
+	if not is_opponent and option_pick_active():
+		var opt_rows: Array = [{"kind": "caption", "text": option_pick_caption, "enabled": false}]
+		for idx in option_pick_labels.size():
+			opt_rows.append({
+				"kind": "option",
+				"text": String(option_pick_labels[idx]),
+				"enabled": true,
+				"action": func(): special_attack_selected.emit(idx),
+			})
+		_render_action_rows(holder, opt_rows, false)
+		return
+
 	var mon: card_object = opponent_active_pokemon if is_opponent else player_active_pokemon
 	if mon == null:
 		return
@@ -2807,6 +2896,16 @@ func _build_action_panel(is_opponent: bool) -> void:
 				"enabled": live,
 				"action": func(): await powers_and_bodies.activate_power(mon, ability),
 			})
+		# AUDIT 2026-11-17: the Stadium's own once-a-turn action (Lucky Stadium, Radio Tower, Ancient Ruins...).
+		# Nothing a person could press reached these before - they were only in the unused Power menu.
+		if not is_opponent:
+			for st_ability in powers_and_bodies.stadium_actions_for_player():
+				rows.append({
+					"kind": "stadium",
+					"text": String(st_ability.get("name", "Stadium")),
+					"enabled": _player_can_act_now(),
+					"action": func(): await powers_and_bodies.activate_power(null, st_ability),
+				})
 
 	# ── Attacks ──
 	var attacks := get_attacks_for_card(mon)
@@ -2903,7 +3002,9 @@ func _render_action_rows(holder: Control, rows: Array, is_opponent: bool) -> voi
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", ACTION_ROW_GAP)
 
-	if rows.size() > ACTION_MAX_ROWS:
+	# AUDIT 2026-11-17: an option pick's caption wraps to any height, so its column always scrolls rather
+	# than spilling out of the panel.
+	if rows.size() > ACTION_MAX_ROWS or rows.any(func(r): return String(r.get("kind", "")) == "caption"):
 		var scroll := ScrollContainer.new()
 		scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -2926,7 +3027,23 @@ func _render_action_rows(holder: Control, rows: Array, is_opponent: bool) -> voi
 		holder.add_child(col)
 
 	for r in rows:
+		if String(r.get("kind", "")) == "caption":
+			col.add_child(_make_caption_row(String(r.get("text", ""))))
+			continue
 		col.add_child(_make_action_row(r, is_opponent))
+
+
+## AUDIT 2026-11-17: the question over an option pick's answer rows. Wraps onto as many lines as it needs.
+func _make_caption_row(text: String) -> Control:
+	var lbl := Label.new()
+	UIKit.set_label(lbl, "chip", text, "accent")
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.custom_minimum_size = Vector2(0, ACTION_ROW_H * 0.75)
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return lbl
 
 
 ## One row. A Button so it keeps focus, hover and the press-to-fire behaviour
@@ -3016,14 +3133,16 @@ func _on_disabled_row_input(event: InputEvent, catcher: Control) -> void:
 ## new turn state says they should be in.
 func _run_action_row(row: Dictionary) -> void:
 	# The tutorial may block this row; the rows are left live so the player can choose again.
-	var tut_block: String = tutorial.gate(String(row.get("kind", "")), {"attack": row.get("attack", {})})
+	# AUDIT 2026-11-17: never an effect's own answer rows (copy / option) - the effect is already under way.
+	var row_kind := String(row.get("kind", ""))
+	var tut_block: String = "" if row_kind in ["copy", "option"] else tutorial.gate(row_kind, {"attack": row.get("attack", {})})
 	if tut_block != "":
 		await tutorial.show_block(tut_block)
 		return
 	set_action_rows_disabled(true)
 	if not row.has("action"):
 		return
-	if String(row.get("kind", "")) == "power":
+	if String(row.get("kind", "")) in ["power", "stadium"]:
 		# A power that is refused or changes nothing (Step In with Dragonite Active, a Power
 		# Blocked message...) never redraws the board, so the rows it killed above stayed dead:
 		# attacks could not be pressed or even hovered. Rebuild them once the power is done -
@@ -3071,7 +3190,7 @@ func _action_row_box(kind: String, enabled: bool, hover: bool) -> StyleBoxFlat:
 	sb.set_border_width_all(1)
 
 	match kind:
-		"power":
+		"power", "stadium":
 			sb.bg_color = UITheme.col_a("accent_2", 0.10 if hover else 0.04)
 			sb.border_color = UITheme.col_a("accent_2", 0.85 if enabled else 0.35)
 		_:
@@ -3153,8 +3272,10 @@ func _fill_action_row(btn: Button, row: Dictionary, enabled: bool) -> void:
 	var display_name: String = row["text"]
 	if kind == "power":
 		display_name = "Poké-Power · " + display_name
+	elif kind == "stadium":
+		display_name = "Stadium · " + display_name
 	UIKit.set_label(name_lbl, "attack_name", display_name,
-		"accent_2" if kind == "power" else "field_fg")
+		"accent_2" if kind in ["power", "stadium"] else "field_fg")
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# ISSUE #223: centred in whatever is left between the pips and the damage, so
 	# the names line up down the column instead of jogging sideways with each
@@ -4993,6 +5114,9 @@ const FLOAT_DAMAGE_OUTLINE := 5
 
 # Creates a floating label at a given position that drifts upward and fades out over 2 seconds
 func show_floating_label(message: String, spawn_position: Vector2, label_color: Color = Color.WHITE, upwards: bool = true, font_size: int = FLOAT_LABEL_FONT, outline: int = FLOAT_LABEL_OUTLINE) -> void:
+	# AUDIT 2026-11-17: an HP number on screen announces whatever HP change happened around now (_watch_hp_changes).
+	if message.begins_with("-") or message.begins_with("+") or message.ends_with("HP"):
+		_hp_label_any_ms = Time.get_ticks_msec()
 	var label = Label.new()
 	label.text = message
 	
@@ -5115,6 +5239,7 @@ func _anim_dest_size(to_node: Control, fallback: Vector2) -> Vector2:
 ## in - which is what _card_rect_now() is for.
 func animate_card_a_to_b(from_node: Control, to_node: Control, animation_speed: float = 0.8, custom_texture: Texture2D = null, custom_size: Vector2 = Vector2(83, 113), target_size: Vector2 = Vector2.ZERO, target_pos_override: Vector2 = _ANIM_POS_SENTINEL, arrive_behind: bool = false, from_pos_override: Vector2 = _ANIM_POS_SENTINEL, hold_time: float = 0.0) -> void:
 	trainer_undo_commit("card moved")
+	if GameState.autotest != null: GameState.autotest.note_flight(custom_texture)   # AUDIT 2026-11-17: flight check
 	# ISSUE #244: queue behind any flight already in the air.
 	while _anim_in_flight:
 		await get_tree().process_frame
@@ -5816,6 +5941,7 @@ func _end_attack_hit(a_node: Control, d_node: Control, a_ghost: Control, d_ghost
 
 func float_label_over(pokemon: card_object, text: String, colour: Color,
 		is_opponent: bool = false) -> void:
+	note_hp_feedback(pokemon)   # AUDIT 2026-11-17: this card's HP change was announced
 	# ISSUE #280 (retest): an ACTIVE Pokemon's figure rises out of its own HP text
 	# ("30 / 50"), not from a nudged point over the card.
 	var hp_origin := _active_hp_text_origin(pokemon)
@@ -8246,6 +8372,7 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		player_lucky_stadium_used_this_turn = false
 		player_saffron_used_this_turn = false
 		player_healing_field_used_this_turn = false
+		player_neo4_stadium_used_this_turn = false
 	else:
 		opponent_celadon_used_this_turn = false
 		opponent_fuchsia_used_this_turn = false
@@ -8258,6 +8385,7 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		opponent_lucky_stadium_used_this_turn = false
 		opponent_saffron_used_this_turn = false
 		opponent_healing_field_used_this_turn = false
+		opponent_neo4_stadium_used_this_turn = false
 	
 	# Mirror move tracking: clear if the side that just ended their turn didn't attack
 	if player_turn_just_ended:
@@ -10486,6 +10614,12 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	if pokemon.attached_energies.size() > 0:
 		await animate_energies_to_discard(pokemon.attached_energies.duplicate(), pokemon, is_opponent)
 		display_active_pokemon_energies(is_opponent)
+	# AUDIT 2026-11-17: its Tools / attached Trainers and the cards under it fly to the discard pile too (they used
+	# to appear there with no movement). The arrays are emptied by send_card_to_discard below.
+	for under in pokemon.attached_cards + pokemon.attached_pre_evolutions:
+		if under is card_object and under != pokemon:
+			await card_ops.fly_card(under, "attached", "discard", is_opponent, -1, card_ops.capture_rect(pokemon, "play", is_opponent))
+			if _should_bail(): return false
 
 	# ISSUE #394: Buzzap - Electrode is knocked out (the Prize is taken) but the CARD stays where it is:
 	# everything attached goes to the discard pile, the card itself does not. The power then turns it
@@ -12907,6 +13041,73 @@ var _issue465_logged_ms: int = 0
 
 ## ISSUE #465: true while keys / pad must not act on the board (an animation is running or only just
 ## finished, or the turn-start draw is still landing). Board_Nav and Hand_Drag read it.
+# ── HP CHANGE FEEDBACK (AUDIT 2026-11-17) ─────────────────────────────────────────────────
+# ~200 effects change a Pokemon's HP directly (damage counters from Powers, Damage Swap, heals from Bodies...)
+# with no sound, no movement and no number. Every frame the DAMAGE on each Pokemon in play (max HP - HP, so an
+# evolution or an HP Tool is not a "heal") is compared with last frame; a change nobody announced within
+# HP_FEEDBACK_GRACE_MS (float_label_over notes it) gets the standard one: the damage thump + a shake + "-N HP",
+# or the heal chime + sparkle + "+N HP".
+const HP_FEEDBACK_GRACE_MS := 350   # TWEAKABLE: an announcement this long BEFORE the change covers it
+const HP_FEEDBACK_WAIT_MS := 600    # TWEAKABLE: how long an effect has AFTER the change to show its own label
+var _hp_label_any_ms: int = -100000    # last time any "-N HP" / "+N HP" floating label was shown (positional ones)
+var _dmg_seen: Dictionary = {}         # instance_id -> damage taken last frame
+var _hp_feedback_ms: Dictionary = {}   # instance_id -> when its HP change was last announced
+var _hp_pending: Array = []            # [msec, card, damage delta, is_opponent]
+
+func note_hp_feedback(pokemon: card_object) -> void:
+	if pokemon != null:
+		_hp_feedback_ms[pokemon.get_instance_id()] = Time.get_ticks_msec()
+
+
+func _watch_hp_changes() -> void:
+	if game_is_over or card_ops == null:
+		return
+	var now := Time.get_ticks_msec()
+	var live := {}
+	for side in [false, true]:
+		for p in card_ops.get_all_pokemon_in_play(side):
+			if p == null:
+				continue
+			var id: int = p.get_instance_id()
+			live[id] = true
+			var dmg: int = p.get_max_hp() - p.current_hp
+			if _dmg_seen.has(id) and int(_dmg_seen[id]) != dmg and p.current_hp > 0:
+				_hp_pending.append([now, p, dmg - int(_dmg_seen[id]), side])
+			_dmg_seen[id] = dmg
+	for id in _dmg_seen.keys():
+		if not live.has(id):
+			_dmg_seen.erase(id)
+	var i := 0
+	while i < _hp_pending.size():
+		var e: Array = _hp_pending[i]
+		var card: card_object = e[1]
+		var announced: int = int(_hp_feedback_ms.get(card.get_instance_id(), -100000)) if is_instance_valid(card) else now
+		announced = maxi(announced, _hp_label_any_ms)
+		if announced >= int(e[0]) - HP_FEEDBACK_GRACE_MS:
+			_hp_pending.remove_at(i)
+			continue
+		if now - int(e[0]) > HP_FEEDBACK_WAIT_MS:
+			_hp_pending.remove_at(i)
+			if is_instance_valid(card) and get_pokemon_screen_location(card).size() > 0:
+				_announce_hp_change(card, int(e[2]), bool(e[3]))
+			continue
+		i += 1
+
+
+func _announce_hp_change(card: card_object, damage_delta: int, is_opponent: bool) -> void:
+	if damage_delta > 0:
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_damage_sound)
+		if card_fx != null:
+			card_fx.shake(card)
+		float_label_over(card, "-" + str(damage_delta) + "HP", Color.WHITE, is_opponent)
+	elif damage_delta < 0:
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
+		if attack_vfx != null:
+			attack_vfx.play_heal(card)
+		float_label_over(card, "+" + str(-damage_delta) + " HP", Color.GREEN, is_opponent)
+	print("AUDIT 2026-11-17 FIX ACTIVE: unannounced HP change on ", card.metadata.get("name", ""), " (", -damage_delta, ") given feedback")
+
+
 func nav_input_settling() -> bool:
 	var busy: bool = player_turn_start_running or animation_blocker.visible or _anim_in_flight 		or Time.get_ticks_msec() - _last_anim_busy_ms < INPUT_SETTLE_MS
 	if busy and Time.get_ticks_msec() - _issue465_logged_ms > 1000:
@@ -12918,6 +13119,7 @@ func nav_input_settling() -> bool:
 func _process(_delta: float) -> void:
 	if animation_blocker.visible or _anim_in_flight:
 		_last_anim_busy_ms = Time.get_ticks_msec()
+	_watch_hp_changes()
 	# DEV: hold Ctrl to see the opponent's hand + Prize cards. Polled (not an input event) so it works at any moment —
 	# the CPU's turn, message boxes, input blockers, card previews — and alt-tab can't strand it.
 	if DebugMode.is_enabled() and GameState.autotest == null:

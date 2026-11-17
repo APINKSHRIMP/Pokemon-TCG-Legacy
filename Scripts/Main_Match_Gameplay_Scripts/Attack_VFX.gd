@@ -163,6 +163,48 @@ const DRAMA_FLASH_TIME := 0.45
 const DRAMA_BENCH_FROM := 0.8
 const SCREEN_SHAKE_STEP := 0.03
 
+# ── SUPER ATTACKS (2026-11-17, user request) ──────────────────────────────────────────────────
+# Attacks with a printed cost of MEGA_COST+ Energy (5 is the most any card asks: Groudon Star's Ground Slash,
+# Kyogre Star's Sheer Cold, Hyper Beam, Solarbeam...) are escalated on top of their own recipe:
+#   CHARGE-UP before it plays: heavy dim, the attacker swells / shivers / pulses in its colour, particles and
+#     rings stream into it, a building rumble and a charge sound.
+#   The recipe's effects play MEGA_SIZE bigger.
+#   IMPACT: hit-stop, a camera punch-in, ONE strong flash (fades out smoothly - never strobes), a long heavy
+#     shake, shockwave rings, a chain of explosions + debris on the defender, a boom, both sides rattle and the
+#     defender is knocked much further.
+# All TWEAKABLE. Skipped (like every effect) with reduce-motion / instant match speed.
+const MEGA_COST := 5                  # printed Energy cost from which an attack is a super attack
+const MEGA_EXTRA := []                # attack names that count anyway (lower case)
+const MEGA_WINDUP := 1.1              # seconds of charge-up before the attack plays
+const MEGA_DIM := 0.62                # how dark the board goes (0..0.9)
+const MEGA_GROW := 1.22               # attacker scale at the top of the charge
+const MEGA_SHIVER_PX := 5.0           # attacker shiver at the end of the charge
+const MEGA_RUMBLE_PX := 5.0           # screen rumble building through the charge
+const MEGA_INFLOW := 80               # particles streaming into the attacker
+const MEGA_SIZE := 1.35               # every effect of the attack's own recipe x this
+const MEGA_HITSTOP := 0.09            # real seconds the world freezes on impact (0 = off)
+const MEGA_HITSTOP_SCALE := 0.04      # ...at this fraction of normal speed
+const MEGA_ZOOM := 1.06               # camera punch-in on impact (1.0 = off)
+const MEGA_ZOOM_IN := 0.07
+const MEGA_ZOOM_OUT := 0.5
+const MEGA_FLASH_ALPHA := 0.5         # ONE flash per super hit, fading over MEGA_FLASH_TIME
+const MEGA_FLASH_TIME := 0.75
+const MEGA_SHAKE_PX := 34.0
+const MEGA_SHAKE_TIME := 1.15
+const MEGA_RINGS := 2                 # shockwave rings
+const MEGA_RING_TIME := 0.7
+const MEGA_RING_GAP := 0.12
+const MEGA_BLASTS := 5                # explosions on / around the defender
+const MEGA_BLAST_GAP := 0.09
+const MEGA_DEBRIS := 110              # debris particles thrown off the defender
+const MEGA_KNOCK := 1.8               # defender knockback x this (on top of DRAMA)
+const MEGA_RATTLE_PX := 16.0          # every other Pokemon in play jolts this far
+const MEGA_CHARGE_CLIP := "Focus Energy"
+const MEGA_BOOM_CLIP := "Explosion"
+const MEGA_RUMBLE_CLIP := "Earthquake"
+const MEGA_BOOM_DB := -3.0
+const MEGA_RUMBLE_DB := -12.0
+
 const CONTACT_BODIES := ["lunge", "dash", "leap", "spin", "vanish_strike", "dive"]
 
 ## ISSUE #384: the recipe a heal (Potion etc.) plays on the healed card.
@@ -443,6 +485,8 @@ func play_intent(attacker: card_object, defender: card_object, attack: Dictionar
 	var recipe := recipe_for(attacker, attack)
 	if recipe.is_empty():
 		return false
+	if is_mega(attack):
+		recipe["_mega"] = true   # SUPER ATTACKS
 	if not _pending.is_empty() and _pending["attacker"] == attacker:
 		_pending["played"] = true
 	_last_play = {"recipe": recipe, "attacker": attacker, "turn": main.turn_number}
@@ -466,6 +510,8 @@ func play_hit(attacker: card_object, defender: card_object, pend: Dictionary, da
 	if pend.has("hits"):
 		recipe = _apply_hits(recipe, int(pend["hits"]))   # ISSUE #385
 	recipe = _without_stat_arrows(recipe)
+	if not recipe.is_empty() and is_mega(pend["attack"]):
+		recipe["_mega"] = true   # SUPER ATTACKS
 	if not recipe.is_empty():
 		_last_play = {"recipe": recipe, "attacker": attacker, "turn": main.turn_number}
 	if bool(pend.get("played", false)) or recipe.is_empty():
@@ -572,6 +618,17 @@ func play_status(card: card_object, kind: String) -> void:
 ## that goes through it). Plays the "Heal" recipe on the card itself, without its sound (heal_pokemon
 ## already plays the heal chime). Skipped when a heal ATTACK (Recover...) just played its own effect on
 ## this card. Fire and forget, so the damage counters refill while it plays.
+## AUDIT 2026-11-17: a Pokemon Power being used - the "self" power-up recipe (utility.self) on the Pokemon, with
+## its sound. Powers had only the card jolt (Card_FX.power_used) and no sound at all.
+func play_power(pokemon: card_object) -> void:
+	if pokemon == null or not _enabled():
+		return
+	var r := recipe_by_id(str(_utility.get("self", "PowerUp")))
+	if r.is_empty():
+		return
+	await play(pokemon, pokemon, r, {})
+
+
 func play_heal(card: card_object) -> void:
 	if not _enabled() or card == null:
 		return
@@ -597,6 +654,8 @@ func preview_attack(name: String, attacker: card_object, defender: card_object) 
 		return
 	var info: Dictionary = _map.get(name, {})
 	var recipe := recipe_by_name(name, str(info.get("type", "Colorless")), int(info.get("cost", 1)))
+	if not recipe.is_empty() and (int(info.get("cost", 1)) >= MEGA_COST or name.to_lower() in MEGA_EXTRA):
+		recipe["_mega"] = true   # SUPER ATTACKS: the tester shows the escalation too
 	var react := {"damage": PREVIEW_DAMAGE} if bool(info.get("dmg", false)) else {}
 	print("ATTACK VFX: preview '", name, "' -> ", recipe.get("_id", "?"))
 	_last_play = {"recipe": recipe, "attacker": attacker, "turn": main.turn_number}
@@ -727,6 +786,9 @@ func _make_ctx(attacker: card_object, defender: card_object, recipe: Dictionary,
 func play(attacker: card_object, defender: card_object, recipe: Dictionary, react: Dictionary) -> void:
 	if attacker == null or recipe.is_empty():
 		return
+	var mega := bool(recipe.get("_mega", false)) and not bool(recipe.get("_bench", false))
+	if mega:
+		recipe = _mega_recipe(recipe)
 	var ctx := _make_ctx(attacker, defender, recipe, react)
 	if ctx == null:
 		return
@@ -737,7 +799,14 @@ func play(attacker: card_object, defender: card_object, recipe: Dictionary, reac
 	var screen: Dictionary = recipe.get("screen", {})
 	var dim_rect: ColorRect = null
 	if screen.has("dim"):
-		dim_rect = _dim_start(ctx, float(screen["dim"]), est + 0.8)
+		dim_rect = _dim_start(ctx, float(screen["dim"]), est + 0.8 + (MEGA_WINDUP if mega else 0.0))
+	if mega:
+		await _mega_windup(ctx)
+		if _bail():
+			_cleanup(ctx)
+			if dim_rect != null and is_instance_valid(dim_rect):
+				dim_rect.queue_free()
+			return
 	_sfx_begin(ctx, steps, body, contact, est)
 
 	if contact:
@@ -1014,17 +1083,23 @@ func _impact(ctx: _Ctx) -> void:
 	var drama := float(ctx.react.get("drama", 0.0))
 	if bool(ctx.recipe.get("_bench", false)):
 		drama = 0.0
-	if screen.has("flash"):
-		_screen_flash(ctx, Color(str(screen["flash"])))
-	elif drama >= DRAMA_FLASH_FROM:
-		_drama_flash(ctx, drama)
-	var shake := float(screen.get("shake", 0.0))
-	if shake > 0.0:
-		shake *= 1.0 + DRAMA_SHAKE_BOOST * drama
-	elif drama >= DRAMA_SHAKE_FROM:
-		shake = DRAMA_SHAKE_MAX * drama
-	if shake > 0.0:
-		_screen_shake(ctx, shake)
+	var shake := 0.0
+	if bool(ctx.recipe.get("_mega", false)) and not bool(ctx.recipe.get("_bench", false)):
+		_mega_impact(ctx)   # SUPER ATTACKS: its own flash, shake, explosions... (one flash only)
+		drama = maxf(drama, 1.0)
+		shake = MEGA_SHAKE_PX
+	else:
+		if screen.has("flash"):
+			_screen_flash(ctx, Color(str(screen["flash"])))
+		elif drama >= DRAMA_FLASH_FROM:
+			_drama_flash(ctx, drama)
+		shake = float(screen.get("shake", 0.0))
+		if shake > 0.0:
+			shake *= 1.0 + DRAMA_SHAKE_BOOST * drama
+		elif drama >= DRAMA_SHAKE_FROM:
+			shake = DRAMA_SHAKE_MAX * drama
+		if shake > 0.0:
+			_screen_shake(ctx, shake)
 	if drama >= DRAMA_BENCH_FROM and main.card_fx != null and ctx.defender != null:
 		for c in _bench_of(ctx.defender):
 			if c != null:
@@ -1076,6 +1151,8 @@ func _react(ctx: _Ctx) -> void:
 	var hits := maxi(1, int(ctx.recipe.get("hits", 1)))
 	var dir := ctx.dir
 	mult *= 1.0 + DRAMA_KNOCK_BOOST * float(ctx.react.get("drama", 0.0))   # DRAMA: big hits knock further
+	if bool(ctx.recipe.get("_mega", false)):
+		mult *= MEGA_KNOCK   # SUPER ATTACKS
 	var kb := dir * KNOCK_PX * mult
 	var style_time := 0.0
 	match style:
@@ -2216,6 +2293,325 @@ func _wave_impact(ctx: _Ctx, power: float) -> void:
 
 func _wave_react(ctx: _Ctx, total: float, fn: Callable) -> void:
 	await main.card_fx.motion(ctx.defender, total, fn)
+	ctx.jobs.finish()
+
+
+# ============================================================
+# SUPER ATTACKS (see MEGA_* at the top)
+# ============================================================
+
+## True for an attack that costs MEGA_COST+ Energy (printed), or is listed in MEGA_EXTRA.
+static func is_mega(attack: Dictionary) -> bool:
+	if attack.is_empty():
+		return false
+	var cost := maxi(int(attack.get("convertedEnergyCost", 0)), (attack.get("cost", []) as Array).size())
+	return cost >= MEGA_COST or str(attack.get("name", "")).strip_edges().to_lower() in MEGA_EXTRA
+
+
+## The recipe with every effect MEGA_SIZE bigger and a heavy dim.
+func _mega_recipe(recipe: Dictionary) -> Dictionary:
+	var r := recipe.duplicate(true)
+	for st in r.get("steps", []):
+		if st.has("scale"):
+			st["scale"] = float(st["scale"]) * MEGA_SIZE
+		else:
+			var at := str(st.get("at", "target"))
+			st["size"] = float(st.get("size", SIZE_DEFAULT.get(at, 1.0))) * MEGA_SIZE
+	var screen: Dictionary = (r.get("screen", {}) as Dictionary).duplicate()
+	screen["dim"] = maxf(float(screen.get("dim", 0.0)), MEGA_DIM)
+	r["screen"] = screen
+	return r
+
+
+## The charge-up: the attacker swells, shivers and pulses while energy streams into it and the screen rumbles.
+func _mega_windup(ctx: _Ctx) -> void:
+	var t := GameState.match_time(MEGA_WINDUP)
+	if t <= 0.0:
+		return
+	print("SUPER ATTACK: charge-up '", ctx.recipe.get("_id", "?"), "'")
+	_mega_snap("charge", MEGA_WINDUP * 0.7)
+	_sfx_play(MEGA_CHARGE_CLIP, 0.0, t + 0.2, MOVE_DB, 0.85)
+	var glow: Color = _elem_colour(ctx, "glow", Color.WHITE)
+	var soft := _soft_colour(glow)
+	if main.card_fx != null:
+		var shiver := MEGA_SHIVER_PX
+		main.card_fx.motion(ctx.attacker, t, func(e: Dictionary, f: float) -> void:
+			var g: float
+			if f < 0.82:
+				g = lerpf(1.0, MEGA_GROW, _ease_out(f / 0.82))
+			else:
+				g = lerpf(MEGA_GROW, 1.0, (f - 0.82) / 0.18)
+			e["scale"] = Vector2(g, g)
+			var pulse := 0.5 + 0.5 * sin(f * TAU * 4.0)
+			e["tint"] = Color.WHITE.lerp(glow, clampf(f * 1.6, 0.0, 1.0) * (0.35 + 0.45 * pulse))
+			e["offset"] = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * shiver * f * f)
+	_screen_rumble(ctx, MEGA_RUMBLE_PX, MEGA_WINDUP)
+	_mega_inflow(ctx, soft, t)
+	var w := ctx.a_rect.size.x
+	ctx.jobs.add()
+	_play_copy(ctx, {"fx": "Charge", "at": "self", "size": 1.7, "add": true, "dur": MEGA_WINDUP,
+		"tint": soft.to_html(false)}, ctx.a_rect.get_center(), w, ctx.jobs)
+	ctx.jobs.add()
+	_play_copy(ctx, {"fx": "BlueRingsIn", "at": "self", "size": 2.2, "add": true, "dur": MEGA_WINDUP * 0.85,
+		"tint": soft.to_html(false)}, ctx.a_rect.get_center(), w, ctx.jobs)
+	await _wait(MEGA_WINDUP)
+
+
+## Everything a super attack adds at the moment it lands.
+func _mega_impact(ctx: _Ctx) -> void:
+	print("SUPER ATTACK: impact '", ctx.recipe.get("_id", "?"), "'")
+	for d in [0.05, 0.25, 0.6]:
+		_mega_snap("impact", d)
+	var glow: Color = _elem_colour(ctx, "glow", Color.WHITE)
+	var soft := _soft_colour(glow)
+	_hit_stop()
+	_zoom_punch(ctx)
+	_mega_flash(ctx, soft)
+	_screen_shake(ctx, MEGA_SHAKE_PX, MEGA_SHAKE_TIME)
+	_sfx_play(MEGA_BOOM_CLIP, maxf(0.0, float(_sfx.get(MEGA_BOOM_CLIP, {}).get("hit", 0.0)) - 0.03), 1.8, MEGA_BOOM_DB, 0.9)
+	_sfx_play(MEGA_RUMBLE_CLIP, 0.0, 1.4, MEGA_RUMBLE_DB, 0.8)
+	var at: Vector2 = ctx.d_rect.get_center() if ctx.defender != ctx.attacker else ctx.a_rect.get_center()
+	for i in MEGA_RINGS:
+		_shockwave_later(ctx, at, soft, float(i) * MEGA_RING_GAP)
+	_mega_blasts(ctx, at)
+	_mega_debris(ctx, at, soft)
+	# Every other Pokemon in play is rattled.
+	if main.card_fx != null:
+		var cards: Array = [main.player_active_pokemon, main.opponent_active_pokemon]
+		cards.append_array(main.player_bench)
+		cards.append_array(main.opponent_bench)
+		for c in cards:
+			if c != null and c != ctx.attacker and c != ctx.defender:
+				main.card_fx.jolt(c, MEGA_RATTLE_PX, QUAKE_STEP, maxi(4, int(0.7 / QUAKE_STEP)))
+
+
+## Test only: AUTOTEST_MEGA_SNAP=1 in a watched autotest run saves a screenshot `delay` real seconds from now.
+func _mega_snap(tag: String, delay: float) -> void:
+	if GameState.autotest == null or not OS.has_environment("AUTOTEST_MEGA_SNAP"):
+		return
+	await get_tree().create_timer(GameState.match_time(delay)).timeout   # game time, like the effect itself
+	if GameState.autotest != null and GameState.autotest.has_method("snap_now"):
+		GameState.autotest.snap_now(tag + "_" + str(delay))
+
+
+## A glow colour brought into 0..1 and lifted towards white, for flashes, rings and particles.
+func _soft_colour(c: Color) -> Color:
+	var m := maxf(c.r, maxf(c.g, c.b))
+	if m > 1.0:
+		c = Color(c.r / m, c.g / m, c.b / m)
+	return c.lerp(Color.WHITE, 0.15)
+
+
+## The world freezes for a split second (Engine.time_scale), then carries on. Restored from a timer that ignores
+## time scale, and again in _exit_tree, so it can never stick.
+var _hitstop_prev := -1.0
+
+func _hit_stop() -> void:
+	if MEGA_HITSTOP <= 0.0 or _hitstop_prev >= 0.0:
+		return
+	_hitstop_prev = Engine.time_scale
+	Engine.time_scale = _hitstop_prev * MEGA_HITSTOP_SCALE
+	get_tree().create_timer(MEGA_HITSTOP, true, false, true).timeout.connect(_end_hit_stop)
+
+
+func _end_hit_stop() -> void:
+	if _hitstop_prev >= 0.0:
+		Engine.time_scale = _hitstop_prev
+	_hitstop_prev = -1.0
+
+
+func _exit_tree() -> void:
+	_end_hit_stop()
+
+
+## A quick punch-in of the whole board towards the impact, easing back out.
+var _zooming := false
+
+func _zoom_punch(ctx: _Ctx) -> void:
+	if MEGA_ZOOM <= 1.0 or _zooming or not main is Control:
+		return
+	var c: Control = main
+	_zooming = true
+	ctx.jobs.add()
+	var prev_pivot := c.pivot_offset
+	var prev_scale := c.scale
+	var focus: Vector2 = (ctx.d_rect.get_center() * 2.0 + ctx.a_rect.get_center()) / 3.0
+	c.pivot_offset = c.get_global_transform().affine_inverse() * focus
+	var tw := create_tween()
+	tw.tween_property(c, "scale", prev_scale * MEGA_ZOOM, maxf(GameState.match_time(MEGA_ZOOM_IN), 0.01)).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(c, "scale", prev_scale, maxf(GameState.match_time(MEGA_ZOOM_OUT), 0.01)).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	await tw.finished
+	if is_instance_valid(c):
+		c.scale = prev_scale
+		c.pivot_offset = prev_pivot
+	_zooming = false
+	ctx.jobs.finish()
+
+
+## ONE strong flash in the attack's colour, fading out smoothly (no strobing).
+func _mega_flash(ctx: _Ctx, colour: Color) -> void:
+	var r := _overlay(Color(colour.r, colour.g, colour.b, MEGA_FLASH_ALPHA), FLASH_Z)
+	ctx.jobs.add()
+	var tw := r.create_tween()
+	tw.tween_property(r, "color:a", 0.0, maxf(GameState.match_time(MEGA_FLASH_TIME), 0.01)).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(r.queue_free)
+	tw.tween_callback(ctx.jobs.finish)
+
+
+## Shakes the board with an amplitude that BUILDS to `px` over `base_time` (the charge-up rumble).
+func _screen_rumble(ctx: _Ctx, px: float, base_time: float) -> void:
+	if not main is Control:
+		return
+	if _shake_users == 0:
+		_shake_base = main.position
+	_shake_users += 1
+	ctx.jobs.add()
+	var dur := GameState.match_time(base_time)
+	var step := func(f: float) -> void:
+		if not is_instance_valid(main):
+			return
+		var amp := px * f * f
+		main.position = _shake_base + Vector2(randf_range(-amp, amp), randf_range(-amp, amp) * 0.6)
+	var tw := create_tween()
+	tw.tween_method(step, 0.0, 1.0, maxf(dur, 0.01))
+	await tw.finished
+	_shake_users -= 1
+	if _shake_users <= 0 and is_instance_valid(main):
+		_shake_users = 0
+		main.position = _shake_base
+	ctx.jobs.finish()
+
+
+## An expanding ring in the attack's colour.
+class _Shock extends Node2D:
+	var radius := 0.0
+	var width := 22.0
+	var colour := Color.WHITE
+	func _draw() -> void:
+		if radius > 1.0 and colour.a > 0.01:
+			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 96, colour, width, true)
+
+
+func _shockwave_later(ctx: _Ctx, at: Vector2, colour: Color, delay: float) -> void:
+	ctx.jobs.add()
+	if delay > 0.0:
+		await _wait(delay)
+	var ring := _Shock.new()
+	ring.colour = colour
+	_layer.add_child(ring)
+	ring.global_position = at
+	var reach: float = get_viewport().get_visible_rect().size.x * 0.75
+	var dur := maxf(GameState.match_time(MEGA_RING_TIME), 0.01)
+	var tw := ring.create_tween()
+	tw.tween_method(func(f: float) -> void:
+		if not is_instance_valid(ring):
+			return
+		ring.radius = reach * _ease_out(f)
+		ring.width = lerpf(34.0, 4.0, f)
+		ring.colour.a = (1.0 - f) * 0.85
+		ring.queue_redraw(), 0.0, 1.0, dur)
+	await tw.finished
+	if is_instance_valid(ring):
+		ring.queue_free()
+	ctx.jobs.finish()
+
+
+## The explosion frames are orange: this many degrees of hue turns them towards the attack's colour (an icy blast
+## for Sheer Cold, a violet one for Psychic...). 0 for orange-ish or washed-out colours (Fire, Fighting, Colorless).
+const MEGA_BLAST_BASE_HUE := 32.0
+
+func _blast_hue(colour: Color) -> float:
+	if colour.s < 0.25:
+		return 0.0
+	var shift := wrapf(colour.h * 360.0 - MEGA_BLAST_BASE_HUE, -180.0, 180.0)
+	return 0.0 if absf(shift) < 25.0 else shift
+
+
+## A big explosion on the defender, then smaller ones around it.
+func _mega_blasts(ctx: _Ctx, at: Vector2) -> void:
+	var r: Rect2 = ctx.d_rect if ctx.defender != ctx.attacker else ctx.a_rect
+	var hue := _blast_hue(_elem_colour(ctx, "glow", Color.WHITE))
+	for i in MEGA_BLASTS:
+		var s := {"fx": "Explosion" if i == 0 else "MiniExplosions", "at": "target", "size": 1.8 if i == 0 else 0.95}
+		if hue != 0.0:
+			s["hue"] = hue
+		var pos := at
+		if i > 0:
+			pos += Vector2(randf_range(-0.75, 0.75) * r.size.x, randf_range(-0.55, 0.55) * r.size.y)
+		ctx.jobs.add()
+		_blast_later(ctx, s, pos, r.size.x, float(i) * MEGA_BLAST_GAP)
+
+
+func _blast_later(ctx: _Ctx, s: Dictionary, pos: Vector2, w: float, delay: float) -> void:
+	if delay > 0.0:
+		await _wait(delay)
+	_play_copy(ctx, s, pos, w, ctx.jobs)
+
+
+## Debris thrown off the defender in the attack's colour.
+func _mega_debris(ctx: _Ctx, at: Vector2, colour: Color) -> void:
+	var p := CPUParticles2D.new()
+	p.one_shot = true
+	p.amount = MEGA_DEBRIS
+	p.lifetime = 0.95
+	p.explosiveness = 0.95
+	p.direction = Vector2.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 300.0
+	p.initial_velocity_max = 760.0
+	p.gravity = Vector2(0, 1500)
+	p.damping_min = 120.0
+	p.damping_max = 260.0
+	p.angular_velocity_min = -540.0
+	p.angular_velocity_max = 540.0
+	p.scale_amount_min = 4.0
+	p.scale_amount_max = 10.0
+	# Hot white at the start, the attack's colour, then gone.
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1.0, 1.0, 0.95, 1.0))
+	ramp.set_color(1, Color(colour.r, colour.g, colour.b, 0.0))
+	ramp.add_point(0.25, Color(colour.r, colour.g, colour.b, 1.0))
+	p.color_ramp = ramp
+	_layer.add_child(p)
+	p.global_position = at
+	p.emitting = true
+	ctx.sprites.append(p)
+	ctx.jobs.add()
+	await get_tree().create_timer(p.lifetime + 0.1).timeout
+	if is_instance_valid(p):
+		p.queue_free()
+	ctx.jobs.finish()
+
+
+## Energy streaming INTO the attacker through the charge-up.
+func _mega_inflow(ctx: _Ctx, colour: Color, dur: float) -> void:
+	var p := CPUParticles2D.new()
+	p.amount = MEGA_INFLOW
+	p.lifetime = 0.45
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE_SURFACE
+	p.emission_sphere_radius = maxf(ctx.a_rect.size.x, 80.0) * 1.15
+	p.gravity = Vector2.ZERO
+	p.initial_velocity_min = 0.0
+	p.initial_velocity_max = 0.0
+	p.radial_accel_min = -1500.0
+	p.radial_accel_max = -1100.0
+	p.scale_amount_min = 3.0
+	p.scale_amount_max = 7.0
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(colour.r, colour.g, colour.b, 0.0))
+	ramp.set_color(1, Color(1, 1, 1, 1))
+	p.color_ramp = ramp
+	_layer.add_child(p)
+	p.global_position = ctx.a_rect.get_center()
+	p.emitting = true
+	ctx.sprites.append(p)
+	ctx.jobs.add()
+	await get_tree().create_timer(maxf(dur * 0.85, 0.05)).timeout
+	if is_instance_valid(p):
+		p.emitting = false
+	await get_tree().create_timer(p.lifetime + 0.05).timeout
+	if is_instance_valid(p):
+		p.queue_free()
 	ctx.jobs.finish()
 
 

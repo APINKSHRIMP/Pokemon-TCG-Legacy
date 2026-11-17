@@ -40,6 +40,7 @@ extends Node
 
 var main: Node = null
 var hand_drag: Node = null
+var _last_skip_print: int = -1   # AUDIT 2026-11-17: the "skipped N card(s)" log line, once per change
 
 ## TWEAKABLE. Sideways distance counts this many times more than forward distance
 ## when choosing the next target, so "right" prefers what is level with you.
@@ -93,7 +94,8 @@ func _drop_ring() -> void:
 ## False whenever the board is not the player's to look at: a message, a coin
 ## flip, an animation, the opponent's turn, a preview, the log, the pause menu.
 func _active() -> bool:
-	if main == null or GameState.autotest != null:
+	# AUDIT 2026-11-17: the autotester's real-input mode drives the cursor exactly like a player.
+	if main == null or (GameState.autotest != null and not bool(GameState.autotest.get("real_input_now"))):
 		return false
 	if main.game_is_over:
 		return false
@@ -204,8 +206,11 @@ func _selection_targets() -> Array:
 	var pool: Array = main.shown_selection_pool
 	var offered: Array = cards.filter(func(cd): return cd.card_ref in pool)
 	if not offered.is_empty():
-		if offered.size() < cards.size():
-			print("BOARD NAV: skipped ", cards.size() - offered.size(), " card(s) not in the selection pool")
+		# AUDIT 2026-11-17: printed once per change (it was every frame the cursor rebuilt its targets - ~20k lines a run).
+		var skipped: int = cards.size() - offered.size()
+		if skipped > 0 and skipped != _last_skip_print:
+			print("BOARD NAV: skipped ", skipped, " card(s) not in the selection pool")
+		_last_skip_print = skipped
 		cards = offered
 	for cd in cards:
 		out.append({"key": cd.card_ref, "rect": _rect_of(cd), "node": cd,
@@ -477,6 +482,14 @@ func _current(mode: String, targets: Array) -> int:
 
 func _set_focus(targets: Array, i: int, arriving: bool) -> void:
 	_focus_key = targets[i]["key"]
+	# AUDIT 2026-11-17: a row inside a scrolling action panel (a long option pick) scrolls into view.
+	var fnode = targets[i]["node"]
+	if fnode is Control and is_instance_valid(fnode):
+		var sc: Node = (fnode as Control).get_parent()
+		while sc != null and not (sc is ScrollContainer):
+			sc = sc.get_parent()
+		if sc != null and sc != main.selection_scroller:
+			(sc as ScrollContainer).ensure_control_visible(fnode)
 	if _mode == "selection":
 		var card: card_object = targets[i]["card"]
 		if card != null:
@@ -595,7 +608,11 @@ func handle_input(event: InputEvent) -> bool:
 				main.show_pokemon_preview(mon)
 		return true
 
-	if mode != "yes_no" and not _ring_showing() \
+	# AUDIT 2026-11-17: an optional option pick (yes / no) keeps the old yes / no rule - Space answers the
+	# first row (Yes) straight away. A forced pick shows the cursor first, so nothing is picked blind.
+	var answers_at_once: bool = mode == "yes_no" \
+		or (mode == "copy_pick" and main.option_pick_active() and main.option_pick_back_index >= 0)
+	if not answers_at_once and not _ring_showing() \
 			and (UIInput.is_accept(event) or UIInput.is_hand_jump(event) or UIInput.is_end_turn_jump(event) \
 				or UIInput.is_attack_jump(event)):
 		print("ISSUE #419 FIX ACTIVE: first key press only shows the cursor (nothing activated)")
@@ -686,7 +703,12 @@ func _on_cancel(event: InputEvent, mode: String) -> bool:
 			main.hide_attack_buttons()
 			return true
 		"copy_pick":
-			# A copy has to be chosen: B / Backspace do nothing; Escape still opens the pause menu.
+			# AUDIT 2026-11-17: an OPTIONAL option pick (a yes / no, "skip") - every back key gives its back answer.
+			if main.option_pick_active() and main.option_pick_back_index >= 0:
+				print("AUDIT 2026-11-17 FIX ACTIVE: back key answered option '", main.option_pick_labels[main.option_pick_back_index], "'")
+				main.special_attack_selected.emit(main.option_pick_back_index)
+				return true
+			# A copy / forced option has to be chosen: B / Backspace do nothing; Escape still opens the pause menu.
 			return not _is_escape(event)
 		"yes_no":
 			return false   # the match's yes/no branch answers NO

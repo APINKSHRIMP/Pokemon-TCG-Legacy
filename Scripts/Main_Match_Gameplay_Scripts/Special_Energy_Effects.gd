@@ -242,8 +242,13 @@ func discard_now_illegal(pokemon: card_object, is_owner_opp: bool) -> Array:
 		if not bool(type_lock_check(e, pokemon).get("allowed", true)):
 			# Detached here: mid-evolution the new card is not on the board yet, so the shared
 			# helper (which detaches from Pokémon in play) would leave it attached.
+			var il_r: Dictionary = main.card_ops.capture_rect(e, "attached", is_owner_opp)   # AUDIT 2026-11-17: flight
+			if il_r.is_empty():
+				il_r = main.card_ops.capture_rect(pokemon, "play", is_owner_opp)
 			pokemon.attached_energies.erase(e)
 			main.card_ops.discard_energy_from_pokemon(e, is_owner_opp, true)
+			if e in (main.opponent_discard_pile if is_owner_opp else main.player_discard_pile):
+				main.card_ops.fly_card(e, "attached", "discard", is_owner_opp, -1, il_r)   # AUDIT 2026-11-17: flight (queued)
 			dropped.append(e.metadata.get("name", ""))
 	if not dropped.is_empty():
 		pass
@@ -361,9 +366,12 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 			if be_pool.is_empty(): return false
 			var be_pick = await main.attack_effects.r4_pick_own_energy(target_pokemon, be_pool, is_opponent, "BOUNCE ENERGY: RETURN A BASIC ENERGY TO YOUR HAND")
 			if main._should_bail(): return true
+			var be_r: Dictionary = main.card_ops.capture_rect(be_pick, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 			target_pokemon.attached_energies.erase(be_pick)
 			be_pick.current_location = "hand"
 			(main.opponent_hand if is_opponent else main.player_hand).append(be_pick)
+			await main.card_ops.fly_card(be_pick, "attached", "hand", is_opponent, -1, be_r)   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return true
 			main.refresh_hand_display(is_opponent)
 			main.display_pokemon(is_opponent)
 			main.display_active_pokemon_energies(is_opponent)
@@ -448,9 +456,11 @@ func process_end_of_turn_discards(is_opponent: bool) -> void:
 				to_remove.append(energy)
 
 		for energy in to_remove:
+			var _fr1: Dictionary = main.card_ops.capture_rect(energy, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 			pokemon.attached_energies.erase(energy)
 			energy.current_location = "discard"
 			discard_pile.append(energy)
+			await main.card_ops.fly_card(energy, "attached", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 			print("AUDIT 2026-11-16 FIX ACTIVE: end-of-turn discard of ", energy.metadata.get("name", ""), " from ", pokemon.metadata.get("name", ""))
 			main.display_active_pokemon_energies(is_opponent)
 			main.display_pokemon(is_opponent)

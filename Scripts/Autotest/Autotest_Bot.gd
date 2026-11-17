@@ -48,9 +48,20 @@ func setup(m: Node, r: Node, seed_value: int) -> void:
 func _process(_delta: float) -> void:
 	if main == null or not is_instance_valid(main) or not main.is_inside_tree():
 		return
+	if _async_busy:
+		return
 	if _answer_cooldown > 0:
 		_answer_cooldown -= 1
 		return
+	# AUDIT 2026-11-17: --input=mix|mouse|keys|pad answers prompts with REAL input events.
+	if _real_enabled() and _real_prompt_kind() != "":
+		_async_busy = true
+		var handled: bool = await _real_answer()
+		_async_busy = false
+		if handled:
+			_idle_frames = 0
+			_answer_cooldown = 1
+			return
 	if _answer_prompts():
 		_idle_frames = 0
 		_answer_cooldown = 1
@@ -80,6 +91,17 @@ func _answer_prompts() -> bool:
 	# 2. A coin is mid-flip — nothing to answer, just wait.
 	if main.coin_container.visible:
 		return false
+	# 2a. AUDIT 2026-11-17: an option pick (yes / no, "how many", a condition...) in the action panel rows.
+	if main.option_pick_active():
+		var labels: Array = main.option_pick_labels
+		if not _count_attempt("option:" + str(main.option_pick_caption) + str(labels)):
+			return true
+		var oi: int = rng.randi() % labels.size()
+		if _smart() and main.option_pick_back_index == 1 and labels.size() == 2:
+			oi = 0   # smart: "may" effects are almost always worth taking
+		_log("option '%s' on '%s'" % [labels[oi], str(main.option_pick_caption).left(60)])
+		main.special_attack_selected.emit(oi)
+		return true
 	# 2b. A copy attack (Metronome...) choosing from its rows in the action panel.
 	if main.copy_pick_active and not main.copy_pick_pool.is_empty():
 		var i: int = rng.randi() % main.copy_pick_pool.size()
@@ -816,6 +838,20 @@ func _play_hand_card(card) -> void:
 
 func _use_power() -> void:
 	_powers_this_turn += 1
+	# AUDIT 2026-11-17: in real-input mode, press an actual Power / Stadium row or Bench Power button.
+	if _real_enabled():
+		var live: Array = _live_power_buttons()
+		if not live.is_empty():
+			var b: BaseButton = live[rng.randi() % live.size()]
+			_mode = _pick_mode()
+			var hold_p: bool = _mode != "mouse"
+			_real_hold(hold_p)
+			_log("REAL power button '" + _btn_text(b) + "'")
+			_input_waiting = true
+			await _real_press(b, "power button '" + _btn_text(b) + "'")
+			_input_waiting = false
+			_real_release(hold_p)
+			return
 	await main.powers_and_bodies.open_power_menu()
 
 
@@ -825,6 +861,22 @@ func _retreat() -> void:
 
 
 func _attack(i: int) -> void:
+	# AUDIT 2026-11-17: in real-input mode the attack row itself is pressed (mouse / keys / pad).
+	if _real_enabled():
+		var attacks: Array = main.get_attacks_for_card(main.player_active_pokemon)
+		var want: String = String(attacks[i].get("name", "")) if i < attacks.size() else ""
+		var b: BaseButton = _attack_row_button(i)
+		if b != null and String(b.get_meta("row_text", "")) == want and not b.disabled:
+			_mode = _pick_mode()
+			var hold_a: bool = _mode != "mouse"
+			_real_hold(hold_a)
+			_log("REAL attack row '" + want + "'")
+			_input_waiting = true
+			await _real_press(b, "attack row '" + want + "'")
+			_input_waiting = false
+			_real_release(hold_a)
+			return
+		runner._problem("NO ATTACK ROW", "no live row for usable attack '%s' (index %d) on %s" % [want, i, _name(main.player_active_pokemon)], "noatkrow" + want)
 	await main.perform_attack(i)
 
 
@@ -844,3 +896,629 @@ func _log(s: String) -> void:
 	last_action = s
 	if runner != null:
 		runner.bot_log(s)
+
+
+# ═════════════════════════ AUDIT 2026-11-17: REAL INPUT ═════════════════════════
+# With --input=mix|mouse|keys|pad the bot answers option rows (yes / no, "how many", copy picks...), card selection
+# screens, messages, attack rows and Power buttons by sending REAL input events through Input.parse_input_event -
+# a mouse click on the control's screen position, or the board cursor walked there with arrows / D-pad and accept
+# pressed. When the input does nothing the bot says so (INPUT IGNORED, NAV UNREACHABLE) and answers by signal so the
+# match goes on. On a FORCED prompt it first tries to get out of it (Backspace, Escape, pad B, right click, a click
+# off the prompt) and reports FORCED PROMPT SKIPPED if any of those closed it.
+
+const REAL_MODES := ["mouse", "keys", "pad"]
+## TWEAKABLE. Chance a forced prompt is probed with "get me out" inputs before it is answered.
+const SKIP_PROBE_CHANCE := 0.35
+## TWEAKABLE. Share of plain messages acknowledged by real input (the rest by signal - there are thousands).
+const REAL_MESSAGE_CHANCE := 0.15
+
+var _async_busy := false
+var _input_waiting := false        # the DRIVER is mid real-input press (the runner holds its clocks for both)
+var _mode := "signal"
+var input_stats := {"answers": 0, "ignored": 0, "unreachable": 0, "skipped": 0, "probes": 0}
+
+
+## The cursor (Board_Nav) listens while ANY real key / pad driving is going on - the driver and the answerer can
+## both be mid-press, so a count, not a flag (one finishing used to switch the cursor off under the other).
+var _real_users := 0
+
+func _real_hold(on: bool) -> void:
+	if on:
+		_real_users += 1
+	runner.real_input_now = _real_users > 0
+
+
+func _real_release(on: bool) -> void:
+	if on:
+		_real_users = maxi(0, _real_users - 1)
+	runner.real_input_now = _real_users > 0
+
+
+func _real_enabled() -> bool:
+	if runner == null or _smart() or _stacking():
+		return false
+	var o := str(runner.get("opt_input"))
+	return o != "" and o != "signal"
+
+
+func _pick_mode() -> String:
+	var o := str(runner.get("opt_input"))
+	if o in REAL_MODES:
+		return o
+	return REAL_MODES[rng.randi() % REAL_MODES.size()]
+
+
+## Which prompt real input will answer now ("" = leave it to the signal answerer).
+func _real_prompt_kind() -> String:
+	var m = main
+	if m.msgbox_container.visible:
+		return "message" if rng.randf() < REAL_MESSAGE_CHANCE else ""
+	if m.coin_container.visible:
+		return ""
+	if m.copy_pick_active:
+		return "option"
+	if m.card_selection_mode_enabled:
+		if m.match_just_started_basic_pokemon_required or m.bench_setup_phase_active:
+			return ""
+		if m.bench_view_active or m.pokemon_preview_active:
+			return ""
+		return "selection"
+	return ""
+
+
+func _real_answer() -> bool:
+	var kind := _real_prompt_kind()
+	if kind == "":
+		return false
+	_mode = _pick_mode()
+	if OS.has_environment("AUTOTEST_NAV_TRACE"): print("REALTRACE answer ", kind, " ", _mode, " header=", main.header_label.text)
+	_real_hold(_mode != "mouse")
+	var ok := false
+	match kind:
+		"message": ok = await _real_message()
+		"option": ok = await _real_option()
+		"selection": ok = await _real_selection()
+	_real_release(_mode != "mouse")
+	if ok:
+		input_stats["answers"] += 1
+	return ok
+
+
+# ── Messages ──
+
+## Counts message_acknowledged emissions: a message followed at once by another never hides the box, so
+## "the box went away" is not the test - "the box was acknowledged" is.
+var _msg_acks := 0
+
+func _on_msg_ack() -> void:
+	_msg_acks += 1
+
+
+func _real_message() -> bool:
+	if not main.message_acknowledged.is_connected(_on_msg_ack):
+		main.message_acknowledged.connect(_on_msg_ack)
+	var acks0 := _msg_acks
+	for attempt in 2:
+		match _mode:
+			"mouse": await _send_click(_screen_center())
+			"keys": await _send_key(KEY_SPACE if rng.randf() < 0.5 else KEY_ENTER)
+			"pad": await _send_pad(JOY_BUTTON_A)
+		for _i in 8:
+			if not main.msgbox_container.visible or _msg_acks > acks0:
+				return true
+			await get_tree().process_frame
+	var last_msg: String = str(main._match_log[-1].get("text", "")) if not main._match_log.is_empty() else "?"
+	_ignored("message (%s): '%s' [%s]" % [_mode, last_msg.left(70), _nav_block_reason()], "msg" + _mode + last_msg.left(30))
+	main.message_acknowledged.emit()
+	return true
+
+
+# ── Option rows (yes / no, counts, conditions, copy picks) ──
+
+func _real_option() -> bool:
+	var m = main
+	var is_opt: bool = m.option_pick_active()
+	var caption: String = str(m.option_pick_caption) if is_opt else "copy pick"
+	var labels: Array = (m.option_pick_labels as Array).duplicate() if is_opt else []
+	if not is_opt:
+		for a in m.copy_pick_pool:
+			labels.append(str(a.get("name", "")))
+	var back: int = int(m.option_pick_back_index) if is_opt else -1
+	var rows: Array = _panel_buttons(true).filter(func(b): return String(b.get_meta("row_kind", "")) in ["option", "copy"])
+	if rows.is_empty():
+		runner._problem("OPTION ROWS MISSING", "an option pick is open ('%s': %s) but the action panel has no live rows for it" % [caption.left(60), ", ".join(PackedStringArray(labels))], "optmiss" + caption.left(40))
+		return false
+	var still_open := func() -> bool:
+		if not m.copy_pick_active:
+			return false
+		return (m.option_pick_labels as Array) == labels if is_opt else true
+	# Forced: try to get out of it first.
+	if back < 0 and rng.randf() < SKIP_PROBE_CHANCE:
+		if not await _skip_probes(still_open, "option pick '" + caption.left(60) + "'"):
+			return true
+	# Optional: sometimes answer with a back key.
+	if back >= 0 and _mode != "mouse" and rng.randf() < 0.3:
+		var keyname := "pad B"
+		await _wait_nav_active()
+		if _mode == "keys":
+			keyname = "Backspace" if rng.randf() < 0.5 else "Escape"
+			await _send_key(KEY_BACKSPACE if keyname == "Backspace" else KEY_ESCAPE)
+		else:
+			await _send_pad(JOY_BUTTON_B)
+		for _i in 8:
+			if not still_open.call():
+				_log("REAL %s answered '%s' with %s" % [_mode, caption.left(50), keyname])
+				return true
+			await get_tree().process_frame
+		_ignored("%s on optional option pick '%s'" % [keyname, caption.left(60)], "optback" + keyname)
+		_close_pause_if_open()
+	await _snap_option(caption)
+	var b: BaseButton = rows[rng.randi() % rows.size()]
+	_log("REAL %s option '%s' on '%s'" % [_mode, _btn_text(b), caption.left(50)])
+	await _real_press(b, "option row '%s' ('%s')" % [_btn_text(b), caption.left(60)])
+	return true
+
+
+# ── Card selection screens ──
+
+func _sel_state() -> String:
+	var m = main
+	var reorder_n: int = (m.pokedex_reorder_result as Array).size() if m.get("pokedex_reorder_result") != null else 0
+	var ids: Array = []
+	for c in m.trainer_discard_selected:
+		ids.append(c.get_instance_id())
+	return "%s|%d|%d|%s" % [str(m.selected_card_for_action.get_instance_id()) if m.selected_card_for_action != null else "-",
+		m.trainer_discard_selected.size(), reorder_n, str(ids)]
+
+
+func _real_selection() -> bool:
+	var m = main
+	var header: String = str(m.header_label.text)
+	var pool: Array = (m.shown_selection_pool as Array).duplicate()
+	var still_open := func() -> bool:
+		return m.card_selection_mode_enabled and str(m.header_label.text) == header
+	if not _count_attempt("real:" + header + "|" + str(pool.size())):
+		return false
+	var forced: bool = not m.cancel_button.is_visible_in_tree() and m.action_button.is_visible_in_tree()
+	if forced and rng.randf() < SKIP_PROBE_CHANCE:
+		if not await _skip_probes(still_open, "selection '" + header.left(60) + "'"):
+			return true
+	# View-only (DONE only).
+	if not m.action_button.is_visible_in_tree():
+		if m.cancel_button.is_visible_in_tree() and not m.cancel_button.disabled:
+			await _real_press(m.cancel_button, "DONE on '%s'" % header.left(60))
+			return true
+		return false
+	# Sometimes back out (exercises every cancel path) - by the back key on keys / pad.
+	if m.cancel_button.is_visible_in_tree() and not m.cancel_button.disabled and rng.randf() < 0.12:
+		if _mode == "mouse":
+			await _real_press(m.cancel_button, "CANCEL on '%s'" % header.left(60))
+			return true
+		await _wait_nav_active()
+		if _mode == "keys":
+			await _send_key(KEY_BACKSPACE)
+		else:
+			await _send_pad(JOY_BUTTON_B)
+		for _i in 8:
+			if not still_open.call():
+				return true
+			await get_tree().process_frame
+		_ignored("%s back on cancelable '%s'" % [_mode, header.left(60)], "selback" + _mode)
+		if m.cancel_button.is_visible_in_tree():
+			m.cancel_button.pressed.emit()
+		return true
+	var cards: Array = pool.filter(func(c): return c is Object and _card_node(c) != null)
+	if cards.is_empty():
+		return false
+	cards.shuffle()
+	if m.trainer_reorder_active:
+		for c in cards:
+			if not still_open.call():
+				return true
+			if c not in m.pokedex_reorder_result:
+				await _real_click_card(c, true, header)
+	elif m.trainer_discard_selection_active:
+		var max_n: int = m.trainer_discard_cards_needed
+		var min_n: int = max(0, m.multi_select_min())
+		var want: int = rng.randi_range(min_n, max(min_n, max_n))
+		for c in cards:
+			if not still_open.call() or m.trainer_discard_selected.size() >= want:
+				break
+			if c not in m.trainer_discard_selected:
+				await _real_click_card(c, true, header)
+	else:
+		# Single pick: a card that lights the action button.
+		var picked := false
+		for c in cards.slice(0, 6):
+			if not still_open.call():
+				return true
+			if c == m.selected_card_for_action and not m.action_button.disabled:
+				picked = true
+				break
+			await _real_click_card(c, false, header)
+			if m.action_button.is_visible_in_tree() and not m.action_button.disabled:
+				picked = true
+				break
+		if not picked:
+			return false   # the signal answerer works it out
+	if not still_open.call():
+		return true
+	if m.action_button.is_visible_in_tree() and not m.action_button.disabled:
+		await _real_press(m.action_button, "'%s' on '%s'" % [str(m.action_button.text), header.left(60)])
+		return true
+	return false
+
+
+## Clicks / walks to a selection card. `toggle`: a pick-several screen (keys press accept on it).
+func _real_click_card(card, toggle: bool, header: String) -> void:
+	if OS.has_environment("AUTOTEST_NAV_TRACE"): print("REALTRACE click ", _name(card), " toggle=", toggle)
+	var before := _sel_state()
+	var node: Control = _card_node(card)
+	if node == null:
+		return
+	if main.selection_scroller != null and main.selection_scroller.is_ancestor_of(node):
+		main.selection_scroller.ensure_control_visible(node)
+		await get_tree().process_frame
+		await get_tree().process_frame
+	if _mode == "mouse":
+		await _send_click(_screen_pos(node))
+	else:
+		if not await _nav_to(card, "card %s on '%s'" % [_name(card), header.left(50)]):
+			_click(card)
+			return
+		# Single-pick screens select on move (Board_Nav); pick-several screens toggle on accept. A cursor that
+		# arrives already ON the card (no move) has not picked it - a player presses A there, which picks it.
+		if toggle or _sel_state() == before:
+			await _send_accept()
+	for _i in 4:
+		await get_tree().process_frame
+	if _sel_state() != before:
+		return
+	# Nothing happened. Does a plain (signal) click do anything? If so the real input was lost.
+	_click(card)
+	if _sel_state() != before:
+		_ignored("%s on card %s in '%s'" % ["click" if _mode == "mouse" else _mode + " select", _name(card), header.left(60)], "card" + _mode + header.left(30))
+
+
+func _card_node(card) -> Control:
+	for root in [main.large_selection_container, main.small_selection_container]:
+		if root == null or not root.is_visible_in_tree():
+			continue
+		var found := _find_card_display(root, card)
+		if found != null:
+			return found
+	return null
+
+
+func _find_card_display(node: Node, card) -> Control:
+	for child in node.get_children():
+		if child is CardDisplay and (child as CardDisplay).card_ref == card and (child as CardDisplay).is_visible_in_tree() \
+				and (child as CardDisplay).mouse_filter != Control.MOUSE_FILTER_IGNORE:
+			return child
+		var f := _find_card_display(child, card)
+		if f != null:
+			return f
+	return null
+
+
+# ── Pressing a button for real ──
+
+func _real_press(b: BaseButton, what: String) -> void:
+	if b == null or not is_instance_valid(b) or not b.is_visible_in_tree() or b.disabled:
+		return
+	var hit := [false]
+	var cb := func(): hit[0] = true
+	b.pressed.connect(cb)
+	if _mode == "mouse":
+		await _send_click(_screen_pos(b))
+		for _i in 6:
+			if hit[0]:
+				break
+			await get_tree().process_frame
+	else:
+		# Two tries: an accept inside Board_Nav's ACCEPT_GRACE_MS after the cursor came back is ignored on purpose.
+		for _try in 2:
+			if hit[0] or not is_instance_valid(b) or not b.is_visible_in_tree():
+				break
+			if not await _nav_to(b, what):
+				break
+			await _send_accept()
+			for _i in 6:
+				if hit[0]:
+					break
+				await get_tree().process_frame
+	if is_instance_valid(b) and b.pressed.is_connected(cb):
+		b.pressed.disconnect(cb)
+	if not hit[0]:
+		_ignored("%s on %s" % ["click" if _mode == "mouse" else _mode, what], "press" + _mode + what.left(40))
+		_close_pause_if_open()
+		if is_instance_valid(b) and b.is_visible_in_tree() and not b.disabled:
+			b.pressed.emit()
+
+
+func _attack_row_button(i: int) -> BaseButton:
+	var panel: Control = main._player_action_panel
+	if panel == null or not is_instance_valid(panel):
+		return null
+	var n := 0
+	for b in main._all_buttons_under(panel):
+		if String(b.get_meta("row_kind", "")) != "attack":
+			continue
+		if n == i:
+			return b
+		n += 1
+	return null
+
+
+# ── Board cursor (keys / pad) ──
+
+func _nav() -> Node:
+	return main.board_nav
+
+
+## Walks the cursor onto `key` (a card object or a node). False = it can't get there (reported).
+func _nav_to(key, what: String) -> bool:
+	var bn := _nav()
+	if bn == null:
+		return false
+	# The cursor stands down for a moment after animations; wait for it.
+	# Real milliseconds, not frames: the settle windows are real-time and headless frames are very fast.
+	var t0 := Time.get_ticks_msec()
+	if OS.has_environment("AUTOTEST_NAV_TRACE"): print("REALTRACE nav_to ", what.left(40), " active=", bn._active(), " reason=", _nav_block_reason())
+	while not bn._active():
+		await get_tree().process_frame
+		if Time.get_ticks_msec() - t0 > 4000:
+			input_stats["unreachable"] += 1
+			runner._problem("NAV INACTIVE", "the board cursor never came up for %s (%s) [%s]" % [what, _mode, _nav_block_reason()], "navinactive" + what.left(40))
+			return false
+	# The first press only shows the ring.
+	if not bn._ring_showing():
+		await _send_dir(Vector2i.DOWN)
+		for _i in 3:
+			await get_tree().process_frame
+	for _step in 40:
+		var mode: String = bn._mode_now()
+		var targets: Array = bn._targets(mode)
+		var ti: int = bn._find(targets, key)
+		if ti < 0:
+			input_stats["unreachable"] += 1
+			runner._problem("NAV UNREACHABLE", "%s is not a cursor stop (%s, mode '%s')" % [what, _mode, mode], "navnot" + what.left(50))
+			return false
+		var cur: int = bn._current(mode, targets)
+		if OS.has_environment("AUTOTEST_NAV_TRACE"):
+			print("NAVTRACE ", what.left(50), " mode=", mode, " n=", targets.size(), " cur=", cur, " ti=", ti, " ring=", bn._ring_showing(), " dev=", InputDevice.last)
+		if cur == ti:
+			return true
+		var path := _nav_path(bn, targets, cur, ti)
+		if path.is_empty():
+			input_stats["unreachable"] += 1
+			runner._problem("NAV UNREACHABLE", "no arrow / D-pad path reaches %s (%s, mode '%s')" % [what, _mode, mode], "navpath" + what.left(50))
+			return false
+		await _send_dir(path[0])
+		for _i in 2:
+			await get_tree().process_frame
+	input_stats["unreachable"] += 1
+	runner._problem("NAV UNREACHABLE", "40 cursor moves never landed on %s (%s)" % [what, _mode], "navloop" + what.left(50))
+	return false
+
+
+func _nav_block_reason() -> String:
+	var m = main
+	var r: Array = []
+	if not bool(runner.real_input_now): r.append("real_input_now off")
+	if m.game_is_over: r.append("game over")
+	if m.msgbox_container.visible: r.append("msgbox")
+	if m.coin_container.visible: r.append("coin")
+	if m.animation_blocker.visible: r.append("animation_blocker")
+	if m.player_turn_start_running: r.append("turn start")
+	if m._anim_in_flight: r.append("anim_in_flight")
+	if Time.get_ticks_msec() - int(m._last_anim_busy_ms) < int(m.INPUT_SETTLE_MS): r.append("settle")
+	if m.is_zoomed: r.append("zoomed")
+	if m.match_log_open: r.append("log")
+	if m.pause_menu != null and is_instance_valid(m.pause_menu): r.append("pause")
+	if m.opponent_blocker.visible: r.append("opponent_blocker(mode %s)" % _nav()._mode_now())
+	if m.vfx_debugger_open(): r.append("vfx debugger")
+	return ", ".join(PackedStringArray(r)) if not r.is_empty() else "none?"
+
+
+## Real time (headless frames are very fast): until the board cursor is listening, at most 4 s.
+func _wait_nav_active() -> void:
+	var bn := _nav()
+	if bn == null:
+		return
+	var t0 := Time.get_ticks_msec()
+	while not bn._active() and Time.get_ticks_msec() - t0 < 4000:
+		await get_tree().process_frame
+	while Time.get_ticks_msec() - int(bn._active_since_msec) < int(bn.ACCEPT_GRACE_MS) + 20 and Time.get_ticks_msec() - t0 < 4000:
+		await get_tree().process_frame
+
+
+func _nav_path(bn: Node, targets: Array, from: int, to: int) -> Array:
+	var dirs := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
+	var prev := {from: null}
+	var queue := [from]
+	while not queue.is_empty():
+		var cur: int = queue.pop_front()
+		if cur == to:
+			break
+		for d in dirs:
+			var nx: int = bn._step(targets, cur, d)
+			if nx >= 0 and not prev.has(nx):
+				prev[nx] = [cur, d]
+				queue.append(nx)
+	if not prev.has(to):
+		return []
+	var path: Array = []
+	var at := to
+	while prev[at] != null:
+		path.push_front(prev[at][1])
+		at = prev[at][0]
+	return path
+
+
+func _send_accept() -> void:
+	# Board_Nav ignores an accept this soon after the board came back (ACCEPT_GRACE_MS) - a person is never that fast.
+	var bn := _nav()
+	if bn != null:
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - int(bn._active_since_msec) < int(bn.ACCEPT_GRACE_MS) + 20 and Time.get_ticks_msec() - t0 < 2000:
+			await get_tree().process_frame
+	if _mode == "pad":
+		await _send_pad(JOY_BUTTON_A)
+	else:
+		await _send_key(KEY_SPACE if rng.randf() < 0.5 else KEY_ENTER)
+
+
+func _send_dir(d: Vector2i) -> void:
+	if _mode == "pad":
+		var b := JOY_BUTTON_DPAD_LEFT
+		if d == Vector2i.RIGHT: b = JOY_BUTTON_DPAD_RIGHT
+		elif d == Vector2i.UP: b = JOY_BUTTON_DPAD_UP
+		elif d == Vector2i.DOWN: b = JOY_BUTTON_DPAD_DOWN
+		await _send_pad(b)
+	else:
+		var k := KEY_LEFT
+		if d == Vector2i.RIGHT: k = KEY_RIGHT
+		elif d == Vector2i.UP: k = KEY_UP
+		elif d == Vector2i.DOWN: k = KEY_DOWN
+		await _send_key(k)
+
+
+# ── Trying to skip a forced prompt ──
+
+## Returns false if a probe closed the prompt (reported), true if it held.
+func _skip_probes(still_open: Callable, what: String) -> bool:
+	var probes := ["backspace", "escape", "pad_b", "right_click", "click_off"]
+	probes.shuffle()
+	for p in probes.slice(0, 3):
+		input_stats["probes"] += 1
+		_real_hold(true)
+		await _wait_nav_active()
+		match p:
+			"backspace": await _send_key(KEY_BACKSPACE)
+			"escape": await _send_key(KEY_ESCAPE)
+			"pad_b": await _send_pad(JOY_BUTTON_B)
+			"right_click": await _send_click(_screen_center(), MOUSE_BUTTON_RIGHT)
+			"click_off": await _send_click(_off_prompt_point())
+		_real_release(true)
+		for _i in 4:
+			await get_tree().process_frame
+		_close_pause_if_open()
+		if not still_open.call():
+			input_stats["skipped"] += 1
+			runner._problem("FORCED PROMPT SKIPPED", "%s closed the forced %s without an answer" % [p, what], "skip" + p + what.left(50))
+			return false
+	return true
+
+
+func _close_pause_if_open() -> void:
+	if main.pause_menu != null and is_instance_valid(main.pause_menu):
+		main._close_pause_menu()
+	if main.forfeit_dialog != null and is_instance_valid(main.forfeit_dialog):
+		main._close_forfeit_dialog()
+
+
+## A spot on the board away from the prompt: the opponent's discard pile (never a choice target).
+func _off_prompt_point() -> Vector2:
+	var n: Control = main.opponent_discard_icon
+	if n != null and n.is_visible_in_tree():
+		return _screen_pos(n)
+	return _screen_center() + Vector2(0, -300)
+
+
+# ── Raw events ──
+
+func _screen_pos(c: Control) -> Vector2:
+	var p: Vector2 = c.get_global_transform_with_canvas() * (c.size * 0.5)
+	return get_tree().root.get_final_transform() * p
+
+
+func _screen_center() -> Vector2:
+	return get_tree().root.get_final_transform() * (get_viewport().get_visible_rect().size * 0.5)
+
+
+func _send_click(pos: Vector2, button: MouseButton = MOUSE_BUTTON_LEFT) -> void:
+	var mv := InputEventMouseMotion.new()
+	mv.position = pos
+	mv.global_position = pos
+	Input.parse_input_event(mv)
+	await get_tree().process_frame
+	for pressed in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = button
+		ev.pressed = pressed
+		ev.position = pos
+		ev.global_position = pos
+		if pressed:
+			ev.button_mask = MOUSE_BUTTON_MASK_LEFT if button == MOUSE_BUTTON_LEFT else MOUSE_BUTTON_MASK_RIGHT
+		Input.parse_input_event(ev)
+		await get_tree().process_frame
+
+
+func _send_key(code: Key) -> void:
+	for pressed in [true, false]:
+		var ev := InputEventKey.new()
+		ev.keycode = code
+		ev.physical_keycode = code
+		ev.pressed = pressed
+		Input.parse_input_event(ev)
+		await get_tree().process_frame
+
+
+func _send_pad(btn: JoyButton) -> void:
+	for pressed in [true, false]:
+		var ev := InputEventJoypadButton.new()
+		ev.device = 0
+		ev.button_index = btn
+		ev.pressed = pressed
+		Input.parse_input_event(ev)
+		await get_tree().process_frame
+
+
+# ── Small helpers ──
+
+func _ignored(what: String, dedupe: String) -> void:
+	input_stats["ignored"] += 1
+	runner._problem("INPUT IGNORED", what, "ign" + dedupe)
+
+
+## Live buttons in the player's action panel (rows), top to bottom.
+func _panel_buttons(include_options: bool) -> Array:
+	var out: Array = []
+	var panel: Control = main._player_action_panel
+	if panel == null or not is_instance_valid(panel):
+		return out
+	for b in main._all_buttons_under(panel):
+		if b.is_visible_in_tree() and not b.disabled and not b.is_queued_for_deletion():
+			if include_options or String(b.get_meta("row_kind", "")) not in ["option", "copy"]:
+				out.append(b)
+	return out
+
+
+func _live_power_buttons() -> Array:
+	var out: Array = _panel_buttons(false).filter(func(b): return String(b.get_meta("row_kind", "")) in ["power", "stadium"])
+	for b in main._all_buttons_under(main.player_bench_container):
+		if b.is_visible_in_tree() and not b.disabled:
+			out.append(b)
+	return out
+
+
+func _btn_text(b: BaseButton) -> String:
+	if b.has_meta("row_text"):
+		return String(b.get_meta("row_text"))
+	return str((b as Button).text) if b is Button else str(b.name)
+
+
+## AUDIT 2026-11-17 (dev): AUTOTEST_OPTION_SNAP=1 on a WINDOWED run saves the screen while an option pick is up,
+## to check the rows' layout by eye. Up to 6 per run.
+var _option_snaps := 0
+func _snap_option(caption: String) -> void:
+	if not OS.has_environment("AUTOTEST_OPTION_SNAP") or _option_snaps >= 6 or DisplayServer.get_name() == "headless":
+		return
+	for _i in 6:
+		await get_tree().process_frame
+	_option_snaps += 1
+	var img: Image = get_viewport().get_texture().get_image()
+	var path := "user://autotest/option_snap_%d.png" % _option_snaps
+	img.save_png(path)
+	print("OPTION SNAP: ", ProjectSettings.globalize_path(path), " - ", caption.left(60))

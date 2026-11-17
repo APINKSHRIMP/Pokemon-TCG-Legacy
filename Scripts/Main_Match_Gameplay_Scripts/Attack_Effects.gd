@@ -934,6 +934,36 @@ func r3_cpu_best_condition(defender: card_object, allowed: Array) -> String:
 
 # OLD ISSUE 318: an Energy card attached to the Defending Pokémon chosen by the ATTACKER (player prompt / the
 # CPU takes the player's most valuable one).
+## AUDIT 2026-11-17: "choose N Energy attached to the Defending Pokemon" on ONE screen (the multi-select rule).
+## The CPU takes its N best (cpu_pick_energy_to_discard_from, one at a time from what is left).
+func r3_pick_defender_energies(defender: card_object, n: int, is_opponent: bool, header: String, pool: Array = []) -> Array:
+	if pool.is_empty():
+		pool = defender.attached_energies.duplicate()
+	n = mini(n, pool.size())
+	if n <= 0:
+		return []
+	if n >= pool.size():
+		return pool.duplicate()
+	if is_opponent:
+		var out: Array = []
+		var left: Array = pool.duplicate()
+		for _i in n:
+			var best = main.cpu_ai.cpu_pick_energy_to_discard_from(defender)
+			if best == null or best not in left or best in out:
+				best = left[0]
+			out.append(best)
+			left.erase(best)
+		return out
+	var picks: Array = await main.card_ops.prompt_select_cards(pool, n, n, header,
+		"Choose " + str(n) + " Energy card(s) attached to " + defender.metadata.get("name", ""), "SELECT")
+	for e in pool:
+		if picks.size() >= n:
+			break
+		if e not in picks:
+			picks.append(e)
+	return picks
+
+
 func r3_pick_defender_energy(defender: card_object, is_opponent: bool, header: String, pool: Array = []) -> card_object:
 	if pool.is_empty():
 		pool = defender.attached_energies.duplicate()
@@ -2087,45 +2117,12 @@ func execute_amnesia(attacker: card_object, defender: card_object, is_opponent: 
 				best_score = score
 				chosen_attack_name = attack.get("name", "")
 	else:
-		main.special_attack_selection_active = true
-		main.buttons_only_blocker.visible = true
-		var _atk_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16: buttons were under the attack blocker
-		
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button":
-				continue
-			child.queue_free()
-		
-		main.attack_buttons_container.visible = true
-		main.main_buttons_container.visible = false
-		# Hide the cancel button within the attack buttons container
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button":
-				child.visible = false
-		
-		for i in range(defender_attacks.size()):
-			var atk = defender_attacks[i]
-			var btn = Button.new()
-			btn.text = "DISABLE: " + atk.get("name", "Attack")
-			btn.custom_minimum_size = Vector2(350, 50)
-			btn.theme = main.theme_green
-			main.attack_buttons_container.add_child(btn)
-			btn.pressed.connect(func(): main.special_attack_selected.emit(i))
-		
-		var selected_index = await main.special_attack_selected
-		chosen_attack_name = defender_attacks[selected_index].get("name", "")
-		
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button":
-				child.visible = true
-				continue
-			child.queue_free()
-		main.attack_buttons_container.visible = false
-		main.main_buttons_container.visible = true
-		main.special_attack_selection_active = false
-		main.buttons_only_blocker.visible = false
-		main.opponent_blocker.visible = _atk_ob
-	
+		# AUDIT 2026-11-17: option rows in the action panel (main.pick_option), forced.
+		var amn_labels: Array = defender_attacks.map(func(a): return "Disable: " + String(a.get("name", "Attack")))
+		var amn_idx: int = await main.pick_option("AMNESIA: CHOOSE 1 OF " + defender.metadata.get("name", "").to_upper() + "'S ATTACKS", amn_labels)
+		if main._should_bail(): return
+		chosen_attack_name = defender_attacks[amn_idx].get("name", "")
+
 	if chosen_attack_name != "":
 		defender.disabled_attacks[chosen_attack_name] = "end_of_turn"
 		await main.show_message(defender.metadata["name"].to_upper() + " FORGOT HOW TO USE " + chosen_attack_name.to_upper() + "!")
@@ -2747,7 +2744,7 @@ func apply_energy_discard_self(effect: Dictionary, attacker: card_object, is_opp
 	for energy in to_discard:
 		var energy_texture = main.get_card_texture(energy)
 		attacker.attached_energies.erase(energy)
-		main.card_ops.discard_energy_from_pokemon(energy, is_opponent_attacking)
+		main.card_ops.discard_energy_from_pokemon(energy, is_opponent_attacking, false, false)   # flies on the next line
 		await main.animate_card_a_to_b(from_node, discard_node, 0.2, energy_texture, main.card_scales[10])
 		if main._should_bail(): return
 		main.display_active_pokemon_energies(is_opponent_attacking)
@@ -2772,6 +2769,7 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 	
 	if is_defender_opponent:
 		# Player is attacking — player chooses which of opponent's energies to discard
+		var _ob_keep2786: bool = main.opponent_blocker.visible
 		main.opponent_blocker.visible = false
 		main.defender_energy_discard_active = true
 		main.show_enlarged_array_selection_mode(defender.attached_energies)
@@ -2786,7 +2784,7 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 		energy_to_discard = main.selected_card_for_action
 		main.defender_energy_discard_active = false
 		main.hide_selection_mode_display_main()
-		main.opponent_blocker.visible = true
+		main.opponent_blocker.visible = _ob_keep2786   # AUDIT 2026-11-17: restore, not force on (Dragon Wind left the board blocked)
 	elif is_defender_player:
 		# Opponent (CPU) is attacking — the ATTACKER chooses which Energy to discard (per card text,
 		# e.g. Whirlpool: "choose 1 of them and discard it"). ISSUE #25 FIX: the CPU picks the player's
@@ -2818,7 +2816,7 @@ func apply_energy_discard_defender(effect: Dictionary, defender: card_object, is
 		if main._should_bail(): return
 
 		# 3) Land it in the discard pile, then refresh the discard pile and the Pokemon's energies
-		main.card_ops.discard_energy_from_pokemon(energy_to_discard, defender_is_opp)
+		main.card_ops.discard_energy_from_pokemon(energy_to_discard, defender_is_opp, false, false)   # flown above
 		main.update_discard_pile_display(defender_is_opp)
 		main.display_active_pokemon_energies(defender_is_opp)
 		print("EFFECT APPLIED: Discarded energy from ", name)
@@ -3033,6 +3031,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			print("ISSUE base2-33 FIX ACTIVE (apply_force_switch/Lure): waiting 1s before showing bench array")
 			await main.get_tree().create_timer(GameState.match_time(1.0)).timeout
 			if main._should_bail(): return
+			var _ob_keep3047: bool = main.opponent_blocker.visible
 			main.opponent_blocker.visible = false
 			main.forced_switch_selection_active = true
 			main.show_enlarged_array_selection_mode(main.opponent_bench)
@@ -3047,7 +3046,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			new_active = main.selected_card_for_action
 			main.forced_switch_selection_active = false
 			main.hide_selection_mode_display_main()
-			main.opponent_blocker.visible = true
+			main.opponent_blocker.visible = _ob_keep3047   # AUDIT 2026-11-17: restore, not force on (Dragon Wind left the board blocked)
 		else:
 			# Whirlwind: CPU picks its own bench replacement
 			var cpu_eval = main.cpu_ai.build_cpu_evaluation()
@@ -3085,6 +3084,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			print("ISSUE base2-33 FIX ACTIVE (apply_force_switch/Whirlwind): waiting 1s before showing bench array")
 			await main.get_tree().create_timer(GameState.match_time(1.0)).timeout
 			if main._should_bail(): return
+			var _ob_keep3099: bool = main.opponent_blocker.visible
 			main.opponent_blocker.visible = false
 			main.forced_switch_selection_active = true
 			main.show_enlarged_array_selection_mode(main.player_bench)
@@ -3099,7 +3099,7 @@ func apply_force_switch(effect: Dictionary, is_opponent_attacking: bool) -> void
 			new_active = main.selected_card_for_action
 			main.forced_switch_selection_active = false
 			main.hide_selection_mode_display_main()
-			main.opponent_blocker.visible = true
+			main.opponent_blocker.visible = _ob_keep3099   # AUDIT 2026-11-17: restore, not force on (Dragon Wind left the board blocked)
 		
 		if new_active != null:
 			var old_active = main.player_active_pokemon
@@ -3164,6 +3164,7 @@ func apply_self_switch(attacker: card_object, is_opponent_attacking: bool, optio
 			new_active = bench[0]
 	else:
 		# Player picks
+		var _ob_keep3178: bool = main.opponent_blocker.visible
 		main.opponent_blocker.visible = false
 		main.forced_switch_selection_active = true
 		main.show_enlarged_array_selection_mode(bench)
@@ -3178,7 +3179,7 @@ func apply_self_switch(attacker: card_object, is_opponent_attacking: bool, optio
 		new_active = main.selected_card_for_action
 		main.forced_switch_selection_active = false
 		main.hide_selection_mode_display_main()
-		main.opponent_blocker.visible = true
+		main.opponent_blocker.visible = _ob_keep3178   # AUDIT 2026-11-17: restore, not force on (Dragon Wind left the board blocked)
 	
 	if new_active == null:
 		return
@@ -3715,10 +3716,7 @@ func execute_wildfire(attacker: card_object, is_opponent: bool) -> void:
 			if main._should_bail(): return
 			return
 		for i in range(discard_count):
-			var e = fire_energies[i]
-			attacker.attached_energies.erase(e)
-			e.current_location = "discard"
-			discard_pile.append(e)
+			main.card_ops.discard_energy_from_pokemon(fire_energies[i], true)   # AUDIT 2026-11-17: flight (was a silent erase/append)
 		main.display_active_pokemon_energies(true)
 	else:
 		# OLD ISSUE 366: "any number" on ONE screen (it looped one card at a time with a cancel to stop).
@@ -3742,6 +3740,7 @@ func execute_wildfire(attacker: card_object, is_opponent: bool) -> void:
 		var card = target_deck.pop_front()
 		card.current_location = "discard"
 		target_discard.append(card)
+		await main.card_ops.fly_card(card, "deck", "discard", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 	
 	main.update_discard_pile_display(!is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -3900,47 +3899,10 @@ func execute_prophecy(attacker: card_object, is_opponent: bool) -> void:
 	else:
 		# Player chooses which deck to look at, then rearranges
 		# Step 1: Choose deck
-		await main.show_message("PROPHECY: CHOOSE A DECK TO LOOK AT")
+		# AUDIT 2026-11-17: option rows in the action panel (main.pick_option), forced.
+		var deck_choice: int = await main.pick_option("PROPHECY: CHOOSE A DECK TO LOOK AT", ["Your deck", "Opponent's deck"])
 		if main._should_bail(): return
-		
-		main.special_attack_selection_active = true
-		main.buttons_only_blocker.visible = true
-		var _atk_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16: buttons were under the attack blocker
-		main.attack_buttons_container.visible = true
-		main.main_buttons_container.visible = false
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button":
-				child.visible = false
-				continue
-			child.queue_free()
-		
-		var btn_own = Button.new()
-		btn_own.text = "YOUR DECK"
-		btn_own.custom_minimum_size = Vector2(350, 50)
-		btn_own.theme = main.theme_green
-		main.attack_buttons_container.add_child(btn_own)
-		btn_own.pressed.connect(func(): main.special_attack_selected.emit(0))
-		
-		var btn_opp = Button.new()
-		btn_opp.text = "OPPONENT'S DECK"
-		btn_opp.custom_minimum_size = Vector2(350, 50)
-		btn_opp.theme = main.theme_green
-		main.attack_buttons_container.add_child(btn_opp)
-		btn_opp.pressed.connect(func(): main.special_attack_selected.emit(1))
-		
-		var deck_choice = await main.special_attack_selected
-		
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button":
-				child.visible = true
-				continue
-			child.queue_free()
-		main.attack_buttons_container.visible = false
-		main.main_buttons_container.visible = true
-		main.special_attack_selection_active = false
-		main.buttons_only_blocker.visible = false
-		main.opponent_blocker.visible = _atk_ob
-		
+
 		var deck = main.player_deck if deck_choice == 0 else main.opponent_deck
 		var deck_name = "YOUR" if deck_choice == 0 else "OPPONENT'S"
 		
@@ -4003,6 +3965,7 @@ func execute_energy_conversion(attacker: card_object, is_opponent: bool) -> void
 				discard.erase(chosen)
 				chosen.current_location = "hand"
 				hand.append(chosen)
+				await main.card_ops.fly_card(chosen, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 				energy_in_discard.erase(chosen)
 			main.refresh_hand_display(true)
 			main.update_discard_pile_display(true)
@@ -4017,6 +3980,7 @@ func execute_energy_conversion(attacker: card_object, is_opponent: bool) -> void
 				discard.erase(chosen)
 				chosen.current_location = "hand"
 				hand.append(chosen)
+				await main.card_ops.fly_card(chosen, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 				energy_in_discard.erase(chosen)
 				retrieved += 1
 			main.refresh_hand_display(false)
@@ -4121,6 +4085,7 @@ func execute_scavenge(attacker: card_object, is_opponent: bool) -> void:
 		discard.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(is_opponent)
 		main.update_discard_pile_display(is_opponent)
 		await main.show_message("SCAVENGE: RETRIEVED " + chosen.metadata.get("name", "").to_upper() + "!")
@@ -4342,6 +4307,7 @@ func execute_fling(attacker: card_object, defender: card_object, is_opponent: bo
 		return
 	
 	var name = target_active.metadata.get("name", "")
+	main.card_ops.fly_pokemon_leaving(target_active, "deck", not is_opponent)   # AUDIT 2026-11-17: flight (rects measured now, flights queue)
 	
 	# Shuffle all attached energies back into deck
 	for e in target_active.attached_energies:
@@ -4466,8 +4432,11 @@ func execute_magnetic_lines(attacker: card_object, defender: card_object, is_opp
 		chosen_bench = main.cpu_ai.cpu_pick_energy_dump_target(target_bench, chosen_energy)
 
 	if chosen_energy != null and chosen_bench != null:
+		var _emr_4432: Dictionary = main.card_ops.capture_rect(chosen_energy, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 		defender.attached_energies.erase(chosen_energy)
 		chosen_bench.attached_energies.append(chosen_energy)
+		await main.card_ops.fly_attach(chosen_energy, "attached", _emr_4432)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(!is_opponent)
 		await main.show_message("MOVED ENERGY TO " + chosen_bench.metadata.get("name", "").to_upper() + "!")
@@ -4596,9 +4565,11 @@ func execute_energy_bomb(attacker: card_object, defender: card_object, is_oppone
 	if bench.size() == 0:
 		# No bench - discard all energy
 		for e in attacker.attached_energies.duplicate():
+			var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 			attacker.attached_energies.erase(e)
 			e.current_location = "discard"
 			discard_pile.append(e)
+			await main.card_ops.fly_card(e, "attached", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.display_active_pokemon_energies(is_opponent)
 		main.update_discard_pile_display(is_opponent)
 		await main.show_message("NO BENCH! ALL ENERGY DISCARDED!")
@@ -4654,10 +4625,12 @@ func execute_third_eye(attacker: card_object, is_opponent: bool) -> void:
 		if main._should_bail(): return
 	if energy == null:
 		energy = attacker.attached_energies[attacker.attached_energies.size() - 1]
+	var _fr1: Dictionary = main.card_ops.capture_rect(energy, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 	attacker.attached_energies.erase(energy)
 	energy.current_location = "discard"
 	var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	discard_pile.append(energy)
+	await main.card_ops.fly_card(energy, "attached", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	
@@ -4681,18 +4654,12 @@ func _force_bench_to_active(selected: card_object, attacker_is_opp: bool) -> voi
 	if active_switch_locked(target_is_opp):   # OLD ISSUE 317
 		return
 	var old_active = main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon
-	var bench    = main.opponent_bench if target_is_opp else main.player_bench
-	bench.erase(selected)
-	bench.append(old_active)
-	old_active.current_location = "bench"
-	selected.current_location   = "active"
-	if target_is_opp:
-		main.opponent_active_pokemon = selected
-	else:
-		main.player_active_pokemon = selected
-	main.clear_all_statuses(old_active, target_is_opp)
-	main.display_pokemon(target_is_opp)
-	main.display_active_pokemon_energies(target_is_opp)
+	if old_active == null or selected == null:
+		return
+	# AUDIT 2026-11-17: the shared forced-switch animation (one message, the old Active glides to the Bench, the new
+	# one up) - it swaps the arrays, clears the old Active's conditions and redraws the board itself. The swap used
+	# to just happen with no movement.
+	await main.animate_retreat(old_active, selected, [], target_is_opp, true)
 
 func execute_drag_off(attacker: card_object, defender: card_object, is_opponent: bool, base: int = 20) -> void:
 	var target_bench = main.player_bench if is_opponent else main.opponent_bench
@@ -4725,7 +4692,7 @@ func execute_drag_off(attacker: card_object, defender: card_object, is_opponent:
 	if selected == null:
 		return
 
-	_force_bench_to_active(selected, is_opponent)
+	await _force_bench_to_active(selected, is_opponent)
 	await main.show_message("DRAGGED " + selected.metadata.get("name", "").to_upper() + " TO ACTIVE!")
 	if main._should_bail(): return
 	
@@ -4770,7 +4737,7 @@ func execute_fascinate(attacker: card_object, defender: card_object, is_opponent
 	if selected == null:
 		return
 
-	_force_bench_to_active(selected, is_opponent)
+	await _force_bench_to_active(selected, is_opponent)
 	await main.show_message(selected.metadata.get("name", "").to_upper() + " WAS SWITCHED IN!")
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Fascinate - switched in ", selected.metadata.get("name", ""))
@@ -4816,49 +4783,10 @@ func execute_flame_pillar(attacker: card_object, defender: card_object, is_oppon
 			var bench_ko = target_bench.any(func(bp): return bp.current_hp <= 10)
 			do_discard = bench_ko or ko_threats.get("cpu_active_guaranteed_ko", false)
 		else:
-			# Player chooses: show yes/no via attack selection buttons
-			main.special_attack_selection_active = true
-			main.buttons_only_blocker.visible = true
-			var _atk_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16: buttons were under the attack blocker
-			main.attack_buttons_container.visible = true
-			main.main_buttons_container.visible = false
-			for child in main.attack_buttons_container.get_children():
-				if child.name == "cancel_attack_mode_button":
-					child.visible = false
-					continue
-				child.queue_free()
-			
-			var btn_yes = Button.new()
-			btn_yes.text = "YES - DISCARD FIRE ENERGY"
-			btn_yes.custom_minimum_size = Vector2(350, 50)
-			btn_yes.theme = main.theme_green
-			main.attack_buttons_container.add_child(btn_yes)
-			btn_yes.pressed.connect(func(): main.special_attack_selected.emit(0))
-			
-			var btn_no = Button.new()
-			btn_no.text = "NO - SKIP"
-			btn_no.custom_minimum_size = Vector2(350, 50)
-			btn_no.theme = main.theme_green
-			main.attack_buttons_container.add_child(btn_no)
-			btn_no.pressed.connect(func(): main.special_attack_selected.emit(1))
-			
-			await main.show_message("DISCARD FIRE ENERGY FOR 10 BENCH DAMAGE?")
+			# AUDIT 2026-11-17: a yes / no in the action panel (main.pick_yes_no).
+			do_discard = await main.pick_yes_no("FLAME PILLAR: DISCARD A FIRE ENERGY FOR 10 DAMAGE TO 1 BENCHED POKEMON?", "Yes, discard", "No")
 			if main._should_bail(): return
-			
-			var selected_index = await main.special_attack_selected
-			do_discard = (selected_index == 0)
-			
-			for child in main.attack_buttons_container.get_children():
-				if child.name == "cancel_attack_mode_button":
-					child.visible = true
-					continue
-				child.queue_free()
-			main.attack_buttons_container.visible = false
-			main.main_buttons_container.visible = true
-			main.special_attack_selection_active = false
-			main.buttons_only_blocker.visible = false
-			main.opponent_blocker.visible = _atk_ob
-		
+
 		if do_discard:
 			# OLD ISSUE 371: the owner picks which Fire Energy card (a basic one was picked automatically).
 			var energy = await r4_pick_own_energy(attacker, fire_energies, is_opponent, "FLAME PILLAR: DISCARD A FIRE ENERGY")
@@ -4951,16 +4879,19 @@ func execute_vanish(attacker: card_object, is_opponent: bool) -> void:
 	for e in attacker.attached_energies:
 		e.current_location = "discard"
 		discard.append(e)
+		await main.card_ops.fly_card(e, "attached", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	attacker.attached_energies.clear()
 	
 	for pre in attacker.attached_pre_evolutions:
 		pre.current_location = "discard"
 		discard.append(pre)
+		await main.card_ops.fly_card(pre, "attached", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	attacker.attached_pre_evolutions.clear()
 	
 	for ac in attacker.attached_cards:
 		ac.current_location = "discard"
 		discard.append(ac)
+		await main.card_ops.fly_card(ac, "attached", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	attacker.attached_cards.clear()
 	
 	# Shuffle Abra into deck
@@ -4969,6 +4900,7 @@ func execute_vanish(attacker: card_object, is_opponent: bool) -> void:
 	attacker.current_hp = attacker.get_max_hp()
 	attacker.current_location = "deck"
 	deck.append(attacker)
+	main.card_ops.fly_card(attacker, "play", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	
 	var is_active = false
 	if is_opponent:
@@ -5030,6 +4962,8 @@ func execute_afternoon_nap(attacker: card_object, is_opponent: bool) -> void:
 	deck.erase(chosen)
 	chosen.current_location = "attached"
 	attacker.attached_energies.append(chosen)
+	await main.card_ops.fly_attach(chosen, "deck", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	deck.shuffle()
 	
@@ -5099,10 +5033,12 @@ func execute_dark_charmeleon_fireball(attacker: card_object, defender: card_obje
 	if coin:
 		# Heads: discard 1 fire energy, do 70 damage
 		var energy = fire_energies[0]
+		var _fr1: Dictionary = main.card_ops.capture_rect(energy, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 		attacker.attached_energies.erase(energy)
 		energy.current_location = "discard"
 		var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		discard_pile.append(energy)
+		await main.card_ops.fly_card(energy, "attached", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.display_active_pokemon_energies(is_opponent)
 		main.update_discard_pile_display(is_opponent)
 		
@@ -5298,19 +5234,23 @@ func gym1_shuffle_into_deck(pokemon: card_object, is_pokemon_opponent: bool) -> 
 	for e in pokemon.attached_energies:
 		e.current_location = "deck"
 		deck.append(e)
+		main.card_ops.fly_card(e, "attached", "deck", is_pokemon_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	pokemon.attached_energies.clear()
 	for pre in pokemon.attached_pre_evolutions:
 		pre.current_location = "deck"
 		deck.append(pre)
+		main.card_ops.fly_card(pre, "attached", "deck", is_pokemon_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	pokemon.attached_pre_evolutions.clear()
 	for ac in pokemon.attached_cards:
 		ac.current_location = "deck"
 		deck.append(ac)
+		main.card_ops.fly_card(ac, "attached", "deck", is_pokemon_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	pokemon.attached_cards.clear()
 	main.clear_all_statuses(pokemon, is_pokemon_opponent)
 	pokemon.current_hp = pokemon.get_max_hp()
 	pokemon.current_location = "deck"
 	deck.append(pokemon)
+	main.card_ops.fly_card(pokemon, "play", "deck", is_pokemon_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	var was_active = false
 	if is_pokemon_opponent:
 		if main.opponent_active_pokemon == pokemon:
@@ -5481,6 +5421,8 @@ func execute_charge_recover(attacker: card_object, is_opponent: bool, max_count:
 			discard_pile.erase(e)
 			e.current_location = "attached"
 			attacker.attached_energies.append(e)
+			await main.card_ops.fly_attach(e, "discard", {})   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 			taken += 1
 	else:
@@ -5490,6 +5432,8 @@ func execute_charge_recover(attacker: card_object, is_opponent: bool, max_count:
 			discard_pile.erase(sel)
 			sel.current_location = "attached"
 			attacker.attached_energies.append(sel)
+			await main.card_ops.fly_attach(sel, "discard", {})   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 			taken += 1
 	main.display_active_pokemon_energies(is_opponent)
@@ -5770,6 +5714,7 @@ func execute_lava_burst(attacker: card_object, defender: card_object, is_opponen
 		var card = deck.pop_front()
 		card.current_location = "discard"
 		discard_pile.append(card)
+		await main.card_ops.fly_card(card, "deck", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		if card.metadata.get("supertype", "") == "Energy" and "Fire" in main.get_energy_provided_by_card(card):
 			fire_count += 1
 	main.update_discard_pile_display(is_opponent)
@@ -5843,10 +5788,12 @@ func execute_electric_current(attacker: card_object, defender: card_object, is_o
 		return
 	var own_bench = main.opponent_bench if is_opponent else main.player_bench
 	if own_bench.size() == 0:
+		var _fr1: Dictionary = main.card_ops.capture_rect(lightning, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 		attacker.attached_energies.erase(lightning)
 		lightning.current_location = "discard"
 		var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		discard_pile.append(lightning)
+		await main.card_ops.fly_card(lightning, "attached", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.display_active_pokemon_energies(is_opponent)
 		main.update_discard_pile_display(is_opponent)
 		await main.show_message("NO BENCHED POKEMON — LIGHTNING ENERGY DISCARDED!")
@@ -5864,8 +5811,11 @@ func execute_electric_current(attacker: card_object, defender: card_object, is_o
 			target = await main.card_ops.prompt_select_card(own_bench, "MOVE LIGHTNING ENERGY", "Choose a benched Pokemon to receive the energy", "ATTACH", false)
 			if main._should_bail(): return
 		if target != null:
+			var _emr_5808: Dictionary = main.card_ops.capture_rect(lightning, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 			attacker.attached_energies.erase(lightning)
 			target.attached_energies.append(lightning)
+			await main.card_ops.fly_attach(lightning, "attached", _emr_5808)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 			main.display_active_pokemon_energies(is_opponent)
 			main.display_pokemon(is_opponent)
@@ -5918,36 +5868,10 @@ func execute_magic_pollen(attacker: card_object, defender: card_object, is_oppon
 		else:
 			chosen = "Paralyzed"
 	else:
-		main.special_attack_selection_active = true
-		main.buttons_only_blocker.visible = true
-		var _atk_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16: buttons were under the attack blocker
-		main.attack_buttons_container.visible = true
-		main.main_buttons_container.visible = false
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button":
-				child.visible = false
-				continue
-			child.queue_free()
-		for i in range(statuses.size()):
-			var btn = Button.new()
-			btn.text = statuses[i].to_upper()
-			btn.custom_minimum_size = Vector2(350, 50)
-			btn.theme = main.theme_green
-			main.attack_buttons_container.add_child(btn)
-			btn.pressed.connect(func(): main.special_attack_selected.emit(i))
-		await main.show_message("HEADS! CHOOSE A SPECIAL CONDITION!")
-		var sel_idx = await main.special_attack_selected
-		chosen = statuses[sel_idx]
-		for child in main.attack_buttons_container.get_children():
-			if child.name == "cancel_attack_mode_button":
-				child.visible = true
-				continue
-			child.queue_free()
-		main.attack_buttons_container.visible = false
-		main.main_buttons_container.visible = true
-		main.special_attack_selection_active = false
-		main.buttons_only_blocker.visible = false
-		main.opponent_blocker.visible = _atk_ob
+		# AUDIT 2026-11-17: option rows in the action panel (main.pick_option), forced.
+		var st_idx: int = await main.pick_option("HEADS! CHOOSE A SPECIAL CONDITION", statuses.map(func(x): return String(x)))
+		if main._should_bail(): return
+		chosen = statuses[st_idx]
 	var effect = {"type": "status", "target": "defender", "status": chosen, "flip": "none"}
 	await main.apply_status_effect(effect, attacker, defender, is_opponent)
 	if main._should_bail(): return
@@ -6015,20 +5939,24 @@ func gym1_return_pokemon_to_hand(pokemon: card_object, is_pokemon_opponent: bool
 	for e in pokemon.attached_energies:
 		e.current_location = "hand"
 		hand.append(e)
+		main.card_ops.fly_card(e, "attached", "hand", is_pokemon_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	pokemon.attached_energies.clear()
 	for pre in pokemon.attached_pre_evolutions:
 		pre.current_location = "hand"
 		pre.current_hp = pre.get_max_hp()   # OLD ISSUE 375: a card back in the hand is undamaged
 		hand.append(pre)
+		main.card_ops.fly_card(pre, "attached", "hand", is_pokemon_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	pokemon.attached_pre_evolutions.clear()
 	for ac in pokemon.attached_cards:
 		ac.current_location = "hand"
 		hand.append(ac)
+		main.card_ops.fly_card(ac, "attached", "hand", is_pokemon_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	pokemon.attached_cards.clear()
 	main.clear_all_statuses(pokemon, is_pokemon_opponent)
 	pokemon.current_hp = pokemon.get_max_hp()
 	pokemon.current_location = "hand"
 	hand.append(pokemon)
+	main.card_ops.fly_card(pokemon, "play", "hand", is_pokemon_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	if is_pokemon_opponent:
 		if main.opponent_active_pokemon == pokemon:
 			main.opponent_active_pokemon = null
@@ -6157,10 +6085,12 @@ func execute_energy_loop(attacker: card_object, defender: card_object, is_oppone
 			psychic = e
 			break
 	if psychic != null:
+		var _fr1: Dictionary = main.card_ops.capture_rect(psychic, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 		attacker.attached_energies.erase(psychic)
 		psychic.current_location = "hand"
 		var hand = main.opponent_hand if is_opponent else main.player_hand
 		hand.append(psychic)
+		await main.card_ops.fly_card(psychic, "attached", "hand", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.display_active_pokemon_energies(is_opponent)
 		main.refresh_hand_display(is_opponent)
 		await main.show_message("RETURNED A PSYCHIC ENERGY TO HAND!")
@@ -6174,13 +6104,8 @@ func execute_psychic_exchange(attacker: card_object, is_opponent: bool) -> void:
 	if await handle_attack_blind(attacker, is_opponent): return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var deck = main.opponent_deck if is_opponent else main.player_deck
-	for c in hand:
-		c.current_location = "deck"
-		deck.append(c)
-	hand.clear()
-	deck.shuffle()
-	main.refresh_hand_display(is_opponent)
-	main.update_deck_icon(is_opponent)
+	await main.card_ops.shuffle_hand_into_deck(is_opponent)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	await main.card_ops.draw_n(is_opponent, 5)
 	if main._should_bail(): return
 	await main.show_message("PSYCHIC EXCHANGE! DREW 5 NEW CARDS!")
@@ -6217,6 +6142,7 @@ func execute_search_basic_energy_to_hand(attacker: card_object, is_opponent: boo
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
@@ -6251,6 +6177,7 @@ func execute_jellyfish_pod(attacker: card_object, is_opponent: bool, names: Arra
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+		await main.card_ops.fly_card(c, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	await main.card_ops.reveal_searched_cards(taken, is_opponent)   # ISSUE #314: show it if the text says so
 	if main._should_bail(): return
 	deck.shuffle()
@@ -6358,9 +6285,11 @@ func execute_sleight_of_hand(attacker: card_object, is_opponent: bool) -> void:
 		if main._should_bail(): return
 	var count = put_back.size()
 	for c in put_back:
+		var _fr1: Dictionary = main.card_ops.capture_rect(c, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 		hand.erase(c)
 		c.current_location = "deck"
 		deck.push_front(c)
+		await main.card_ops.fly_card(c, "hand", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	if count == 0:
 		await main.show_message("NO CARDS PUT BACK — SLEIGHT OF HAND DID NOTHING.")
@@ -6382,6 +6311,7 @@ func execute_sleight_of_hand(attacker: card_object, is_opponent: bool) -> void:
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+		await main.card_ops.fly_card(c, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	await main.card_ops.reveal_searched_cards(taken, is_opponent)   # ISSUE #314: show it if the text says so
 	if main._should_bail(): return
 	deck.shuffle()
@@ -6496,9 +6426,11 @@ func execute_roaring_flames(attacker: card_object, defender: card_object, is_opp
 			to_discard.append(e)
 	var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	for e in to_discard:
+		var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 		attacker.attached_energies.erase(e)
 		e.current_location = "discard"
 		discard_pile.append(e)
+		await main.card_ops.fly_card(e, "attached", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	var dmg = 20 + 20 * fire_count
@@ -6532,18 +6464,24 @@ func execute_growth(attacker: card_object, is_opponent: bool, require_flip: bool
 	if is_opponent:
 		for i in range(min(max_n, grass.size())):
 			var e = grass[i]
+			var _atr_6453: Dictionary = main.card_ops.capture_rect_any(e)   # AUDIT 2026-11-17: flight
 			hand.erase(e)
 			e.current_location = "attached"
 			attacker.attached_energies.append(e)
+			await main.card_ops.fly_attach(e, "hand", _atr_6453)   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 			attached += 1
 	else:
 		var picks: Array = await main.card_ops.prompt_select_cards(grass, (0 if max_n > 1 else 1), max_n, "GROWTH", "Choose up to " + str(max_n) + " Grass Energy to attach", "ATTACH")   # OLD ISSUE 366: "up to" min 0 / exact count
 		if main._should_bail(): return
 		for sel in picks:
+			var _atr_6462: Dictionary = main.card_ops.capture_rect_any(sel)   # AUDIT 2026-11-17: flight
 			hand.erase(sel)
 			sel.current_location = "attached"
 			attacker.attached_energies.append(sel)
+			await main.card_ops.fly_attach(sel, "hand", _atr_6462)   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 			attached += 1
 	main.display_active_pokemon_energies(is_opponent)
@@ -6680,10 +6618,12 @@ func execute_super_removal(attacker: card_object, is_opponent: bool) -> void:
 			if main._should_bail(): return
 		if chosen == null:
 			chosen = t.attached_energies[0]
+		var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "attached", !is_opponent)   # AUDIT 2026-11-17: flight
 		t.attached_energies.erase(chosen)
 		chosen.current_location = "discard"
 		var dp = main.opponent_discard_pile if !is_opponent else main.player_discard_pile
 		dp.append(chosen)
+		await main.card_ops.fly_card(chosen, "attached", "discard", !is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		removed += 1
 	main.display_active_pokemon_energies(!is_opponent)
 	main.display_pokemon(!is_opponent)
@@ -6743,6 +6683,8 @@ func execute_plasma(attacker: card_object, defender: card_object, is_opponent: b
 		discard_pile.erase(lightning)
 		lightning.current_location = "attached"
 		attacker.attached_energies.append(lightning)
+		await main.card_ops.fly_attach(lightning, "discard", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		main.update_discard_pile_display(is_opponent)
@@ -7013,6 +6955,7 @@ func execute_false_charity(attacker: card_object, is_opponent: bool) -> void:
 		top.current_location = "discard"
 		var dp = main.player_discard_pile if is_opponent else main.opponent_discard_pile
 		dp.append(top)
+		await main.card_ops.fly_card(top, "deck", "discard", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 		main.update_discard_pile_display(!is_opponent)
 		await main.show_message("HEADS! " + card_name.to_upper() + " WAS A TRAINER — DISCARDED IT!")
 		if main._should_bail(): return
@@ -7020,6 +6963,7 @@ func execute_false_charity(attacker: card_object, is_opponent: bool) -> void:
 		top.current_location = "hand"
 		var hand = main.player_hand if is_opponent else main.opponent_hand
 		hand.append(top)
+		await main.card_ops.fly_card(top, "deck", "hand", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(!is_opponent)
 		await main.show_message("HEADS! " + card_name.to_upper() + " WENT TO THE OPPONENT'S HAND.")
 		if main._should_bail(): return
@@ -7083,6 +7027,7 @@ func execute_messenger(attacker: card_object, is_opponent: bool) -> void:
 			deck.erase(chosen)
 			chosen.current_location = "hand"
 			hand.append(chosen)
+			await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 			if main._should_bail(): return
 			main.refresh_hand_display(is_opponent)
@@ -7209,6 +7154,7 @@ func execute_errand_running(attacker: card_object, is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
@@ -7229,9 +7175,11 @@ func execute_surprise(attacker: card_object, is_opponent: bool) -> void:
 		return
 	var picked = opp_hand[randi() % opp_hand.size()]
 	var picked_name = picked.metadata.get("name", "")
+	var _fr1: Dictionary = main.card_ops.capture_rect(picked, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 	opp_hand.erase(picked)
 	picked.current_location = "deck"
 	opp_deck.append(picked)
+	await main.card_ops.fly_card(picked, "hand", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 	opp_deck.shuffle()
 	main.refresh_hand_display(!is_opponent)
 	main.update_deck_icon(!is_opponent)
@@ -7394,6 +7342,7 @@ func execute_invigorate(attacker: card_object, is_opponent: bool) -> void:
 	chosen.current_location = "bench"
 	chosen.placed_on_field_this_turn = true
 	bench.append(chosen)
+	await main.card_ops.fly_card(chosen, "discard", "play", owner_is_opp, -1, {})   # AUDIT 2026-11-17: flight
 	main.display_pokemon(owner_is_opp)
 	main.update_discard_pile_display(owner_is_opp)
 	await main.show_message("INVIGORATE PUT " + chosen.metadata.get("name", "").to_upper() + " ONTO THE BENCH!")
@@ -7558,6 +7507,8 @@ func execute_stoke(attacker: card_object, is_opponent: bool) -> void:
 	deck.erase(chosen)
 	chosen.current_location = "attached"
 	attacker.attached_energies.append(chosen)
+	await main.card_ops.fly_attach(chosen, "deck", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.display_active_pokemon_energies(is_opponent)
@@ -7589,6 +7540,7 @@ func execute_search_typed_energy_to_hand(attacker: card_object, is_opponent: boo
 	deck.erase(chosen)
 	chosen.current_location = "hand"
 	hand.append(chosen)
+	await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 	if main._should_bail(): return
 	deck.shuffle()
@@ -7629,6 +7581,7 @@ func execute_pranks(attacker: card_object, is_opponent: bool) -> void:
 	opp_discard.erase(chosen)
 	chosen.current_location = "deck"
 	opp_deck.push_front(chosen)
+	await main.card_ops.fly_card(chosen, "discard", "deck", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 	main.update_discard_pile_display(!is_opponent)
 	main.update_deck_icon(!is_opponent)
 	await main.show_message("HEADS! " + chosen.metadata.get("name", "").to_upper() + " WAS PUT ON TOP OF THE OPPONENT'S DECK.")
@@ -7721,6 +7674,7 @@ func execute_call_wisp(attacker: card_object, is_opponent: bool) -> void:
 		discard_pile.erase(fire)
 		fire.current_location = "hand"
 		hand.append(fire)
+		await main.card_ops.fly_card(fire, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		recovered += 1
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -7792,6 +7746,7 @@ func execute_group_attack(attacker: card_object, defender: card_object, is_oppon
 			z.current_hp = z.get_max_hp()
 			z.placed_on_field_this_turn = true
 			bench.append(z)
+			await main.card_ops.fly_card(z, "deck", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			added += 1
 	else:
 		var ga_picks: Array = await main.card_ops.prompt_select_cards(zubats, 0, main.get_max_bench_size() - bench.size(),
@@ -7805,6 +7760,7 @@ func execute_group_attack(attacker: card_object, defender: card_object, is_oppon
 			sel.current_hp = sel.get_max_hp()
 			sel.placed_on_field_this_turn = true
 			bench.append(sel)
+			await main.card_ops.fly_card(sel, "deck", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			added += 1
 	if added > 0:
 		deck.shuffle()
@@ -7908,21 +7864,25 @@ func execute_fade_out(attacker: card_object, defender: card_object, is_opponent:
 	for pre in attacker.attached_pre_evolutions:
 		pre.current_location = "discard"
 		discard_pile.append(pre)
+		await main.card_ops.fly_card(pre, "attached", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	attacker.attached_pre_evolutions.clear()
 	for ac in attacker.attached_cards:
 		ac.current_location = "discard"
 		discard_pile.append(ac)
+		await main.card_ops.fly_card(ac, "attached", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	attacker.attached_cards.clear()
 	# Return Gastly + its Energy to hand
 	for e in attacker.attached_energies:
 		e.current_location = "hand"
 		hand.append(e)
+		await main.card_ops.fly_card(e, "attached", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	attacker.attached_energies.clear()
 	main.clear_all_statuses(attacker, is_opponent)
 	attacker.pluspower_count = 0
 	attacker.current_hp = attacker.get_max_hp()
 	attacker.current_location = "hand"
 	hand.append(attacker)
+	main.card_ops.fly_card(attacker, "play", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	var was_active = false
 	if is_opponent:
 		if main.opponent_active_pokemon == attacker:
@@ -8675,6 +8635,7 @@ func execute_devolution_beam(attacker: card_object, defender: card_object, is_op
 			return
 	var target_is_opp: bool = owner_map.get(target, false)
 	var target_hand = main.opponent_hand if target_is_opp else main.player_hand
+	var dv_rect: Dictionary = main.card_ops.capture_rect(target, "play", target_is_opp)   # AUDIT 2026-11-17: flight
 	# The highest-stage card is target itself; devolve one step back
 	var new_form: card_object = target.attached_pre_evolutions.back()
 	target.attached_pre_evolutions.erase(new_form)
@@ -8706,6 +8667,7 @@ func execute_devolution_beam(attacker: card_object, defender: card_object, is_op
 	# Return the evolution card to hand
 	target.current_location = "hand"
 	target_hand.append(target)
+	main.card_ops.fly_card(target, "play", "hand", target_is_opp, -1, dv_rect)   # AUDIT 2026-11-17: flight
 	main.display_pokemon(target_is_opp)
 	main.display_active_pokemon_energies(target_is_opp)
 	main.refresh_hand_display(target_is_opp)
@@ -8808,9 +8770,12 @@ func execute_energy_control(attacker: card_object, defender: card_object, is_opp
 		energy = await main.card_ops.prompt_select_card(ec_pool, "ENERGY CONTROL: WHICH ENERGY?", "Choose a basic Energy card to move", "MOVE", false)
 		if main._should_bail(): return
 		if energy == null: energy = ec_pool[0]
+	var _emr_8765: Dictionary = main.card_ops.capture_rect(energy, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 	source_pokemon.attached_energies.erase(energy)
 	energy.current_location = "active" if dest_pokemon == (main.player_active_pokemon if opp_is == false else main.opponent_active_pokemon) else "bench"
 	dest_pokemon.attached_energies.append(energy)
+	await main.card_ops.fly_attach(energy, "attached", _emr_8765)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(opp_is)
 	main.display_pokemon(opp_is)
@@ -9012,6 +8977,7 @@ func execute_lets_play(attacker: card_object, is_opponent: bool) -> void:
 	chosen.current_location = "bench"
 	chosen.placed_on_field_this_turn = true
 	bench.append(chosen)
+	await main.card_ops.fly_card(chosen, "deck", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.display_pokemon(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -9131,9 +9097,11 @@ func execute_burning_fire(attacker: card_object, defender: card_object, is_oppon
 		# CPU discards all available Fire Energy for maximum damage
 		for entry in all_fire:
 			var e = entry["card"]
+			var bf_r: Dictionary = main.card_ops.capture_rect(e, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 			entry["owner"].attached_energies.erase(e)
 			e.current_location = "discard"
 			discard_pile.append(e)
+			await main.card_ops.fly_card(e, "attached", "discard", is_opponent, -1, bf_r)   # AUDIT 2026-11-17: flight
 			discarded += 1
 	else:
 		# Player chooses which Fire Energy to discard
@@ -9143,9 +9111,11 @@ func execute_burning_fire(attacker: card_object, defender: card_object, is_oppon
 		for sel in bf_picks:
 			for entry in all_fire:
 				if entry["card"] == sel:
+					var bf_r2: Dictionary = main.card_ops.capture_rect(sel, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 					entry["owner"].attached_energies.erase(sel)
 					sel.current_location = "discard"
 					discard_pile.append(sel)
+					await main.card_ops.fly_card(sel, "attached", "discard", is_opponent, -1, bf_r2)   # AUDIT 2026-11-17: flight
 					discarded += 1
 					break
 	var total = 10 + discarded * 10
@@ -9431,6 +9401,7 @@ func execute_neo1_riptide(attacker: card_object, defender: card_object, is_oppon
 		discard.erase(e)
 		e.current_location = "deck"
 		deck.append(e)
+		await main.card_ops.fly_card(e, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	if water_in_discard.size() > 0:
 		deck.shuffle()
 		main.update_discard_pile_display(is_opponent)
@@ -9588,12 +9559,8 @@ func execute_neo1_eeeeeeek(attacker: card_object, is_opponent: bool, draw_n: int
 	if await handle_attack_blind(attacker, is_opponent): return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var deck = main.opponent_deck if is_opponent else main.player_deck
-	for card in hand.duplicate():
-		card.current_location = "deck"
-		deck.append(card)
-	hand.clear()
-	deck.shuffle()
-	main.update_deck_icon(is_opponent)
+	await main.card_ops.shuffle_hand_into_deck(is_opponent)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	await main.show_message("EEEEEEEK! SHUFFLED HAND AND DRAWING " + str(draw_n) + "!")   # OLD ISSUE 325: ex10 Cleffa = 6
 	if main._should_bail(): return
 	await main.card_ops.draw_n(is_opponent, draw_n)
@@ -9610,17 +9577,22 @@ func execute_neo1_pilfer(attacker: card_object, is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	# Shuffle Aipom + attached into deck
 	for e in attacker.attached_energies.duplicate():
+		var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 		attacker.attached_energies.erase(e)
 		e.current_location = "deck"
 		deck.append(e)
+		await main.card_ops.fly_card(e, "attached", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	for pre in attacker.attached_pre_evolutions.duplicate():
+		var _fr2: Dictionary = main.card_ops.capture_rect(pre, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 		attacker.attached_pre_evolutions.erase(pre)
 		pre.current_location = "deck"
 		deck.append(pre)
+		await main.card_ops.fly_card(pre, "attached", "deck", is_opponent, -1, _fr2)   # AUDIT 2026-11-17: flight
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	var is_active = (attacker == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon))
 	attacker.current_location = "deck"
 	deck.append(attacker)
+	main.card_ops.fly_card(attacker, "play", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	if is_active:
 		if is_opponent: main.opponent_active_pokemon = null
 		else: main.player_active_pokemon = null
@@ -9641,6 +9613,7 @@ func execute_neo1_pilfer(attacker: card_object, is_opponent: bool) -> void:
 			discard.erase(picked)
 			picked.current_location = "deck"
 			deck.append(picked)
+			await main.card_ops.fly_card(picked, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			deck.shuffle()
 		else:
 			var picked = await main.card_ops.prompt_select_card(discard, "PILFER: CHOOSE CARD", "Choose 1 card from your discard to shuffle into your deck", "SELECT", false)
@@ -9649,6 +9622,7 @@ func execute_neo1_pilfer(attacker: card_object, is_opponent: bool) -> void:
 				discard.erase(picked)
 				picked.current_location = "deck"
 				deck.append(picked)
+				await main.card_ops.fly_card(picked, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 				deck.shuffle()
 		main.update_discard_pile_display(is_opponent)
 		main.update_deck_icon(is_opponent)
@@ -9705,6 +9679,7 @@ func execute_neo1_squaredance(attacker: card_object, is_opponent: bool) -> void:
 		deck.erase(pick)
 		pick.current_location = "hand"
 		hand.append(pick)
+		await main.card_ops.fly_card(pick, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([pick], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		found += 1
@@ -9783,6 +9758,8 @@ func execute_neo1_static_electricity(attacker: card_object, is_opponent: bool) -
 			deck.erase(e)
 			e.current_location = "attached"
 			attacker.attached_energies.append(e)
+			await main.card_ops.fly_attach(e, "deck", {})   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 	else:
 		var se_picks: Array = await main.card_ops.prompt_select_cards(lightning_in_deck, 0, picks, "STATIC ELECTRICITY", "Choose up to " + str(picks) + " Lightning Energy to attach to Mareep", "ATTACH")
@@ -9791,6 +9768,8 @@ func execute_neo1_static_electricity(attacker: card_object, is_opponent: bool) -
 			deck.erase(pick)
 			pick.current_location = "attached"
 			attacker.attached_energies.append(pick)
+			await main.card_ops.fly_attach(pick, "deck", {})   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.display_active_pokemon_energies(is_opponent)
@@ -9879,18 +9858,9 @@ func execute_neo1_baton_pass(attacker: card_object, defender: card_object, is_op
 	main.display_active_pokemon_energies(is_opponent)
 	await main.show_message("BATON PASS! MOVED " + str(grass_e.size()) + " GRASS ENERGY TO " + target.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
-	# Switch Ledian out, target in
-	bench.erase(target)
-	bench.append(attacker)
-	attacker.current_location = "bench"
-	target.current_location = "active"
-	if is_opponent:
-		main.opponent_active_pokemon = target
-	else:
-		main.player_active_pokemon = target
-	main.clear_all_statuses(attacker, is_opponent)
-	main.display_pokemon(is_opponent)
-	main.display_active_pokemon_energies(is_opponent)
+	# Switch Ledian out, target in - AUDIT 2026-11-17: the shared switch animation (swap, clear conditions, redraw).
+	await main.animate_retreat(attacker, target, [], is_opponent, true)
+	if main._should_bail(): return
 	print("ATTACK EXECUTED: Baton Pass")
 
 # SWEET NECTAR (neo1-3 Bellossom): flip — heads: remove all damage from 1 of your pokemon
@@ -10161,12 +10131,8 @@ func execute_neo1_elemental_blast(attacker: card_object, defender: card_object, 
 		if main._should_bail(): return
 		return
 	# OLD ISSUE 368: a Rainbow / Multi Energy could be any of the three — the owner picks the card for each type in turn.
-	var eb_used: Array = []
-	for t in ["Fire", "Water", "Lightning"]:
-		var eb_pool: Array = attacker.attached_energies.filter(func(e): return t in main.get_energy_provided_by_card(e) and e not in eb_used)
-		var eb_pick: Array = await pick_own_energies(attacker, eb_pool, 1, is_opponent, "ELEMENTAL BLAST: DISCARD A " + t.to_upper() + " ENERGY")
-		if main._should_bail(): return
-		if not eb_pick.is_empty(): eb_used.append(eb_pick[0])
+	var eb_used: Array = await pick_energy_per_type(attacker, ["Fire", "Water", "Lightning"], is_opponent, "ELEMENTAL BLAST: DISCARD A FIRE, A WATER AND A LIGHTNING ENERGY")   # AUDIT 2026-11-17: one screen for every type (was one prompt per type)
+	if main._should_bail(): return
 	for e in eb_used:
 		main.card_ops.discard_energy_from_pokemon(e, is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -10232,8 +10198,11 @@ func execute_neo1_electric_current(attacker: card_object, defender: card_object,
 			if main._should_bail(): return
 	if target == null:
 		return
+	var _emr_10193: Dictionary = main.card_ops.capture_rect(lightning_e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 	attacker.attached_energies.erase(lightning_e)
 	target.attached_energies.append(lightning_e)
+	await main.card_ops.fly_attach(lightning_e, "attached", _emr_10193)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opponent)
 	await main.show_message("ELECTRIC CURRENT! LIGHTNING ENERGY MOVED TO " + target.metadata.get("name","").to_upper() + "!")
@@ -10361,6 +10330,7 @@ func execute_neo1_sweep_away(attacker: card_object, defender: card_object, is_op
 		var top = own_deck.pop_front()   # OLD ISSUE 318: the top of the deck is index 0 (it milled the bottom)
 		top.current_location = "discard"
 		own_discard.append(top)
+		await main.card_ops.fly_card(top, "deck", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		count += 1
 	if count > 0:
 		main.update_discard_pile_display(is_opponent)
@@ -10710,6 +10680,8 @@ func execute_neo2_collect_fire(attacker: card_object, defender: card_object, is_
 		return
 	discard.erase(fire_e)
 	attacker.attached_energies.append(fire_e)
+	await main.card_ops.fly_attach(fire_e, "discard", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	fire_e.current_location = "active" if attacker.current_location == "active" else "bench"
 	main.update_discard_pile_display(is_opponent)
@@ -11007,8 +10979,11 @@ func execute_neo2_belly_drum(attacker: card_object, is_opponent: bool) -> void:
 	if main._should_bail(): return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	for energy in bd_found:
+		var _atr_10949: Dictionary = main.card_ops.capture_rect_any(energy)   # AUDIT 2026-11-17: flight
 		hand.erase(energy)
 		attacker.attached_energies.append(energy)
+		await main.card_ops.fly_attach(energy, "hand", _atr_10949)   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		energy.current_location = attacker.current_location
 	main.refresh_hand_display(is_opponent)
@@ -11095,8 +11070,11 @@ func execute_neo2_energy_cycle(attacker: card_object, defender: card_object, is_
 		target_bench = await main.card_ops.prompt_select_card(opp_bench, "ENERGY CYCLE", "Choose bench pokemon to receive the energy", "SELECT", def_is_opp)
 		if main._should_bail(): return
 		if target_bench == null: return
+	var _emr_11062: Dictionary = main.card_ops.capture_rect(energy, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 	defender.attached_energies.erase(energy)
 	target_bench.attached_energies.append(energy)
+	await main.card_ops.fly_attach(energy, "attached", _emr_11062)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	energy.current_location = "bench"
 	main.display_active_pokemon_energies(not is_opponent)
@@ -11237,9 +11215,11 @@ func execute_neo2_plunder(attacker: card_object, defender: card_object, is_oppon
 		if c.metadata.get("supertype","") == "Trainer":
 			trainers_to_remove.append(c)
 	for t in trainers_to_remove:
+		var pl_r: Dictionary = main.card_ops.capture_rect(t, "attached", not is_opponent)   # AUDIT 2026-11-17: flight
 		defender.attached_cards.erase(t)
 		var def_is_opp = not is_opponent
 		main.send_card_to_discard(t, def_is_opp)
+		main.card_ops.fly_card(t, "attached", "discard", def_is_opp, -1, pl_r)   # AUDIT 2026-11-17: flight (queued)
 	if trainers_to_remove.size() > 0:
 		await main.show_message("PLUNDER! DISCARDED " + str(trainers_to_remove.size()) + " TRAINER(S) FROM DEFENDER!")
 		if main._should_bail(): return
@@ -11530,6 +11510,8 @@ func execute_neo3_attract_current(attacker: card_object, defender: card_object, 
 		own_deck.erase(e)
 		e.current_location = "active" if target.current_location == "active" else "bench"
 		target.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "deck", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 	own_deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -11789,6 +11771,8 @@ func execute_neo3_dark_flame(attacker: card_object, defender: card_object, is_op
 		own_discard.erase(dark_e)
 		dark_e.current_location = "active"
 		attacker.attached_energies.append(dark_e)
+		await main.card_ops.fly_attach(dark_e, "discard", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		main.update_discard_pile_display(is_opponent)
@@ -12249,9 +12233,11 @@ func execute_neo3_swipe(attacker: card_object, defender: card_object, is_opponen
 	for p in all_opp:
 		for ac in p.attached_cards.duplicate():
 			if main.trainer_effects.is_attached_trainer(ac):
+				var _fr1: Dictionary = main.card_ops.capture_rect(ac, "attached", not (is_opponent))   # AUDIT 2026-11-17: flight
 				p.attached_cards.erase(ac)
 				ac.current_location = "discard"
 				opp_discard.append(ac)
+				await main.card_ops.fly_card(ac, "attached", "discard", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 				discarded_count += 1
 	main.update_discard_pile_display(not is_opponent)
 	main.trainer_effects.display_attached_trainer_cards(not is_opponent)
@@ -12626,9 +12612,11 @@ func execute_neo3_grab(attacker: card_object, defender: card_object, is_opponent
 					break
 	var grab_card = chosen_entry["card"]
 	var grab_pokemon = chosen_entry["pokemon"]
+	var _fr1: Dictionary = main.card_ops.capture_rect(grab_card, "attached", not (is_opponent))   # AUDIT 2026-11-17: flight
 	grab_pokemon.attached_cards.erase(grab_card)
 	grab_card.current_location = "deck"
 	opp_deck.append(grab_card)
+	await main.card_ops.fly_card(grab_card, "attached", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 	opp_deck.shuffle()
 	main.update_deck_icon(not is_opponent)
 	main.trainer_effects.display_attached_trainer_cards(not is_opponent)
@@ -12843,9 +12831,11 @@ func execute_neo3_psykiss(attacker: card_object, defender: card_object, is_oppon
 					break
 	var se_card = chosen_entry["energy"]
 	var se_pokemon = chosen_entry["pokemon"]
+	var _fr1: Dictionary = main.card_ops.capture_rect(se_card, "attached", not (is_opponent))   # AUDIT 2026-11-17: flight
 	se_pokemon.attached_energies.erase(se_card)
 	se_card.current_location = "deck"
 	opp_deck.append(se_card)
+	await main.card_ops.fly_card(se_card, "attached", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 	opp_deck.shuffle()
 	main.update_deck_icon(not is_opponent)
 	main.display_active_pokemon_energies(not is_opponent)
@@ -13034,6 +13024,7 @@ func execute_neo3_dragon_bond(attacker: card_object, is_opponent: bool) -> void:
 	own_deck.erase(chosen)
 	chosen.current_location = "hand"
 	own_hand.append(chosen)
+	await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 	if main._should_bail(): return
 	own_deck.shuffle()
@@ -13348,20 +13339,23 @@ func execute_neo4_eerie_howl(attacker: card_object, defender: card_object, is_op
 		if old_active != null and (is_protected_from_effects(old_active) or active_switch_locked(not is_opponent)):
 			main.display_pokemon(not is_opponent)
 			return
-		if old_active != null:
-			main.clear_all_statuses(old_active, not is_opponent)   # OLD ISSUE 319: it is Benched now
-		var opp_bench2 = main.player_bench if is_opponent else main.opponent_bench
-		opp_bench2.erase(chosen)
-		if old_active != null:
-			old_active.current_location = "bench"
-			opp_bench2.append(old_active)
-		chosen.current_location = "active"
-		if is_opponent:
-			main.player_active_pokemon = chosen
-		else:
-			main.opponent_active_pokemon = chosen
 		main.display_pokemon(not is_opponent)
-		main.display_active_pokemon_energies(not is_opponent)
+		if old_active != null:
+			# AUDIT 2026-11-17: the shared switch animation (clears the old Active's conditions - OLD ISSUE 319).
+			await main.animate_retreat(old_active, chosen, [], not is_opponent, true)
+			if main._should_bail(): return
+		else:
+			var opp_bench2 = main.player_bench if is_opponent else main.opponent_bench
+			var eh_from: Dictionary = main.card_ops.capture_rect(chosen, "play", not is_opponent)
+			opp_bench2.erase(chosen)
+			chosen.current_location = "active"
+			if is_opponent:
+				main.player_active_pokemon = chosen
+			else:
+				main.opponent_active_pokemon = chosen
+			main.card_ops.fly_card(chosen, "play", "play", not is_opponent, -1, eh_from)   # AUDIT 2026-11-17: flight
+			main.display_pokemon(not is_opponent)
+			main.display_active_pokemon_energies(not is_opponent)
 		await main.show_message("EERIE HOWL! " + chosen.metadata.get("name","").to_upper() + " DRAGGED INTO BATTLE!")
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Eerie Howl")
@@ -13423,9 +13417,11 @@ func execute_neo4_threaten(attacker: card_object, is_opponent: bool) -> void:
 		chosen = await main.card_ops.prompt_select_card(trainers, "THREATEN!", "Choose a Trainer to shuffle into opponent's deck", "SELECT", false)
 		if main._should_bail(): return
 		if chosen == null: chosen = trainers[0]
+	var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 	opp_hand.erase(chosen)
 	chosen.current_location = "deck"
 	opp_deck.append(chosen)
+	await main.card_ops.fly_card(chosen, "hand", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 	opp_deck.shuffle()
 	main.update_deck_icon(not is_opponent)
 	main.refresh_hand_display(not is_opponent)
@@ -13504,6 +13500,7 @@ func execute_neo4_mountain_smasher(attacker: card_object, defender: card_object,
 		var top = opp_deck.pop_front()
 		top.current_location = "discard"
 		opp_discard.append(top)
+		await main.card_ops.fly_card(top, "deck", "discard", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 	main.update_deck_icon(not is_opponent)
 	main.update_discard_pile_display(not is_opponent)
 	if heads > 0:
@@ -13591,9 +13588,12 @@ func execute_neo4_bubble_jump(attacker: card_object, defender: card_object, is_o
 		moving = await main.card_ops.prompt_select_cards(attacker.attached_energies.duplicate(), 2, 2, "BUBBLE JUMP", "Choose 2 Energy to move", "MOVE")
 		if main._should_bail(): return
 	for e in moving:
+		var _emr_13578: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 		attacker.attached_energies.erase(e)
 		e.current_location = "bench"
 		bench_target.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "attached", _emr_13578)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 	gym1_return_pokemon_to_hand(attacker, is_opponent)
 	main.display_pokemon(is_opponent)
@@ -13762,6 +13762,7 @@ func execute_neo4_prehistoric_water(attacker: card_object, is_opponent: bool) ->
 		return
 	var target_is_opp := not is_opponent
 	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
+	var pw_rect: Dictionary = main.card_ops.capture_rect(chosen, "play", target_is_opp)   # AUDIT 2026-11-17: flight
 	# Devolve one stage: highest stage card (chosen itself) shuffled into deck
 	var new_form: card_object = chosen.attached_pre_evolutions.back()
 	chosen.attached_pre_evolutions.erase(new_form)
@@ -13786,6 +13787,7 @@ func execute_neo4_prehistoric_water(attacker: card_object, is_opponent: bool) ->
 	chosen.current_location = "deck"
 	chosen.attached_energies.clear()
 	opp_deck.append(chosen)
+	main.card_ops.fly_card(chosen, "play", "deck", target_is_opp, -1, pw_rect)   # AUDIT 2026-11-17: flight
 	opp_deck.shuffle()
 	main.display_pokemon(target_is_opp)
 	main.display_active_pokemon_energies(target_is_opp)
@@ -13944,6 +13946,7 @@ func _neo4_recover_from_discard(side_is_opponent: bool) -> void:
 	discard.erase(chosen)
 	chosen.current_location = "hand"
 	hand.append(chosen)
+	await main.card_ops.fly_card(chosen, "discard", "hand", side_is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.update_discard_pile_display(side_is_opponent)
 	main.refresh_hand_display(side_is_opponent)
 
@@ -14234,6 +14237,7 @@ func execute_neo4_incinerate(attacker: card_object, is_opponent: bool) -> void:
 		top.current_location = "discard"
 		var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
 		opp_discard.append(top)
+		await main.card_ops.fly_card(top, "deck", "discard", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 		main.update_deck_icon(not is_opponent)
 		main.update_discard_pile_display(not is_opponent)
 		await main.show_message("INCINERATE! IT WAS A TRAINER — DISCARDED!")
@@ -14254,6 +14258,7 @@ func execute_neo4_rushing_magma(attacker: card_object, defender: card_object, is
 			fire_discarded += 1
 		c.current_location = "discard"
 		own_discard.append(c)
+		await main.card_ops.fly_card(c, "deck", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.update_deck_icon(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	var dmg = fire_discarded * 20
@@ -14329,6 +14334,8 @@ func execute_neo4_warm_up(attacker: card_object, is_opponent: bool) -> void:
 	own_deck.erase(fire_e)
 	fire_e.current_location = "bench"
 	target.attached_energies.append(fire_e)
+	await main.card_ops.fly_attach(fire_e, "deck", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	own_deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -14389,6 +14396,7 @@ func execute_neo4_flipper_stroke(attacker: card_object, is_opponent: bool) -> vo
 			deck.erase(e)
 			e.current_location = "hand"
 			hand.append(e)
+			await main.card_ops.fly_card(e, "deck", "hand", side, -1, {})   # AUDIT 2026-11-17: flight
 		deck.shuffle()
 		main.update_deck_icon(side)
 		main.refresh_hand_display(side)
@@ -14410,6 +14418,7 @@ func _neo4_top3_basic_energy_to_hand(side_is_opponent: bool) -> void:
 			deck.erase(c)
 			c.current_location = "hand"
 			hand.append(c)
+			main.card_ops.fly_card(c, "deck", "hand", side_is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 
 # CORE BLAST (neo4-47 Light Golduck): 30 + 20 per Special Energy on the Defender
@@ -14483,13 +14492,16 @@ func execute_neo4_return_home(attacker: card_object, is_opponent: bool) -> void:
 	for c in target.attached_energies + target.attached_cards + target.attached_pre_evolutions:
 		c.current_location = "deck"
 		own_deck.append(c)
+		await main.card_ops.fly_card(c, "attached", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	target.attached_energies.clear()
 	target.attached_cards.clear()
 	target.attached_pre_evolutions.clear()
+	var _fr1: Dictionary = main.card_ops.capture_rect(target, "play", is_opponent)   # AUDIT 2026-11-17: flight
 	own_bench.erase(target)
 	target.current_location = "deck"
 	target.current_hp = target.get_max_hp()
 	own_deck.append(target)
+	await main.card_ops.fly_card(target, "play", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	own_deck.shuffle()
 	main.update_deck_icon(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -14581,6 +14593,7 @@ func _neo4_shuffle_discard_pokemon_to_deck(side_is_opponent: bool, count: int) -
 		discard.erase(pick)
 		pick.current_location = "deck"
 		deck.append(pick)
+		await main.card_ops.fly_card(pick, "discard", "deck", side_is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		moved += 1
 	deck.shuffle()
 
@@ -14685,6 +14698,7 @@ func _neo4_pokemon_discard_to_hand(side_is_opponent: bool) -> void:
 	discard.erase(chosen)
 	chosen.current_location = "hand"
 	hand.append(chosen)
+	await main.card_ops.fly_card(chosen, "discard", "hand", side_is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.update_discard_pile_display(side_is_opponent)
 	main.refresh_hand_display(side_is_opponent)
 
@@ -14754,9 +14768,12 @@ func execute_neo4_reflected_sunlight(attacker: card_object, is_opponent: bool) -
 		rs_picks = await main.card_ops.prompt_select_cards(grass_in_hand, 0, 2, "REFLECTED SUNLIGHT", "Choose up to 2 Grass Energy to attach to " + target.metadata.get("name",""), "ATTACH")
 		if main._should_bail(): return
 	for e in rs_picks:
+		var _atr_14724: Dictionary = main.card_ops.capture_rect_any(e)   # AUDIT 2026-11-17: flight
 		own_hand.erase(e)
 		e.current_location = "active" if target == own_active else "bench"
 		target.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "hand", _atr_14724)   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		attached += 1
 	main.refresh_hand_display(is_opponent)
@@ -15204,6 +15221,7 @@ func execute_neo4_mountain_crush(attacker: card_object, defender: card_object, i
 		var top = opp_deck.pop_front()
 		top.current_location = "discard"
 		opp_discard.append(top)
+		await main.card_ops.fly_card(top, "deck", "discard", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 	main.update_deck_icon(not is_opponent)
 	main.update_discard_pile_display(not is_opponent)
 	await main.show_message("MOUNTAIN CRUSH! " + str(heads) + " HEADS — " + str(heads) + " CARD(S) DISCARDED FROM OPPONENT'S DECK!")
@@ -15235,12 +15253,10 @@ func execute_neo4_destructive_fire(attacker: card_object, defender: card_object,
 	main.update_discard_pile_display(is_opponent)
 	# Discard an Energy from defender per head — the ATTACKER chooses which (OLD ISSUE 319: was always [0])
 	if defender != null and not is_protected_from_effects(defender) and not main.card_ops.energy_removal_blocked(defender, not is_opponent, is_opponent):
-		for i in range(heads):
-			if defender.attached_energies.is_empty(): break
-			var de = await r3_pick_defender_energy(defender, is_opponent, "DESTRUCTIVE FIRE (" + str(i + 1) + " OF " + str(heads) + ")")
-			if main._should_bail(): return
-			if de != null:
-				main.card_ops.discard_energy_from_pokemon(de, not is_opponent)
+		var df_picks: Array = await r3_pick_defender_energies(defender, heads, is_opponent, "DESTRUCTIVE FIRE: DISCARD " + str(heads) + " ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+		if main._should_bail(): return
+		for de in df_picks:
+			main.card_ops.discard_energy_from_pokemon(de, not is_opponent)
 		main.display_active_pokemon_energies(not is_opponent)
 		main.update_discard_pile_display(not is_opponent)
 	await main.show_message("DESTRUCTIVE FIRE! " + str(heads) + " HEADS — DISCARDED " + str(heads) + " ENERGY FROM EACH!")
@@ -15454,6 +15470,8 @@ func execute_np_metal_load(attacker: card_object, is_opponent: bool) -> void:
 	discard.erase(chosen)
 	chosen.current_location = "active"
 	attacker.attached_energies.append(chosen)
+	await main.card_ops.fly_attach(chosen, "discard", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.update_discard_pile_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -15546,9 +15564,12 @@ func execute_np_energy_gift(attacker: card_object, defender: card_object, is_opp
 		if main._should_bail(): return
 		if target_poke == null:
 			return
+	var _emr_15551: Dictionary = main.card_ops.capture_rect(to_move, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 	attacker.attached_energies.erase(to_move)
 	to_move.current_location = "active" if target_poke == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 	target_poke.attached_energies.append(to_move)
+	await main.card_ops.fly_attach(to_move, "attached", _emr_15551)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -15648,9 +15669,12 @@ func execute_np_aqua_supply(attacker: card_object, defender: card_object, is_opp
 		poke_target = await main.card_ops.prompt_select_card(all_targets, "AQUA SUPPLY", "Choose a Pokémon to attach the Energy to", "ATTACH", false)
 		if main._should_bail(): return
 		if poke_target == null: return
+	var _atr_15617: Dictionary = main.card_ops.capture_rect_any(energy_chosen)   # AUDIT 2026-11-17: flight
 	hand.erase(energy_chosen)
 	energy_chosen.current_location = "active"
 	poke_target.attached_energies.append(energy_chosen)
+	await main.card_ops.fly_attach(energy_chosen, "hand", _atr_15617)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.refresh_hand_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -15676,6 +15700,7 @@ func execute_np_mix_up(attacker: card_object, defender: card_object, is_opponent
 			var top = opp_deck.pop_front()
 			top.current_location = "discard"
 			opp_discard.append(top)
+			await main.card_ops.fly_card(top, "deck", "discard", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 			main.update_deck_icon(not is_opponent)   # OLD ISSUE 374: refreshed the attacker's deck icon
 			main.update_discard_pile_display(not is_opponent)
 			await main.show_message("MIX-UP! HEADS — OPPONENT DISCARDED TOP CARD OF DECK!")
@@ -15764,49 +15789,10 @@ func choose_attack_from_pool(pool: Array, is_opponent: bool, cpu_rank_fn: Callab
 		main.end_copy_pick()
 		main.opponent_blocker.visible = restore_blocker
 		return pool[clampi(pick_index, 0, pool.size() - 1)]
-	main.special_attack_selection_active = true
-	main.buttons_only_blocker.visible = true
-	# ISSUE #3 FIX (Metronome regression) ACTIVE: opponent_blocker is a full-screen ColorRect with
-	# no cutout (unlike buttons_only_blocker, which excludes the button row). perform_attack() sets
-	# opponent_blocker.visible = true the moment the player's attack is chosen, so by the time an
-	# attack-copy effect (Metronome, Mirror Move, etc.) opens this button list, opponent_blocker is
-	# already covering the whole screen — including the very buttons buttons_only_blocker was meant
-	# to leave clickable. Hide it for the duration of the selection and restore it after.
-	var restore_opponent_blocker_pool = main.opponent_blocker.visible
-	main.opponent_blocker.visible = false
-	for child in main.attack_buttons_container.get_children():
-		if child.name == "cancel_attack_mode_button":
-			continue
-		child.queue_free()
-	main.attack_buttons_container.visible = true
-	main.main_buttons_container.visible = false
-	for child in main.attack_buttons_container.get_children():
-		if child.name == "cancel_attack_mode_button":
-			child.visible = false
-
-	for i in range(pool.size()):
-		var atk = pool[i]
-		var btn = Button.new()
-		btn.text = atk.get("name", "Attack") + " (" + str(atk.get("damage", "0")) + ")"
-		btn.custom_minimum_size = Vector2(350, 50)
-		btn.theme = main.theme_green
-		main.attack_buttons_container.add_child(btn)
-		btn.pressed.connect(func(): main.special_attack_selected.emit(i))
-
-	var selected_index: int = await main.special_attack_selected
-	var chosen: Dictionary = pool[selected_index]
-
-	for child in main.attack_buttons_container.get_children():
-		if child.name == "cancel_attack_mode_button":
-			child.visible = true
-			continue
-		child.queue_free()
-	main.attack_buttons_container.visible = false
-	main.main_buttons_container.visible = true
-	main.special_attack_selection_active = false
-	main.buttons_only_blocker.visible = false
-	main.opponent_blocker.visible = restore_opponent_blocker_pool
-	return chosen
+	# AUDIT 2026-11-17: no action panel to hold the copy rows - option rows by name instead (never the old list).
+	var pool_labels: Array = pool.map(func(a): return String(a.get("name", "Attack")) + "  " + str(a.get("damage", "")))
+	var pool_idx: int = await main.pick_option("CHOOSE AN ATTACK", pool_labels)
+	return pool[clampi(pool_idx, 0, pool.size() - 1)]
 
 # Generic path for a copied attack with no dispatch entry: variable-damage resolution
 # (coin-flip ×/+ patterns, condition gates) + Weakness/Resistance + standard card-text effects.
@@ -16070,6 +16056,8 @@ func execute_ecard1_energy_draw(attacker: card_object, is_opponent: bool, requir
 	deck.erase(chosen)
 	chosen.current_location = "active" if attacker.current_location == "active" else "bench"
 	attacker.attached_energies.append(chosen)
+	await main.card_ops.fly_attach(chosen, "deck", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -16120,8 +16108,11 @@ func execute_ecard1_energy_patch(attacker: card_object, is_opponent: bool) -> vo
 		target = await main.card_ops.prompt_select_card(targets, "ENERGY PATCH", "Select a Pokemon to attach the Energy to", "ATTACH", false)
 		if main._should_bail(): return
 	if target == null: return
+	var _emr_16091: Dictionary = main.card_ops.capture_rect(energy, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 	source.attached_energies.erase(energy)
 	target.attached_energies.append(energy)
+	await main.card_ops.fly_attach(energy, "attached", _emr_16091)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -16159,6 +16150,8 @@ func execute_ecard1_energy_recall(attacker: card_object, is_opponent: bool, up_t
 		discard.erase(chosen)
 		chosen.current_location = "active"
 		attacker.attached_energies.append(chosen)
+		await main.card_ops.fly_attach(chosen, "discard", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		moved += 1
 	main.display_active_pokemon_energies(is_opponent)
@@ -16232,8 +16225,11 @@ func execute_ecard1_reflect_energy(attacker: card_object, defender: card_object,
 				target = await main.card_ops.prompt_select_card(bench, "REFLECT ENERGY", "Select a Benched Pokemon to attach it to", "ATTACH", false)
 				if main._should_bail(): return
 		if energy != null and target != null:
+			var _emr_16205: Dictionary = main.card_ops.capture_rect(energy, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 			attacker.attached_energies.erase(energy)
 			target.attached_energies.append(energy)
+			await main.card_ops.fly_attach(energy, "attached", _emr_16205)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 			main.display_active_pokemon_energies(is_opponent)
 			main.display_pokemon(is_opponent)
@@ -16626,6 +16622,8 @@ func execute_ecard2_energy_support(attacker: card_object, defender: card_object,
 	deck.erase(energy)
 	energy.current_location = "bench"
 	target.attached_energies.append(energy)
+	await main.card_ops.fly_attach(energy, "deck", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -16656,6 +16654,8 @@ func execute_ecard2_collect_fire_flip(attacker: card_object, is_opponent: bool) 
 		return
 	discard.erase(fire_e)
 	attacker.attached_energies.append(fire_e)
+	await main.card_ops.fly_attach(fire_e, "discard", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	fire_e.current_location = "active" if attacker.current_location == "active" else "bench"
 	main.update_discard_pile_display(is_opponent)
@@ -16745,6 +16745,7 @@ func execute_ecard2_minor_errand_running(attacker: card_object, is_opponent: boo
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		found += 1
@@ -16795,6 +16796,8 @@ func execute_ecard2_baby_outing(attacker: card_object, is_opponent: bool) -> voi
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		(main.opponent_hand if is_opponent else main.player_hand).append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent)   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -16879,8 +16882,10 @@ func execute_ecard2_fishing_tail(attacker: card_object, is_opponent: bool) -> vo
 	discard.erase(chosen)
 	chosen.current_location = "hand"
 	(main.opponent_hand if is_opponent else main.player_hand).append(chosen)
-	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
+	await main.card_ops.fly_card(chosen, "discard", "hand", is_opponent)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
+	main.refresh_hand_display(is_opponent)
 	await main.show_message("ADDED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Fishing Tail")
@@ -16912,6 +16917,7 @@ func execute_ecard2_data_sort(attacker: card_object, is_opponent: bool) -> void:
 	discard.erase(chosen)
 	chosen.current_location = "deck"
 	deck.append(chosen)
+	await main.card_ops.fly_card(chosen, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.update_discard_pile_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -17225,8 +17231,11 @@ func execute_ecard2_energy_kick(attacker: card_object, defender: card_object, is
 			target = main.cpu_ai.cpu_pick_benefit_recipient(opp_bench, "energy", energy)
 		if target == null: target = opp_bench[0]
 		if energy != null:
+			var _emr_17208: Dictionary = main.card_ops.capture_rect(energy, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 			defender.attached_energies.erase(energy)
 			target.attached_energies.append(energy)
+			await main.card_ops.fly_attach(energy, "attached", _emr_17208)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 			main.display_pokemon(not is_opponent)
 			main.display_active_pokemon_energies(not is_opponent)
@@ -17369,9 +17378,11 @@ func execute_ecard2_rob(attacker: card_object, is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 	for c in targets:
+		var _fr1: Dictionary = main.card_ops.capture_rect(c, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 		opp_hand.erase(c)
 		c.current_location = "deck"
 		opp_deck.append(c)
+		await main.card_ops.fly_card(c, "hand", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 	opp_deck.shuffle()
 	main.refresh_hand_display(not is_opponent)
 	main.update_deck_icon(not is_opponent)
@@ -17543,27 +17554,33 @@ func execute_ecard2_skedaddle(attacker: card_object, is_opponent: bool) -> void:
 		var pick = main.cpu_ai.pick_best_bench_replacement(bench, main.player_active_pokemon, main.cpu_ai.get_cpu_evaluation())
 		if pick != null: new_active = pick
 	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var sk_rect: Dictionary = main.card_ops.capture_rect(attacker, "play", is_opponent)   # AUDIT 2026-11-17: flight
 	# "Return Aipom and all BASIC Energy cards attached to it to your hand" — anything else is discarded.
 	for e in attacker.attached_energies.duplicate():
 		if gym1_is_basic_energy(e):
 			e.current_location = "hand"
 			hand.append(e)
+			await main.card_ops.fly_card(e, "attached", "hand", is_opponent, -1, sk_rect)   # AUDIT 2026-11-17: flight
 		else:
 			main.card_ops.discard_energy_from_pokemon(e, is_opponent)
 	attacker.attached_energies.clear()
 	for ac in attacker.attached_cards.duplicate():
-		main.card_ops.send_to_discard(ac, is_opponent)
+		main.card_ops.fly_card(ac, "attached", "discard", is_opponent, -1, sk_rect)   # AUDIT 2026-11-17: flight
+		main.card_ops.send_to_discard(ac, is_opponent, false, null, false)   # AUDIT 2026-11-17: flown just above
 	attacker.attached_cards.clear()
+	var sk_new_rect: Dictionary = main.card_ops.capture_rect(new_active, "play", is_opponent)   # AUDIT 2026-11-17: flight
 	bench.erase(new_active)
 	main.clear_all_statuses(attacker, is_opponent)
 	attacker.current_hp = attacker.get_max_hp()
 	attacker.current_location = "hand"
 	hand.append(attacker)
+	main.card_ops.fly_card(attacker, "play", "hand", is_opponent, -1, sk_rect)   # AUDIT 2026-11-17: flight
 	new_active.current_location = "active"
 	if is_opponent:
 		main.opponent_active_pokemon = new_active
 	else:
 		main.player_active_pokemon = new_active
+	main.card_ops.fly_card(new_active, "play", "play", is_opponent, -1, sk_new_rect)   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -17587,9 +17604,12 @@ func execute_ecard2_growth_spurt(attacker: card_object, is_opponent: bool) -> vo
 		chosen = await main.card_ops.prompt_select_card(energies, "GROWTH SPURT", "Select an Energy card to attach", "ATTACH", false)
 		if main._should_bail(): return
 	if chosen == null: return
+	var _atr_17528: Dictionary = main.card_ops.capture_rect_any(chosen)   # AUDIT 2026-11-17: flight
 	hand.erase(chosen)
 	chosen.current_location = "active" if attacker.current_location == "active" else "bench"
 	attacker.attached_energies.append(chosen)
+	await main.card_ops.fly_attach(chosen, "hand", _atr_17528)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.refresh_hand_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -17636,6 +17656,7 @@ func execute_ecard2_mountain_eater(attacker: card_object, is_opponent: bool) -> 
 		var top = opp_deck.pop_front()
 		top.current_location = "discard"
 		opp_discard.append(top)
+		await main.card_ops.fly_card(top, "deck", "discard", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 		main.update_deck_icon(not is_opponent)
 		main.update_discard_pile_display(not is_opponent)
 	await main.card_ops.heal_pokemon(attacker, 10, is_opponent)
@@ -17660,6 +17681,7 @@ func execute_ecard2_gigacrush(attacker: card_object, is_opponent: bool) -> void:
 			var top = deck.pop_front()
 			top.current_location = "discard"
 			discard.append(top)
+			await main.card_ops.fly_card(top, "deck", "discard", side, -1, {})   # AUDIT 2026-11-17: flight
 		main.update_deck_icon(side)
 		main.update_discard_pile_display(side)
 	await main.show_message("GIGACRUSH! BOTH PLAYERS DISCARD THE TOP 3 CARDS OF THEIR DECK!")
@@ -17867,14 +17889,15 @@ func execute_ecard3_stone_crush(attacker: card_object, defender: card_object, is
 			return
 		var opp_deck = main.player_deck if is_opponent else main.opponent_deck
 		var moved = 0
-		for i in range(want):
-			if defender.attached_energies.is_empty(): break
-			# OLD ISSUE 321: the attacker chooses the 2 Energy cards (was the last attached)
-			var e = await r3_pick_defender_energy(defender, is_opponent, "STONE CRUSH (" + str(i + 1) + " OF " + str(want) + ")")
-			if main._should_bail(): return
+		# OLD ISSUE 321: the attacker chooses the 2 Energy cards (was the last attached)
+		var sc_picks: Array = await r3_pick_defender_energies(defender, want, is_opponent, "STONE CRUSH: CHOOSE " + str(want) + " ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+		if main._should_bail(): return
+		for e in sc_picks:
+			var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", not (is_opponent))   # AUDIT 2026-11-17: flight
 			defender.attached_energies.erase(e)
 			e.current_location = "deck"
 			opp_deck.append(e)
+			await main.card_ops.fly_card(e, "attached", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 			moved += 1
 		opp_deck.shuffle()
 		main.display_active_pokemon_energies(not is_opponent)
@@ -17895,9 +17918,11 @@ func execute_ecard3_retro_cave(attacker: card_object, is_opponent: bool) -> void
 		var hand = main.opponent_hand if is_opponent else main.player_hand
 		var deck = main.opponent_deck if is_opponent else main.player_deck
 		for c in hand.duplicate():
+			var rc_r: Dictionary = main.card_ops.capture_rect(c, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(c)
 			c.current_location = "deck"
 			deck.append(c)
+			await main.card_ops.fly_card(c, "hand", "deck", is_opponent, -1, rc_r)   # AUDIT 2026-11-17: flight
 		deck.shuffle()
 		main.refresh_hand_display(is_opponent)
 		main.update_deck_icon(is_opponent)
@@ -17954,6 +17979,7 @@ func execute_ecard3_retro_cave(attacker: card_object, is_opponent: bool) -> void
 			if idx >= 0: opp_bench[idx] = pre_evo
 		target.current_location = "deck"
 		opp_deck.append(target)   # OLD ISSUE 321: the BOTTOM of the deck (index 0 is the top)
+		main.card_ops.fly_card(target, "play", "deck", not is_opponent)   # AUDIT 2026-11-17: flight
 		main.display_pokemon(not is_opponent)
 		main.display_active_pokemon_energies(not is_opponent)
 		await main.show_message("RETRO CAVE! " + target.metadata.get("name","").to_upper() + " DEVOLVED INTO " + pre_evo.metadata.get("name","").to_upper() + "!")
@@ -18051,9 +18077,11 @@ func execute_ecard3_freezing_force(attacker: card_object, defender: card_object,
 			e = await main.card_ops.prompt_select_card(defender.attached_energies, "FREEZING FORCE", "Choose an Energy to shuffle into opponent's deck", "SELECT", false)
 			if main._should_bail(): return
 		if e != null:
+			var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", not (is_opponent))   # AUDIT 2026-11-17: flight
 			defender.attached_energies.erase(e)
 			e.current_location = "deck"
 			opp_deck.append(e)
+			await main.card_ops.fly_card(e, "attached", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 			opp_deck.shuffle()
 			main.display_active_pokemon_energies(not is_opponent)
 			main.update_deck_icon(not is_opponent)
@@ -18211,8 +18239,11 @@ func execute_ecard3_energy_splash(attacker: card_object, is_opponent: bool) -> v
 				target = await main.card_ops.prompt_select_card(bench, "ENERGY SPLASH", "Move " + e.metadata.get("name","").to_upper() + " to which Benched Pokemon?", "MOVE", false)
 				if main._should_bail(): return
 				if target == null: break
+		var _emr_18213: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 		attacker.attached_energies.erase(e)
 		target.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "attached", _emr_18213)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -18529,9 +18560,11 @@ func execute_ex1_random_hand_discard(attacker: card_object, defender: card_objec
 			var picked = await _pick_blind_from_hand(opp_hand, is_opponent, label)
 			if main._should_bail(): return
 			if picked == null: picked = opp_hand[0]
+			var _fr1: Dictionary = main.card_ops.capture_rect(picked, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 			opp_hand.erase(picked)
 			picked.current_location = "discard"
 			opp_discard.append(picked)
+			await main.card_ops.fly_card(picked, "hand", "discard", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 			main.refresh_hand_display(!is_opponent)
 			main.update_discard_pile_display(!is_opponent)
 			await main.show_message(label + "! DISCARDED " + picked.metadata.get("name","").to_upper() + " FROM THE OPPONENT'S HAND!")
@@ -18826,9 +18859,12 @@ func execute_ex1_plus_energy(attacker: card_object, is_opponent: bool) -> void:
 	var target = targets[0] if targets.size() == 1 else await main.card_ops.choose_card(targets, is_opponent, "PLUS ENERGY", "Choose a Pokemon to attach it to", "ATTACH", false, target_rank_fn)
 	if main._should_bail(): return
 	if target == null: return
+	var _atr_18777: Dictionary = main.card_ops.capture_rect_any(chosen_energy)   # AUDIT 2026-11-17: flight
 	hand.erase(chosen_energy)
 	chosen_energy.current_location = "attached"
 	target.attached_energies.append(chosen_energy)
+	await main.card_ops.fly_attach(chosen_energy, "hand", _atr_18777)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.refresh_hand_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -18927,6 +18963,8 @@ func execute_ex1_energy_call(attacker: card_object, defender: card_object, is_op
 				discard_pile.erase(chosen)
 				chosen.current_location = "attached"
 				target.attached_energies.append(chosen)
+				await main.card_ops.fly_attach(chosen, "discard", {})   # AUDIT 2026-11-17: flight
+				if main._should_bail(): return
 				main.play_energy_attach_sfx()
 				main.display_active_pokemon_energies(is_opponent)
 				main.update_discard_pile_display(is_opponent)
@@ -19134,11 +19172,14 @@ func execute_ex2_scam(attacker: card_object, is_opponent: bool) -> void:
 	if main._should_bail(): return
 	if chosen == null:
 		return
+	var scam_rect: Dictionary = main.card_ops.capture_rect(chosen, "hand", not is_opponent)
 	target_hand.erase(chosen)
 	chosen.current_location = "deck"
 	target_deck.append(chosen)
 	target_deck.shuffle()
 	main.refresh_hand_display(not is_opponent)
+	await main.card_ops.fly_card(chosen, "hand", "deck", not is_opponent, -1, scam_rect)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.update_deck_icon(not is_opponent)
 	await main.card_ops.draw_n(not is_opponent, 1)
 	if main._should_bail(): return
@@ -19319,6 +19360,7 @@ func _ex2_devolve_pokemon(target: card_object, target_is_opp: bool, destination:
 		var hand = main.opponent_hand if target_is_opp else main.player_hand
 		hand.append(target)
 		main.refresh_hand_display(target_is_opp)
+	main.card_ops.fly_card(target, "play", destination if destination in ["deck", "discard"] else "hand", target_is_opp)   # AUDIT 2026-11-17: flight
 	main.display_pokemon(target_is_opp)
 	main.display_active_pokemon_energies(target_is_opp)
 
@@ -19383,6 +19425,8 @@ func execute_ex2_energy_retrieval(attacker: card_object, is_opponent: bool) -> v
 		discard_pile.erase(chosen)
 		chosen.current_location = "attached"
 		target.attached_energies.append(chosen)
+		await main.card_ops.fly_attach(chosen, "discard", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		attached += 1
 	if attached > 0:
@@ -19636,9 +19680,12 @@ func execute_ex2_drizzle(attacker: card_object, is_opponent: bool) -> void:
 	var dz_n = await r3_choose_count(is_opponent, "DRIZZLE: HOW MANY WATER ENERGY?", waters.size(), dz_cpu_n)
 	if main._should_bail(): return
 	for w in waters.slice(0, dz_n):
+		var _atr_19591: Dictionary = main.card_ops.capture_rect_any(w)   # AUDIT 2026-11-17: flight
 		hand.erase(w)
 		w.current_location = "attached"
 		target.attached_energies.append(w)
+		await main.card_ops.fly_attach(w, "hand", _atr_19591)   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		attached += 1
 	main.refresh_hand_display(is_opponent)
@@ -19678,6 +19725,8 @@ func execute_ex2_gather_energy(attacker: card_object, is_opponent: bool) -> void
 			deck.erase(chosen)
 			chosen.current_location = "attached"
 			target.attached_energies.append(chosen)
+			await main.card_ops.fly_attach(chosen, "deck", {})   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 			main.display_active_pokemon_energies(is_opponent)
 			main.display_pokemon(is_opponent)
@@ -20117,9 +20166,12 @@ func execute_ex3_attach_basic_from_hand(attacker: card_object, is_opponent: bool
 			if main._should_bail(): return
 			if target == null:
 				break
+		var _atr_20072: Dictionary = main.card_ops.capture_rect_any(chosen)   # AUDIT 2026-11-17: flight
 		hand.erase(chosen)
 		chosen.current_location = "attached"
 		target.attached_energies.append(chosen)
+		await main.card_ops.fly_attach(chosen, "hand", _atr_20072)   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		attached += 1
 		main.refresh_hand_display(is_opponent)
@@ -20189,9 +20241,11 @@ func execute_ex3_pick_on(attacker: card_object, is_opponent: bool) -> void:
 					card = c
 		else:
 			card = player_picks[i] if i < player_picks.size() else target_hand[0]
+		var _fr1: Dictionary = main.card_ops.capture_rect(card, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 		target_hand.erase(card)
 		card.current_location = "deck"
 		target_deck.append(card)
+		await main.card_ops.fly_card(card, "hand", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 	target_deck.shuffle()
 	main.refresh_hand_display(not is_opponent)
 	main.update_deck_icon(not is_opponent)
@@ -20637,8 +20691,11 @@ func execute_ex3_quick_touch(attacker: card_object, defender: card_object, is_op
 		if grass.is_empty(): return
 		for e in grass:
 			if e in attacker.attached_energies:
+				var _emr_20662: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 				attacker.attached_energies.erase(e)
 				new_active.attached_energies.append(e)
+				await main.card_ops.fly_attach(e, "attached", _emr_20662)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+				if main._should_bail(): return
 				main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		main.display_pokemon(is_opponent)
@@ -20813,6 +20870,8 @@ func execute_ex3_energy_stream(attacker: card_object, defender: card_object, is_
 	discard.erase(chosen)
 	chosen.current_location = "attached"
 	attacker.attached_energies.append(chosen)
+	await main.card_ops.fly_attach(chosen, "discard", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -20835,6 +20894,8 @@ func execute_ex3_melting_mountain(attacker: card_object, defender: card_object, 
 	if _ex2_is_basic_energy(top):
 		top.current_location = "attached"
 		attacker.attached_energies.append(top)
+		await main.card_ops.fly_attach(top, "deck", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		await main.show_message("MELTING MOUNTAIN! ATTACHED " + top.metadata.get("name","").to_upper() + " FROM THE TOP OF YOUR DECK!")
@@ -20888,6 +20949,8 @@ func execute_ex3_spiral_growth(attacker: card_object, is_opponent: bool) -> void
 		discard.erase(chosen)
 		chosen.current_location = "attached"
 		attacker.attached_energies.append(chosen)
+		await main.card_ops.fly_attach(chosen, "discard", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		attached += 1
 	main.display_active_pokemon_energies(is_opponent)
@@ -20992,6 +21055,8 @@ func execute_ex3_collect_fire(attacker: card_object, defender: card_object, is_o
 		discard.erase(chosen)
 		chosen.current_location = "attached"
 		attacker.attached_energies.append(chosen)
+		await main.card_ops.fly_attach(chosen, "discard", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		attached += 1
 	main.display_active_pokemon_energies(is_opponent)
@@ -21281,10 +21346,12 @@ func execute_ex4_crushing_magma(attacker: card_object, defender: card_object, is
 	if defender != null and defender.current_hp > 0 and defender.attached_energies.size() > 0:
 		var e: card_object = await r3_pick_defender_energy(defender, is_opponent, "CRUSHING MAGMA")   # OLD ISSUE 328: CPU took the first
 		if main._should_bail(): return
+		var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", not (is_opponent))   # AUDIT 2026-11-17: flight
 		defender.attached_energies.erase(e)
 		var opp_deck = main.player_deck if is_opponent else main.opponent_deck
 		e.current_location = "deck"
 		opp_deck.append(e)
+		await main.card_ops.fly_card(e, "attached", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.display_active_pokemon_energies(not is_opponent)
 		main.update_deck_icon(not is_opponent)
 		await main.show_message("CRUSHING MAGMA! AN ENERGY WAS PUT ON THE BOTTOM OF THE DECK!")
@@ -21517,9 +21584,11 @@ func execute_ex4_return_energy_bonus(attacker: card_object, defender: card_objec
 		for item in eligible:
 			var p: card_object = item["p"]
 			var e: card_object = item["e"]
+			var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 			p.attached_energies.erase(e)
 			e.current_location = "hand"
 			hand.append(e)
+			await main.card_ops.fly_card(e, "attached", "hand", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 			returned += 1
 		main.display_active_pokemon_energies(is_opponent)
 		main.display_pokemon(is_opponent)
@@ -21588,6 +21657,7 @@ func execute_ex4_magma_spurt(attacker: card_object, defender: card_object, is_op
 		var c: card_object = deck.pop_front()
 		c.current_location = "discard"
 		discard.append(c)
+		await main.card_ops.fly_card(c, "deck", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		if _ex2_is_basic_energy(c):
 			var prov = main.get_energy_provided_by_card(c)
 			if "Fire" in prov or "Fighting" in prov: count += 1
@@ -21616,6 +21686,7 @@ func execute_ex4_magma_burn(attacker: card_object, defender: card_object, is_opp
 		var top: card_object = opp_deck.pop_front()
 		top.current_location = "discard"
 		opp_discard.append(top)
+		await main.card_ops.fly_card(top, "deck", "discard", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 		main.update_deck_icon(not is_opponent)
 		main.update_discard_pile_display(not is_opponent)
 	var coin = await main.flip_coin(false, is_opponent)
@@ -21708,8 +21779,11 @@ func execute_ex4_flame_ball(attacker: card_object, defender: card_object, is_opp
 			if main._should_bail(): return
 	if do_it and target != null:
 		if e == null: e = fire[0]
+		var _emr_21747: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 		attacker.attached_energies.erase(e)
 		target.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "attached", _emr_21747)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		main.display_pokemon(is_opponent)
@@ -21858,9 +21932,12 @@ func execute_ex4_self_charge(attacker: card_object, is_opponent: bool) -> void:
 		chosen = await main.card_ops.choose_card(energies, is_opponent, "SELF CHARGE", "Choose an Energy to attach", "ATTACH", false)
 		if main._should_bail(): return
 		if chosen == null: chosen = energies[0]
+	var _atr_21821: Dictionary = main.card_ops.capture_rect_any(chosen)   # AUDIT 2026-11-17: flight
 	hand.erase(chosen)
 	chosen.current_location = "attached"
 	attacker.attached_energies.append(chosen)
+	await main.card_ops.fly_attach(chosen, "hand", _atr_21821)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.refresh_hand_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -21916,9 +21993,9 @@ func execute_ex4_volcanic_ash(attacker: card_object, is_opponent: bool, energy_t
 		await main.show_message("NOT ENOUGH ENERGY — VOLCANIC ASH DID NOTHING!")
 		if main._should_bail(): return
 		return
-	for i in range(2):
-		var va_e = await r4_pick_own_energy(attacker, fire, is_opponent, "VOLCANIC ASH: DISCARD AN ENERGY (" + str(i + 1) + " OF 2)")
-		if main._should_bail(): return
+	var va_picks: Array = await pick_own_energies(attacker, fire, 2, is_opponent, "VOLCANIC ASH: DISCARD 2 ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+	if main._should_bail(): return
+	for va_e in va_picks:
 		fire.erase(va_e)
 		main.card_ops.discard_energy_from_pokemon(va_e, is_opponent)
 		attacker.attached_energies.erase(va_e)
@@ -21973,8 +22050,11 @@ func execute_ex4_energy_flip(attacker: card_object, is_opponent: bool) -> void:
 			if ce == null: ce = target.attached_energies[0]
 			var cdest = main.cpu_ai.cpu_pick_energy_dump_target(cpu_others, ce)
 			if cdest != null and main.cpu_ai.cpu_rank_benefit_recipient(cdest, "energy", ce) <= main.cpu_ai.cpu_rank_benefit_recipient(target, "energy", ce):
+				var _emr_22015: Dictionary = main.card_ops.capture_rect(ce, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 				target.attached_energies.erase(ce)
 				cdest.attached_energies.append(ce)
+				await main.card_ops.fly_attach(ce, "attached", _emr_22015)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+				if main._should_bail(): return
 				main.play_energy_attach_sfx()
 				main.display_pokemon(not is_opponent)
 				main.display_active_pokemon_energies(not is_opponent)
@@ -21994,8 +22074,11 @@ func execute_ex4_energy_flip(attacker: card_object, is_opponent: bool) -> void:
 				var dest = await main.card_ops.choose_card(others, is_opponent, "ENERGY FLIP", "Choose where to move it", "SELECT", false)
 				if main._should_bail(): return
 				if dest != null:
+					var _emr_22036: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 					target.attached_energies.erase(e)
 					dest.attached_energies.append(e)
+					await main.card_ops.fly_attach(e, "attached", _emr_22036)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+					if main._should_bail(): return
 					main.play_energy_attach_sfx()
 					main.display_pokemon(not is_opponent)
 					main.display_active_pokemon_energies(not is_opponent)
@@ -22354,9 +22437,12 @@ func execute_ex5_attach_from_hand(attacker: card_object, is_opponent: bool, type
 				target = await main.card_ops.choose_card(mine, false, "ATTACH ENERGY", "Choose a Pokemon to attach to", "SELECT", false)
 				if main._should_bail(): return
 				if target == null: target = attacker
+		var _atr_22317: Dictionary = main.card_ops.capture_rect_any(e)   # AUDIT 2026-11-17: flight
 		hand.erase(e)
 		e.current_location = "attached"
 		target.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "hand", _atr_22317)   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		main.trainer_effects.ex5_island_cave_on_attach(target, is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -22437,6 +22523,8 @@ func execute_ex5_extra_draw(attacker: card_object, is_opponent: bool) -> void:
 		deck.erase(e)
 		e.current_location = "attached"
 		attacker.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "deck", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.display_active_pokemon_energies(is_opponent)
@@ -22564,9 +22652,11 @@ func execute_ex5_push_aside(attacker: card_object, defender: card_object, is_opp
 			chosen = await main.card_ops.choose_card(pool, is_opponent, "PUSH ASIDE", "Choose a Pokemon to put on the bottom of the opponent's deck", "SELECT", false, Callable(), true)
 			if main._should_bail(): return
 			if chosen == null: chosen = pool[0]
+		var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 		opp_hand.erase(chosen)
 		chosen.current_location = "deck"
 		opp_deck.append(chosen)
+		await main.card_ops.fly_card(chosen, "hand", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(not is_opponent)
 		main.update_deck_icon(not is_opponent)
 		await main.show_message("PUSH ASIDE! A POKEMON WAS PUT ON THE BOTTOM OF THE DECK!")
@@ -22738,12 +22828,15 @@ func execute_ex5_scattered_shower(attacker: card_object, is_opponent: bool) -> v
 	if await handle_attack_blind(attacker, is_opponent): return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var _hj: Array = main.card_ops.lift_cards(hand, "hand", is_opponent)   # AUDIT 2026-11-17: hand flies into the deck
 	for c in hand.duplicate():
 		c.current_location = "deck"
 		deck.append(c)
 	hand.clear()
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
+	await main.card_ops.fly_lifted(_hj, "deck", is_opponent)   # AUDIT 2026-11-17: hand flies into the deck
+	if main._should_bail(): return
 	main.update_deck_icon(is_opponent)
 	# OLD ISSUE 329: "draw UP TO 5" — the player picks how many (always 5 before)
 	var ss_n = await r3_choose_count(is_opponent, "SCATTERED SHOWER: DRAW HOW MANY?", min(5, deck.size()), min(5, deck.size()))
@@ -22878,8 +22971,11 @@ func execute_ex5_fruition(attacker: card_object, is_opponent: bool) -> void:
 		e = await main.card_ops.choose_card(attacker.attached_energies, false, "FRUITION", "Choose an Energy to move", "MOVE", false)
 		if main._should_bail(): return
 		if e == null: e = attacker.attached_energies[0]
+	var _emr_22930: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 	attacker.attached_energies.erase(e)
 	dest.attached_energies.append(e)
+	await main.card_ops.fly_attach(e, "attached", _emr_22930)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	var heal = min(40, dest.get_max_hp() - dest.current_hp)
 	dest.current_hp += heal
@@ -22977,10 +23073,12 @@ func execute_ex5_return_defender_energy(attacker: card_object, defender: card_ob
 	if coin and defender != null and defender.current_hp > 0 and not defender.attached_energies.is_empty():
 		var e: card_object = await r3_pick_defender_energy(defender, is_opponent, "MINUS ENERGY")   # OLD ISSUE 329: CPU took the first
 		if main._should_bail(): return
+		var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", not (is_opponent))   # AUDIT 2026-11-17: flight
 		defender.attached_energies.erase(e)
 		e.current_location = "hand"
 		var opp_hand = main.player_hand if is_opponent else main.opponent_hand
 		opp_hand.append(e)
+		await main.card_ops.fly_card(e, "attached", "hand", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.display_active_pokemon_energies(not is_opponent)
 		main.refresh_hand_display(not is_opponent)
 		await main.show_message("MINUS ENERGY! AN ENERGY WAS RETURNED TO THE OPPONENT'S HAND!")
@@ -23151,10 +23249,12 @@ func execute_ex5_discard_hand_energy_bonus(attacker: card_object, defender: card
 		if shuffle_back:
 			e.current_location = "deck"
 			deck.append(e)
+			await main.card_ops.fly_card(e, "hand", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		else:
 			e.current_location = "discard"
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			discard.append(e)
+			await main.card_ops.fly_card(e, "hand", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	if shuffle_back:
 		deck.shuffle()
 		main.update_deck_icon(is_opponent)
@@ -23189,7 +23289,7 @@ func execute_ex5_metal_reversal(attacker: card_object, defender: card_object, is
 			pick = await main.card_ops.prompt_select_card(opp_bench, "SWITCH IN A BENCHED POKEMON?", "Choose a Benched Pokémon to switch with the Defending Pokémon (cancel = no)", "SWITCH", true)
 			if main._should_bail(): return
 		if pick != null:
-			_force_bench_to_active(pick, is_opponent)
+			await _force_bench_to_active(pick, is_opponent)
 			await main.show_message("SWITCHED IN " + pick.metadata.get("name","").to_upper() + "!")
 			if main._should_bail(): return
 	var new_def = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
@@ -23278,10 +23378,12 @@ func execute_ex5_ice_generator(attacker: card_object, defender: card_object, is_
 	for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
 		for ac in p.attached_cards.duplicate():
 			if ac.metadata.get("supertype","") == "Trainer":
+				var _fr1: Dictionary = main.card_ops.capture_rect(ac, "attached", not (is_opponent))   # AUDIT 2026-11-17: flight
 				p.attached_cards.erase(ac)
 				ac.current_location = "discard"
 				var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
 				opp_discard.append(ac)
+				await main.card_ops.fly_card(ac, "attached", "discard", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 				discarded += 1
 	if main.current_stadium_card != null and main.current_stadium_owner_is_opponent != is_opponent:
 		main.trainer_effects.remove_current_stadium("ICE GENERATOR")
@@ -23340,6 +23442,7 @@ func _ex5_devolve_one_stage(pokemon: card_object, owner_is_opp: bool) -> void:
 	pokemon.current_location = "hand"
 	var hand = main.opponent_hand if owner_is_opp else main.player_hand
 	hand.append(pokemon)
+	main.card_ops.fly_card(pokemon, "play", "hand", owner_is_opp)   # AUDIT 2026-11-17: flight
 	main.display_pokemon(owner_is_opp)
 	main.display_active_pokemon_energies(owner_is_opp)
 	main.refresh_hand_display(owner_is_opp)
@@ -23378,8 +23481,11 @@ func execute_ex5_steel_generator(attacker: card_object, defender: card_object, i
 	var moved = 0
 	for e in basics:
 		if moved >= 2: break
+		var _emr_23437: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 		source.attached_energies.erase(e)
 		defender.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "attached", _emr_23437)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		moved += 1
 	main.display_active_pokemon_energies(not is_opponent)
@@ -23602,6 +23708,8 @@ func execute_ex6_energy_stream(attacker: card_object, defender: card_object, is_
 	discard.erase(chosen)
 	chosen.current_location = "attached"
 	attacker.attached_energies.append(chosen)
+	await main.card_ops.fly_attach(chosen, "discard", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -23638,6 +23746,7 @@ func execute_ex6_psychic_exchange(attacker: card_object, is_opponent: bool, coun
 	for c in hand:
 		c.current_location = "deck"
 		deck.append(c)
+		await main.card_ops.fly_card(c, "hand", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	hand.clear()
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
@@ -23798,8 +23907,11 @@ func execute_ex6_thunder_reflection(attacker: card_object, defender: card_object
 		for e in main.cpu_ai.cpu_own_energy_discard_order(attacker, attacker.attached_energies.size()):
 			if e not in lightning: continue
 			if not doomed and main.cpu_ai.cpu_own_energy_value(attacker, e) >= 1000.0: continue
+			var _emr_23860: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 			attacker.attached_energies.erase(e)
 			tr_t.attached_energies.append(e)
+			await main.card_ops.fly_attach(e, "attached", _emr_23860)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 			tr_moved += 1
 		if tr_moved > 0:
@@ -23816,8 +23928,11 @@ func execute_ex6_thunder_reflection(attacker: card_object, defender: card_object
 		"Choose any number of Lightning Energy to move to " + target.metadata.get("name","").to_upper(), "MOVE")
 	if main._should_bail(): return
 	for e in tr_picks:
+		var _emr_23878: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 		attacker.attached_energies.erase(e)
 		target.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "attached", _emr_23878)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -23893,6 +24008,8 @@ func execute_ex6_hoard(attacker: card_object, is_opponent: bool) -> void:
 		tools.erase(tool)
 		tool.current_location = "attached"
 		target.attached_cards.append(tool)
+		await main.card_ops.fly_attach(tool, "deck", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		attached += 1
 	deck.shuffle()
 	main.trainer_effects.display_attached_trainer_cards(is_opponent)
@@ -23988,6 +24105,8 @@ func execute_ex6_vine_tease(attacker: card_object, is_opponent: bool) -> void:
 		if chosen_prize == null: chosen_prize = prizes[0]
 	var top = deck[0]
 	var pidx = prizes.find(chosen_prize)
+	await main.powers_and_bodies.animate_prize_deck_swap(is_opponent, pidx)   # AUDIT 2026-11-17: flight (Trickery's swap)
+	if main._should_bail(): return
 	deck[0] = chosen_prize
 	chosen_prize.current_location = "deck"
 	chosen_prize.prize_face_up = false
@@ -24035,6 +24154,8 @@ func execute_ex6_energy_powder(attacker: card_object, is_opponent: bool, count: 
 		deck.erase(e)
 		e.current_location = "attached"
 		target.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "deck", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		attached += 1
 	deck.shuffle()
@@ -24115,6 +24236,7 @@ func execute_ex6_look_for_friends(attacker: card_object, is_opponent: bool) -> v
 		deck.erase(found)
 		found.current_location = "hand"
 		hand.append(found)
+		await main.card_ops.fly_card(found, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(is_opponent)
 		await main.show_message("LOOK FOR FRIENDS! ADDED " + found.metadata.get("name","").to_upper() + " TO " + ("THEIR" if is_opponent else "YOUR") + " HAND!")
 	else:
@@ -24157,9 +24279,9 @@ func execute_ex6_burn_down(attacker: card_object, defender: card_object, is_oppo
 	if await handle_attack_blind(attacker, is_opponent): return
 	var fire = attacker.attached_energies.filter(func(e): return "Fire" in main.get_energy_provided_by_card(e))
 	var to_discard = min(5, fire.size())
-	for i in range(to_discard):
-		var bd_e = fire[0] if fire.size() <= (5 - i) else await r4_pick_own_energy(attacker, fire, is_opponent, "BURN DOWN: DISCARD A FIRE ENERGY (" + str(i + 1) + " OF 5)")
-		if main._should_bail(): return
+	var bd_picks: Array = await pick_own_energies(attacker, fire, to_discard, is_opponent, "BURN DOWN: DISCARD " + str(to_discard) + " FIRE ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+	if main._should_bail(): return
+	for bd_e in bd_picks:
 		fire.erase(bd_e)
 		main.card_ops.discard_energy_from_pokemon(bd_e, is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -24483,6 +24605,8 @@ func _ex7_attach_energy_from_discard(attacker: card_object, is_opponent: bool, t
 	discard.erase(chosen)
 	chosen.current_location = "attached"
 	target.attached_energies.append(chosen)
+	await main.card_ops.fly_attach(chosen, "discard", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -24768,18 +24892,22 @@ func execute_ex7_quick_change(attacker: card_object, is_opponent: bool, max_card
 		qc_sorted.sort_custom(func(x, y): return main.cpu_ai.cpu_rank_keep_value(x) < main.cpu_ai.cpu_rank_keep_value(y))
 		var qc_out = qc_sorted.filter(func(c): return main.cpu_ai.cpu_rank_keep_value(c) < 40.0).slice(0, min(max_cards, hand.size()))
 		for c in qc_out:
+			var _fr1: Dictionary = main.card_ops.capture_rect(c, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(c)
 			c.current_location = "deck"
 			deck.push_front(c)
+			await main.card_ops.fly_card(c, "hand", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 			moved += 1
 	else:
 		var qc_picks: Array = await main.card_ops.prompt_select_cards(hand.duplicate(), 0, max_cards, "QUICK CHANGE",
 			"Choose up to " + str(max_cards) + " cards to put on top of your deck", "SELECT")
 		if main._should_bail(): return
 		for pick in qc_picks:
+			var _fr2: Dictionary = main.card_ops.capture_rect(pick, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(pick)
 			pick.current_location = "deck"
 			deck.push_front(pick)
+			await main.card_ops.fly_card(pick, "hand", "deck", is_opponent, -1, _fr2)   # AUDIT 2026-11-17: flight
 			moved += 1
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -24857,8 +24985,11 @@ func execute_ex7_aqua_trick(attacker: card_object, defender: card_object, is_opp
 		dest = await main.card_ops.choose_card(opp_bench, is_opponent, "AQUA TRICK", "Move an Energy to which Benched Pokémon?", "SELECT", false, Callable(), true)
 		if main._should_bail(): return
 		if dest == null: dest = opp_bench[0]
+	var _emr_24932: Dictionary = main.card_ops.capture_rect(energy, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 	defender.attached_energies.erase(energy)
 	dest.attached_energies.append(energy)
+	await main.card_ops.fly_attach(energy, "attached", _emr_24932)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(not is_opponent)
 	main.display_pokemon(not is_opponent)
@@ -25053,6 +25184,7 @@ func execute_ex7_dark_aid(attacker: card_object, is_opponent: bool) -> void:
 			pool.erase(pick2)
 			pick2.current_location = "deck"
 			deck.append(pick2)
+			await main.card_ops.fly_card(pick2, "discard", "deck", is_opponent)   # AUDIT 2026-11-17: flight
 			shuffled += 1
 		deck.shuffle()
 		main.update_deck_icon(is_opponent)
@@ -25199,6 +25331,8 @@ func execute_ex7_rotating_claws(attacker: card_object, defender: card_object, is
 	discard.erase(pick2)
 	pick2.current_location = "attached"
 	attacker.attached_energies.append(pick2)
+	await main.card_ops.fly_attach(pick2, "discard", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -25531,9 +25665,11 @@ func execute_ex8_knock_off(attacker: card_object, defender: card_object, is_oppo
 		var picked = await _pick_blind_from_hand(opp_hand, is_opponent, "KNOCK OFF")
 		if main._should_bail(): return
 		if picked == null: picked = opp_hand[0]
+		var _fr1: Dictionary = main.card_ops.capture_rect(picked, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 		opp_hand.erase(picked)
 		picked.current_location = "discard"
 		opp_discard.append(picked)
+		await main.card_ops.fly_card(picked, "hand", "discard", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(!is_opponent)
 		main.update_discard_pile_display(!is_opponent)
 		await main.show_message("KNOCK OFF! DISCARDED " + picked.metadata.get("name","").to_upper() + " FROM THE OPPONENT'S HAND!")
@@ -25598,6 +25734,8 @@ func execute_ex8_back_burner(attacker: card_object, is_opponent: bool) -> void:
 		discard.erase(energy)
 		energy.current_location = "attached"
 		target.attached_energies.append(energy)
+		await main.card_ops.fly_attach(energy, "discard", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		attached += 1
 		main.display_active_pokemon_energies(is_opponent)
@@ -26064,10 +26202,9 @@ func execute_ex8_psyburst(attacker: card_object, defender: card_object, is_oppon
 			do_discard = await main.trainer_effects.gym1_prompt_yes_no(attacker, "PSYBURST", "Discard 2 Energy for +20 per Energy on the Defender?", "YES", "NO")
 			if main._should_bail(): return 0
 	if do_discard:
-		for i in range(2):
-			if attacker.attached_energies.is_empty(): break
-			var pb_e = await r4_pick_own_energy(attacker, attacker.attached_energies.duplicate(), is_opponent, "PSYBURST: DISCARD AN ENERGY (" + str(i + 1) + " OF 2)")   # OLD ISSUE 332
-			if main._should_bail(): return 0
+		var pb_picks: Array = await pick_own_energies(attacker, attacker.attached_energies.duplicate(), 2, is_opponent, "PSYBURST: DISCARD 2 ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+		if main._should_bail(): return 0
+		for pb_e in pb_picks:
 			main.card_ops.discard_energy_from_pokemon(pb_e, is_opponent)
 		main.display_active_pokemon_energies(is_opponent)
 		main.update_discard_pile_display(is_opponent)
@@ -26419,6 +26556,7 @@ func execute_ex9_eruption(attacker: card_object, defender: card_object, is_oppon
 			var top = deck.pop_front()
 			top.current_location = "discard"
 			discard.append(top)
+			await main.card_ops.fly_card(top, "deck", "discard", side, -1, {})   # AUDIT 2026-11-17: flight
 			if top.metadata.get("supertype","") == "Energy":
 				energy_discarded += 1
 			main.update_deck_icon(side)
@@ -26814,6 +26952,8 @@ func _ex10_search_deck_energy_attach(attacker: card_object, is_opponent: bool, t
 	deck.erase(energy)
 	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 	target.attached_energies.append(energy)
+	await main.card_ops.fly_attach(energy, "deck", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -26839,13 +26979,10 @@ func execute_ex10_elemental_blast(attacker: card_object, defender: card_object, 
 	if await handle_attack_blind(attacker, is_opponent): return
 	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
 	if main._should_bail(): return
-	for t in ["Fire", "Water", "Lightning"]:
-		var eb_pool = attacker.attached_energies.filter(func(e): return t in main.get_energy_provided_by_card(e))
-		if eb_pool.is_empty(): continue
-		var eb_e = await r4_pick_own_energy(attacker, eb_pool, is_opponent, "ELEMENTAL BLAST: DISCARD A " + t.to_upper() + " ENERGY")   # OLD ISSUE 334
-		if main._should_bail(): return
-		attacker.attached_energies.erase(eb_e)
-		main.card_ops.discard_energy_from_pokemon(eb_e, is_opponent)
+	var eb_picks: Array = await pick_energy_per_type(attacker, ["Fire", "Water", "Lightning"], is_opponent, "ELEMENTAL BLAST: DISCARD A FIRE, A WATER AND A LIGHTNING ENERGY")   # AUDIT 2026-11-17: one screen for every type (was one prompt per type)
+	if main._should_bail(): return
+	for eb_e in eb_picks:
+		main.card_ops.discard_energy_from_pokemon(eb_e, is_opponent)   # it detaches + flies
 	main.display_active_pokemon_energies(is_opponent)
 	await main.check_all_knockouts()
 
@@ -26858,9 +26995,12 @@ func execute_ex10_discard_opp_top(attacker: card_object, defender: card_object, 
 	var opp_deck = main.player_deck if is_opponent else main.opponent_deck
 	var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
 	var discarded = 0
+	var milled: Array = []
 	for i in range(n):
 		if opp_deck.is_empty(): break
-		var top = opp_deck.pop_front(); top.current_location = "discard"; opp_discard.append(top); discarded += 1
+		var top = opp_deck.pop_front(); top.current_location = "discard"; opp_discard.append(top); discarded += 1; milled.append(top)
+	await main.card_ops.fly_lifted(main.card_ops.lift_cards(milled, "deck", not is_opponent), "discard", not is_opponent)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.update_deck_icon(not is_opponent); main.update_discard_pile_display(not is_opponent)
 	if discarded > 0:
 		await main.show_message("OPPONENT DISCARDED " + str(discarded) + " CARD(S) FROM THE TOP OF THEIR DECK!")
@@ -27129,36 +27269,9 @@ func _ex10_choose_int(header: String, hint: String, options: Array) -> int:
 # OLD ISSUE 375: the button prompt itself returns the INDEX. It used to return options[idx] from an int function, so
 # _ex10_choose_str (text options — the Hidden Power guess) crashed with a script error (autotester).
 func _ex10_choose_index(header: String, hint: String, options: Array) -> int:
-	main.special_attack_selection_active = true
-	main.buttons_only_blocker.visible = true
-	var _atk_ob: bool = _lower_attack_blocker()   # FIX 2026-11-16: buttons were under the attack blocker
-	for child in main.attack_buttons_container.get_children():
-		if child.name == "cancel_attack_mode_button": continue
-		child.queue_free()
-	main.attack_buttons_container.visible = true
-	main.main_buttons_container.visible = false
-	for child in main.attack_buttons_container.get_children():
-		if child.name == "cancel_attack_mode_button": child.visible = false
-	main.header_label.text = header
-	main.hint_label.text = hint
-	for i in range(options.size()):
-		var btn = Button.new()
-		btn.text = str(options[i])
-		btn.custom_minimum_size = Vector2(350, 50)
-		btn.theme = main.theme_green
-		main.attack_buttons_container.add_child(btn)
-		btn.pressed.connect(func(): main.special_attack_selected.emit(i))
-	var idx = await main.special_attack_selected
-	for child in main.attack_buttons_container.get_children():
-		if child.name == "cancel_attack_mode_button":
-			child.visible = true; continue
-		child.queue_free()
-	main.attack_buttons_container.visible = false
-	main.main_buttons_container.visible = true
-	main.special_attack_selection_active = false
-	main.buttons_only_blocker.visible = false
-	main.opponent_blocker.visible = _atk_ob
-	return int(idx)
+	# AUDIT 2026-11-17: option rows in the action panel (main.pick_option), forced.
+	var cap: String = header.to_upper() + (("\n" + hint) if hint.strip_edges() != "" else "")
+	return await main.pick_option(cap, options.map(func(o): return str(o)))
 
 # Star "if you have fewer Prize cards left than your opponent" self-penalty attacks (Suicune/Entei/Raikou ★).
 func execute_ex10_star_if_behind(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int, mode: String) -> void:
@@ -27177,9 +27290,12 @@ func execute_ex10_star_if_behind(attacker: card_object, defender: card_object, i
 			var deck = main.opponent_deck if is_opponent else main.player_deck
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			var n = 0
+			var milled: Array = []
 			for i in range(10):
 				if deck.is_empty(): break
-				var top = deck.pop_front(); top.current_location = "discard"; discard.append(top); n += 1
+				var top = deck.pop_front(); top.current_location = "discard"; discard.append(top); n += 1; milled.append(top)
+			await main.card_ops.fly_lifted(main.card_ops.lift_cards(milled, "deck", is_opponent), "discard", is_opponent)   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return
 			main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
 			await main.show_message("DETONATION! DISCARDED " + str(n) + " CARDS FROM YOUR DECK!")
 			if main._should_bail(): return
@@ -27445,9 +27561,12 @@ func execute_ex10_self_mill(attacker: card_object, defender: card_object, is_opp
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var d = 0
+	var milled: Array = []
 	for i in range(n):
 		if deck.is_empty(): break
-		var top = deck.pop_front(); top.current_location = "discard"; discard.append(top); d += 1
+		var top = deck.pop_front(); top.current_location = "discard"; discard.append(top); d += 1; milled.append(top)
+	await main.card_ops.fly_lifted(main.card_ops.lift_cards(milled, "deck", is_opponent), "discard", is_opponent)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
 	if d > 0:
 		await main.show_message("DISCARDED " + str(d) + " CARDS FROM THE TOP OF YOUR DECK!")
@@ -27531,9 +27650,12 @@ func execute_ex10_pop(attacker: card_object, defender: card_object, is_opponent:
 				target = await main.card_ops.choose_card(bench, false, "POP", "Move " + e.metadata.get("name","Energy").to_upper() + " to which Benched Pokemon?", "MOVE", false)
 				if main._should_bail(): return
 				if target == null: target = bench[0]
+			var _emr_27598: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 			attacker.attached_energies.erase(e)
 			e.current_location = "bench"
 			target.attached_energies.append(e)
+			await main.card_ops.fly_attach(e, "attached", _emr_27598)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+			if main._should_bail(): return
 			main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(is_opponent)
 		main.display_pokemon(is_opponent)
@@ -27561,8 +27683,7 @@ func execute_ex10_push_away(attacker: card_object, defender: card_object, is_opp
 	var chosen: card_object = pa_best if is_opponent else await main.card_ops.choose_card(trainers, false, "PUSH AWAY", "Choose a Trainer to discard from the opponent's hand", "DISCARD", false, Callable(), true)
 	if main._should_bail(): return
 	if chosen == null: chosen = trainers[0]
-	opp_hand.erase(chosen)
-	await main.card_ops.send_to_discard(chosen, not is_opponent, false)
+	await main.card_ops.send_to_discard(chosen, not is_opponent, false)   # AUDIT 2026-11-17: it erases + flies from the slot
 	main.refresh_hand_display(not is_opponent)
 	await main.show_message("PUSH AWAY! DISCARDED THE OPPONENT'S " + chosen.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
@@ -27867,7 +27988,7 @@ func execute_ex10_hidden_power(attacker: card_object, defender: card_object, is_
 					main.refresh_hand_display(not is_opponent)
 					await main.show_message("HIDDEN POWER! PLACED " + pick.metadata.get("name","").to_upper() + " ONTO THE OPPONENT'S BENCH!")
 					if not main._should_bail() and not is_protected_from_effects(defender):
-						_force_bench_to_active(pick, is_opponent)
+						await _force_bench_to_active(pick, is_opponent)
 						current_defender = pick
 						await main.show_message(pick.metadata.get("name","").to_upper() + " WAS SWITCHED IN!")
 		"F":
@@ -27910,6 +28031,8 @@ func execute_ex10_hidden_power(attacker: card_object, defender: card_object, is_
 				var tgt: card_object = hp_h if is_opponent else await main.card_ops.choose_card(eligible, false, "HIDDEN POWER", "Attach " + tool.metadata.get("name","").to_upper() + " to which Pokemon?", "ATTACH", false)
 				if tgt == null: tgt = eligible[0]
 				my_deck.erase(tool); tool.current_location = "attached"; tgt.attached_cards.append(tool); placed += 1
+				await main.card_ops.fly_attach(tool, "deck", {})   # AUDIT 2026-11-17: flight
+				if main._should_bail(): return
 			my_deck.shuffle(); main.update_deck_icon(is_opponent)
 			main.trainer_effects.display_attached_trainer_cards(is_opponent)
 			await main.show_message("HIDDEN POWER! ATTACHED " + str(placed) + " TOOL(S)!")
@@ -28001,6 +28124,7 @@ func execute_ex10_hidden_power(attacker: card_object, defender: card_object, is_
 					e = hp_q_picks[i]
 				if e == null: break
 				my_deck.erase(e); e.current_location = "hand"; (main.opponent_hand if is_opponent else main.player_hand).append(e)
+				main.card_ops.fly_card(e, "deck", "hand", is_opponent)   # AUDIT 2026-11-17: flight (queued)
 				for t in main.get_energy_provided_by_card(e):
 					if t not in chosen_types: chosen_types.append(t)
 				got += 1
@@ -28059,6 +28183,7 @@ func execute_ex10_hidden_power(attacker: card_object, defender: card_object, is_
 				var pick: card_object = main.cpu_ai.cpu_pick_best_keep(my_discard) if is_opponent else await main.card_ops.choose_card(my_discard, false, "HIDDEN POWER", "Put which card on top of your deck?", "SELECT", false, Callable(), true)
 				if pick == null: pick = my_discard[0]
 				my_discard.erase(pick); pick.current_location = "deck"; my_deck.push_front(pick)
+				await main.card_ops.fly_card(pick, "discard", "deck", is_opponent)   # AUDIT 2026-11-17: flight
 				main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
 				await main.show_message("HIDDEN POWER! PUT " + pick.metadata.get("name","").to_upper() + " ON TOP OF YOUR DECK!")
 		"X":
@@ -28145,17 +28270,21 @@ func _ex10_can_evolve_any(evo: card_object, is_opponent: bool) -> bool:
 # Return a Pokemon and everything attached to it to its owner's hand (used by Unown O / R).
 func _ex10_return_pokemon_to_hand(pokemon: card_object, owner_is_opp: bool) -> void:
 	var hand = main.opponent_hand if owner_is_opp else main.player_hand
+	var rh_rect: Dictionary = main.card_ops.capture_rect(pokemon, "play", owner_is_opp)   # AUDIT 2026-11-17: flight
 	# Detach & discard energies/tools back per standard "return to hand" behaviour: attachments go to hand.
 	for e in pokemon.attached_energies.duplicate():
 		e.current_location = "hand"; hand.append(e)
+		main.card_ops.fly_card(e, "attached", "hand", owner_is_opp, -1, rh_rect)   # AUDIT 2026-11-17: flight
 	pokemon.attached_energies.clear()
 	for c in pokemon.attached_cards.duplicate():
 		c.current_location = "hand"; hand.append(c)
+		main.card_ops.fly_card(c, "attached", "hand", owner_is_opp, -1, rh_rect)   # AUDIT 2026-11-17: flight
 	pokemon.attached_cards.clear()
 	# "...and all cards attached to it": the Pokémon it evolved from go back too (an Evolved Pokémon used to
 	# leave its Basic in no zone at all - autotester CARD MISSING, Erika's Dratini under Dragonair).
 	for pre in pokemon.attached_pre_evolutions:
 		pre.current_location = "hand"; pre.current_hp = int(pre.metadata.get("hp","0")); hand.append(pre)
+		main.card_ops.fly_card(pre, "attached", "hand", owner_is_opp, -1, rh_rect)   # AUDIT 2026-11-17: flight
 	pokemon.attached_pre_evolutions.clear()
 	# Reset runtime state and move the Pokemon to hand.
 	main.clear_all_statuses(pokemon, owner_is_opp)
@@ -28165,6 +28294,7 @@ func _ex10_return_pokemon_to_hand(pokemon: card_object, owner_is_opp: bool) -> v
 	var bench = main.opponent_bench if owner_is_opp else main.player_bench
 	pokemon.current_location = "hand"
 	hand.append(pokemon)
+	main.card_ops.fly_card(pokemon, "play", "hand", owner_is_opp, -1, rh_rect)   # AUDIT 2026-11-17: flight
 	if pokemon == active:
 		if owner_is_opp: main.opponent_active_pokemon = null
 		else: main.player_active_pokemon = null
@@ -28327,6 +28457,8 @@ func _ex11_search_deck_holon_attach(attacker: card_object, is_opponent: bool, fo
 	deck.erase(energy)
 	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 	target.attached_energies.append(energy)
+	await main.card_ops.fly_attach(energy, "deck", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -28390,10 +28522,12 @@ func execute_ex11_energy_loop(attacker: card_object, defender: card_object, is_o
 			chosen = await main.card_ops.choose_card(attacker.attached_energies, false, "ENERGY LOOP", "Return an Energy to your hand", "RETURN", false)
 			if main._should_bail(): return
 			if chosen == null: chosen = attacker.attached_energies[0]
+		var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 		attacker.attached_energies.erase(chosen)
 		chosen.current_location = "hand"
 		var hand = main.opponent_hand if is_opponent else main.player_hand
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "attached", "hand", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.display_active_pokemon_energies(is_opponent)
 		main.refresh_hand_display(is_opponent)
 		await main.show_message("RETURNED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
@@ -28593,10 +28727,12 @@ func execute_ex11_return_energy_then(attacker: card_object, defender: card_objec
 		chosen = await main.card_ops.choose_card(attacker.attached_energies, false, "RETURN ENERGY", "Return which Energy to your hand?", "RETURN", false)
 		if main._should_bail(): return
 		if chosen == null: chosen = attacker.attached_energies[0]
+	var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 	attacker.attached_energies.erase(chosen)
 	chosen.current_location = "hand"
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	hand.append(chosen)
+	await main.card_ops.fly_card(chosen, "attached", "hand", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	main.display_active_pokemon_energies(is_opponent)
 	main.refresh_hand_display(is_opponent)
 	await main.show_message("RETURNED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
@@ -28630,10 +28766,12 @@ func execute_ex11_return_energy_then(attacker: card_object, defender: card_objec
 				de = await main.card_ops.choose_card(defender.attached_energies, false, "RETURN WAVE", "Return which Energy from the Defending Pokemon?", "RETURN", false)
 				if main._should_bail(): return
 				if de == null: de = defender.attached_energies[0]
+			var _fr2: Dictionary = main.card_ops.capture_rect(de, "attached", not (is_opponent))   # AUDIT 2026-11-17: flight
 			defender.attached_energies.erase(de)
 			de.current_location = "hand"
 			var opp_hand = main.player_hand if is_opponent else main.opponent_hand
 			opp_hand.append(de)
+			await main.card_ops.fly_card(de, "attached", "hand", not (is_opponent), -1, _fr2)   # AUDIT 2026-11-17: flight
 			main.display_active_pokemon_energies(not is_opponent)
 			main.refresh_hand_display(not is_opponent)
 			await main.show_message("RETURNED " + de.metadata.get("name","").to_upper() + " TO THE OPPONENT'S HAND!")
@@ -28924,6 +29062,8 @@ func execute_ex11_critical_collection(attacker: card_object, defender: card_obje
 		discard.erase(e); pool.erase(e)
 		e.current_location = "active" if attacker == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 		attacker.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "discard", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		attached += 1
 	main.display_active_pokemon_energies(is_opponent)
@@ -28973,11 +29113,13 @@ func prompt_and_attach_holon_pokemon_energy(card: card_object, is_opponent: bool
 		target = await main.card_ops.choose_card(pool, false, "ATTACH " + card.metadata.get("name","").to_upper(), "Choose a Pokemon to attach it to", "ATTACH", true)
 		if main._should_bail(): return false
 		if target == null: return false
+	var _atr_28953: Dictionary = main.card_ops.capture_rect_any(card)   # AUDIT 2026-11-17: flight
 	main.player_hand.erase(card)
 	card.attached_as_energy = true
 	card.pokemon_energy_types = (["Any","Any"] if two_any else ["Colorless"])
 	card.current_location = "active" if target == main.player_active_pokemon else "bench"
 	target.attached_energies.append(card)
+	main.card_ops.fly_attach(card, "hand", _atr_28953)   # AUDIT 2026-11-17: flight (queued)
 	main.play_energy_attach_sfx()
 	await main.show_message("ATTACHED " + card.metadata.get("name","").to_upper() + " AS AN ENERGY CARD!")
 	if main._should_bail(): return true
@@ -28990,11 +29132,13 @@ func prompt_and_attach_holon_pokemon_energy(card: card_object, is_opponent: bool
 				chosen = await main.card_ops.choose_card(existing, false, "RETURN ENERGY", "Return which Energy to your hand?", "RETURN", false)
 				if main._should_bail(): return true
 				if chosen == null: chosen = existing[0]
+			var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "attached", false)   # AUDIT 2026-11-17: flight
 			target.attached_energies.erase(chosen)
 			chosen.current_location = "hand"
 			chosen.attached_as_energy = false
 			chosen.pokemon_energy_types = []
 			main.player_hand.append(chosen)
+			await main.card_ops.fly_card(chosen, "attached", "hand", false, -1, _fr1)   # AUDIT 2026-11-17: flight
 			main.refresh_hand_display(false)
 			await main.show_message("RETURNED " + chosen.metadata.get("name","").to_upper() + " TO YOUR HAND!")
 			if main._should_bail(): return true
@@ -29196,7 +29340,7 @@ func execute_ex12_drag_off(attacker: card_object, defender: card_object, is_oppo
 				selected = await main.card_ops.choose_card(opp_bench, false, "DRAG OFF", "Choose a Benched Pokemon to drag out", "SELECT", false)
 				if main._should_bail(): return
 		if do_it and selected != null:
-			_force_bench_to_active(selected, is_opponent)
+			await _force_bench_to_active(selected, is_opponent)
 			await main.show_message("DRAG OFF! DRAGGED " + selected.metadata.get("name","").to_upper() + " INTO THE ACTIVE SPOT!")
 			if main._should_bail(): return
 	var new_def = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
@@ -29405,6 +29549,7 @@ func execute_ex12_draw_from_bottom(attacker: card_object, is_opponent: bool, n: 
 		var c = deck.pop_back()
 		c.current_location = "hand"
 		hand.append(c)
+		await main.card_ops.fly_card(c, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		drawn += 1
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -29512,9 +29657,9 @@ func execute_ex12_flame_swirl(attacker: card_object, defender: card_object, is_o
 		attacker.attached_energies.erase(e)
 		main.card_ops.discard_energy_from_pokemon(e, is_opponent)
 	else:
-		for i in range(min(2, fire_cards.size())):
-			var e = fire_cards[0] if fire_cards.size() <= (2 - i) else await r4_pick_own_energy(attacker, fire_cards, is_opponent, "FLAME SWIRL: DISCARD A FIRE ENERGY (" + str(i + 1) + " OF 2)")   # OLD ISSUE 336
-			if main._should_bail(): return
+		var fs_picks: Array = await pick_own_energies(attacker, fire_cards, 2, is_opponent, "FLAME SWIRL: DISCARD 2 FIRE ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+		if main._should_bail(): return
+		for e in fs_picks:
 			fire_cards.erase(e)
 			attacker.attached_energies.erase(e)
 			main.card_ops.discard_energy_from_pokemon(e, is_opponent)
@@ -29536,7 +29681,7 @@ func execute_ex12_flick_poison(attacker: card_object, is_opponent: bool) -> void
 			selected = await main.card_ops.choose_card(opp_bench, false, "FLICK POISON", "Choose a Benched Pokemon to switch into the Active spot", "SELECT", false)
 			if main._should_bail(): return
 		if selected != null:
-			_force_bench_to_active(selected, is_opponent)
+			await _force_bench_to_active(selected, is_opponent)
 			await main.show_message("FLICK POISON! " + selected.metadata.get("name","").to_upper() + " IS NOW ACTIVE!")
 			if main._should_bail(): return
 	var new_def = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
@@ -29577,6 +29722,8 @@ func execute_ex12_power_move(attacker: card_object, is_opponent: bool) -> void:
 		deck.erase(e)
 		e.current_location = "attached"
 		attacker.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "deck", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		deck.shuffle()
 		main.update_deck_icon(is_opponent)
@@ -29616,10 +29763,12 @@ func execute_ex12_return_trance(attacker: card_object, defender: card_object, is
 			chosen = await main.card_ops.choose_card(attacker.attached_energies, false, "RETURN TRANCE", "Return an Energy to your hand", "RETURN", false)
 			if main._should_bail(): return
 			if chosen == null: chosen = attacker.attached_energies[0]
+		var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 		attacker.attached_energies.erase(chosen)
 		chosen.current_location = "hand"
 		var hand = main.opponent_hand if is_opponent else main.player_hand
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "attached", "hand", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.display_active_pokemon_energies(is_opponent)
 		main.refresh_hand_display(is_opponent)
 		await main.show_message("RETURNED " + chosen.metadata.get("name","").to_upper() + " TO HAND!")
@@ -29873,11 +30022,13 @@ func execute_ex13_energy_loop(attacker: card_object, defender: card_object, is_o
 		else:
 			if i >= el_picks.size(): break
 			e = el_picks[i]
+		var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 		attacker.attached_energies.erase(e)
 		e.current_location = "hand"
 		e.attached_as_energy = false
 		e.pokemon_energy_types = []
 		hand.append(e)
+		await main.card_ops.fly_card(e, "attached", "hand", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	await main.show_message("ENERGY LOOP! RETURNED ENERGY TO HAND!")
@@ -29945,6 +30096,8 @@ func execute_ex13_gyarados_spiral(attacker: card_object, defender: card_object, 
 		discard.erase(chosen)
 		chosen.current_location = "attached"
 		attacker.attached_energies.append(chosen)
+		await main.card_ops.fly_attach(chosen, "discard", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -30006,9 +30159,11 @@ func _ex13_discard_specific(card: card_object, is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	if card in hand:
+		var _fr1: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 		hand.erase(card)
 		card.current_location = "discard"
 		discard.append(card)
+		main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(is_opponent)
 		main.update_discard_pile_display(is_opponent)
 
@@ -30087,9 +30242,9 @@ func execute_ex13_metallic_thunder(attacker: card_object, defender: card_object,
 			var mt_spare = mt_o.size() == 2 and mt_o.all(func(e): return main.cpu_ai.cpu_own_energy_value(attacker, e) < 1000.0)
 			do_it = (r4_would_ko(attacker, defender, 90) and not r4_would_ko(attacker, defender, 50)) or mt_spare
 		if do_it:
-			for i in range(2):
-				var mt_e = metals[0] if metals.size() <= (2 - i) else await r4_pick_own_energy(attacker, metals, is_opponent, "METALLIC THUNDER: DISCARD A METAL ENERGY (" + str(i + 1) + " OF 2)")
-				if main._should_bail(): return dmg
+			var mt_picks: Array = await pick_own_energies(attacker, metals, 2, is_opponent, "METALLIC THUNDER: DISCARD 2 METAL ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+			if main._should_bail(): return dmg
+			for mt_e in mt_picks:
 				metals.erase(mt_e)
 				main.card_ops.discard_energy_from_pokemon(mt_e, is_opponent)
 			dmg = 90
@@ -30153,10 +30308,12 @@ func execute_ex13_mind_play(attacker: card_object, defender: card_object, is_opp
 		if main._should_bail(): return dmg
 		if is_trainer:
 			dmg = 60
+			var _fr1: Dictionary = main.card_ops.capture_rect(picked, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 			opp_hand.erase(picked)
 			picked.current_location = "discard"
 			var opp_discard = main.player_discard_pile if is_opponent else main.opponent_discard_pile
 			opp_discard.append(picked)
+			await main.card_ops.fly_card(picked, "hand", "discard", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 			main.refresh_hand_display(not is_opponent)
 			main.update_discard_pile_display(not is_opponent)
 			await main.show_message("MIND PLAY! DISCARDED A TRAINER — 60 DAMAGE!")
@@ -30310,6 +30467,7 @@ func execute_ex13_all_out_blast(attacker: card_object, defender: card_object, is
 		c.current_location = "discard"
 		if c.metadata.get("supertype","") == "Energy": energy_discarded += 1
 		discard.append(c)
+		await main.card_ops.fly_card(c, "deck", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.update_deck_icon(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	var dmg = 50 + energy_discarded * 20
@@ -30364,10 +30522,9 @@ func execute_ex13_devo_crush(attacker: card_object, defender: card_object, is_op
 		var dc_ko = dc_low != null and int(dc_low.metadata.get("hp", "0")) <= defender.get_max_hp() - defender.current_hp
 		do_it = dc_ko or "Stage 2" in defender.metadata.get("subtypes", []) or dc_spare
 	if not do_it: return
-	for i in range(2):
-		if attacker.attached_energies.is_empty(): break
-		var dc_e = await r4_pick_own_energy(attacker, attacker.attached_energies.duplicate(), is_opponent, "DEVO CRUSH: DISCARD AN ENERGY (" + str(i + 1) + " OF 2)")   # OLD ISSUE 337
-		if main._should_bail(): return
+	var dcr_picks: Array = await pick_own_energies(attacker, attacker.attached_energies.duplicate(), 2, is_opponent, "DEVO CRUSH: DISCARD 2 ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+	if main._should_bail(): return
+	for dc_e in dcr_picks:
 		main.card_ops.discard_energy_from_pokemon(dc_e, is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
 	_ex2_devolve_pokemon(defender, not is_opponent, "deck")
@@ -30424,6 +30581,8 @@ func execute_ex13_paste(attacker: card_object, is_opponent: bool) -> void:
 	discard.erase(e)
 	e.current_location = "attached"
 	target.attached_energies.append(e)
+	await main.card_ops.fly_attach(e, "discard", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.update_discard_pile_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -30728,6 +30887,7 @@ func execute_ex14_mining(attacker: card_object, is_opponent: bool) -> void:
 	if not attached:
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(is_opponent)
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -30770,6 +30930,7 @@ func execute_ex14_upstream(attacker: card_object, defender: card_object, is_oppo
 		discard.erase(e)
 		e.current_location = "deck"
 		deck.append(e)
+		await main.card_ops.fly_card(e, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.update_discard_pile_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -31224,6 +31385,8 @@ func execute_ex15_trick_tail(attacker: card_object, defender: card_object, is_op
 	discard.erase(energy)
 	energy.current_location = "active" if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 	target.attached_energies.append(energy)
+	await main.card_ops.fly_attach(energy, "discard", {})   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.update_discard_pile_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -31539,10 +31702,10 @@ func execute_ex15_power_crush(attacker: card_object, defender: card_object, is_o
 	if ko:
 		var discarded = 0
 		var pc_fire = attacker.attached_energies.filter(func(e): return "Fire" in main.get_energy_provided_by_card(e))
-		for i in range(min(2, pc_fire.size())):
-			# OLD ISSUE 339: the owner picks which Fire Energy go (Holon / multi-type cards matter).
-			var pc_e = pc_fire[0] if pc_fire.size() <= (2 - i) else await r4_pick_own_energy(attacker, pc_fire, is_opponent, "POWER CRUSH: DISCARD A FIRE ENERGY (" + str(i + 1) + " OF 2)")
-			if main._should_bail(): return
+		# OLD ISSUE 339: the owner picks which Fire Energy go (Holon / multi-type cards matter).
+		var pcr_picks: Array = await pick_own_energies(attacker, pc_fire, 2, is_opponent, "POWER CRUSH: DISCARD 2 FIRE ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+		if main._should_bail(): return
+		for pc_e in pcr_picks:
 			pc_fire.erase(pc_e)
 			main.card_ops.discard_energy_from_pokemon(pc_e, is_opponent, false)
 			discarded += 1
@@ -31660,6 +31823,7 @@ func execute_ex15_dark_swirl(attacker: card_object, defender: card_object, is_op
 		var c: card_object = opp_deck.pop_front()   # OLD ISSUE 340: was pop_back (the BOTTOM card)
 		c.current_location = "discard"
 		opp_discard.append(c)
+		await main.card_ops.fly_card(c, "deck", "discard", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 		milled += 1
 	main.update_deck_icon(not is_opponent)
 	main.update_discard_pile_display(not is_opponent)
@@ -31756,6 +31920,7 @@ func execute_ex16_mix_up(attacker: card_object, defender: card_object, is_oppone
 		var top = opp_deck.pop_front()
 		top.current_location = "discard"
 		opp_discard.append(top)
+		await main.card_ops.fly_card(top, "deck", "discard", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 		main.update_deck_icon(not is_opponent)   # OLD ISSUE 340: refreshed the attacker's deck icon
 		main.update_discard_pile_display(not is_opponent)
 		await main.show_message("MIX-UP! OPPONENT DISCARDED THE TOP CARD OF THEIR DECK!")
@@ -31986,6 +32151,7 @@ func execute_ex16_volcanic_flame(attacker: card_object, defender: card_object, i
 		var c: card_object = deck.pop_front()
 		c.current_location = "discard"
 		discard.append(c)
+		await main.card_ops.fly_card(c, "deck", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		milled += 1
 	main.update_deck_icon(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -32167,9 +32333,9 @@ func execute_pop_discard2_basic(attacker: card_object, defender: card_object, is
 		if main._should_bail(): return
 		return
 	# OLD ISSUE 341: the owner picks WHICH 2 basic Energy go (it always took the first two attached).
-	for i in range(2):
-		var cc_e = basics[0] if basics.size() <= (2 - i) else await r4_pick_own_energy(attacker, basics, is_opponent, "DISCARD A BASIC ENERGY (" + str(i + 1) + " OF 2)")
-		if main._should_bail(): return
+	var cc_picks: Array = await pick_own_energies(attacker, basics, 2, is_opponent, "DISCARD 2 BASIC ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+	if main._should_bail(): return
+	for cc_e in cc_picks:
 		basics.erase(cc_e)
 		await main.card_ops.remove_one_energy(attacker, is_opponent, is_opponent, cc_e)
 		if main._should_bail(): return
@@ -32317,6 +32483,8 @@ func execute_pop_extra_draw(attacker: card_object, is_opponent: bool) -> void:
 		deck.erase(e)
 		e.current_location = "attached"
 		attacker.attached_energies.append(e)
+		await main.card_ops.fly_attach(e, "deck", {})   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.display_active_pokemon_energies(is_opponent)
@@ -32857,8 +33025,8 @@ func r3_shadow_hand(atk, a, d, opp) -> int:
 		picks = await main.card_ops.prompt_select_cards(hand.duplicate(), 0, 2, "SHADOW HAND", "Choose up to 2 cards to discard (draw 1 for each)", "DISCARD")
 		if main._should_bail(): return 30
 	for c in picks:
-		hand.erase(c)
-		main.card_ops.send_to_discard(c, opp)
+		await main.card_ops.send_to_discard(c, opp)   # AUDIT 2026-11-17: it erases + flies from the card's own slot
+		if main._should_bail(): return 30
 	main.refresh_hand_display(opp)
 	if picks.size() > 0:
 		await main.card_ops.draw_n(opp, picks.size())
@@ -33067,9 +33235,11 @@ func r3_sudden_growth(atk, a, d, opp) -> int:
 		else:
 			e = sgr_picks.pop_front() if not sgr_picks.is_empty() else null
 		if e == null: break
+		var _atr_33061: Dictionary = main.card_ops.capture_rect_any(e)   # AUDIT 2026-11-17: flight
 		hand.erase(e)
 		e.current_location = "active" if a.current_location == "active" else "bench"
 		a.attached_energies.append(e)
+		main.card_ops.fly_attach(e, "hand", _atr_33061)   # AUDIT 2026-11-17: flight (queued)
 		main.play_energy_attach_sfx()
 		attached += 1
 	main.refresh_hand_display(opp)
@@ -33100,6 +33270,7 @@ func r3_star_back(atk, a, d, opp) -> int:
 	discard.erase(e)
 	e.current_location = "active" if t.current_location == "active" else "bench"
 	t.attached_energies.append(e)
+	main.card_ops.fly_attach(e, "discard", {})   # AUDIT 2026-11-17: flight (queued)
 	main.play_energy_attach_sfx()
 	main.update_discard_pile_display(opp)
 	main.display_active_pokemon_energies(opp)
@@ -33124,6 +33295,8 @@ func r3_warp_hole(atk, a, d, opp) -> int:
 	c.current_location = "deck"
 	(main.opponent_deck if opp else main.player_deck).insert(0, c)
 	main.update_discard_pile_display(opp)
+	await main.card_ops.fly_card(c, "discard", "deck", opp)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return 30
 	main.update_deck_icon(opp)
 	await main.show_message("WARP HOLE! A CARD WAS PUT ON TOP OF THE DECK!")
 	return 30
@@ -33194,9 +33367,11 @@ func _r3_hand_to_deck(opp: bool, supertype: String, title: String) -> void:
 		c = await main.card_ops.prompt_select_card(pool, title, "Choose the card your opponent shuffles into the deck", "SELECT", false)
 		if main._should_bail(): return
 	if c == null: c = pool[0]
+	var _fr1: Dictionary = main.card_ops.capture_rect(c, "hand", not (opp))   # AUDIT 2026-11-17: flight
 	hand.erase(c)
 	c.current_location = "deck"
 	deck.append(c)
+	await main.card_ops.fly_card(c, "hand", "deck", not (opp), -1, _fr1)   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.refresh_hand_display(not opp)
 	main.update_deck_icon(not opp)
@@ -33219,6 +33394,7 @@ func r3_energy_recycle(atk, a, d, opp) -> int:
 	e.current_location = "deck"
 	var deck = main.opponent_deck if opp else main.player_deck
 	deck.append(e)
+	await main.card_ops.fly_card(e, "discard", "deck", opp, -1, {})   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.update_discard_pile_display(opp)
 	main.update_deck_icon(opp)
@@ -33306,6 +33482,7 @@ func r3_energy_plant(atk, a, d, opp) -> int:
 	deck.erase(e)
 	e.current_location = "active" if t.current_location == "active" else "bench"
 	t.attached_energies.append(e)
+	main.card_ops.fly_attach(e, "deck", {})   # AUDIT 2026-11-17: flight (queued)
 	main.play_energy_attach_sfx()
 	deck.shuffle()
 	main.update_deck_icon(opp)
@@ -33372,6 +33549,7 @@ func r3_collect_fire_one(atk, a, d, opp) -> int:
 	discard.erase(e)
 	e.current_location = "active" if a.current_location == "active" else "bench"
 	a.attached_energies.append(e)
+	main.card_ops.fly_attach(e, "discard", {})   # AUDIT 2026-11-17: flight (queued)
 	main.play_energy_attach_sfx()
 	main.update_discard_pile_display(opp)
 	main.display_active_pokemon_energies(opp)
@@ -33389,6 +33567,8 @@ func r3_eruption_fire(atk, a, d, opp) -> int:
 		var top = deck.pop_front()
 		top.current_location = "discard"
 		(main.opponent_discard_pile if side else main.player_discard_pile).append(top)
+		await main.card_ops.fly_card(top, "deck", "discard", side)   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return 0
 		if top.metadata.get("supertype","") == "Energy" and "Fire" in main.get_energy_provided_by_card(top):
 			fire += 1
 		main.update_deck_icon(side)
@@ -33420,8 +33600,10 @@ func r3_aqua_trick(atk, a, d, opp) -> int:
 		t = await main.card_ops.prompt_select_card(bench, "AQUA TRICK", "Move it to which Benched Pokémon?", "SELECT", false)
 		if main._should_bail(): return b
 	if t == null: t = bench[0]
+	var _emr_33544: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 	d.attached_energies.erase(e)
 	t.attached_energies.append(e)
+	main.card_ops.fly_attach(e, "attached", _emr_33544)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon) (queued)
 	main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(not opp)
 	main.display_pokemon(not opp)
@@ -33508,6 +33690,63 @@ const ULTRA_PUMP_CPU_JUNK_VALUE := 35.0
 # OLD ISSUE 368: the OWNER chooses which attached Energy cards an effect discards when the candidates differ (basic vs
 # Rainbow / Multi / Double...). Several effects simply took the first N in attach order. Identical cards (same name)
 # need no prompt; the CPU gives up its least-needed ones.
+## AUDIT 2026-11-17: can each card in `cards` stand for a DIFFERENT type in `types` (Rainbow / Multi count as any)?
+func _types_matchable(cards: Array, types: Array) -> bool:
+	if cards.size() > types.size():
+		return false
+	if cards.is_empty():
+		return true
+	var first = cards[0]
+	var rest: Array = cards.slice(1)
+	var prov: Array = main.get_energy_provided_by_card(first)
+	for t in types:
+		if t in prov or "Any" in prov:
+			var left: Array = types.duplicate()
+			left.erase(t)
+			if _types_matchable(rest, left):
+				return true
+	return false
+
+
+## AUDIT 2026-11-17: "discard a Fire, a Water and a Lightning Energy" - the player picks all of them on ONE screen
+## (the multi-select rule); a card is only accepted while the picks can still cover different types. As many types
+## as the attached Energy can cover. The CPU takes its usual one-per-type picks.
+func pick_energy_per_type(a: card_object, types: Array, opp: bool, title: String) -> Array:
+	var pool: Array = a.attached_energies.filter(func(e):
+		var prov: Array = main.get_energy_provided_by_card(e)
+		return "Any" in prov or types.any(func(t): return t in prov))
+	var used: Array = []
+	if opp:
+		for t in types:
+			var tp: Array = pool.filter(func(e): return e not in used and (t in main.get_energy_provided_by_card(e) or "Any" in main.get_energy_provided_by_card(e)))
+			if tp.is_empty(): continue
+			var pk: Array = await pick_own_energies(a, tp, 1, opp, title)
+			if main._should_bail(): return used
+			if not pk.is_empty(): used.append(pk[0])
+		return used
+	# The most types the attached Energy can cover at once.
+	var n := 0
+	for k in range(types.size(), 0, -1):
+		if _any_matchable_subset(pool, types, k):
+			n = k
+			break
+	if n == 0:
+		return []
+	var picks: Array = await main.card_ops.prompt_select_cards(pool, n, n, title,
+		"Choose one Energy for each of: " + ", ".join(PackedStringArray(types)), "DISCARD", false, false,
+		func(c, sel): return _types_matchable(sel + [c], types))
+	return picks
+
+
+func _any_matchable_subset(pool: Array, types: Array, k: int, start: int = 0, cur: Array = []) -> bool:
+	if cur.size() == k:
+		return _types_matchable(cur, types)
+	for i in range(start, pool.size()):
+		if _any_matchable_subset(pool, types, k, i + 1, cur + [pool[i]]):
+			return true
+	return false
+
+
 func pick_own_energies(a: card_object, pool: Array, n: int, opp: bool, title: String) -> Array:
 	n = mini(n, pool.size())
 	if n <= 0:
@@ -33607,7 +33846,7 @@ func r4_optional_gust(a: card_object, d: card_object, opp: bool, title: String, 
 		pick = await main.card_ops.prompt_select_card(bench, title + ": SWITCH?", "Choose a Benched Pokémon to switch with the Defending Pokémon (cancel = don't switch)", "SWITCH", true)
 		if main._should_bail(): return d
 	if pick != null:
-		_force_bench_to_active(pick, opp)
+		await _force_bench_to_active(pick, opp)
 		await main.show_message(title + ": SWITCHED IN " + pick.metadata.get("name", "").to_upper() + "!")
 	var nd = main.player_active_pokemon if opp else main.opponent_active_pokemon
 	current_defender = nd
@@ -33806,7 +34045,7 @@ func _register_r4_fixes() -> void:
 			pick = await main.card_ops.prompt_select_card(bench, "STRING PULL", "Choose a Benched Pokémon to switch with the Defending Pokémon", "SWITCH", false)
 			if main._should_bail(): return 0
 			if pick == null: pick = bench[0]
-		_force_bench_to_active(pick, opp)
+		await _force_bench_to_active(pick, opp)
 		current_defender = main.player_active_pokemon if opp else main.opponent_active_pokemon
 		await main.show_message("STRING PULL! " + pick.metadata.get("name","").to_upper() + " WAS PULLED INTO THE ACTIVE SPOT!")
 		return 0)
@@ -33994,9 +34233,11 @@ func r4_energy_bomb_optional(atk, a, d, opp) -> int:
 			dest = await main.card_ops.prompt_select_card(bench, "ENERGY BOMB: MOVE " + e.metadata.get("name", "ENERGY").to_upper(), "Choose a Benched Pokémon for this Energy card", "ATTACH", false)
 			if main._should_bail(): return b
 			if dest == null: dest = bench[0]
+		var _emr_34119: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 		a.attached_energies.erase(e)
 		e.current_location = "bench"
 		dest.attached_energies.append(e)
+		main.card_ops.fly_attach(e, "attached", _emr_34119)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon) (queued)
 		main.play_energy_attach_sfx()
 	main.display_active_pokemon_energies(opp)
 	main.display_pokemon(opp)
@@ -34070,10 +34311,9 @@ func r4_sweet_scent_own(atk, a, d, opp) -> int:
 # FLAMES OF RAGE (ex13-50 Primeape δ): discard 2 Energy (any), then B + per x damage counters on itself.
 func r4_flames_of_rage_any(atk, a, d, opp) -> int:
 	if await _r3_stop(a, opp): return 0
-	for i in range(2):
-		if a.attached_energies.is_empty(): break
-		var e = await r4_pick_own_energy(a, a.attached_energies.duplicate(), opp, "FLAMES OF RAGE: DISCARD AN ENERGY (" + str(i + 1) + " OF 2)")
-		if main._should_bail(): return 0
+	var fr_picks: Array = await pick_own_energies(a, a.attached_energies.duplicate(), 2, opp, "FLAMES OF RAGE: DISCARD 2 ENERGY")   # AUDIT 2026-11-17: all picked on ONE screen (was one prompt per card)
+	if main._should_bail(): return 0
+	for e in fr_picks:
 		main.card_ops.discard_energy_from_pokemon(e, opp)
 	main.display_active_pokemon_energies(opp)
 	main.update_discard_pile_display(opp)
@@ -34115,9 +34355,11 @@ func r4_self_charge(atk, a, d, opp) -> int:
 	var e = await main.card_ops.choose_card(pool, opp, "SELF CHARGE", "Choose an Energy to attach", "ATTACH", false, func(c): return main.cpu_ai.cpu_rank_benefit_recipient(a, "energy", c))
 	if main._should_bail(): return 0
 	if e == null: e = pool[0]
+	var _atr_34111: Dictionary = main.card_ops.capture_rect_any(e)   # AUDIT 2026-11-17: flight
 	hand.erase(e)
 	e.current_location = "attached"
 	a.attached_energies.append(e)
+	main.card_ops.fly_attach(e, "hand", _atr_34111)   # AUDIT 2026-11-17: flight (queued)
 	main.play_energy_attach_sfx()
 	main.refresh_hand_display(opp)
 	main.display_active_pokemon_energies(opp)

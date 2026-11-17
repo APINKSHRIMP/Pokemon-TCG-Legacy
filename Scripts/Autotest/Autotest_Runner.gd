@@ -98,6 +98,12 @@ var opt_vs := ""                   # --vs=benchmark|PATH: the bot's decks for --
 var opt_per := 0                   # --per=N: N matches per real opponent
 var opt_rate := false              # --rate: record win rates in Opponent_Ratings.json
 var opt_progress_path := ""        # --progress=PATH: a progress file for the placement tool
+# AUDIT 2026-11-17: --input=signal|mix|mouse|keys|pad - how the bot answers prompts. "mix" picks one per answer.
+# Anything but "signal" sends REAL input events (Input.parse_input_event) and reports INPUT IGNORED / NAV UNREACHABLE /
+# FORCED PROMPT SKIPPED. --flights reports card moves (deck/hand/discard/prizes/play) that had no card flight.
+var opt_input := "signal"
+var opt_flights := false
+var real_input_now := false        # Board_Nav stands up while the bot is driving it with real keys / pad
 const STARTER_DECK_DIR := "res://Player_Data/Starter_Decks/"
 const OpponentRatings := preload("res://Scripts/Global_Scripts/Opponent_Ratings.gd")
 var replay_record: Dictionary = {}
@@ -296,6 +302,8 @@ func _parse_args() -> void:
 			"per": opt_per = int(v)
 			"rate": opt_rate = true
 			"progress": opt_progress_path = v
+			"input": opt_input = v if v != "" else "mix"
+			"flights": opt_flights = true
 			"stack":
 				opt_stack = v.to_lower()
 				opt_cards = [opt_stack]
@@ -369,6 +377,11 @@ func _play_match(i: int) -> void:
 	originals = [{}, {}]
 	_bot_tail = []
 	_match_time = 0.0
+	_last_zone = {}
+	_pending_moves = []
+	_flight_times = []
+	_ctx_turn = -1
+	_effect_ctx = "match start"
 	_sig = ""
 	_sig_time = 0.0
 	_last_checked_turn = -1
@@ -1138,6 +1151,10 @@ func _timing_and_oracle_report() -> PackedStringArray:
 	s.append("")
 	s.append("RULE-CHECK ORACLES (clean boards only): damage %d checked / %d wrong, status %d / %d, draw %d / %d" % [
 		oracle_stats["damage"][0], oracle_stats["damage"][1], oracle_stats["status"][0], oracle_stats["status"][1], oracle_stats["draw"][0], oracle_stats["draw"][1]])
+	if opt_flights:
+		s.append("FLIGHT CHECK: %d card moves, %d with no flight" % [flight_stats["moves"], flight_stats["unanimated"]])
+	if opt_input != "signal" and current_bot != null and is_instance_valid(current_bot):
+		s.append("REAL INPUT: " + str(current_bot.get("input_stats")))
 	if not cpu_turn_times.is_empty():
 		var ms_list: Array = cpu_turn_times.map(func(x): return x[0])
 		ms_list.sort()
@@ -1223,6 +1240,9 @@ func _abort(reason: String) -> void:
 ## Coverage + event log. kind: attack | trainer | power | energy.
 func note(kind: String, uid: String, name: String, is_opponent: bool) -> void:
 	var key := kind + "|" + uid + ("|" + name if kind in ["attack", "power"] else "")
+	if opt_flights and kind in ["attack", "power", "trainer", "energy"]:
+		_effect_ctx = "%s %s %s (%s)" % ["CPU" if is_opponent else "BOT", kind, name if name != "" else uid, uid]
+		_effect_ctx_time = _match_time
 	if not opt_tune:   # tune jobs keep coverage frozen so a seed always builds the same decks (branch replay needs it)
 		coverage[key] = int(coverage.get(key, 0)) + 1
 	if is_opponent and _cpu_turn_open and (kind != "energy" or "Special" in cards.get(uid, {}).get("subtypes", [])):
@@ -1322,11 +1342,27 @@ func _maybe_snap() -> void:
 	print("AUTOTEST SNAP: ", ProjectSettings.globalize_path(path), " canvas ", get_viewport().get_visible_rect().size)
 
 
+## One PNG now, named by `tag` (Attack_VFX calls this for super attacks when AUTOTEST_MEGA_SNAP is set).
+func snap_now(tag: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	_snap_count += 1
+	var img := get_viewport().get_texture().get_image()
+	var path := run_dir + "snap_%03d_%s.png" % [_snap_count, tag.validate_filename()]
+	img.save_png(path)
+	print("AUTOTEST SNAP: ", ProjectSettings.globalize_path(path))
+
+
 func _watch(delta: float) -> void:
 	if match_done or not is_instance_valid(current_main):
 		return
 	_drain_errors()
 	var m = current_main
+	# AUDIT 2026-11-17: while the bot is sending real input it waits on REAL-time windows (the cursor's settle and
+	# accept grace) that cover hundreds of headless frames - that is not the game stalling, so the clocks hold.
+	var bot_waiting: bool = current_bot != null and is_instance_valid(current_bot) and (bool(current_bot.get("_async_busy")) or bool(current_bot.get("_input_waiting")))
+	if bot_waiting:
+		delta = 0.0
 	_match_time += delta
 	if _match_time > MATCH_MAX_SECONDS:
 		_problem("MATCH TIME LIMIT", "Match ran %d game-seconds without ending" % int(_match_time), "timelimit")
@@ -1337,6 +1373,13 @@ func _watch(delta: float) -> void:
 		_abort("turn limit")
 		return
 	_time_cpu_turns(m)
+	if opt_flights:
+		# The flight clock stands still while the game waits on the player (a message, a coin, a choice): the CPU
+		# announces "Opponent attached X!" BEFORE the card flies, and the click can come any time later.
+		var waiting_on_player: bool = m.msgbox_container.visible or m.coin_container.visible or m.copy_pick_active 			or m.card_selection_mode_enabled
+		if not waiting_on_player:
+			_flight_clock += delta
+		_track_moves(m)
 	var s := _signature(m)
 	if s != _sig:
 		_sig = s
@@ -1806,3 +1849,126 @@ func _write_summary() -> void:
 	pf.store_string("\n".join(d))
 	pf.close()
 	print("\n".join(s))
+
+
+# ───────────────────────────── AUDIT 2026-11-17: flight check ─────────────────────────────
+# Every card that changes zone (deck / hand / discard / prizes / in play / attached / stadium) must have a card flight
+# (Main.animate_card_a_to_b, which every flight helper ends in) within FLIGHT_WINDOW game-seconds of the move. Flights
+# carry no card identity, so they are matched by time: a move with no flight left to pair with is reported, against
+# the effect that was resolving (the last note()).
+const FLIGHT_WINDOW := 3.0
+var _last_zone: Dictionary = {}
+var _pending_moves: Array = []      # [time, instance_id, from, to, ctx]
+var _flight_times: Array = []
+var _effect_ctx := "match start"
+var _effect_ctx_time := 0.0
+var _ctx_turn := -1
+var flight_stats := {"moves": 0, "unanimated": 0}
+var _flight_clock := 0.0
+
+func note_flight(tex: Texture2D = null) -> void:
+	if opt_flights:
+		_flight_times.append([_flight_clock, tex])
+
+
+## A flight can be this card's: its own face, or a card back / no texture (a face-down flight).
+func _flight_fits(m, flight: Array, card) -> bool:
+	var tex = flight[1]
+	if tex == null or tex == m.card_back_texture or tex == m.opponent_card_back_texture:
+		return true
+	return card != null and tex == m.get_card_texture(card)
+
+
+func _zone_map(m) -> Dictionary:
+	var out := {}
+	for side in [false, true]:
+		var pre := "opponent_" if side else "player_"
+		for zone in ["deck", "hand", "discard_pile", "prize_cards", "tickled_set_aside"]:
+			for c in m.get(pre + zone):
+				if c is Object:
+					out[c.get_instance_id()] = zone
+		for p in m.card_ops.get_all_pokemon_in_play(side):
+			_zone_map_mon(p, out)
+		if m.current_stadium_card != null:
+			out[m.current_stadium_card.get_instance_id()] = "stadium"
+	return out
+
+
+func _zone_map_mon(p, out: Dictionary) -> void:
+	if p == null or not (p is Object):
+		return
+	out[p.get_instance_id()] = "play"
+	for c in p.attached_energies:
+		if c is Object: out[c.get_instance_id()] = "attached"
+	for c in p.attached_pre_evolutions:
+		if c is Object: out[c.get_instance_id()] = "under"
+	for c in p.attached_cards:
+		if c is Object and "attached_energies" in c and c != p and c.current_location in ["active", "bench"]:
+			_zone_map_mon(c, out)
+		elif c is Object:
+			out[c.get_instance_id()] = "attached"
+	if p.secret_plan_card != null: out[p.secret_plan_card.get_instance_id()] = "attached"
+	if p.shapeshift_form_card != null: out[p.shapeshift_form_card.get_instance_id()] = "attached"
+
+
+func _move_needs_flight(from: String, to: String) -> bool:
+	# A Pokémon evolving puts the old card under the new one (and devolving lifts it back out in place).
+	if "under" in [from, to] and ("play" in [from, to] or "attached" in [from, to]):
+		return false
+	# Energy moved between Pokémon in play (Energy Trans, Rain Dance's attach is hand->attached).
+	if from == "attached" and to == "attached":
+		return false
+	return true
+
+
+func _track_moves(m) -> void:
+	if m.turn_number < 1 or m.game_is_over:
+		_last_zone = {}
+		return
+	if m.turn_number != _ctx_turn:
+		_ctx_turn = m.turn_number
+		# turn_number goes up before opponents_turn_active flips, so name the side from the turn's parity owner later.
+		_effect_ctx = "turn %d start" % m.turn_number
+		_effect_ctx_time = _flight_clock
+	var now := _zone_map(m)
+	if not _last_zone.is_empty():
+		for id in now:
+			var prev: String = _last_zone.get(id, "")
+			var z: String = now[id]
+			if prev != "" and prev != z and _move_needs_flight(prev, z):
+				_pending_moves.append([_flight_clock, id, prev, z, _effect_ctx])
+				flight_stats["moves"] += 1
+	_last_zone = now
+	# Pair moves with flights (either order, within the window).
+	var i := 0
+	while i < _pending_moves.size():
+		var mv: Array = _pending_moves[i]
+		var hit := -1
+		var mc = instance_from_id(int(mv[1]))
+		# Face matches first, then face-down flights.
+		for pass_n in 2:
+			for k in _flight_times.size():
+				var f: Array = _flight_times[k]
+				if absf(float(f[0]) - float(mv[0])) > FLIGHT_WINDOW:
+					continue
+				var face_match: bool = f[1] != null and mc != null and f[1] == m.get_card_texture(mc)
+				if (pass_n == 0 and face_match) or (pass_n == 1 and _flight_fits(m, f, mc)):
+					hit = k
+					break
+			if hit >= 0:
+				break
+		if hit >= 0:
+			_flight_times.remove_at(hit)
+			_pending_moves.remove_at(i)
+			continue
+		if _flight_clock - float(mv[0]) > FLIGHT_WINDOW:
+			var c = instance_from_id(int(mv[1]))
+			flight_stats["unanimated"] += 1
+			_problem("NO FLIGHT", "%s: %s went %s -> %s with no card flight" % [mv[4], _cname(c), mv[2], mv[3]],
+				"nf|" + str(mv[4]) + "|" + str(mv[2]) + str(mv[3]))
+			_pending_moves.remove_at(i)
+			continue
+		i += 1
+	# Flights nothing claimed expire.
+	while not _flight_times.is_empty() and _flight_clock - float(_flight_times[0][0]) > FLIGHT_WINDOW * 2.0:
+		_flight_times.remove_at(0)

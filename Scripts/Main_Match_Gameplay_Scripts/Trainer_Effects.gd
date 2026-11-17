@@ -162,6 +162,7 @@ func effect_ex8_energy_charge(is_opponent: bool) -> void:
 		discard.erase(chosen)
 		chosen.current_location = "deck"
 		deck.append(chosen)
+		await main.card_ops.fly_card(chosen, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		moved += 1
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -195,6 +196,7 @@ func effect_ex8_lady_outing(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		for t in main.get_energy_provided_by_card(chosen):
@@ -250,6 +252,7 @@ func effect_ex8_master_ball(is_opponent: bool) -> void:
 	chosen.current_location = "hand"
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	hand.append(chosen)
+	await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 	if main._should_bail(): return
 	deck.shuffle()
@@ -285,6 +288,8 @@ func effect_ex8_professor_cozmos_discovery(is_opponent: bool) -> void:
 			deck.remove_at(deck.size() - 1)
 			c.current_location = "hand"
 			hand.append(c)
+			await main.card_ops.fly_card(c, "deck", "hand", is_opponent)   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return
 	else:
 		await main.show_message("TAILS! DRAW THE TOP 2 CARDS!")
 		if main._should_bail(): return
@@ -1319,6 +1324,7 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 			var opp_deck = main.opponent_deck if is_opponent else main.player_deck
 			card.current_location = "deck"
 			opp_deck.insert(0, card)
+			await main.card_ops.fly_card(card, "hand", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			main.update_deck_icon(is_opponent)
 			main.refresh_hand_display(is_opponent)
 			return
@@ -1580,6 +1586,7 @@ func resolve_bench_token_trainer(card: card_object, is_opponent: bool) -> void:
 		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
 		discard.append(card)
+		await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 		return
 	
 	# Place on bench with proper flags
@@ -1609,6 +1616,7 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 			return
 		active.attached_cards.append(card)
 		active.pluspower_count += 1
@@ -1688,6 +1696,7 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 			return
 		active.attached_cards.append(card)
 		active.gym1_charity_attached = true
@@ -1715,6 +1724,7 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 			return
 
 		var target: card_object = null
@@ -1737,6 +1747,7 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 			return
 
 		target.attached_cards.append(card)
@@ -1777,6 +1788,7 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var wg_discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
 			wg_discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 			return
 		var wg_target: card_object = null
 		if is_opponent:
@@ -1789,6 +1801,7 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var wg_discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
 			wg_discard2.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 			return
 		wg_target.attached_cards.append(card)
 		wg_target.temporary_weakness = "NONE_ECARD2_WEAKNESS_GUARD"
@@ -1833,6 +1846,7 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var discard_tm = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
 			discard_tm.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 			if required_type != "":
 				await main.show_message("NO " + required_type.to_upper() + " POKEMON TO ATTACH " + card.metadata.get("name","").to_upper() + " TO!")
 				if main._should_bail(): return
@@ -1848,6 +1862,7 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var discard_tm2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
 			discard_tm2.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 			return
 		target_tm.attached_cards.append(card)
 		var hand_node_tm = main.opponent_hand_container if is_opponent else main.player_hand_container
@@ -1881,6 +1896,7 @@ func resolve_attached_trainer(card: card_object, is_opponent: bool) -> void:
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 			return
 		active.attached_cards.append(card)
 		active.gym2_koga_ninja_trick_attached = true
@@ -1907,6 +1923,7 @@ func gym2_attach_named_tool(card: card_object, is_opponent: bool, name_substr: S
 		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
 		discard.append(card)
+		await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 		return
 	var target: card_object = null
 	if is_opponent:
@@ -1924,6 +1941,7 @@ func gym2_attach_named_tool(card: card_object, is_opponent: bool, name_substr: S
 		var discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
 		discard2.append(card)
+		await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 		return
 	target.attached_cards.append(card)
 	target.set(flag_name, true)
@@ -2001,9 +2019,11 @@ func effect_computer_search(played_card: card_object, is_opponent: bool) -> void
 				cs_pick = plan["card"]
 				print("CPU v2: Computer Search takes ", cs_pick.metadata.get("name", ""), " - ", plan.get("why", ""))
 		for card in to_discard:
+			var _fr1: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(card)
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(true)
 		
 		# CPU search logic
@@ -2012,6 +2032,7 @@ func effect_computer_search(played_card: card_object, is_opponent: bool) -> void
 			deck.erase(search_card)
 			search_card.current_location = "hand"
 			hand.append(search_card)
+			await main.card_ops.fly_card(search_card, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			await main.show_message("Opponent searched their deck for a card!")
 			if main._should_bail(): return
 		deck.shuffle()
@@ -2027,9 +2048,11 @@ func effect_computer_search(played_card: card_object, is_opponent: bool) -> void
 		await player_select_cards_to_discard(hand, 2, "COMPUTER SEARCH", "Select 2 cards to discard")
 		if main._should_bail(): return
 		for card in main.trainer_discard_selected:
+			var _fr2: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(card)
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, _fr2)   # AUDIT 2026-11-17: flight
 		main.trainer_discard_selected.clear()
 		main.refresh_hand_display(false)
 		main.update_discard_pile_display(false)
@@ -2103,8 +2126,10 @@ func effect_devolution_spray(is_opponent: bool) -> void:
 	var field_location = target.current_location
 	var devolve_index = target.attached_pre_evolutions.find(devolve_to)
 	var evo_card = target
+	var ds_rect: Dictionary = main.card_ops.capture_rect(target, "play", is_opponent)   # AUDIT 2026-11-17: flight
 	evo_card.current_location = "discard"
 	discard.append(evo_card)
+	main.card_ops.fly_card(evo_card, "play", "discard", is_opponent, -1, ds_rect)   # AUDIT 2026-11-17: flight
 	# Discard all pre-evolutions above the chosen devolve target
 	var cards_to_discard_from_chain = []
 	for i in range(devolve_index + 1, target.attached_pre_evolutions.size()):
@@ -2112,6 +2137,7 @@ func effect_devolution_spray(is_opponent: bool) -> void:
 	for card in cards_to_discard_from_chain:
 		card.current_location = "discard"
 		discard.append(card)
+		main.card_ops.fly_card(card, "attached", "discard", is_opponent, -1, ds_rect)   # AUDIT 2026-11-17: flight
 		target.attached_pre_evolutions.erase(card)
 	target.attached_pre_evolutions.erase(devolve_to)
 	# Transfer attachments to the new form
@@ -2217,9 +2243,11 @@ func effect_item_finder(played_card: card_object, is_opponent: bool) -> void:
 			if not if_plan.is_empty():
 				to_discard = if_plan["discards"]
 		for card in to_discard:
+			var _fr1: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(card)
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		
 		# CPU picks highest priority trainer from discard
 		var best_trainer: card_object = null
@@ -2235,6 +2263,7 @@ func effect_item_finder(played_card: card_object, is_opponent: bool) -> void:
 			discard.erase(best_trainer)
 			best_trainer.current_location = "hand"
 			hand.append(best_trainer)
+			await main.card_ops.fly_card(best_trainer, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			await main.show_message("Opponent retrieved " + best_trainer.metadata.get("name", "") + " from discard pile!")
 			if main._should_bail(): return
 		main.refresh_hand_display(true)
@@ -2246,9 +2275,11 @@ func effect_item_finder(played_card: card_object, is_opponent: bool) -> void:
 		await player_select_cards_to_discard(hand, 2, "ITEM FINDER", "Select 2 cards to discard")
 		if main._should_bail(): return
 		for card in main.trainer_discard_selected:
+			var _fr2: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(card)
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, _fr2)   # AUDIT 2026-11-17: flight
 		main.trainer_discard_selected.clear()
 		main.refresh_hand_display(false)
 		
@@ -3146,6 +3177,7 @@ func effect_revive(is_opponent: bool) -> void:
 			best.current_hp = best.get_max_hp() - int(best.get_max_hp() / 2 / 10) * 10
 			best.placed_on_field_this_turn = true
 			bench.append(best)
+			await main.card_ops.fly_card(best, "discard", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			main.display_pokemon(true)
 			await main.show_message("Opponent revived " + best.metadata.get("name", "") + " at half HP!")
 			if main._should_bail(): return
@@ -3161,6 +3193,7 @@ func effect_revive(is_opponent: bool) -> void:
 			chosen.current_hp = chosen.get_max_hp() - int(chosen.get_max_hp() / 2 / 10) * 10
 			chosen.placed_on_field_this_turn = true
 			bench.append(chosen)
+			await main.card_ops.fly_card(chosen, "discard", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			main.display_pokemon(false)
 			await main.show_message(chosen.metadata.get("name", "") + " revived at " + str(chosen.current_hp) + " HP!")
 			if main._should_bail(): return
@@ -3188,9 +3221,11 @@ func effect_super_potion(card: card_object, is_opponent: bool) -> void:
 		if best_target != null:
 			var energy = main.cpu_ai.cpu_pick_own_energy_to_discard(best_target)
 			if energy == null: energy = best_target.attached_energies.back()
+			var _fr1: Dictionary = main.card_ops.capture_rect(energy, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 			best_target.attached_energies.erase(energy)
 			energy.current_location = "discard"
 			discard.append(energy)
+			await main.card_ops.fly_card(energy, "attached", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 			main.display_active_pokemon_energies(true)
 			await main.card_ops.heal_pokemon(best_target, 40, true)
 			if main._should_bail(): return
@@ -3224,6 +3259,7 @@ func _refund_trainer_to_hand(card: card_object, is_opponent: bool) -> void:
 	card.current_location = "hand"
 	if card not in hand:
 		hand.append(card)
+		main.card_ops.fly_card(card, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 
@@ -3552,6 +3588,7 @@ func effect_poke_ball(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
@@ -3614,25 +3651,30 @@ func effect_mr_fuji(is_opponent: bool) -> void:
 	for e in chosen.attached_energies:
 		e.current_location = "deck"
 		deck.append(e)
+		await main.card_ops.fly_card(e, "attached", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	chosen.attached_energies.clear()
 	
 	# Shuffle all pre-evolutions into deck
 	for pre in chosen.attached_pre_evolutions:
 		pre.current_location = "deck"
 		deck.append(pre)
+		await main.card_ops.fly_card(pre, "attached", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	chosen.attached_pre_evolutions.clear()
 	
 	# Shuffle all attached cards into deck
 	for ac in chosen.attached_cards:
 		ac.current_location = "deck"
 		deck.append(ac)
+		await main.card_ops.fly_card(ac, "attached", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	chosen.attached_cards.clear()
 	
 	# Shuffle the pokemon itself into deck
+	var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "play", is_opponent)   # AUDIT 2026-11-17: flight
 	bench.erase(chosen)
 	chosen.current_location = "deck"
 	main.clear_all_statuses(chosen, is_opponent)
 	deck.append(chosen)
+	await main.card_ops.fly_card(chosen, "play", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	
 	# Shuffle the deck
 	deck.shuffle()
@@ -3715,8 +3757,10 @@ func effect_gambler(is_opponent: bool) -> void:
 	# Shuffle entire hand into deck (Gambler itself is already in discard)
 	var hand_copy = hand.duplicate()
 	for card in hand_copy:
+		var gb_r: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 		card.current_location = "deck"
 		deck.append(card)
+		await main.card_ops.fly_card(card, "hand", "deck", is_opponent, -1, gb_r)   # AUDIT 2026-11-17: flight
 	hand.clear()
 	main.refresh_hand_display(is_opponent)
 	
@@ -3775,6 +3819,7 @@ func effect_recycle(is_opponent: bool) -> void:
 		discard.erase(chosen)
 		chosen.current_location = "deck"
 		deck.insert(0, chosen)  # Put on TOP of deck
+		await main.card_ops.fly_card(chosen, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		main.update_discard_pile_display(is_opponent)
 		await main.show_message("RECYCLE: " + chosen.metadata.get("name", "").to_upper() + " PUT ON TOP OF DECK!")
 		if main._should_bail(): return
@@ -3856,9 +3901,11 @@ func effect_rockets_sneak_attack(is_opponent: bool) -> void:
 	if selected == null:
 		return
 	
+	var _fr1: Dictionary = main.card_ops.capture_rect(selected, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 	target_hand.erase(selected)
 	selected.current_location = "deck"
 	target_deck.append(selected)
+	await main.card_ops.fly_card(selected, "hand", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 	target_deck.shuffle()
 	
 	main.refresh_hand_display(!is_opponent)
@@ -3902,6 +3949,7 @@ func effect_the_boss_way(is_opponent: bool) -> void:
 	deck.erase(selected)
 	selected.current_location = "hand"
 	hand.append(selected)
+	await main.card_ops.fly_card(selected, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	await main.card_ops.reveal_searched_cards([selected], is_opponent)   # ISSUE #314: show it if the text says so
 	if main._should_bail(): return
 	deck.shuffle()
@@ -4049,18 +4097,23 @@ func effect_imposter_oaks_revenge(played_card: card_object, is_opponent: bool) -
 		var to_discard = cpu_get_discard_priority(own_hand, 1)
 		var discard_pile = main.opponent_discard_pile
 		for card in to_discard:
+			var _fr1: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			own_hand.erase(card)
 			card.current_location = "discard"
 			discard_pile.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, int(true), _fr1)   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(true)
 	
 	# Opponent shuffles hand into deck and draws 4
+	var _hj: Array = main.card_ops.lift_cards(opp_hand, "hand", !is_opponent)   # AUDIT 2026-11-17: hand flies into the deck
 	for card in opp_hand.duplicate():
 		opp_hand.erase(card)
 		card.current_location = "deck"
 		opp_deck.append(card)
 	opp_deck.shuffle()
 	main.refresh_hand_display(!is_opponent)
+	await main.card_ops.fly_lifted(_hj, "deck", !is_opponent)   # AUDIT 2026-11-17: hand flies into the deck
+	if main._should_bail(): return
 	
 	await main.show_message("OPPONENT SHUFFLED HAND INTO DECK!")
 	if main._should_bail(): return
@@ -4116,6 +4169,7 @@ func effect_nightly_garbage_run(is_opponent: bool) -> void:
 		discard.erase(card)
 		card.current_location = "deck"
 		deck.append(card)
+		await main.card_ops.fly_card(card, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	
 	main.update_discard_pile_display(is_opponent)
@@ -4222,37 +4276,20 @@ func gym1_charity_choose_reduction(attacker: card_object, defender: card_object,
 
 # Generic two-option (yes/no) prompt that re-uses the existing trainer_pokemon_selection UI.
 # Returns true if the player confirmed (action_button), false if cancelled (cancel_button).
+## AUDIT 2026-11-17 (user): yes / no questions are two option rows in the action panel (main.pick_yes_no), not the
+## enlarged card + footer buttons. Space / Enter / pad A answer the focused row (Yes first); B / Backspace / Escape
+## answer No. `anchor_card` names the card in the question when the header doesn't.
 func gym1_prompt_yes_no(anchor_card: card_object, header_text: String, hint_text: String, yes_text: String, no_text: String) -> bool:
-	main.trainer_pokemon_selection_active = true
-	# Lets Space/Enter answer YES and Escape answer NO while this is on screen.
-	# Cleared the moment the await below resumes, which covers both answers (the
-	# cancel path emits the same signal) — the flag must not outlive the question
-	# or it would keep those keys bound for the rest of the match.
-	main.yes_no_prompt_active = true
-	# FIX 2026-11-16: perform_attack() raises the full-screen opponent_blocker the moment an attack is chosen, so a
-	# "you may" question asked mid-attack (Dark Bind's discard) showed but its buttons couldn't be clicked.
-	# Same remember/hide/restore as card_ops.prompt_select_card.
-	var restore_opponent_blocker: bool = main.opponent_blocker.visible
-	main.opponent_blocker.visible = false
-	main.show_enlarged_array_selection_mode([anchor_card])
-	main.header_label.text = header_text
-	main.hint_label.text = hint_text
-	main.action_button.text = yes_text
-	main.action_button.disabled = false
-	main.action_button.theme = main.theme_green
-	main.cancel_button.visible = true
-	main.cancel_button.text = no_text
-	main.cancel_button.theme = main.theme_negative   # ISSUE #292: the "No" of a yes/no prompt
-	main.selected_card_for_action = anchor_card  # pre-arm action_button so YES is clickable without selecting
-	await main.trainer_target_selected
-	main.yes_no_prompt_active = false
-	var pressed_yes = (main.selected_card_for_action == anchor_card)
-	main.trainer_pokemon_selection_active = false
-	main.hide_selection_mode_display_main()
-	main.cancel_button.text = "Cancel"
-	main.cancel_button.theme = main.theme_negative   # ISSUE #292
-	main.opponent_blocker.visible = restore_opponent_blocker
-	return pressed_yes
+	if main._should_bail():
+		return false
+	var caption: String = header_text.strip_edges()
+	var hint: String = hint_text.strip_edges()
+	if anchor_card != null and caption == "":
+		caption = anchor_card.metadata.get("name", "").to_upper()
+	if hint != "" and hint.to_upper() != caption.to_upper():
+		caption = (caption + "\n" + hint) if caption != "" else hint
+	return await main.pick_yes_no(caption, yes_text if yes_text.strip_edges() != "" else "Yes",
+		no_text if no_text.strip_edges() != "" else "No")
 
 # Called from inbetween_turn_checks at end of the side's own turn. Handles Charity return-to-hand, Sabrina's ESP discard,
 # Recall expiry, Misty boost expiry, and Tickling Machine restoration for the side whose turn just ended.
@@ -4442,9 +4479,11 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 					mb_card = ac
 					break
 			if mb_card != null:
+				var _fr1: Dictionary = main.card_ops.capture_rect(mb_card, "attached", side_is_opponent)   # AUDIT 2026-11-17: flight
 				pokemon.attached_cards.erase(mb_card)
 				mb_card.current_location = "discard"
 				discard.append(mb_card)
+				await main.card_ops.fly_card(mb_card, "attached", "discard", side_is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 				var attached_node5 = main.opponent_attached_cards_container if side_is_opponent else main.player_attached_cards_container
 				var discard_node5 = main.opponent_discard_icon if side_is_opponent else main.player_discard_icon
 				var tex5 = main.get_card_texture(mb_card)
@@ -4465,9 +4504,11 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				mg_card = ac
 				break
 		if mg_card != null:
+			var _fr2: Dictionary = main.card_ops.capture_rect(mg_card, "attached", side_is_opponent)   # AUDIT 2026-11-17: flight
 			pokemon.attached_cards.erase(mg_card)
 			mg_card.current_location = "discard"
 			discard.append(mg_card)
+			await main.card_ops.fly_card(mg_card, "attached", "discard", side_is_opponent, -1, _fr2)   # AUDIT 2026-11-17: flight
 			display_attached_trainer_cards(side_is_opponent)
 			main.update_discard_pile_display(side_is_opponent)
 
@@ -4498,9 +4539,11 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 				ex4_temp_energy.append(e)
 		if not ex4_temp_energy.is_empty():
 			for e in ex4_temp_energy:
+				var _fr3: Dictionary = main.card_ops.capture_rect(e, "attached", side_is_opponent)   # AUDIT 2026-11-17: flight
 				pokemon.attached_energies.erase(e)
 				e.current_location = "discard"
 				discard.append(e)
+				await main.card_ops.fly_card(e, "attached", "discard", side_is_opponent, -1, _fr3)   # AUDIT 2026-11-17: flight
 			main.display_active_pokemon_energies(side_is_opponent)
 			main.update_discard_pile_display(side_is_opponent)
 			await main.show_message(str(ex4_temp_energy.size()) + " TEAM ENERGY WAS DISCARDED AT END OF TURN!")
@@ -4635,6 +4678,7 @@ func gym1_restore_tickled_hand(target_is_opponent: bool) -> void:
 		else:
 			main.player_hand_tickled = false
 		return
+	var back: Array = aside.duplicate()
 	for card in aside:
 		card.current_location = "hand"
 		hand.append(card)
@@ -4644,6 +4688,8 @@ func gym1_restore_tickled_hand(target_is_opponent: bool) -> void:
 	else:
 		main.player_hand_tickled = false
 	main.refresh_hand_display(target_is_opponent)
+	for card in back:   # AUDIT 2026-11-17: flight (queued: this runs from the sync end-of-turn path)
+		main.card_ops.fly_card(card, "aside", "hand", target_is_opponent)
 	print("TICKLING MACHINE: restored ", "opponent" if target_is_opponent else "player", "'s set-aside cards")
 
 # ============================ Heal helper ============================
@@ -4696,45 +4742,15 @@ func gym1_effect_erika(is_opponent: bool) -> void:
 # index. Same button-row mechanism as Flame Pillar's yes/no (attack_buttons_container +
 # special_attack_selected), so it works during attacks and Trainer resolution alike. Used for "up to N"
 # counts (Third Eye, Erika, Charity), Rock-Paper-Scissors (Misty's Duel), quiz answers (Blaine's Quiz).
-func prompt_option_buttons(message: String, labels: Array) -> int:
+## AUDIT 2026-11-17: the option rows in the action panel (main.pick_option) - the old bottom-right button list is
+## gone. Forced: no back key or stray click closes it. `back_index` >= 0 makes one answer the back-key answer.
+func prompt_option_buttons(message: String, labels: Array, back_index: int = -1) -> int:
 	if labels.is_empty():
 		return -1
-	main.special_attack_selection_active = true
-	main.buttons_only_blocker.visible = true
-	# FIX 2026-11-16: mid-attack the full-screen opponent_blocker is up (perform_attack), covering these buttons -
-	# the same trap ISSUE #3 fixed for Metronome's list. Hidden while the choice is open, restored after.
-	var restore_opponent_blocker: bool = main.opponent_blocker.visible
-	main.opponent_blocker.visible = false
-	main.attack_buttons_container.visible = true
-	main.main_buttons_container.visible = false
-	for child in main.attack_buttons_container.get_children():
-		if child.name == "cancel_attack_mode_button":
-			child.visible = false
-			continue
-		child.queue_free()
-	for i in range(labels.size()):
-		var btn = Button.new()
-		btn.text = str(labels[i])
-		btn.custom_minimum_size = Vector2(350, 50)
-		btn.theme = main.theme_green
-		main.attack_buttons_container.add_child(btn)
-		var idx = i
-		btn.pressed.connect(func(): main.special_attack_selected.emit(idx))
-	await main.show_message(message)
-	var selected_index = -1
-	if not main._should_bail():
-		selected_index = await main.special_attack_selected
-	for child in main.attack_buttons_container.get_children():
-		if child.name == "cancel_attack_mode_button":
-			child.visible = true
-			continue
-		child.queue_free()
-	main.attack_buttons_container.visible = false
-	main.main_buttons_container.visible = true
-	main.special_attack_selection_active = false
-	main.buttons_only_blocker.visible = false
-	main.opponent_blocker.visible = restore_opponent_blocker
-	return selected_index
+	if main._should_bail():
+		return -1
+	var strs: Array = labels.map(func(l): return str(l))
+	return await main.pick_option(message, strs, back_index)
 
 # OLD ISSUE 308: "draw up to N" for either side. Player picks 0..max_n from buttons; the CPU draws as many as
 # it safely can — never so many that its deck is left empty (a deck-out loss), and never past 7 in hand.
@@ -4805,6 +4821,8 @@ func gym1_effect_lt_surge(is_opponent: bool) -> void:
 		return
 
 	# Move the chosen basic from hand → active, push old active to bench
+	var ls_hand_r: Dictionary = main.card_ops.capture_rect(chosen, "hand", is_opponent)   # AUDIT 2026-11-17: flight
+	var ls_act_r: Dictionary = main.card_ops.capture_rect(active, "play", is_opponent)   # AUDIT 2026-11-17: flight
 	hand.erase(chosen)
 	chosen.current_hp = chosen.get_max_hp()
 	chosen.current_location = "active"
@@ -4821,6 +4839,8 @@ func gym1_effect_lt_surge(is_opponent: bool) -> void:
 	main.refresh_hand_display(is_opponent)
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
+	await main.card_ops.fly_card(active, "play", "play", is_opponent, -1, ls_act_r)   # AUDIT 2026-11-17: flight
+	await main.card_ops.fly_card(chosen, "hand", "play", is_opponent, -1, ls_hand_r)   # AUDIT 2026-11-17: flight
 	await main.show_message("LT. SURGE: " + chosen.metadata.get("name", "").to_upper() + " IS NOW ACTIVE!")
 	if main._should_bail(): return
 
@@ -4833,18 +4853,22 @@ func gym1_effect_misty(played_card: card_object, is_opponent: bool) -> void:
 	if is_opponent:
 		var to_discard = cpu_get_discard_priority(hand, 2, played_card)
 		for card in to_discard:
+			var _fr1: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(card)
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(true)
 		main.update_discard_pile_display(true)
 	else:
 		await player_select_cards_to_discard(hand, 2, "MISTY", "Discard 2 cards")
 		if main._should_bail(): return
 		for card in main.trainer_discard_selected:
+			var _fr2: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(card)
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, _fr2)   # AUDIT 2026-11-17: flight
 		main.trainer_discard_selected.clear()
 		main.refresh_hand_display(false)
 		main.update_discard_pile_display(false)
@@ -4881,9 +4905,11 @@ func gym1_effect_rockets_trap(is_opponent: bool) -> void:
 	for i in range(n):
 		picks.append(pool[i])
 	for c in picks:
+		var _fr1: Dictionary = main.card_ops.capture_rect(c, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 		opp_hand.erase(c)
 		c.current_location = "deck"
 		opp_deck.append(c)
+		await main.card_ops.fly_card(c, "hand", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 	opp_deck.shuffle()
 	main.refresh_hand_display(not is_opponent)
 	main.update_deck_icon(not is_opponent)
@@ -5003,18 +5029,22 @@ func gym1_effect_erikas_maids(played_card: card_object, is_opponent: bool) -> vo
 	if is_opponent:
 		var to_discard = cpu_get_discard_priority(hand, 2, played_card)
 		for card in to_discard:
+			var _fr1: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(card)
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(true)
 		main.update_discard_pile_display(true)
 	else:
 		await player_select_cards_to_discard(hand, 2, "ERIKA'S MAIDS", "Discard 2 cards")
 		if main._should_bail(): return
 		for card in main.trainer_discard_selected:
+			var _fr2: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(card)
 			card.current_location = "discard"
 			discard.append(card)
+			await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, _fr2)   # AUDIT 2026-11-17: flight
 		main.trainer_discard_selected.clear()
 		main.refresh_hand_display(false)
 		main.update_discard_pile_display(false)
@@ -5054,6 +5084,7 @@ func gym1_search_deck_by_name_substring(is_opponent: bool, substr: String, heade
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+		await main.card_ops.fly_card(c, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	await main.card_ops.reveal_searched_cards(picks, is_opponent)   # ISSUE #314: show it if the text says so
 	if main._should_bail(): return
 	deck.shuffle()
@@ -5088,11 +5119,13 @@ func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 			if main._should_bail(): return
 			return
 		for c in picks:
+			var _fr1: Dictionary = main.card_ops.capture_rect(c, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 			opp_hand.erase(c)
 			c.current_hp = c.get_max_hp()
 			c.current_location = "bench"
 			c.placed_on_field_this_turn = true
 			opp_bench.append(c)
+			await main.card_ops.fly_card(c, "hand", "play", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(false)
 		main.display_pokemon(false)
 		await main.show_message("ERIKA'S PERFUME — OPPONENT PUT " + str(picks.size()) + " OF YOUR BASIC(S) ON YOUR BENCH!")
@@ -5120,11 +5153,13 @@ func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 
 	# Move the picks from opp's hand to opp's bench
 	for c in to_bench:
+		var _fr2: Dictionary = main.card_ops.capture_rect(c, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 		opp_hand.erase(c)
 		c.current_hp = c.get_max_hp()
 		c.current_location = "bench"
 		c.placed_on_field_this_turn = true
 		opp_bench.append(c)
+		await main.card_ops.fly_card(c, "hand", "play", not (is_opponent), -1, _fr2)   # AUDIT 2026-11-17: flight
 
 	main.refresh_hand_display(opp_is_player)
 	main.display_pokemon(opp_is_player)
@@ -5171,6 +5206,7 @@ func gym1_effect_good_manners(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 	deck.shuffle()
@@ -5288,20 +5324,25 @@ func gym1_effect_minion_of_team_rocket(is_opponent: bool) -> void:
 	for e in target.attached_energies:
 		e.current_location = "hand"
 		opp_hand.append(e)
+		await main.card_ops.fly_card(e, "attached", "hand", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 	target.attached_energies.clear()
 	for pre in target.attached_pre_evolutions:
 		pre.current_location = "hand"
 		opp_hand.append(pre)
+		await main.card_ops.fly_card(pre, "attached", "hand", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 	target.attached_pre_evolutions.clear()
 	for ac in target.attached_cards:
 		ac.current_location = "hand"
 		opp_hand.append(ac)
+		await main.card_ops.fly_card(ac, "attached", "hand", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 	target.attached_cards.clear()
 	main.clear_all_statuses(target, not is_opponent)
+	var _fr1: Dictionary = main.card_ops.capture_rect(target, "play", not (is_opponent))   # AUDIT 2026-11-17: flight
 	opp_bench.erase(target)
 	target.current_location = "hand"
 	target.current_hp = target.get_max_hp()
 	opp_hand.append(target)
+	await main.card_ops.fly_card(target, "play", "hand", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 
 	main.refresh_hand_display(not is_opponent)
 	main.display_pokemon(not is_opponent)
@@ -5345,11 +5386,13 @@ func gym1_effect_mistys_wrath(is_opponent: bool) -> void:
 	for c in picks:
 		c.current_location = "hand"
 		hand.append(c)
+		await main.card_ops.fly_card(c, "deck", "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	for c in top_n:
 		if c in picks:
 			continue
 		c.current_location = "discard"
 		discard.append(c)
+		await main.card_ops.fly_card(c, "deck", "discard", is_opponent)   # AUDIT 2026-11-17: flight
 
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -5410,11 +5453,14 @@ func gym1_effect_secret_mission(is_opponent: bool) -> void:
 		if main._should_bail(): return
 
 	# Apply discards and draw same number
+	var sm_jobs: Array = main.card_ops.lift_cards(discards, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	for c in discards:
 		hand.erase(c)
 		c.current_location = "discard"
 		discard.append(c)
 	main.refresh_hand_display(is_opponent)
+	await main.card_ops.fly_lifted(sm_jobs, "discard", is_opponent)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.update_discard_pile_display(is_opponent)
 	await main.card_ops.draw_n(is_opponent, discards.size())
 	if main._should_bail(): return
@@ -5445,6 +5491,7 @@ func gym1_effect_tickling_machine(is_opponent: bool) -> void:
 	# Move opp_hand into set_aside zone
 	var target_is_opp = not is_opponent
 	var aside = main.opponent_tickled_set_aside if target_is_opp else main.player_tickled_set_aside
+	var tk_jobs: Array = main.card_ops.lift_cards(opp_hand, "hand", target_is_opp)   # AUDIT 2026-11-17: flight
 	for c in opp_hand.duplicate():
 		c.current_location = "set_aside"
 		aside.append(c)
@@ -5454,6 +5501,8 @@ func gym1_effect_tickling_machine(is_opponent: bool) -> void:
 	else:
 		main.player_hand_tickled = true
 	main.refresh_hand_display(target_is_opp)
+	await main.card_ops.fly_lifted(tk_jobs, "aside", target_is_opp)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	await main.show_message("HEADS! OPPONENT'S HAND IS SET ASIDE UNTIL END OF THEIR NEXT TURN!")
 	if main._should_bail(): return
 
@@ -5478,9 +5527,11 @@ func gym1_effect_blaines_gamble(played_card: card_object, is_opponent: bool) -> 
 		if main._should_bail(): return
 
 	for c in discards:
+		var _fr1: Dictionary = main.card_ops.capture_rect(c, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 		hand.erase(c)
 		c.current_location = "discard"
 		discard.append(c)
+		await main.card_ops.fly_card(c, "hand", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 
@@ -5524,9 +5575,11 @@ func gym1_effect_energy_flow(is_opponent: bool) -> void:
 		if to_return.size() == 0:
 			continue
 		for e in to_return:
+			var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 			pokemon.attached_energies.erase(e)
 			e.current_location = "hand"
 			hand.append(e)
+			await main.card_ops.fly_card(e, "attached", "hand", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		any_returned = true
 
 	main.refresh_hand_display(is_opponent)
@@ -5561,12 +5614,15 @@ func gym1_effect_mistys_duel(is_opponent: bool) -> void:
 		break
 	var hand = main.opponent_hand if winner_is_opp else main.player_hand
 	var deck = main.opponent_deck if winner_is_opp else main.player_deck
+	var _hj: Array = main.card_ops.lift_cards(hand, "hand", winner_is_opp)   # AUDIT 2026-11-17: hand flies into the deck
 	for c in hand.duplicate():
 		c.current_location = "deck"
 		deck.append(c)
 	hand.clear()
 	deck.shuffle()
 	main.refresh_hand_display(winner_is_opp)
+	await main.card_ops.fly_lifted(_hj, "deck", winner_is_opp)   # AUDIT 2026-11-17: hand flies into the deck
+	if main._should_bail(): return
 	await main.card_ops.draw_n(winner_is_opp, 5)
 	if main._should_bail(): return
 	var who = "THE OPPONENT" if winner_is_opp else "YOU"
@@ -5579,12 +5635,15 @@ func gym1_effect_sabrinas_gaze(_is_opponent: bool) -> void:
 		var hand = main.opponent_hand if side_is_opp else main.player_hand
 		var deck = main.opponent_deck if side_is_opp else main.player_deck
 		var prev_count = hand.size()
+		var _hj: Array = main.card_ops.lift_cards(hand, "hand", side_is_opp)   # AUDIT 2026-11-17: hand flies into the deck
 		for c in hand.duplicate():
 			c.current_location = "deck"
 			deck.append(c)
 		hand.clear()
 		deck.shuffle()
 		main.refresh_hand_display(side_is_opp)
+		await main.card_ops.fly_lifted(_hj, "deck", side_is_opp)   # AUDIT 2026-11-17: hand flies into the deck
+		if main._should_bail(): return
 		await main.card_ops.draw_n(side_is_opp, prev_count)
 		if main._should_bail(): return
 	await main.show_message("SABRINA'S GAZE — BOTH PLAYERS REDREW THEIR HANDS!")
@@ -5602,6 +5661,7 @@ func gym1_effect_trash_exchange(is_opponent: bool) -> void:
 	for c in discard.duplicate():
 		c.current_location = "deck"
 		deck.append(c)
+		await main.card_ops.fly_card(c, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	discard.clear()
 	deck.shuffle()
 	main.update_discard_pile_display(is_opponent)
@@ -5680,6 +5740,8 @@ func remove_current_stadium(reason: String = "") -> void:
 		return
 	var stadium = main.current_stadium_card
 	var owner_discard = main.opponent_discard_pile if main.current_stadium_owner_is_opponent else main.player_discard_pile
+	# AUDIT 2026-11-17: the outgoing Stadium flies from its slot to its owner's discard pile.
+	main.card_ops.fly_card(stadium, "stadium", "discard", main.current_stadium_owner_is_opponent)
 	stadium.current_location = "discard"
 	owner_discard.append(stadium)
 	main.current_stadium_card = null
@@ -5739,6 +5801,7 @@ func gym1_narrow_gym_force_return_to_hand(side_is_opponent: bool) -> void:
 		return
 
 	# Return chosen + all its attached cards/energies to the hand
+	main.card_ops.fly_pokemon_leaving(chosen, "hand", side_is_opponent)   # AUDIT 2026-11-17: flight
 	var to_return: Array = [chosen]
 	to_return.append_array(chosen.attached_energies)
 	to_return.append_array(chosen.attached_cards)
@@ -5984,22 +6047,16 @@ func gym2_koga_ninja_trick_offer_switch(defender: card_object, defender_is_opp: 
 			to_discard_tool = ac
 			break
 	if to_discard_tool != null:
+		var _fr1: Dictionary = main.card_ops.capture_rect(to_discard_tool, "attached", defender_is_opp)   # AUDIT 2026-11-17: flight
 		defender.attached_cards.erase(to_discard_tool)
 		to_discard_tool.current_location = "discard"
 		discard.append(to_discard_tool)
+		await main.card_ops.fly_card(to_discard_tool, "attached", "discard", defender_is_opp, -1, _fr1)   # AUDIT 2026-11-17: flight
 		defender.gym2_koga_ninja_trick_attached = false
 	# Move chosen to active slot (a Pokémon going to the Bench loses its Special Conditions)
-	bench.erase(chosen)
-	chosen.current_location = "active"
-	defender.current_location = "bench"
-	bench.append(defender)
-	main.clear_all_statuses(defender, defender_is_opp)
-	if defender_is_opp:
-		main.opponent_active_pokemon = chosen
-	else:
-		main.player_active_pokemon = chosen
-	main.display_pokemon(defender_is_opp)
-	main.display_active_pokemon_energies(defender_is_opp)
+	# AUDIT 2026-11-17: the shared switch animation (swap, clear conditions, redraw).
+	await main.animate_retreat(defender, chosen, [], defender_is_opp, true)
+	if main._should_bail(): return false
 	main.update_discard_pile_display(defender_is_opp)
 	display_attached_trainer_cards(defender_is_opp)
 	await main.show_message("KOGA'S NINJA TRICK — SWITCHED IN " + chosen.metadata.get("name", "").to_upper() + "!")
@@ -6039,9 +6096,12 @@ func gym2_effect_blaine(is_opponent: bool) -> void:
 		return
 	# Move the 2 Fire Energies onto the target
 	for fire in fires:
+		var _atr_6098: Dictionary = main.card_ops.capture_rect_any(fire)   # AUDIT 2026-11-17: flight
 		hand.erase(fire)
 		fire.current_location = "active" if target == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon) else "bench"
 		target.attached_energies.append(fire)
+		await main.card_ops.fly_attach(fire, "hand", _atr_6098)   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 	# Consume the energy-played-this-turn slot and mark Blaine as used
 	# MATCH EFFECT: extra_energy_per_turn — flag only set once the per-turn limit is reached
@@ -6219,6 +6279,7 @@ func gym2_effect_giovannis_last_resort(is_opponent: bool) -> void:
 	for c in hand.duplicate():
 		c.current_location = "discard"
 		discard.append(c)
+		await main.card_ops.fly_card(c, "hand", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	hand.clear()
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -6306,11 +6367,14 @@ func gym2_effect_mistys_wish(is_opponent: bool) -> void:
 	if swap_card == null:
 		await main.show_message("MISTY'S WISH — NO SWAP.")
 		return
+	var mw_r: Dictionary = main.card_ops.capture_rect(swap_card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	hand.erase(swap_card)
 	chosen_prize.current_location = "hand"
 	hand.append(chosen_prize)
 	swap_card.current_location = "prize"
 	prizes[prize_idx] = swap_card
+	await main.card_ops.fly_card(swap_card, "hand", "prize", is_opponent, -1, mw_r)   # AUDIT 2026-11-17: flight
+	await main.card_ops.fly_card(chosen_prize, "prize", "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	main.display_prize_cards(is_opponent)
 	await main.show_message("MISTY'S WISH — A PRIZE CARD WAS SWAPPED WITH A CARD FROM HAND!")
@@ -6472,6 +6536,7 @@ func gym2_effect_master_ball(is_opponent: bool) -> void:
 		top.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	# Shuffle the rest back
 	for c in top:
 		c.current_location = "deck"
@@ -6513,9 +6578,11 @@ func gym2_effect_max_revive(played_card: card_object, is_opponent: bool) -> void
 	if to_discard.size() < 2:
 		return
 	for e in to_discard:
+		var _fr1: Dictionary = main.card_ops.capture_rect(e, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 		hand.erase(e)
 		e.current_location = "discard"
 		discard.append(e)
+		await main.card_ops.fly_card(e, "hand", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 
@@ -6543,6 +6610,7 @@ func gym2_effect_max_revive(played_card: card_object, is_opponent: bool) -> void
 	revive_pick.current_location = "bench"
 	revive_pick.placed_on_field_this_turn = true
 	bench.append(revive_pick)
+	await main.card_ops.fly_card(revive_pick, "discard", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.update_discard_pile_display(is_opponent)
 	main.display_pokemon(is_opponent)
 	await main.show_message("MAX REVIVE — " + revive_pick.metadata.get("name", "").to_upper() + " BENCHED!")
@@ -6559,17 +6627,21 @@ func gym2_effect_mistys_tears(played_card: card_object, is_opponent: bool) -> vo
 	if is_opponent:
 		var to_disc = cpu_get_discard_priority(hand, 1, played_card)
 		for c in to_disc:
+			var _fr1: Dictionary = main.card_ops.capture_rect(c, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(c)
 			c.current_location = "discard"
 			discard.append(c)
+			await main.card_ops.fly_card(c, "hand", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(true)
 	else:
 		await player_select_cards_to_discard(hand, 1, "MISTY'S TEARS", "Discard 1 card")
 		if main._should_bail(): return
 		for c in main.trainer_discard_selected:
+			var _fr2: Dictionary = main.card_ops.capture_rect(c, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(c)
 			c.current_location = "discard"
 			discard.append(c)
+			await main.card_ops.fly_card(c, "hand", "discard", is_opponent, -1, _fr2)   # AUDIT 2026-11-17: flight
 		main.trainer_discard_selected.clear()
 		main.refresh_hand_display(false)
 		main.update_discard_pile_display(false)
@@ -6594,6 +6666,7 @@ func gym2_effect_mistys_tears(played_card: card_object, is_opponent: bool) -> vo
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+		await main.card_ops.fly_card(c, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	await main.card_ops.reveal_searched_cards(picks, is_opponent)   # ISSUE #314: show it if the text says so
 	if main._should_bail(): return
 	deck.shuffle()
@@ -6623,6 +6696,7 @@ func gym2_effect_rockets_secret_experiment(is_opponent: bool) -> void:
 			deck.erase(chosen)
 			chosen.current_location = "hand"
 			hand.append(chosen)
+			await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 			if main._should_bail(): return
 		deck.shuffle()
@@ -6705,10 +6779,12 @@ func gym2_effect_fervor(is_opponent: bool) -> void:
 		if c.metadata.get("supertype", "") == "Energy" and c.metadata.get("name", "") == "Fire Energy":
 			c.current_location = "hand"
 			hand.append(c)
+			await main.card_ops.fly_card(c, "deck", "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			taken += 1
 		else:
 			c.current_location = "discard"
 			discard.append(c)
+			await main.card_ops.fly_card(c, "deck", "discard", is_opponent)   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -6870,6 +6946,7 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 		return
 
 	# Gather all the cards that go back to the deck with this pokemon
+	main.card_ops.fly_pokemon_leaving(chosen, "deck", is_opponent)   # AUDIT 2026-11-17: flight
 	var to_shuffle: Array = [chosen]
 	to_shuffle.append_array(chosen.attached_energies)
 	to_shuffle.append_array(chosen.attached_cards)
@@ -6893,12 +6970,14 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 			var cpu_eval = main.cpu_ai.get_cpu_evaluation()
 			var best_promote = main.cpu_ai.pick_best_bench_replacement(bench, main.player_active_pokemon, cpu_eval)
 			if best_promote != null: promoted = best_promote
+		var fg_r: Dictionary = main.card_ops.capture_rect(promoted, "play", is_opponent)   # AUDIT 2026-11-17: flight
 		bench.erase(promoted)
 		promoted.current_location = "active"
 		if is_opponent:
 			main.opponent_active_pokemon = promoted
 		else:
 			main.player_active_pokemon = promoted
+		main.card_ops.fly_card(promoted, "play", "play", is_opponent, -1, fg_r)   # AUDIT 2026-11-17: flight
 	else:
 		bench.erase(chosen)
 
@@ -7013,9 +7092,11 @@ func gym2_saffron_activate(is_opponent: bool) -> void:
 			return
 
 	# Move energy from attached_energies back to hand
+	var _fr1: Dictionary = main.card_ops.capture_rect(energy_to_return, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 	target.attached_energies.erase(energy_to_return)
 	energy_to_return.current_location = "hand"
 	hand.append(energy_to_return)
+	await main.card_ops.fly_card(energy_to_return, "attached", "hand", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	main.display_active_pokemon_energies(is_opponent)
 	main.refresh_hand_display(is_opponent)
 	await main.show_message("SAFFRON CITY GYM: RETURNED 1 ENERGY FROM " + target.metadata.get("name", "").to_upper() + "!")
@@ -7113,6 +7194,7 @@ func neo1_attach_tool(card: card_object, is_opponent: bool, eligibility_filter: 
 		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
 		discard.append(card)
+		await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 		return
 	var target: card_object = null
 	if is_opponent:
@@ -7134,6 +7216,7 @@ func neo1_attach_tool(card: card_object, is_opponent: bool, eligibility_filter: 
 		var discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
 		discard2.append(card)
+		await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 		return
 	target.attached_cards.append(card)
 	# ISSUE #237: this is the generic tool attach - Focus Band, Berry, Gold Berry,
@@ -7195,6 +7278,7 @@ func effect_neo1_arcade_game(is_opponent: bool) -> void:
 			deck.erase(c)
 			c.current_location = "hand"
 			hand.append(c)
+			await main.card_ops.fly_card(c, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards(taken, is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		for c in shuffle_back:
@@ -7236,6 +7320,7 @@ func effect_neo1_energy_charge(is_opponent: bool) -> void:
 			discard.erase(e)
 			e.current_location = "deck"
 			deck.append(e)
+			await main.card_ops.fly_card(e, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			moved += 1
 	else:
 		# OLD ISSUE 366: "shuffle UP TO 2 Energy cards" — the player was forced to take exactly 2.
@@ -7245,6 +7330,7 @@ func effect_neo1_energy_charge(is_opponent: bool) -> void:
 			discard.erase(pick)
 			pick.current_location = "deck"
 			deck.append(pick)
+			await main.card_ops.fly_card(pick, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			moved += 1
 	deck.shuffle()
 	main.update_discard_pile_display(is_opponent)
@@ -7262,24 +7348,30 @@ func effect_neo1_mary(is_opponent: bool) -> void:
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	if hand.size() <= 2:
 		for c in hand.duplicate():
+			var _fr1: Dictionary = main.card_ops.capture_rect(c, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			hand.erase(c)
 			c.current_location = "deck"
 			deck.append(c)
+			await main.card_ops.fly_card(c, "hand", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	else:
 		var to_return = 2
 		if is_opponent:
 			for i in range(to_return):
 				var pick = hand[hand.size() - 1]
+				var _fr2: Dictionary = main.card_ops.capture_rect(pick, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 				hand.erase(pick)
 				pick.current_location = "deck"
 				deck.append(pick)
+				await main.card_ops.fly_card(pick, "hand", "deck", is_opponent, -1, _fr2)   # AUDIT 2026-11-17: flight
 		else:
 			var picks: Array = await main.card_ops.prompt_select_cards(hand.duplicate(), to_return, to_return, "MARY", "Choose 2 cards to shuffle back into your deck", "SHUFFLE IN")
 			if main._should_bail(): return
 			for pick in picks:
+				var _fr3: Dictionary = main.card_ops.capture_rect(pick, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 				hand.erase(pick)
 				pick.current_location = "deck"
 				deck.append(pick)
+				await main.card_ops.fly_card(pick, "hand", "deck", is_opponent, -1, _fr3)   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -7323,6 +7415,7 @@ func effect_neo1_pokegear(is_opponent: bool) -> void:
 		deck.erase(pick)
 		pick.current_location = "hand"
 		hand.append(pick)
+		await main.card_ops.fly_card(pick, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([pick], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		await main.show_message("POKEGEAR: TOOK " + pick.metadata.get("name","").to_upper() + "!")
@@ -7370,6 +7463,7 @@ func effect_neo1_super_energy_retrieval(card: card_object, is_opponent: bool) ->
 			discard.erase(e)
 			e.current_location = "hand"
 			hand.append(e)
+			await main.card_ops.fly_card(e, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	else:
 		# "up to 4" on one screen
 		# OLD ISSUE 371: "for 4 basic Energy cards (all if fewer)" is not "up to" — the player picks exactly that many.
@@ -7379,6 +7473,7 @@ func effect_neo1_super_energy_retrieval(card: card_object, is_opponent: bool) ->
 			discard.erase(pick)
 			pick.current_location = "hand"
 			hand.append(pick)
+			await main.card_ops.fly_card(pick, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message("SUPER ENERGY RETRIEVAL: TOOK UP TO 4 BASIC ENERGY FROM DISCARD!")
@@ -7427,6 +7522,7 @@ func effect_neo1_time_capsule(is_opponent: bool) -> void:
 			discard.erase(c)
 			c.current_location = "deck"
 			deck.append(c)
+			await main.card_ops.fly_card(c, "discard", "deck", side, -1, {})   # AUDIT 2026-11-17: flight
 		deck.shuffle()
 		main.update_discard_pile_display(side)
 		main.update_deck_icon(side)
@@ -7524,6 +7620,7 @@ func effect_neo1_new_pokedex(is_opponent: bool) -> void:
 func effect_neo1_professor_elm(card: card_object, is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var _hj: Array = main.card_ops.lift_cards(hand, "hand", is_opponent)   # AUDIT 2026-11-17: hand flies into the deck
 	for c in hand.duplicate():
 		if c == card: continue  # already discarded
 		c.current_location = "deck"
@@ -7531,6 +7628,8 @@ func effect_neo1_professor_elm(card: card_object, is_opponent: bool) -> void:
 	hand.clear()
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
+	await main.card_ops.fly_lifted(_hj, "deck", is_opponent)   # AUDIT 2026-11-17: hand flies into the deck
+	if main._should_bail(): return
 	main.update_deck_icon(is_opponent)
 	await main.show_message("PROFESSOR ELM: SHUFFLED HAND INTO DECK!")
 	if main._should_bail(): return
@@ -7605,7 +7704,11 @@ func effect_neo1_double_gust(is_opponent: bool) -> void:
 			if main._should_bail(): return
 		if gust_target != null:
 			var old_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
-			if is_opponent:
+			if old_active != null:
+				# AUDIT 2026-11-17: the shared switch animation (swap, clear conditions, redraw).
+				await main.animate_retreat(old_active, gust_target, [], not is_opponent, true)
+				if main._should_bail(): return
+			elif is_opponent:
 				main.player_bench.erase(gust_target)
 				if old_active != null: main.player_bench.append(old_active)
 				main.player_active_pokemon = gust_target
@@ -7633,7 +7736,11 @@ func effect_neo1_double_gust(is_opponent: bool) -> void:
 			gust_target2 = own_bench_for_gust[0]
 		if gust_target2 != null:
 			var old_active2 = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-			if is_opponent:
+			if old_active2 != null:
+				# AUDIT 2026-11-17: the shared switch animation (swap, clear conditions, redraw).
+				await main.animate_retreat(old_active2, gust_target2, [], is_opponent, true)
+				if main._should_bail(): return
+			elif is_opponent:
 				main.opponent_bench.erase(gust_target2)
 				if old_active2 != null: main.opponent_bench.append(old_active2)
 				main.opponent_active_pokemon = gust_target2
@@ -7715,6 +7822,7 @@ func effect_neo1_pokemon_march(is_opponent: bool) -> void:
 			pick.current_location = "bench"
 			pick.placed_on_field_this_turn = true
 			bench.append(pick)
+			await main.card_ops.fly_card(pick, "deck", "play", side, -1, {})   # AUDIT 2026-11-17: flight
 			deck.shuffle()
 			main.display_pokemon(side)
 			main.update_deck_icon(side)
@@ -7746,6 +7854,7 @@ func effect_neo1_super_rod(is_opponent: bool) -> void:
 			discard.erase(pick)
 			pick.current_location = "hand"
 			hand.append(pick)
+			await main.card_ops.fly_card(pick, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			main.refresh_hand_display(is_opponent)
 			main.update_discard_pile_display(is_opponent)
 			await main.show_message("SUPER ROD: HEADS! TOOK " + pick.metadata.get("name","").to_upper() + " FROM DISCARD!")
@@ -7768,6 +7877,7 @@ func effect_neo1_super_rod(is_opponent: bool) -> void:
 			discard.erase(pick)
 			pick.current_location = "hand"
 			hand.append(pick)
+			await main.card_ops.fly_card(pick, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			main.refresh_hand_display(is_opponent)
 			main.update_discard_pile_display(is_opponent)
 			await main.show_message("SUPER ROD: TAILS! TOOK " + pick.metadata.get("name","").to_upper() + " FROM DISCARD!")
@@ -7839,6 +7949,7 @@ func effect_neo2_fossil_egg(is_opponent: bool) -> void:
 	chosen.current_location = "bench"
 	chosen.current_hp = chosen.get_max_hp()
 	bench.append(chosen)
+	await main.card_ops.fly_card(chosen, "hand", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.display_pokemon(is_opponent)
 	main.refresh_hand_display(is_opponent)
 	await main.show_message("FOSSIL EGG! " + chosen.metadata.get("name","").to_upper() + " PLACED ON BENCH AS BASIC!")
@@ -7954,6 +8065,7 @@ func neo3_attach_tool(card: card_object, is_opponent: bool) -> void:
 		var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
 		discard.append(card)
+		await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 		return
 	var target: card_object = null
 	if is_opponent:
@@ -7966,6 +8078,7 @@ func neo3_attach_tool(card: card_object, is_opponent: bool) -> void:
 		var discard2 = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 		card.current_location = "discard"
 		discard2.append(card)
+		await main.card_ops.fly_card(card, "hand", "discard", is_opponent, -1, main.showcase_card_rect())   # AUDIT 2026-11-17: flight
 		return
 	target.attached_cards.append(card)
 	var hand_node = main.opponent_hand_container if is_opponent else main.player_hand_container
@@ -7996,10 +8109,12 @@ func check_balloon_berry_retreat_free(pokemon: card_object) -> bool:
 func consume_balloon_berry(pokemon: card_object, is_opponent: bool) -> void:
 	for ac in pokemon.attached_cards.duplicate():
 		if ac.uid.to_lower() == "neo3-60" or ac.uid.to_lower() == "ex3-82" or ac.uid.to_lower() == "ex8-84":
+			var _fr1: Dictionary = main.card_ops.capture_rect(ac, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 			pokemon.attached_cards.erase(ac)
 			var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 			ac.current_location = "discard"
 			discard.append(ac)
+			main.card_ops.fly_card(ac, "attached", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 			display_attached_trainer_cards(is_opponent)
 			main.update_discard_pile_display(is_opponent)
 			print("BALLOON BERRY: consumed for free retreat")
@@ -8132,6 +8247,7 @@ func effect_neo3_old_rod(card: card_object, is_opponent: bool) -> void:
 		discard.erase(chosen)
 		chosen.current_location = "hand"
 		own_hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		main.update_discard_pile_display(is_opponent)
 		main.refresh_hand_display(is_opponent)
 		await main.show_message("OLD ROD! BOTH HEADS! " + chosen.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
@@ -8156,6 +8272,7 @@ func effect_neo3_old_rod(card: card_object, is_opponent: bool) -> void:
 		discard.erase(chosen_t)
 		chosen_t.current_location = "hand"
 		own_hand.append(chosen_t)
+		await main.card_ops.fly_card(chosen_t, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		main.update_discard_pile_display(is_opponent)
 		main.refresh_hand_display(is_opponent)
 		await main.show_message("OLD ROD! BOTH TAILS! " + chosen_t.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
@@ -8211,6 +8328,7 @@ func effect_neo4_impostor_oaks_invention(is_opponent: bool) -> void:
 		p.current_location = "deck"
 		p.prize_face_up = false
 		opp_deck.append(p)
+		await main.card_ops.fly_card(p, "prize", "deck", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 	opp_prizes.clear()
 	opp_deck.shuffle()
 	for i in range(n):
@@ -8218,6 +8336,7 @@ func effect_neo4_impostor_oaks_invention(is_opponent: bool) -> void:
 		var c = opp_deck.pop_front()
 		c.current_location = "prize"
 		opp_prizes.append(c)
+		await main.card_ops.fly_card(c, "deck", "prize", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
 	main.update_deck_icon(not is_opponent)
 	main.display_prize_cards(not is_opponent)
 	await main.show_message("IMPOSTOR OAK'S INVENTION! OPPONENT'S PRIZES WERE SHUFFLED AND RE-DEALT!")
@@ -8253,9 +8372,11 @@ func effect_neo4_thought_wave_machine(is_opponent: bool) -> void:
 			twm = await main.card_ops.prompt_select_cards(opp_active.attached_energies.duplicate(), heads, heads, "THOUGHT WAVE MACHINE", "Choose " + str(heads) + " Energy to return to your opponent's hand", "RETURN")
 			if main._should_bail(): return
 		for e in twm:
+			var _fr1: Dictionary = main.card_ops.capture_rect(e, "attached", not (is_opponent))   # AUDIT 2026-11-17: flight
 			opp_active.attached_energies.erase(e)
 			e.current_location = "hand"
 			opp_hand.append(e)
+			await main.card_ops.fly_card(e, "attached", "hand", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 			returned += 1
 		main.display_active_pokemon_energies(not is_opponent)
 		main.refresh_hand_display(not is_opponent)
@@ -8287,9 +8408,11 @@ func effect_neo4_energy_amplifier(card: card_object, is_opponent: bool) -> void:
 		to_shuffle = await main.card_ops.prompt_select_card(energy_in_hand, "ENERGY AMPLIFIER", "Choose an Energy to shuffle into your deck", "SELECT", false)
 		if main._should_bail(): return
 		if to_shuffle == null: to_shuffle = energy_in_hand[0]
+	var _fr1: Dictionary = main.card_ops.capture_rect(to_shuffle, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	hand.erase(to_shuffle)
 	to_shuffle.current_location = "deck"
 	deck.append(to_shuffle)
+	await main.card_ops.fly_card(to_shuffle, "hand", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -8366,9 +8489,11 @@ func effect_neo4_evil_deeds(is_opponent: bool) -> void:
 		chosen = await main.card_ops.prompt_select_card(opp_hand.duplicate(), "TEAM ROCKET'S EVIL DEEDS", "Choose a card from opponent's hand to shuffle into their deck", "SELECT", false)
 		if main._should_bail(): return
 		if chosen == null: chosen = opp_hand[0]
+	var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 	opp_hand.erase(chosen)
 	chosen.current_location = "deck"
 	opp_deck.append(chosen)
+	await main.card_ops.fly_card(chosen, "hand", "deck", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
 	opp_deck.shuffle()
 	main.update_deck_icon(not is_opponent)
 	main.refresh_hand_display(not is_opponent)
@@ -8422,12 +8547,25 @@ func effect_neo4_mail_from_bill(is_opponent: bool) -> void:
 # ── NEO4 STADIUM PER-TURN EFFECTS ─────────────────────────────────────────────
 
 # RADIO TOWER (neo4-95): once per turn, look at top 2 of deck and put them back in the same order
-func neo4_radio_tower_active() -> bool:
+func neo4_radio_tower_active(is_opponent: bool = false) -> bool:
 	if main.current_stadium_card == null:
 		return false
+	if _neo4_stadium_used(is_opponent): return false   # AUDIT 2026-11-17: once per turn
 	return main.current_stadium_card.uid.to_lower() == StadiumIds.RADIO_TOWER
 
+## AUDIT 2026-11-17: Radio Tower / Energy Stadium / Lucky Stadium (neo4) had no once-per-turn limit at all.
+## Only one of them can be in play at a time, so one flag per side covers all three.
+func _neo4_stadium_used(is_opponent: bool) -> bool:
+	return main.opponent_neo4_stadium_used_this_turn if is_opponent else main.player_neo4_stadium_used_this_turn
+
+func _mark_neo4_stadium_used(is_opponent: bool) -> void:
+	if is_opponent:
+		main.opponent_neo4_stadium_used_this_turn = true
+	else:
+		main.player_neo4_stadium_used_this_turn = true
+
 func neo4_radio_tower_activate(is_opponent: bool) -> void:
+	_mark_neo4_stadium_used(is_opponent)
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	if deck.is_empty():
 		await main.show_message("RADIO TOWER: DECK IS EMPTY!")
@@ -8445,12 +8583,14 @@ func neo4_radio_tower_activate(is_opponent: bool) -> void:
 	print("STADIUM: Radio Tower — viewed top 2")
 
 # ENERGY STADIUM (neo4-99): once per turn, flip; heads put a basic Energy from discard to hand
-func neo4_energy_stadium_active() -> bool:
+func neo4_energy_stadium_active(is_opponent: bool = false) -> bool:
 	if main.current_stadium_card == null:
 		return false
+	if _neo4_stadium_used(is_opponent): return false   # AUDIT 2026-11-17: once per turn
 	return main.current_stadium_card.uid.to_lower() == StadiumIds.ENERGY_STADIUM
 
 func neo4_energy_stadium_activate(is_opponent: bool) -> void:
+	_mark_neo4_stadium_used(is_opponent)
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
 	if not coin:
@@ -8472,22 +8612,22 @@ func neo4_energy_stadium_activate(is_opponent: bool) -> void:
 		chosen = await main.card_ops.prompt_select_card(basics, "ENERGY STADIUM!", "Choose a basic Energy from your discard to put in your hand", "SELECT", false)
 		if main._should_bail(): return
 		if chosen == null: chosen = basics[0]
-	discard.erase(chosen)
-	chosen.current_location = "hand"
-	hand.append(chosen)
-	main.update_discard_pile_display(is_opponent)
-	main.refresh_hand_display(is_opponent)
+	# AUDIT 2026-11-17: flies from the discard pile into the hand (it used to just appear).
+	await main.card_ops.recover_to_hand(chosen, is_opponent, true)
+	if main._should_bail(): return
 	await main.show_message("ENERGY STADIUM! HEADS — " + chosen.metadata.get("name","").to_upper() + " ADDED TO HAND!")
 	if main._should_bail(): return
 	print("STADIUM: Energy Stadium — basic energy recovered")
 
 # LUCKY STADIUM (neo4-100): once per turn, flip; heads draw a card
-func neo4_lucky_stadium_active() -> bool:
+func neo4_lucky_stadium_active(is_opponent: bool = false) -> bool:
 	if main.current_stadium_card == null:
 		return false
+	if _neo4_stadium_used(is_opponent): return false   # AUDIT 2026-11-17: once per turn
 	return main.current_stadium_card.uid.to_lower() == StadiumIds.NEO4_LUCKY_STADIUM
 
 func neo4_lucky_stadium_activate(is_opponent: bool) -> void:
+	_mark_neo4_stadium_used(is_opponent)
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
 	if coin:
@@ -8559,9 +8699,11 @@ func effect_np_tropical_tidal_wave(is_opponent: bool) -> void:
 	for p in main.card_ops.get_all_pokemon_in_play(side_opp):
 		for ac in p.attached_cards.duplicate():
 			if ac.metadata.get("supertype","") == "Trainer":
+				var _fr1: Dictionary = main.card_ops.capture_rect(ac, "attached", side_opp)   # AUDIT 2026-11-17: flight
 				p.attached_cards.erase(ac)
 				ac.current_location = "discard"
 				tt_discard.append(ac)
+				await main.card_ops.fly_card(ac, "attached", "discard", side_opp, -1, _fr1)   # AUDIT 2026-11-17: flight
 				n += 1
 	display_attached_trainer_cards(side_opp)
 	main.display_pokemon(side_opp)
@@ -8589,17 +8731,21 @@ func np_championship_arena_check(player_turn_just_ended: bool) -> void:
 		for i in range(excess):
 			if hand.is_empty(): break
 			var discarded = hand[-1]
+			var _fr1: Dictionary = main.card_ops.capture_rect(discarded, "hand", is_opponent_side)   # AUDIT 2026-11-17: flight
 			hand.erase(discarded)
 			discarded.current_location = "discard"
 			main.opponent_discard_pile.append(discarded)
+			await main.card_ops.fly_card(discarded, "hand", "discard", is_opponent_side, int(true), _fr1)   # AUDIT 2026-11-17: flight
 	else:
 		# MULTI-SELECT: every card to discard on one screen
 		var chosen_cards: Array = await main.card_ops.prompt_select_cards(hand.duplicate(), excess, excess, "CHAMPIONSHIP ARENA", "Discard " + str(excess) + " card(s)", "DISCARD")
 		if main._should_bail(): return
 		for chosen in chosen_cards:
+			var _fr2: Dictionary = main.card_ops.capture_rect(chosen, "hand", is_opponent_side)   # AUDIT 2026-11-17: flight
 			hand.erase(chosen)
 			chosen.current_location = "discard"
 			main.player_discard_pile.append(chosen)
+			await main.card_ops.fly_card(chosen, "hand", "discard", is_opponent_side, int(false), _fr2)   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent_side)
 	main.update_discard_pile_display(is_opponent_side)
 
@@ -8636,18 +8782,24 @@ func effect_ecard1_bills_maintenance(is_opponent: bool) -> void:
 		if is_opponent:
 			var to_shuffle = cpu_get_discard_priority(hand, 1)
 			for card in to_shuffle:
+				var _fr1: Dictionary = main.card_ops.capture_rect(card, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 				hand.erase(card)
 				card.current_location = "deck"
 				deck.append(card)
+				await main.card_ops.fly_card(card, "hand", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 			deck.shuffle()
 		else:
 			await player_select_cards_to_discard(hand, 1, "BILL'S MAINTENANCE", "Select 1 card to shuffle into your deck")
 			if main._should_bail(): return
+			var bm_jobs: Array = main.card_ops.lift_cards(main.trainer_discard_selected, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 			for card in main.trainer_discard_selected:
 				hand.erase(card)
 				card.current_location = "deck"
 				deck.append(card)
 			main.trainer_discard_selected.clear()
+			main.refresh_hand_display(is_opponent)
+			await main.card_ops.fly_lifted(bm_jobs, "deck", is_opponent)   # AUDIT 2026-11-17: flight
+			if main._should_bail(): return
 			deck.shuffle()
 		main.refresh_hand_display(is_opponent)
 		main.update_deck_icon(is_opponent)
@@ -8660,12 +8812,15 @@ func effect_ecard1_copycat(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	var opp_hand_size = (main.player_hand if is_opponent else main.opponent_hand).size()
+	var _hj: Array = main.card_ops.lift_cards(hand, "hand", is_opponent)   # AUDIT 2026-11-17: hand flies into the deck
 	for card in hand.duplicate():
 		hand.erase(card)
 		card.current_location = "deck"
 		deck.append(card)
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
+	await main.card_ops.fly_lifted(_hj, "deck", is_opponent)   # AUDIT 2026-11-17: hand flies into the deck
+	if main._should_bail(): return
 	main.update_deck_icon(is_opponent)
 	if opp_hand_size > 0:
 		await main.card_ops.draw_n(is_opponent, opp_hand_size)
@@ -8799,6 +8954,7 @@ func effect_ecard1_master_ball(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
@@ -8833,6 +8989,7 @@ func effect_ecard1_pokemon_nurse(is_opponent: bool) -> void:
 		for energy in target.attached_energies.duplicate():
 			energy.current_location = "discard"
 			discard.append(energy)
+			await main.card_ops.fly_card(energy, "attached", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		target.attached_energies.clear()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -8944,6 +9101,7 @@ func effect_ecard1_power_charge(is_opponent: bool) -> void:
 		discard.erase(chosen)
 		chosen.current_location = "deck"
 		deck.append(chosen)
+		await main.card_ops.fly_card(chosen, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		moved.append(chosen)
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -8969,12 +9127,15 @@ func effect_ecard1_professor_elms_training_method(is_opponent: bool) -> void:
 func effect_ecard1_professor_oaks_research(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var _hj: Array = main.card_ops.lift_cards(hand, "hand", is_opponent)   # AUDIT 2026-11-17: hand flies into the deck
 	for card in hand.duplicate():
 		hand.erase(card)
 		card.current_location = "deck"
 		deck.append(card)
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
+	await main.card_ops.fly_lifted(_hj, "deck", is_opponent)   # AUDIT 2026-11-17: hand flies into the deck
+	if main._should_bail(): return
 	main.update_deck_icon(is_opponent)
 	await main.card_ops.draw_n(is_opponent, 5)
 	if main._should_bail(): return
@@ -9100,6 +9261,8 @@ func apricorn_forest_activate(is_opponent: bool) -> void:
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
 	main.display_pokemon(is_opponent)
+	await main.card_ops.fly_card(chosen, "deck", "play", is_opponent)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	await main.show_message("APRICORN FOREST! " + chosen.metadata.get("name","").to_upper() + " ADDED TO BENCH!")
 	if main._should_bail(): return
 	print("STADIUM: Apricorn Forest — benched ", chosen.metadata.get("name",""))
@@ -9189,9 +9352,11 @@ func power_plant_activate(is_opponent: bool) -> void:
 		to_discard = await main.card_ops.prompt_select_card(hand_basics, "POWER PLANT", "Choose a basic Energy to discard", "DISCARD", false)
 		if main._should_bail(): return
 		if to_discard == null: return
+	var _fr1: Dictionary = main.card_ops.capture_rect(to_discard, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	hand.erase(to_discard)
 	to_discard.current_location = "discard"
 	discard.append(to_discard)
+	await main.card_ops.fly_card(to_discard, "hand", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	var discard_basics = discard.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c) and c != to_discard)
 	if discard_basics.is_empty():
 		main.refresh_hand_display(is_opponent)
@@ -9207,6 +9372,7 @@ func power_plant_activate(is_opponent: bool) -> void:
 	discard.erase(chosen)
 	chosen.current_location = "hand"
 	hand.append(chosen)
+	await main.card_ops.fly_card(chosen, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message("POWER PLANT! SWAPPED FOR " + chosen.metadata.get("name","").to_upper() + "!")
@@ -9246,10 +9412,12 @@ func ecard2_healing_berry_check() -> void:
 					berry = ac
 					break
 			if berry == null: continue
+			var _fr1: Dictionary = main.card_ops.capture_rect(berry, "attached", side)   # AUDIT 2026-11-17: flight
 			p.attached_cards.erase(berry)
 			var discard = main.opponent_discard_pile if side else main.player_discard_pile
 			berry.current_location = "discard"
 			discard.append(berry)
+			await main.card_ops.fly_card(berry, "attached", "discard", side, -1, _fr1)   # AUDIT 2026-11-17: flight
 			p.current_hp = min(p.get_max_hp(), p.current_hp + 30)
 			main.display_hp_circles_above_align(p, side)
 			display_attached_trainer_cards(side)
@@ -9286,9 +9454,11 @@ func check_time_shard(pokemon: card_object, attacker: card_object, is_pokemon_op
 		else:
 			if i >= player_picks.size(): break
 			chosen = player_picks[i]
+		var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "attached", is_pokemon_opp)   # AUDIT 2026-11-17: flight
 		pokemon.attached_energies.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "attached", "hand", is_pokemon_opp, -1, _fr1)   # AUDIT 2026-11-17: flight
 		moved += 1
 	if moved > 0:
 		main.refresh_hand_display(is_pokemon_opp)
@@ -9356,8 +9526,11 @@ func effect_ecard2_energy_switch(is_opponent: bool) -> void:
 		target = await main.card_ops.prompt_select_card(targets, "ENERGY SWITCH", "Select a Pokemon to move the Energy to", "ATTACH", false)
 		if main._should_bail(): return
 	if target == null: return
+	var _emr_9523: Dictionary = main.card_ops.capture_rect(energy, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 	source.attached_energies.erase(energy)
 	target.attached_energies.append(energy)
+	await main.card_ops.fly_attach(energy, "attached", _emr_9523)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+	if main._should_bail(): return
 	main.play_energy_attach_sfx()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -9425,6 +9598,8 @@ func effect_ecard2_forest_guardian(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		(main.opponent_hand if is_opponent else main.player_hand).append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent)   # AUDIT 2026-11-17: flight
+		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -9453,11 +9628,14 @@ func effect_ecard2_juggler(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+	var jg_jobs: Array = main.card_ops.lift_cards(discarded, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	for e in discarded:
 		hand.erase(e)
 		e.current_location = "discard"
 		discard.append(e)
 	main.refresh_hand_display(is_opponent)
+	await main.card_ops.fly_lifted(jg_jobs, "discard", is_opponent)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	main.update_discard_pile_display(is_opponent)
 	var draw_count = 5 if discarded.size() >= 2 else 3
 	await main.card_ops.draw_n(is_opponent, draw_count)
@@ -9477,6 +9655,7 @@ func effect_ecard2_pokemon_fan_club(is_opponent: bool) -> void:
 	var filter_fn = func(c): return "Basic" in c.metadata.get("subtypes",[]) or "Baby" in c.metadata.get("subtypes",[])
 	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "POKEMON FAN CLUB: CHOOSE UP TO " + str(want) + " BASIC/BABY POKEMON", want)
 	if main._should_bail(): return
+	var fc_jobs: Array = main.card_ops.lift_cards(found, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	for p in found:
 		var hand = main.opponent_hand if is_opponent else main.player_hand
 		hand.erase(p)
@@ -9484,6 +9663,8 @@ func effect_ecard2_pokemon_fan_club(is_opponent: bool) -> void:
 		bench.append(p)
 	main.refresh_hand_display(is_opponent)
 	main.display_pokemon(is_opponent)
+	await main.card_ops.fly_lifted(fc_jobs, "play", is_opponent)   # AUDIT 2026-11-17: flight
+	if main._should_bail(): return
 	await main.show_message("POKEMON FAN CLUB! ADDED " + str(found.size()) + " POKEMON TO BENCH!")
 	if main._should_bail(): return
 	print("TRAINER: Pokemon Fan Club — benched ", found.size())
@@ -9509,6 +9690,7 @@ func effect_ecard2_seer(is_opponent: bool) -> void:
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+		await main.card_ops.fly_card(c, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -9541,6 +9723,7 @@ func effect_ecard2_town_volunteers(is_opponent: bool) -> void:
 		discard.erase(c)
 		c.current_location = "deck"
 		deck.append(c)
+		await main.card_ops.fly_card(c, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
 	main.update_discard_pile_display(is_opponent)
@@ -9644,9 +9827,11 @@ func mystery_zone_activate(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		if to_return == null: to_return = evolutions[0]
 	var deck = main.opponent_deck if is_opponent else main.player_deck
+	var _fr1: Dictionary = main.card_ops.capture_rect(to_return, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	hand.erase(to_return)
 	to_return.current_location = "deck"
 	deck.append(to_return)
+	await main.card_ops.fly_card(to_return, "hand", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.refresh_hand_display(is_opponent)
 	main.update_deck_icon(is_opponent)
@@ -9685,6 +9870,7 @@ func underground_lake_activate(is_opponent: bool) -> void:
 	chosen.current_location = "bench"
 	chosen.current_hp = chosen.get_max_hp()
 	bench.append(chosen)
+	await main.card_ops.fly_card(chosen, "discard", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.display_pokemon(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message("UNDERGROUND LAKE! " + chosen.metadata.get("name","").to_upper() + " ADDED TO BENCH!")
@@ -9730,6 +9916,7 @@ func ecard3_star_piece_check() -> void:
 			var discard = main.opponent_discard_pile if side else main.player_discard_pile
 			star.current_location = "discard"
 			discard.append(star)
+			await main.card_ops.fly_card(star, "attached", "discard", side, -1, {})   # AUDIT 2026-11-17: flight
 			deck.shuffle()
 			main.display_pokemon(side)
 			main.display_active_pokemon_energies(side)
@@ -9783,12 +9970,15 @@ func effect_ecard3_desert_shaman(is_opponent: bool) -> void:
 	for side in [is_opponent, not is_opponent]:
 		var hand = main.opponent_hand if side else main.player_hand
 		var deck = main.opponent_deck if side else main.player_deck
+		var _hj: Array = main.card_ops.lift_cards(hand, "hand", side)   # AUDIT 2026-11-17: hand flies into the deck
 		for c in hand.duplicate():
 			hand.erase(c)
 			c.current_location = "deck"
 			deck.append(c)
 		deck.shuffle()
 		main.refresh_hand_display(side)
+		await main.card_ops.fly_lifted(_hj, "deck", side)   # AUDIT 2026-11-17: hand flies into the deck
+		if main._should_bail(): return
 		main.update_deck_icon(side)
 		var ds_n: int = await choose_up_to_draw_count(4, side, "DESERT SHAMAN" + (" (OPPONENT'S DRAW)" if side != is_opponent else ""))
 		if main._should_bail(): return
@@ -9819,6 +10009,7 @@ func effect_ecard3_fast_ball(is_opponent: bool) -> void:
 		deck.erase(found)
 		found.current_location = "hand"
 		hand.append(found)
+		await main.card_ops.fly_card(found, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		main.refresh_hand_display(is_opponent)
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
@@ -9847,6 +10038,7 @@ func effect_ecard3_fisherman(is_opponent: bool) -> void:
 		discard.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+		await main.card_ops.fly_card(c, "discard", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.refresh_hand_display(is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message("FISHERMAN! ADDED " + str(chosen.size()) + " ENERGY TO HAND!")
@@ -10013,6 +10205,7 @@ func effect_ecard3_underground_expedition(is_opponent: bool) -> void:
 		deck.erase(c)
 		c.current_location = "hand"
 		hand.append(c)
+		await main.card_ops.fly_card(c, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	await main.card_ops.reveal_searched_cards(chosen, is_opponent)   # ISSUE #314: show it if the text says so
 	if main._should_bail(): return
 	# OLD ISSUE 367: "return the remaining cards to the bottom of your deck in any order" — the order was never asked.
@@ -10102,6 +10295,7 @@ func effect_ex1_pokenav(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
@@ -10148,10 +10342,12 @@ func ex1_lum_berry_check() -> void:
 			if berry == null: continue
 			var has_condition = p.special_condition != "" or p.is_poisoned or p.is_burned
 			if not has_condition: continue
+			var _fr1: Dictionary = main.card_ops.capture_rect(berry, "attached", side)   # AUDIT 2026-11-17: flight
 			p.attached_cards.erase(berry)
 			var discard = main.opponent_discard_pile if side else main.player_discard_pile
 			berry.current_location = "discard"
 			discard.append(berry)
+			await main.card_ops.fly_card(berry, "attached", "discard", side, -1, _fr1)   # AUDIT 2026-11-17: flight
 			main.clear_all_statuses(p, side)
 			display_attached_trainer_cards(side)
 			main.update_discard_pile_display(side)
@@ -10171,10 +10367,12 @@ func ex1_oran_berry_check() -> void:
 					berry = ac
 					break
 			if berry == null: continue
+			var _fr1: Dictionary = main.card_ops.capture_rect(berry, "attached", side)   # AUDIT 2026-11-17: flight
 			p.attached_cards.erase(berry)
 			var discard = main.opponent_discard_pile if side else main.player_discard_pile
 			berry.current_location = "discard"
 			discard.append(berry)
+			await main.card_ops.fly_card(berry, "attached", "discard", side, -1, _fr1)   # AUDIT 2026-11-17: flight
 			p.current_hp = min(p.get_max_hp(), p.current_hp + 20)
 			main.display_hp_circles_above_align(p, side)
 			display_attached_trainer_cards(side)
@@ -10380,6 +10578,7 @@ func effect_ex3_energy_recycle_system(is_opponent: bool) -> void:
 			discard.erase(chosen2)
 			chosen2.current_location = "deck"
 			deck.append(chosen2)
+			await main.card_ops.fly_card(chosen2, "discard", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 			moved += 1
 		deck.shuffle()
 		main.update_discard_pile_display(is_opponent)
@@ -10452,10 +10651,12 @@ func ex3_buffer_piece_check() -> void:
 					continue
 				ac.ex3_buffer_piece_turns += 1
 				if ac.ex3_buffer_piece_turns >= 2:
+					var _fr1: Dictionary = main.card_ops.capture_rect(ac, "attached", side)   # AUDIT 2026-11-17: flight
 					p.attached_cards.erase(ac)
 					var discard = main.opponent_discard_pile if side else main.player_discard_pile
 					ac.current_location = "discard"
 					discard.append(ac)
+					await main.card_ops.fly_card(ac, "attached", "discard", side, -1, _fr1)   # AUDIT 2026-11-17: flight
 					display_attached_trainer_cards(side)
 					main.update_discard_pile_display(side)
 					await main.show_message("BUFFER PIECE WAS DISCARDED!")
@@ -10664,10 +10865,12 @@ func ex4_belt_check() -> void:
 		await _ex2_do_evolution(evo_card, active, side, deck)
 		# The evolution carried the Belt across (perform_evolution moves Tools), so it comes off the new card.
 		active.attached_cards.erase(belt)
+		var _fr1: Dictionary = main.card_ops.capture_rect(belt, "attached", side)   # AUDIT 2026-11-17: flight
 		evo_card.attached_cards.erase(belt)
 		var discard = main.opponent_discard_pile if side else main.player_discard_pile
 		belt.current_location = "discard"
 		discard.append(belt)
+		await main.card_ops.fly_card(belt, "attached", "discard", side, -1, _fr1)   # AUDIT 2026-11-17: flight
 		deck.shuffle()
 		main.update_deck_icon(side)
 		main.update_discard_pile_display(side)
@@ -10939,6 +11142,7 @@ func effect_ex7_pokemon_retriever(is_opponent: bool) -> void:
 			pool.erase(pick2)
 			pick2.current_location = "deck"
 			deck.append(pick2)
+			await main.card_ops.fly_card(pick2, "discard", "deck", is_opponent)   # AUDIT 2026-11-17: flight
 			shuffled += 1
 		deck.shuffle()
 		main.update_deck_icon(is_opponent)
@@ -10993,8 +11197,11 @@ func effect_ex7_pow_hand_extension(is_opponent: bool) -> void:
 			dest = await main.card_ops.choose_card(opp_bench, is_opponent, "POW! HAND EXTENSION", "Move an Energy to which Benched Pokémon?", "SELECT", false, Callable(), true)
 			if main._should_bail(): return
 			if dest == null: dest = opp_bench[0]
+		var _emr_11191: Dictionary = main.card_ops.capture_rect(energy, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 		defender.attached_energies.erase(energy)
 		dest.attached_energies.append(energy)
+		await main.card_ops.fly_attach(energy, "attached", _emr_11191)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		main.display_active_pokemon_energies(not is_opponent)
 		main.display_pokemon(not is_opponent)
@@ -11002,7 +11209,7 @@ func effect_ex7_pow_hand_extension(is_opponent: bool) -> void:
 		if main._should_bail(): return
 	elif can_gust:
 		if is_opponent and pow_gust != null:
-			main.attack_effects._force_bench_to_active(pow_gust, true)
+			await main.attack_effects._force_bench_to_active(pow_gust, true)
 			await main.show_message("POW! HAND EXTENSION! " + pow_gust.metadata.get("name","").to_upper() + " WAS DRAGGED INTO THE ACTIVE SPOT!")
 			if main._should_bail(): return
 		else:
@@ -11023,12 +11230,15 @@ func effect_ex7_rockets_admin(is_opponent: bool) -> void:
 	for who in [is_opponent, not is_opponent]:
 		var hand = main.opponent_hand if who else main.player_hand
 		var deck = main.opponent_deck if who else main.player_deck
+		var _hj: Array = main.card_ops.lift_cards(hand, "hand", who)   # AUDIT 2026-11-17: hand flies into the deck
 		for card in hand.duplicate():
 			hand.erase(card)
 			card.current_location = "deck"
 			deck.append(card)
 		deck.shuffle()
 		main.refresh_hand_display(who)
+		await main.card_ops.fly_lifted(_hj, "deck", who)   # AUDIT 2026-11-17: hand flies into the deck
+		if main._should_bail(): return
 		main.update_deck_icon(who)
 		var prizes = (main.opponent_prize_cards if who else main.player_prize_cards).size()
 		var to_draw: int = await choose_up_to_draw_count(prizes, who, "ROCKET'S ADMIN." + (" (OPPONENT'S DRAW)" if who != is_opponent else ""))
@@ -11168,6 +11378,7 @@ func effect_ex7_surprise_time_machine(is_opponent: bool) -> void:
 	target.attached_cards.clear()
 	target.current_location = "deck"
 	deck.append(target)
+	main.card_ops.fly_card(target, "play", "deck", is_opponent)   # AUDIT 2026-11-17: flight
 	main.clear_all_statuses(devolve_to, is_opponent)
 	# Replace in the correct slot.
 	var active_ref = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
@@ -11266,6 +11477,7 @@ func effect_ex7_swoop_teleporter(is_opponent: bool) -> void:
 	target.attached_cards.clear()
 	target.current_location = "discard"
 	discard.append(target)
+	main.card_ops.fly_card(target, "play", "discard", is_opponent)   # AUDIT 2026-11-17: flight
 	deck.shuffle()
 	main.display_pokemon(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
@@ -11360,7 +11572,7 @@ func effect_ex10_energy_recycle_system(is_opponent: bool) -> void:
 				if i >= player_picks.size(): break
 				pick2 = player_picks[i]
 			if pick2 == null: break
-			discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1
+			discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1; main.card_ops.fly_card(pick2, "discard", "deck", is_opponent)   # AUDIT 2026-11-17: flight (queued)
 		deck.shuffle()
 		main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
 		await main.show_message("ENERGY RECYCLE SYSTEM! SHUFFLED " + str(moved) + " BASIC ENERGY INTO YOUR DECK!")
@@ -11478,7 +11690,7 @@ func effect_ex11_holon_farmer(is_opponent: bool) -> void:
 			"Choose up to 3 basic Energy and up to 3 Pokemon to put back into your deck", "RETURN", false, true, cap3)
 		if main._should_bail(): return
 		for pick in picks:
-			discard.erase(pick); pick.current_location = "deck"; deck.append(pick); moved += 1
+			discard.erase(pick); pick.current_location = "deck"; deck.append(pick); moved += 1; main.card_ops.fly_card(pick, "discard", "deck", is_opponent)   # AUDIT 2026-11-17: flight (queued)
 	else:
 		# Up to 3 basic Energy.
 		for i in range(3):
@@ -11486,14 +11698,14 @@ func effect_ex11_holon_farmer(is_opponent: bool) -> void:
 			if pool.is_empty(): break
 			var pick: card_object = main.cpu_ai.cpu_pick_best_keep(pool)
 			if pick == null: break
-			discard.erase(pick); pick.current_location = "deck"; deck.append(pick); moved += 1
+			discard.erase(pick); pick.current_location = "deck"; deck.append(pick); moved += 1; main.card_ops.fly_card(pick, "discard", "deck", is_opponent)   # AUDIT 2026-11-17: flight (queued)
 		# Up to 3 Basic Pokemon or Evolution cards.
 		for i in range(3):
 			var pool2 = discard.filter(is_poke)
 			if pool2.is_empty(): break
 			var pick2: card_object = main.cpu_ai.cpu_pick_best_keep(pool2)
 			if pick2 == null: break
-			discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1
+			discard.erase(pick2); pick2.current_location = "deck"; deck.append(pick2); moved += 1; main.card_ops.fly_card(pick2, "discard", "deck", is_opponent)   # AUDIT 2026-11-17: flight (queued)
 	deck.shuffle()
 	main.update_deck_icon(is_opponent); main.update_discard_pile_display(is_opponent)
 	await main.show_message("HOLON FARMER! RETURNED " + str(moved) + " CARD(S) TO YOUR DECK!")
@@ -11525,7 +11737,7 @@ func effect_ex11_holon_lass(is_opponent: bool) -> void:
 		if main._should_bail(): return
 	var taken = 0
 	for e in picks:
-		deck.erase(e); e.current_location = "hand"; hand.append(e); taken += 1
+		deck.erase(e); e.current_location = "hand"; hand.append(e); taken += 1; main.card_ops.fly_card(e, "deck", "hand", is_opponent)   # AUDIT 2026-11-17: flight (queued)
 	await main.card_ops.reveal_searched_cards(picks, is_opponent)   # ISSUE #314: show it if the text says so
 	if main._should_bail(): return
 	deck.shuffle()
@@ -11607,6 +11819,7 @@ func effect_ex11_holon_transceiver(is_opponent: bool) -> void:
 		deck.erase(pick); pick.current_location = "hand"
 		var hand = main.opponent_hand if is_opponent else main.player_hand
 		hand.append(pick)
+		await main.card_ops.fly_card(pick, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([pick], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		deck.shuffle()
@@ -11807,9 +12020,11 @@ func _ex12_stump_trim(side_is_opp: bool) -> void:
 					victim = b
 		else:
 			victim = player_picks.pop_front() if not player_picks.is_empty() else bench[0]
+		main.card_ops.discard_all_attachments(victim, side_is_opp)   # AUDIT 2026-11-17: while still benched (flights start on it)
+		var gs_r: Dictionary = main.card_ops.capture_rect(victim, "play", side_is_opp)
 		bench.erase(victim)
-		main.card_ops.discard_all_attachments(victim, side_is_opp)
-		await main.card_ops.send_to_discard(victim, side_is_opp, false)
+		await main.card_ops.send_to_discard(victim, side_is_opp, false, null, false)
+		await main.card_ops.fly_card(victim, "play", "discard", side_is_opp, -1, gs_r)   # AUDIT 2026-11-17: flight
 		if main._should_bail(): return
 	main.display_pokemon(side_is_opp)
 
@@ -11867,11 +12082,13 @@ func ex12_strange_cave_offer(is_opponent: bool) -> void:
 		chosen = await main.card_ops.choose_card(pool, false, "STRANGE CAVE", "Choose a Pokemon to put on your Bench", "SELECT", true)
 		if main._should_bail(): return
 		if chosen == null: return
+	var _fr1: Dictionary = main.card_ops.capture_rect(chosen, "hand", is_opponent)   # AUDIT 2026-11-17: flight
 	hand.erase(chosen)
 	chosen.placed_on_field_this_turn = true
 	chosen.current_location = "bench"
 	chosen.current_hp = chosen.get_max_hp()
 	bench.append(chosen)
+	await main.card_ops.fly_card(chosen, "hand", "play", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	main.display_pokemon(is_opponent)
 	main.refresh_hand_display(is_opponent)
 	await main.show_message("STRANGE CAVE! " + chosen.metadata.get("name","").to_upper() + " WAS PLACED ON THE BENCH!")
@@ -11959,6 +12176,7 @@ func effect_ex14_pokenav(is_opponent: bool) -> void:
 		deck.erase(chosen)
 		chosen.current_location = "hand"
 		hand.append(chosen)
+		await main.card_ops.fly_card(chosen, "deck", "hand", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 		await main.card_ops.reveal_searched_cards([chosen], is_opponent)   # ISSUE #314: show it if the text says so
 		if main._should_bail(): return
 		main.refresh_hand_display(is_opponent)
@@ -12023,10 +12241,12 @@ func effect_ex14_windstorm(is_opponent: bool) -> void:
 			for e in tool_entries:
 				if e["card"] == pick:
 					var owner_opp = e["owner_is_opp"]
+					var ws_r: Dictionary = main.card_ops.capture_rect(pick, "attached", owner_opp)   # AUDIT 2026-11-17: flight
 					e["pokemon"].attached_cards.erase(pick)
 					pick.current_location = "discard"
 					var disc = main.opponent_discard_pile if owner_opp else main.player_discard_pile
 					disc.append(pick)
+					await main.card_ops.fly_card(pick, "attached", "discard", owner_opp, -1, ws_r)   # AUDIT 2026-11-17: flight
 					display_attached_trainer_cards(owner_opp)
 					main.update_discard_pile_display(owner_opp)
 					main.display_pokemon(owner_opp)
