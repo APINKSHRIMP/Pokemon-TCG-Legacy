@@ -1,18 +1,12 @@
-# 26/09/2026
-
- Got married 😎 Got really ill 🤧 back to it.
-
-
-
-# Pokémon TCG Legacy
+## Pokémon TCG Legacy
 
 ![Banner](Image_Assets/Screenshots/banner.gif)
 
 ## The Game
 
-Pokemon TCG Legacy is my modern take on the old Pokémon Trading Card GB games created entirely from the ground up in Godot GD script, so this isn't a rom hack or an RPG maker game release, everything in the game has been coded entirely from scratch in the Godot Engine. 
+Pokemon TCG Legacy is my modern take on the old Pokémon Trading Card GB games created from the ground up in Godot GD script, so this isn't a rom hack or an RPG maker game release, everything in the game has been coded entirely from scratch in the Godot Engine. 
 
-Pokémon TCG 2: The Invasion of Team GR! was released in 2001 and was the last single player PTCG experience we got.  For over **25 years** every game since has been an online PvP focused experience. Pokémon TCG Legacy focuses entirely on a single-player experience, building your own collection of cards through in game battles against unique and varied decks and unlocking new sets naturally as you progress (of course with no real world money to spend).
+Pokémon TCG 2: The Invasion of Team GR! was released in 2001 and was the last single player PTCG experience we got (And it was never officially released in English!).  For over **25 years** every game since has been an online PvP focused experience. Pokémon TCG Legacy focuses entirely on a single-player experience, building your own collection of cards through in game battles against unique and varied decks and unlocking new sets naturally as you progress (of course with no real world money to spend).
 
 The story isn't a continuation from the original Pokemon TCG GB and GB2, but instead aims to be an entirely unique experience of its own. My aim is to capture the satisfaction of earning and collecting new cards and rewarding experimentation with deck building, facing off against opponents with wildly different decks and strategies. No reliance on established metas meaning you won't be seeing the same deck every match, leaving you free to experiment with the cards you actually want to use.
 
@@ -30,9 +24,7 @@ Unique locations across the map to explore, each filled with dozens of NPCs and 
 
 A battle engine built from the ground up with every card, attack and effect from the first 3 generations. A lot of decks will be genuinely challenging and make your victories earned. Every win rewards you with new cosmetics and cash for more cards.
 
-Instead of a forced "tutorial", the game is learnt through regular gameplay.
-
-![Match start](Image_Assets/Screenshots/matchstart.gif)
+Choice of playing a full tutorial to learn the game mechanics or get straight in for those who've played before.
 
 ![Battle](Image_Assets/Screenshots/battle.gif)
 
@@ -94,7 +86,7 @@ Built in **Godot 4.6** using GDScript.
 
 ![Godot](Image_Assets/Screenshots/godot.gif)
 
-# Update on 24/08/2026
+# Update on 18/11/2026
 
 Every single card set is now technically implemented. That's all 39 sets and over 3,000 cards playable covering Promos, e-card series, neo, the entire EX era and POP series 1-5.
 
@@ -125,7 +117,7 @@ The game is technically playable now, you could download the godot project from 
 
 5. The three leads (Ellie, Olly and Alexander) take the rival/friend role, with specific interactions helping you start the game, giving you a nudge in the right direction and testing your skill as you progress. Days 1-3 are built; day 4 onwards is still to write.
 
-6. Add controller support for windows. Most overworld interactions already support this, but a lot of additional work is required for in game matches to be controller supported instead of mouse clicks
+6. 
 
 Consider this phase 1 complete and a 'finished' game that's playable with a story and rich enough features to be a dozen or so hours gameplay
 
@@ -151,7 +143,7 @@ Consider this finished game as intended and planned
 # Unplanned features
 
 1. Diamond/Pearl onwards currently not planned to be implemented
-2. Release will be windows exe only, no android/ios will be released.
+2. Release will be windows exe only, definitely no iOS but maybe an android APK at best if it's easy enough to export for free...
 
 ---
 

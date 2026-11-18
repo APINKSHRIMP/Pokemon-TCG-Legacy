@@ -134,6 +134,10 @@ const SFX_TAIL := 0.6             # ...or this long past the end of the animatio
 const SFX_FADE := 0.25            # fade when a clip is cut short
 const SFX_CUT_FADE := 0.05        # fade when the build-up hands over to the hit
 const MAX_VOICES := 16
+# AUDIT 2026-11-18: sound fitted to the animation. TWEAKABLE.
+const SFX_END_TAIL := 0.45        # a move sound still playing this long (real s) after its animation has ended fades out
+const SFX_END_FADE := 0.3         # ...over this long
+const SFX_ALIGN_SLACK := 0.08     # a build-up whose own hit would land this much before the visual impact starts later instead
 
 # ── TWEAKABLE: screen ──────────────────────────────────────────────────────────────────
 const DIM_IN := 0.18
@@ -268,7 +272,7 @@ class _Ctx extends RefCounted:
 	var sprites: Array = []
 	var sfx_start: AudioStreamPlayer = null   # the build-up, cut when the impact lands
 	var sfx_plan: Dictionary = {}             # what plays at the impact
-
+	var sfx_players: Array = []               # AUDIT 2026-11-18: every move sound of this play (faded out after it ends)
 
 func _ready() -> void:
 	_layer = Node2D.new()
@@ -819,7 +823,23 @@ func play(attacker: card_object, defender: card_object, recipe: Dictionary, reac
 	await ctx.jobs.wait_all()
 	if dim_rect != null:
 		await _dim_end(dim_rect)
+	_sfx_end_with_anim(ctx)   # AUDIT 2026-11-18
 	_cleanup(ctx)
+
+
+## AUDIT 2026-11-18: the animation is over - any of its move sounds still playing get SFX_END_TAIL more, then fade.
+## (The clip after the impact used to run on for up to SFX_MAX_LEN whatever the animation did: a 2.4 s Gust
+## clip under a 1.1 s Gust.)
+func _sfx_end_with_anim(ctx: _Ctx) -> void:
+	ctx.sfx_plan = {}
+	var live: Array = ctx.sfx_players.filter(func(p): return is_instance_valid(p) and not p.has_meta("released"))
+	ctx.sfx_players.clear()
+	if live.is_empty():
+		return
+	await get_tree().create_timer(SFX_END_TAIL).timeout
+	for p in live:
+		if is_instance_valid(p) and not p.has_meta("released"):
+			_sfx_stop(p, SFX_END_FADE)
 
 
 ## Contact: self-side steps first, then the attacker darts in; target steps fire on the bump.
