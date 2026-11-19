@@ -334,6 +334,7 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 ## attachments have been moved off it.
 func reset_returned_pokemon(card: card_object, is_opponent: bool) -> void:
 	main.clear_all_statuses(card, is_opponent)
+	card.has_char_counter = false   # AUDIT 2026-11-18 #133
 	card.pluspower_count = 0
 	card.defender_count = 0
 	card.defender_turns_remaining = -1
@@ -1403,7 +1404,7 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool, fr
 		if ip_active != null and ip_active.neo4_prevent_bench_damage:
 			return
 		# Protective Flame / invincible flag on bench pokemon
-		if pokemon.is_invincible:
+		if pokemon.is_invincible or main.attack_effects._protective_flame_benched(pokemon):   # AUDIT 2026-11-18 #4
 			return
 		# EX5 Power Diffusion (Rhydon ex5-46): while Rhydon is that side's Active, prevent all attack
 		# damage to that side's Benched Pokemon.
@@ -1417,6 +1418,12 @@ func apply_bench_damage(pokemon: card_object, damage: int, is_opponent: bool, fr
 				if ab.get("type","") != "Poké-Body": continue
 				var abtext = ab.get("text","").to_lower()
 				if "prevent all damage" in abtext and "bench" in abtext:
+					# AUDIT 2026-11-18 #173: Feathery only stops the OPPONENT's attacks (Submerge says "both yours and your
+					# opponent's") - damage from its own side's attack goes through.
+					var ae = main.attack_effects
+					if "opponent's attacks" in abtext and not "both yours" in abtext and ae.is_attack_in_progress() \
+							and ae.current_attacker_is_opponent == is_opponent:
+						continue
 					return
 		# EX14 Sand Veil (Dugtrio ex14-5): prevent all attack damage to that side's Benched Pokemon while a
 		# Dugtrio with this Body is in play on that side.

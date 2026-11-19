@@ -1,0 +1,673 @@
+uid,card,score,flags
+gym2-4,Erika's Venusaur,17,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex13-23,Mawile,15,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex14-23,Loudred,15,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex12-89,Walrein ex,14,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex13-56,Wobbuffet,14,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex6-5,Exeggutor,14,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex3-22,Vibrava,13,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex2-47,Murkrow,12,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex3-7,Minun,12,"a_number_missing,b_name_collision,c_choice_no_prompt,d_body_unreferenced"
+ecard3-H25,Raichu,11,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex10-43,Noctowl,11,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt,d_undispatched_uncovered"
+ex2-37,Fearow,11,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex4-41,Jigglypuff,11,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+base1-23,Arcanine,10,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+base2-35,Exeggutor,10,"a_damage_not_in_handler,a_number_missing,b_name_collision,d_undispatched_uncovered"
+basep-30,Togepi,10,"b_name_collision,c_choice_no_prompt,d_undispatched_uncovered"
+ecard2-H32,Zapdos,10,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex10-40,Lanturn,10,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-26,Rayquaza δ,10,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex16-14,Dusclops,10,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex5-50,Swalot,10,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex7-3,Dark Crobat,10,"a_number_missing,b_name_collision"
+gym1-22,Brock's Rhyhorn,10,"a_damage_not_in_handler,a_number_missing,b_name_collision,d_undispatched_uncovered"
+gym2-54,Misty's Dewgong,10,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+base1-38,Poliwhirl,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+base2-60,Pikachu,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+base3-5,Gengar,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+base3-7,Hitmonlee,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+base3-8,Hypno,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard1-2,Ampharos,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard1-26,Rapidash,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard1-79,Graveler,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard2-13,Exeggutor,9,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard2-47,Flaaffy,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard3-108,Swinub,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex1-21,Seaking,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex13-18,Absol,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex14-47,Cacnea,9,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex16-15,Lanturn,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex2-6,Jolteon,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex3-95,Magcargo ex,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex4-21,Team Magma's Mightyena,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex5-38,Lanturn,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex5-56,Chinchou,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+ex8-98,Deoxys ex,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+gym1-55,Misty's Seaking,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+gym2-24,Giovanni's Pinsir,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+gym2-65,Blaine's Rhyhorn,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+neo1-27,Ariados,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+neo1-48,Seadra,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+neo3-20,Lugia,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+neo3-21,Raichu,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+neo3-29,Golbat,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+neo3-33,Magcargo,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+neo4-23,Light Lanturn,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+pop1-5,Swampert,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+pop5-2,Lugia,9,"a_damage_not_in_handler,a_number_missing,b_name_collision,c_choice_no_prompt"
+base5-7,Dark Golbat,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+base5-40,Dark Machoke,8,"a_damage_not_in_handler,c_choice_no_prompt,d_undispatched_uncovered"
+base5-52,Diglett,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+basep-3,Mewtwo,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+basep-12,Mewtwo,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+basep-14,Mewtwo,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard1-81,Hitmonlee,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard2-65,Weepinbell,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard2-87,Houndour,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard3-52,Dugtrio,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard3-92,Sandshrew,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ecard3-117,Zubat,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex1-23,Swampert,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex1-38,Linoone,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex1-101,Mewtwo ex,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex10-25,Hitmonlee,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex10-49,Xatu,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex10-63,Natu,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex10-101,Blissey ex,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex10-A,Unown,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex10-H,Unown,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex10-Q,Unown,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex10-S,Unown,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex10-T,Unown,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex10-?,Unown,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex11-2,Crobat δ,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex11-17,Umbreon δ,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex11-62,Ditto,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex11-70,Holon's Magnemite,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex11-82,Sandshrew,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex12-3,Cradily,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex12-15,Absol,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex12-21,Magmar,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex12-45,Tentacruel,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex12-67,Trapinch,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex13-65,Exeggcute δ,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex13-74,Omanyte δ,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex14-3,Camerupt,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex14-5,Dugtrio,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex14-12,Tauros,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex14-35,Ivysaur,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex14-41,Skitty,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex14-97,Shiftry ex,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex15-6,Nidoking δ,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex15-97,Rayquaza ex δ,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex16-22,Sableye,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex16-25,Zangoose,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex16-46,Cacnea,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex16-64,Snorunt,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex2-2,Cacturne,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex2-22,Shiftry,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex2-63,Eevee,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex3-16,Girafarig,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex3-34,Houndoom,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex3-39,Seadra,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex3-55,Geodude,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex4-9,Team Magma's Groudon,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex4-59,Team Magma's Aron,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex4-96,Absol,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex5-7,Heracross,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex5-45,Nuzleaf,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex5-49,Starmie,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex5-94,Kyogre ex,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex6-7,Marowak,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex6-40,Nidorina,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex6-42,Onix,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex6-60,Cubone,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex6-61,Diglett,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex6-86,Weedle,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex7-28,Yanma,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex7-30,Dark Ariados,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex7-38,Dark Magcargo,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex7-65,Magikarp,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex7-68,Marill,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex8-44,Plusle,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex8-67,Nincada,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex9-13,Glalie,8,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex9-41,Swellow,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex9-50,Feebas,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+ex9-52,Larvitar,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+gym1-21,Brock's Onix,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+gym1-79,Erika's Tangela,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+gym2-38,Erika's Bellsprout,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+neo1-24,Murkrow,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+neo1-78,Sunkern,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+neo2-13,Umbreon,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+pop1-8,Murkrow,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+pop5-3,Mew δ,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+pop5-11,Meowth δ,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+pop5-17,Umbreon ★,8,"a_number_missing,b_name_collision,c_choice_no_prompt"
+base1-4,Charizard,7,"a_damage_not_in_handler,a_number_missing,b_name_collision,e_power_no_cpu"
+base5-11,Dark Magneton,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ecard3-76,Magnemite,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex10-K,Unown,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex10-U,Unown,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex13-31,Sableye,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex14-6,Ludicolo δ,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex16-2,Altaria,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex16-52,Lileep,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex2-46,Lombre,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex4-31,Team Aqua's Sealeo,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex4-68,Team Magma's Rhyhorn,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex6-16,Tauros,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex8-20,Magcargo,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex8-35,Lotad,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+ex8-100,Hariyama ex,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+neo2-5,Houndour,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+neo4-26,Light Piloswine,7,"a_damage_not_in_handler,b_name_collision,c_choice_no_prompt"
+base1-10,Mewtwo,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+base1-31,Jynx,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+base1-48,Doduo,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+base3-2,Articuno,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+base5-46,Dark Wartortle,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard1-1,Alakazam,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard1-7,Clefable,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard1-20,Mewtwo,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard1-29,Tyranitar,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard1-46,Feraligatr,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard1-74,Croconaw,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard1-92,Wartortle,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard1-131,Squirtle,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard1-133,Tauros,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard2-H19,Ninetales,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard2-H21,Scizor,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard2-H27,Togetic,6,"b_name_collision,c_choice_no_prompt"
+ecard2-55,Nidorino,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard2-57,Scyther,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard2-89,Larvitar,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard2-98,Onix,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard2-149,Lugia,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-H1,Alakazam,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-H21,Nidoqueen,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-H22,Piloswine,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-H29,Steelix,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-1,Aerodactyl,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-54,Eevee,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-58,Girafarig,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-66,Houndour,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-87,Poliwag,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-91,Rhyhorn,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-103,Staryu,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-110,Ursaring,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ecard3-114,Weedle,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex1-1,Aggron,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex1-4,Camerupt,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex1-8,Hariyama,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex1-14,Wailord,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex1-17,Donphan,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex1-64,Poochyena,6,"b_name_collision,c_choice_no_prompt"
+ex10-11,Poliwrath,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex10-61,Larvitar,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex10-104,Ho-Oh ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex10-107,Politoed ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex10-108,Scizor ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex10-D,Unown,6,"b_name_collision,c_choice_no_prompt"
+ex10-E,Unown,6,"b_name_collision,c_choice_no_prompt"
+ex10-F,Unown,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex10-V,Unown,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex10-X,Unown,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex11-1,Beedrill δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex11-12,Mewtwo δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex11-13,Rayquaza δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex11-27,Sandslash δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex11-47,Kirlia,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex11-59,Beldum δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex11-73,Larvitar δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex12-10,Mew,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex12-12,Shiftry,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex12-24,Pinsir,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex12-28,Wobbuffet,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex12-34,Graveler,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex12-60,Omanyte,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex12-83,Arcanine ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-3,Deoxys δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-25,Nosepass,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-28,Regirock,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-33,Torkoal,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-34,Zangoose,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-36,Camerupt,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-41,Exeggutor δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-50,Primeape δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-57,Anorith δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-59,Baltoy,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex13-101,Mightyena ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex14-13,Wigglytuff,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex14-16,Combusken,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex14-24,Marshtomp,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex14-48,Charmander,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex14-59,Numel,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex15-1,Ampharos δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex15-14,Cloyster δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex15-23,Tropius δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex15-32,Kirlia,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex15-60,Ralts,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex15-99,Tyranitar ex δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex16-9,Gardevoir,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex16-43,Bagon,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex16-54,Magnemite,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex16-66,Swablu,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex16-93,Claydol ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex16-99,Walrein ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex2-14,Zangoose,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex2-38,Illumise,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex2-40,Kirlia,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex2-53,Volbeat,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex2-61,Duskull,6,"b_name_collision,c_choice_no_prompt"
+ex2-62,Duskull,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex2-74,Ralts,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex2-95,Aggron ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex3-1,Absol,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex3-4,Flygon,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex3-5,Golem,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex3-13,Crawdaunt,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex3-29,Graveler,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex3-31,Grovyle,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex3-33,Horsea,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex3-36,Marshtomp,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex3-89,Ampharos ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex3-96,Muk ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex4-7,Team Magma's Aggron,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex4-10,Team Magma's Houndoom,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex4-13,Raichu,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex4-14,Team Aqua's Crawdaunt,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex5-17,Chimecho,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex5-33,Dodrio,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex5-70,Rhyhorn,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex5-83,Zubat,6,"b_name_collision,c_choice_no_prompt"
+ex6-11,Poliwrath,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex6-23,Farfetch'd,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex6-29,Scyther,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex6-41,Nidorino,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex6-108,Gengar ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex7-16,Dark Muk,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex7-19,Dark Tyranitar,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex7-39,Dark Magneton,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex7-50,Togepi,6,"b_name_collision,c_choice_no_prompt"
+ex7-62,Larvitar,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex7-78,Spinarak,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-6,Crawdaunt,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-11,Metagross,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-16,Deoxys,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-24,Seaking,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-26,Skarmory,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-40,Metang,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-48,Starmie,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-52,Bagon,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-65,Makuhita,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-70,Poochyena,6,"b_name_collision,c_choice_no_prompt"
+ex8-96,Crobat ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex8-97,Deoxys ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex9-3,Exploud,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex9-7,Manectric,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex9-31,Hariyama,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+ex9-99,Regirock ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+gym1-4,Erika's Dragonair,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+gym1-54,Misty's Psyduck,6,"b_name_collision,c_choice_no_prompt"
+gym1-66,Brock's Geodude,6,"b_name_collision,c_choice_no_prompt"
+gym1-77,Erika's Exeggcute,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+gym1-85,Misty's Goldeen,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+gym2-33,Blaine's Rapidash,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+gym2-45,Giovanni's Nidorino,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+gym2-51,Lt. Surge's Eevee,6,"b_name_collision,c_choice_no_prompt"
+gym2-61,Blaine's Doduo,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo1-30,Clefairy,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo1-44,Piloswine,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo2-1,Espeon,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo2-10,Scizor,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo2-12,Tyranitar,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo2-43,Omastar,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo2-46,Scyther,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo3-1,Ampharos,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo3-23,Skarmory,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo3-28,Flaaffy,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo3-37,Seaking,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo3-38,Stantler,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo3-57,Swinub,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo3-65,Shining Gyarados,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo4-25,Light Machamp,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo4-31,Chansey,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo4-63,Dratini,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo4-66,Girafarig,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo4-81,Seel,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+neo4-109,Shining Mewtwo,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+pop2-1,Entei,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+pop2-5,Tauros,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+pop3-2,Flareon,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+pop3-8,Donphan,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+pop3-13,Eevee,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+pop3-17,Ho-Oh ex,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+pop4-13,Pikachu,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+pop5-13,Pikachu δ,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+pop5-16,Espeon ★,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+si1-14,Slowking,6,"a_damage_not_in_handler,a_number_missing,b_name_collision"
+base2-10,Scyther,5,"a_number_missing,b_name_collision"
+base2-16,Wigglytuff,5,b_wrap_no_match
+base3-53,Psyduck,5,b_wrap_no_match
+base5-2,Dark Arbok,5,"a_number_missing,c_choice_no_prompt"
+base5-62,Meowth,5,"a_number_missing,c_choice_no_prompt"
+basep-20,Psyduck,5,b_wrap_no_match
+ecard2-114,Togepi,5,"a_number_missing,b_name_collision"
+ecard3-38,Machoke,5,"a_number_missing,b_name_collision"
+ex1-44,Skitty,5,"a_number_missing,b_name_collision"
+ex1-48,Wailmer,5,"a_number_missing,b_name_collision"
+ex10-12,Porygon2,5,"a_number_missing,b_name_collision"
+ex10-28,Jynx,5,"a_number_missing,b_name_collision"
+ex10-50,Yanma,5,"a_number_missing,b_name_collision"
+ex10-L,Unown,5,"a_number_missing,b_name_collision"
+ex10-N,Unown,5,"a_number_missing,b_name_collision"
+ex10-Z,Unown,5,"a_number_missing,b_name_collision"
+ex10-!,Unown,5,"a_number_missing,b_name_collision"
+ex11-85,Staryu,5,"a_number_missing,b_name_collision"
+ex11-86,Taillow,5,"a_number_missing,b_name_collision"
+ex12-6,Golem,5,"a_number_missing,b_name_collision"
+ex12-33,Furret,5,b_wrap_no_match
+ex12-38,Lairon,5,"a_number_missing,b_name_collision"
+ex13-15,Raichu δ,5,"a_number_missing,b_name_collision"
+ex13-38,Claydol,5,"a_number_missing,b_name_collision"
+ex14-56,Meditite,5,"a_number_missing,b_name_collision"
+ex2-23,Steelix,5,"a_number_missing,b_name_collision"
+ex2-52,Vigoroth,5,"a_number_missing,b_name_collision"
+ex5-6,Exploud,5,"a_number_missing,b_name_collision"
+ex5-101,Wigglytuff ex,5,b_wrap_no_match
+ex6-47,Porygon,5,"a_number_missing,b_name_collision"
+ex7-15,Dark Dragonite,5,"a_number_missing,b_name_collision"
+ex8-1,Altaria,5,"a_number_missing,b_name_collision"
+ex8-8,Gyarados,5,"a_number_missing,b_name_collision"
+ex8-13,Ninjask,5,"a_number_missing,b_name_collision"
+ex9-9,Rayquaza,5,"a_number_missing,b_name_collision"
+ex9-11,Swampert,5,"a_number_missing,b_name_collision"
+ex9-17,Nosepass,5,"a_number_missing,b_name_collision"
+ex9-95,Medicham ex,5,"a_number_missing,b_name_collision"
+ex9-100,Registeel ex,5,"a_number_missing,b_name_collision"
+gym1-16,Erika,5,"a_number_missing,c_choice_no_prompt"
+gym1-34,Sabrina's Venomoth,5,"a_number_missing,b_name_collision"
+gym1-44,Erika's Exeggutor,5,"a_number_missing,b_name_collision"
+gym1-45,Erika's Gloom,5,"a_number_missing,b_name_collision"
+neo1-12,Pichu,5,"a_number_missing,b_name_collision"
+neo1-54,Chikorita,5,"a_number_missing,b_name_collision"
+neo4-2,Dark Crobat,5,"a_number_missing,b_name_collision"
+pop1-15,Swellow,5,"a_number_missing,b_name_collision"
+base1-2,Blastoise,4,d_undispatched_uncovered
+base1-13,Poliwrath,4,d_undispatched_uncovered
+base1-24,Charmeleon,4,"a_damage_not_in_handler,b_name_collision"
+base1-36,Magmar,4,"a_damage_not_in_handler,b_name_collision"
+base1-59,Poliwag,4,d_undispatched_uncovered
+base2-3,Flareon,4,"a_damage_not_in_handler,b_name_collision"
+base2-12,Vaporeon,4,d_undispatched_uncovered
+base2-42,Persian,4,d_undispatched_uncovered
+base2-45,Rhydon,4,d_undispatched_uncovered
+base2-50,Cubone,4,d_undispatched_uncovered
+base2-51,Eevee,4,d_undispatched_uncovered
+base3-31,Arbok,4,d_undispatched_uncovered
+basep-31,Cleffa,4,d_undispatched_uncovered
+basep-38,Unown [J],4,"a_damage_not_in_handler,b_name_collision"
+basep-43,Machamp,4,"a_damage_not_in_handler,b_name_collision"
+ecard1-13,Gengar,4,d_undispatched_uncovered
+ecard1-25,Raichu,4,"a_damage_not_in_handler,b_name_collision"
+ecard1-39,Charizard,4,"a_damage_not_in_handler,b_name_collision"
+ecard1-73,Charmeleon,4,"a_damage_not_in_handler,b_name_collision"
+ecard2-85,Horsea,4,d_undispatched_uncovered
+ecard3-36,Electrode,4,"a_damage_not_in_handler,b_name_collision"
+ecard3-74,Machop,4,"a_damage_not_in_handler,b_name_collision"
+ex1-15,Blaziken,4,"a_damage_not_in_handler,b_name_collision"
+ex10-7,Houndoom,4,"a_damage_not_in_handler,b_name_collision"
+ex10-19,Vaporeon,4,"a_damage_not_in_handler,c_choice_no_prompt"
+ex10-30,Murkrow,4,"a_damage_not_in_handler,b_name_collision"
+ex10-105,Lugia ex,4,"a_damage_not_in_handler,b_name_collision"
+ex10-111,Tyranitar ex,4,"a_damage_not_in_handler,b_name_collision"
+ex10-O,Unown,4,"a_damage_not_in_handler,b_name_collision"
+ex10-W,Unown,4,"a_damage_not_in_handler,b_name_collision"
+ex10-Y,Unown,4,"a_damage_not_in_handler,b_name_collision"
+ex11-15,Starmie δ,4,"a_damage_not_in_handler,b_name_collision"
+ex12-7,Kabutops,4,"a_damage_not_in_handler,b_name_collision"
+ex12-19,Lanturn,4,d_undispatched_uncovered
+ex12-41,Nuzleaf,4,"a_damage_not_in_handler,b_name_collision"
+ex13-46,Manectric,4,"a_damage_not_in_handler,b_name_collision"
+ex13-102,Gyarados ★ δ,4,"a_damage_not_in_handler,b_name_collision"
+ex14-29,Charmeleon,4,"a_damage_not_in_handler,b_name_collision"
+ex14-37,Lombre,4,"a_damage_not_in_handler,b_name_collision"
+ex15-19,Lickitung δ,4,d_undispatched_uncovered
+ex15-31,Horsea δ,4,d_undispatched_uncovered
+ex15-90,Altaria ex δ,4,"a_damage_not_in_handler,b_name_collision"
+ex16-1,Aggron,4,"a_damage_not_in_handler,b_name_collision"
+ex16-12,Raichu,4,"a_damage_not_in_handler,b_name_collision"
+ex16-18,Mightyena,4,"a_damage_not_in_handler,b_name_collision"
+ex16-45,Beldum,4,"a_damage_not_in_handler,b_name_collision"
+ex16-100,Flareon ★,4,"a_damage_not_in_handler,b_name_collision"
+ex2-5,Flareon,4,"a_damage_not_in_handler,b_name_collision"
+ex2-35,Electabuzz,4,"a_damage_not_in_handler,b_name_collision"
+ex3-8,Plusle,4,d_body_unreferenced
+ex3-94,Latios ex,4,"a_damage_not_in_handler,b_name_collision"
+ex4-27,Team Aqua's Electrike,4,"a_damage_not_in_handler,b_name_collision"
+ex4-42,Meowth,4,"a_damage_not_in_handler,b_name_collision"
+ex6-4,Ditto,4,d_undispatched_uncovered
+ex6-46,Poliwhirl,4,"a_damage_not_in_handler,b_name_collision"
+ex6-62,Doduo,4,d_undispatched_uncovered
+ex6-74,Pikachu,4,"a_damage_not_in_handler,b_name_collision"
+ex7-25,Misdreavus,4,d_undispatched_uncovered
+ex7-47,Rocket's Wobbuffet,4,"a_damage_not_in_handler,c_choice_no_prompt"
+ex7-106,Rocket's Zapdos ex,4,"a_damage_not_in_handler,b_name_collision"
+ex8-15,Slaking,4,"a_damage_not_in_handler,c_choice_no_prompt"
+ex8-64,Magikarp,4,d_undispatched_uncovered
+ex8-105,Latias ★,4,"a_damage_not_in_handler,b_name_collision"
+gym1-27,Lt. Surge's Electabuzz,4,"a_damage_not_in_handler,b_name_collision"
+gym1-91,Sabrina's Abra,4,"a_damage_not_in_handler,b_name_collision"
+gym2-9,Koga's Beedrill,4,d_undispatched_uncovered
+gym2-15,Rocket's Zapdos,4,"a_damage_not_in_handler,b_name_collision"
+gym2-28,Lt. Surge's Jolteon,4,"a_damage_not_in_handler,b_name_collision"
+gym2-73,Giovanni's Magikarp,4,d_undispatched_uncovered
+neo1-9,Lugia,4,"a_damage_not_in_handler,b_name_collision"
+neo1-34,Flaaffy,4,"a_damage_not_in_handler,b_name_collision"
+neo2-14,Unown [A],4,"a_damage_not_in_handler,b_name_collision"
+neo2-39,Houndour,4,"a_damage_not_in_handler,b_name_collision"
+neo2-47,Unown [D],4,"a_damage_not_in_handler,b_name_collision"
+neo2-48,Unown [F],4,"a_damage_not_in_handler,b_name_collision"
+neo2-49,Unown [M],4,"a_damage_not_in_handler,b_name_collision"
+neo2-50,Unown [N],4,"a_damage_not_in_handler,b_name_collision"
+neo2-51,Unown [U],4,"a_damage_not_in_handler,b_name_collision"
+neo2-67,Unown [E],4,"a_damage_not_in_handler,b_name_collision"
+neo2-68,Unown [I],4,"a_damage_not_in_handler,b_name_collision"
+neo2-69,Unown [O],4,"a_damage_not_in_handler,b_name_collision"
+neo3-10,Magneton,4,"a_damage_not_in_handler,b_name_collision"
+neo3-27,Suicune,4,d_undispatched_uncovered
+neo3-39,Unown [B],4,"a_damage_not_in_handler,b_name_collision"
+neo3-40,Unown [Y],4,"a_damage_not_in_handler,b_name_collision"
+neo3-58,Unown [K],4,"a_damage_not_in_handler,b_name_collision"
+neo4-27,Unown [G],4,"a_damage_not_in_handler,b_name_collision"
+neo4-28,Unown [H],4,"a_damage_not_in_handler,b_name_collision"
+neo4-29,Unown [W],4,"a_damage_not_in_handler,b_name_collision"
+neo4-30,Unown [X],4,"a_damage_not_in_handler,b_name_collision"
+neo4-32,Dark Croconaw,4,d_undispatched_uncovered
+neo4-34,Dark Flaaffy,4,"a_damage_not_in_handler,b_name_collision"
+neo4-57,Unown [C],4,"a_damage_not_in_handler,b_name_collision"
+neo4-58,Unown [P],4,"a_damage_not_in_handler,b_name_collision"
+neo4-59,Unown [Q],4,"a_damage_not_in_handler,b_name_collision"
+neo4-60,Unown [Z],4,"a_damage_not_in_handler,b_name_collision"
+neo4-86,Unown [L],4,"a_damage_not_in_handler,b_name_collision"
+neo4-89,Unown [V],4,"a_damage_not_in_handler,b_name_collision"
+np-13,Meowth,4,"a_damage_not_in_handler,b_name_collision"
+np-37,Kyogre ex,4,"a_damage_not_in_handler,c_choice_no_prompt"
+np-38,Groudon ex,4,"a_damage_not_in_handler,b_name_collision"
+pop3-7,Combusken,4,"a_damage_not_in_handler,b_name_collision"
+base5-16,Rocket's Sneak Attack,3,c_choice_no_prompt
+basep-6,Arcanine,3,"a_damage_not_in_handler,a_number_missing"
+ecard2-H9,Espeon,3,"a_damage_not_in_handler,a_number_missing"
+ecard2-H23,Steelix,3,"a_damage_not_in_handler,a_number_missing"
+ecard2-H30,Victreebel,3,c_choice_no_prompt
+ecard2-58,Seadra,3,"a_damage_not_in_handler,a_number_missing"
+ecard2-61,Smoochum,3,"a_damage_not_in_handler,a_number_missing"
+ex12-30,Cascoon,3,c_choice_no_prompt
+ex14-33,Gulpin,3,c_choice_no_prompt
+ex15-71,Wooper δ,3,c_choice_no_prompt
+ex16-63,Slakoth,3,c_choice_no_prompt
+ex2-43,Lileep,3,c_choice_no_prompt
+ex4-45,Slowpoke,3,c_choice_no_prompt
+ex8-3,Breloom,3,"a_damage_not_in_handler,a_number_missing"
+ex8-54,Barboach,3,c_choice_no_prompt
+gym1-26,Erika's Victreebel,3,c_choice_no_prompt
+gym2-17,Blaine,3,c_choice_no_prompt
+gym2-18,Giovanni,3,c_choice_no_prompt
+gym2-47,Koga's Kakuna,3,c_choice_no_prompt
+gym2-76,Giovanni's Nidoran ♂,3,"a_damage_not_in_handler,a_number_missing"
+gym2-89,Misty's Poliwag,3,c_choice_no_prompt
+neo1-16,Togetic,3,c_choice_no_prompt
+neo1-82,Wooper,3,c_choice_no_prompt
+pop1-10,Torkoal,3,c_choice_no_prompt
+base1-32,Kadabra,3,b_name_collision
+base1-64,Starmie,3,b_name_collision
+ecard2-113,Tentacool,3,b_name_collision
+neo2-37,Corsola,3,b_name_collision
+base2-39,Marowak,3,b_name_collision
+ex9-53,Luvdisc,3,b_name_collision
+base2-49,Bellsprout,3,b_name_collision
+base2-57,Nidoran ♀,3,b_name_collision
+base3-51,Krabby,3,b_name_collision
+ecard3-81,Nidoran ♀,3,b_name_collision
+ex10-71,Remoraid,3,b_name_collision
+ex11-45,Illumise,3,b_name_collision
+ex11-69,Eevee,3,b_name_collision
+ex16-17,Mawile,3,b_name_collision
+ex5-54,Beldum,3,b_name_collision
+ex7-72,Rattata,3,b_name_collision
+ex12-25,Solrock,3,b_name_collision
+ex4-17,Team Aqua's Seviper,3,b_name_collision
+ex4-23,Team Magma's Zangoose,3,b_name_collision
+ex6-71,Nidoran ♂,3,b_name_collision
+ex7-64,Ledyba,3,b_name_collision
+neo3-46,Murkrow,3,b_name_collision
+base2-58,Oddish,3,b_name_collision
+neo1-61,Hoppip,3,b_name_collision
+base5-10,Dark Machamp,3,b_name_collision
+ex1-57,Makuhita,3,b_name_collision
+ex13-103,Mewtwo ★,3,b_name_collision
+ex10-B,Unown,3,b_name_collision
+ex10-C,Unown,3,b_name_collision
+ex10-G,Unown,3,b_name_collision
+ex10-I,Unown,3,b_name_collision
+ex10-J,Unown,3,b_name_collision
+ex10-M,Unown,3,b_name_collision
+ex10-P,Unown,3,b_name_collision
+ex10-R,Unown,3,b_name_collision
+ex14-46,Bulbasaur,3,b_name_collision
+ex4-39,Bulbasaur,3,b_name_collision
+ecard2-77,Exeggcute,3,b_name_collision
+gym2-95,Sabrina's Drowzee,3,b_name_collision
+ex10-76,Sunkern,3,b_name_collision
+ex7-67,Mareep,3,b_name_collision
+gym1-82,Lt. Surge's Rattata,3,b_name_collision
+gym2-53,Lt. Surge's Raticate,3,b_name_collision
+gym2-85,Lt. Surge's Rattata,3,b_name_collision
+ex1-78,Wurmple,3,b_name_collision
+ex6-56,Caterpie,3,b_name_collision
+ecard3-90,Rattata,3,b_name_collision
+ex8-12,Mightyena,3,b_name_collision
+ex7-79,Swinub,3,b_name_collision
+ex11-46,Kakuna,3,b_name_collision
+ex16-51,Kabuto,3,b_name_collision
+ex2-27,Anorith,3,b_name_collision
+ex3-97,Rayquaza ex,3,b_name_collision
+neo4-22,Light Dragonair,3,b_name_collision
+gym1-32,Misty's Tentacool,3,b_name_collision
+ex8-59,Electrike,3,b_name_collision
+ex12-69,Wailmer,2,a_number_missing
+ex7-40,Dark Pupitar,2,a_number_missing
+gym1-18,Misty,2,a_number_missing
+gym1-51,Lt. Surge's Raticate,2,f_data_damage
+base2-55,Mankey,1,e_power_no_cpu
+basep-41,Lucky Stadium,1,e_trainer_flat_cpu_score
+basep-42,Pokémon Tower,1,e_trainer_flat_cpu_score
+ecard1-158,Darkness Energy,1,e_trainer_flat_cpu_score
+ecard1-159,Metal Energy,1,e_trainer_flat_cpu_score
+ecard2-142,Darkness Energy,1,e_trainer_flat_cpu_score
+ecard2-143,Metal Energy,1,e_trainer_flat_cpu_score
+ecard2-145,Boost Energy,1,e_trainer_flat_cpu_score
+ecard2-146,Crystal Energy,1,e_trainer_flat_cpu_score
+ecard2-147,Warp Energy,1,e_trainer_flat_cpu_score
+ecard3-142,Bounce Energy,1,e_trainer_flat_cpu_score
+ecard3-143,Cyclone Energy,1,e_trainer_flat_cpu_score
+ecard3-144,Retro Energy,1,e_trainer_flat_cpu_score
+ex1-93,Darkness Energy,1,e_trainer_flat_cpu_score
+ex1-94,Metal Energy,1,e_trainer_flat_cpu_score
+ex10-96,Darkness Energy,1,e_trainer_flat_cpu_score
+ex10-97,Metal Energy,1,e_trainer_flat_cpu_score
+ex10-98,Boost Energy,1,e_trainer_flat_cpu_score
+ex10-99,Cyclone Energy,1,e_trainer_flat_cpu_score
+ex10-100,Warp Energy,1,e_trainer_flat_cpu_score
+ex10-112,Umbreon ex,1,e_power_no_cpu
+ex11-94,Holon Research Tower,1,e_trainer_flat_cpu_score
+ex11-103,Darkness Energy,1,e_trainer_flat_cpu_score
+ex11-104,Holon Energy FF,1,e_trainer_flat_cpu_score
+ex11-105,Holon Energy GL,1,e_trainer_flat_cpu_score
+ex11-106,Holon Energy WP,1,e_trainer_flat_cpu_score
+ex11-107,Metal Energy,1,e_trainer_flat_cpu_score
+ex12-76,Power Tree,1,e_trainer_flat_cpu_score
+ex12-82,React Energy,1,e_trainer_flat_cpu_score
+ex13-87,Holon Lake,1,e_trainer_flat_cpu_score
+ex13-94,Darkness Energy,1,e_trainer_flat_cpu_score
+ex13-95,Metal Energy,1,e_trainer_flat_cpu_score
+ex13-97,Dark Metal Energy,1,e_trainer_flat_cpu_score
+ex13-98,δ Rainbow Energy,1,e_trainer_flat_cpu_score
+ex14-8,Manectric,1,a_damage_not_in_handler
+ex14-75,Crystal Beach,1,e_trainer_flat_cpu_score
+ex15-74,Holon Legacy,1,e_trainer_flat_cpu_score
+ex15-84,Holon Energy FF,1,e_trainer_flat_cpu_score
+ex15-85,Holon Energy GL,1,e_trainer_flat_cpu_score
+ex15-86,Holon Energy WP,1,e_trainer_flat_cpu_score
+ex15-87,Boost Energy,1,e_trainer_flat_cpu_score
+ex15-88,δ Rainbow Energy,1,e_trainer_flat_cpu_score
+ex15-89,Scramble Energy,1,e_trainer_flat_cpu_score
+ex16-71,Battle Frontier,1,e_trainer_flat_cpu_score
+ex16-72,Drake's Stadium,1,e_trainer_flat_cpu_score
+ex16-76,Glacia's Stadium,1,e_trainer_flat_cpu_score
+ex16-79,Phoebe's Stadium,1,e_trainer_flat_cpu_score
+ex16-82,Sidney's Stadium,1,e_trainer_flat_cpu_score
+ex16-87,Darkness Energy,1,e_trainer_flat_cpu_score
+ex16-88,Metal Energy,1,e_trainer_flat_cpu_score
+ex16-90,Cyclone Energy,1,e_trainer_flat_cpu_score
+ex16-91,Warp Energy,1,e_trainer_flat_cpu_score
+ex3-85,High Pressure System,1,e_trainer_flat_cpu_score
+ex3-86,Low Pressure System,1,e_trainer_flat_cpu_score
+ex4-78,Team Aqua Hideout,1,e_trainer_flat_cpu_score
+ex4-83,Team Magma Hideout,1,e_trainer_flat_cpu_score
+ex4-86,Aqua Energy,1,e_trainer_flat_cpu_score
+ex4-87,Magma Energy,1,e_trainer_flat_cpu_score
+ex5-87,Ancient Tomb,1,e_trainer_flat_cpu_score
+ex5-88,Desert Ruins,1,e_trainer_flat_cpu_score
+ex5-89,Island Cave,1,e_trainer_flat_cpu_score
+ex5-91,Magnetic Storm,1,e_trainer_flat_cpu_score
+ex7-2,Dark Ampharos,1,a_damage_not_in_handler
+ex7-87,Rocket's Hideout,1,e_trainer_flat_cpu_score
+ex7-94,Dark Metal Energy,1,e_trainer_flat_cpu_score
+ex7-95,R Energy,1,e_trainer_flat_cpu_score
+ex8-93,Boost Energy,1,e_trainer_flat_cpu_score
+ex8-95,Scramble Energy,1,e_trainer_flat_cpu_score
+ex9-55,Meditite,1,a_damage_not_in_handler
+ex9-75,Battle Frontier,1,e_trainer_flat_cpu_score
+ex9-86,Darkness Energy,1,e_trainer_flat_cpu_score
+ex9-88,Metal Energy,1,e_trainer_flat_cpu_score
+gym2-22,Brock's Dugtrio,1,a_damage_not_in_handler
+neo1-19,Metal Energy,1,e_trainer_flat_cpu_score
+neo1-104,Darkness Energy,1,e_trainer_flat_cpu_score
+neo1-105,Recycle Energy,1,e_trainer_flat_cpu_score
+neo3-63,Rocket's Hideout,1,e_trainer_flat_cpu_score
+neo4-16,Miracle Energy,1,e_trainer_flat_cpu_score
+neo4-95,Radio Tower,1,e_trainer_flat_cpu_score
+neo4-99,Energy Stadium,1,e_trainer_flat_cpu_score
+neo4-100,Lucky Stadium,1,e_trainer_flat_cpu_score
+np-28,Championship Arena,1,e_trainer_flat_cpu_score
+pop2-10,Pokémon Park,1,e_trainer_flat_cpu_score
+pop2-14,Luvdisc,1,a_damage_not_in_handler
+pop3-10,High Pressure System,1,e_trainer_flat_cpu_score
+pop3-11,Low Pressure System,1,e_trainer_flat_cpu_score
+pop4-10,Scramble Energy,1,e_trainer_flat_cpu_score
+pop5-8,Boost Energy,1,e_trainer_flat_cpu_score
+pop5-9,δ Rainbow Energy,1,e_trainer_flat_cpu_score

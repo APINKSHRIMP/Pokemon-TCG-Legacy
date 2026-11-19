@@ -926,6 +926,23 @@ SFX_ONE_ONSET = {'Comet Punch 1hit'}
 # Pitch for recipes that borrow a bigger move's sound for a smaller effect (and the reverse).
 SFX_PITCH = {'MiniExplosions': 1.25, 'SmallBomb': 1.15, 'Fireball': 0.9, 'Flare': 1.1, 'Pebbles': 1.15, 'EnergyUpSmall': 1.15,
              'OneSlap': 0.95, 'Kick': 1.05, 'TailSlap': 1.1, 'IceWing': 1.1, 'BigFireball': 1.05}
+# TIMING AUDIT 2026-11-19 (audit_out/anim_audio_timing.md, attack_sfx_timing_audit.py):
+# "sfx_start" -- the clip plays from the start of the animation instead of being lined up on the impact. For
+# recipes whose sound is a stream or a sound wave leaving the attacker: as damaging attacks these clips (no
+# build-up) only started AT the impact, after 0.6-1.1 s of silence, while the 0-damage versions already
+# played from the start.
+SFX_START = {'Flamethrower', 'WaterGun', 'Screech', 'Supersonic', 'Acid', 'PoisonSpray'}
+# "sfx_windup" -- a quieter charge-up clip played from the start and cut when the impact lands, for recipes
+# with a long charge before the hit and a clip that only starts at the hit (1.0-1.2 s of silence before).
+SFX_WINDUP = {'Selfdestruct': 'Charge Beam part 1', 'HyperBeam': 'Charge Beam part 1', 'DragonRage': 'Roar'}
+# AUDIT 2026-11-19 -- "sfx_align": a clip with no build-up lines up with the impact even when the attack does no
+# damage (the runtime only did that for damaging attacks). These sounded 0.3-1.1 s before their effect reached
+# the target as 0-damage attacks, and on the impact as damaging ones.
+SFX_ALIGN = {'HyperBeam', 'FeintAttack', 'HornDrill', 'Pebbles', 'Sonicboom', 'Stomp', 'Smog',
+             'SacredFire', 'Magma', 'HotRocks', 'MudSlap', 'Barrage'}
+# The attacker makes these sounds (a clap, a bell, a wind): aligning them left 0.6-1.9 s of silence, so they play
+# from the start whether or not the attack does damage.
+SFX_START |= {'Encore', 'Flatter', 'HealBench', 'RainbowWing'}
 STATUS_SFX = {'Poisoned': 'Status Poisoned', 'Toxic': 'Status Poisoned', 'Burned': 'Status Burned', 'Paralyzed': 'Status Paralyzed',
               'Asleep': 'Status Sleep', 'Confused': 'Status Confused'}
 SOUNDS = {'hit': 'Hit Normal Damage', 'hit_weak': 'Hit Super Effective', 'hit_resist': 'Hit Weak Not Very Effective',
@@ -970,6 +987,14 @@ def apply_sfx(mapping, clips):
         r['sfx'] = clip
         if rid in SFX_PITCH:
             r['sfx_pitch'] = SFX_PITCH[rid]
+        if rid in SFX_START:
+            r['sfx_start'] = True
+        if rid in SFX_ALIGN:
+            r['sfx_align'] = True
+        if rid in SFX_WINDUP:
+            if SFX_WINDUP[rid] not in clips:
+                missing.append('(windup) ' + SFX_WINDUP[rid])
+            r['sfx_windup'] = SFX_WINDUP[rid]
         for s in r['steps']:
             if s.get('fx') == 'StatUp':
                 s['sfx'] = SOUNDS['stat_up']

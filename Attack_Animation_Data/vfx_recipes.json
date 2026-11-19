@@ -214,7 +214,8 @@
    ],
    "element": "normal",
    "react": "squash",
-   "sfx": "Stomp"
+   "sfx": "Stomp",
+   "sfx_align": true
   },
   "Trample": {
    "body": "leap",
@@ -675,7 +676,8 @@
    "screen": {
     "shake": 6
    },
-   "sfx": "Horn Drill"
+   "sfx": "Horn Drill",
+   "sfx_align": true
   },
   "Megahorn": {
    "body": "dash",
@@ -928,7 +930,8 @@
     }
    ],
    "element": "flying",
-   "sfx": "Sonic Boom"
+   "sfx": "Sonic Boom",
+   "sfx_align": true
   },
   "Swift": {
    "body": "hop",
@@ -1163,7 +1166,8 @@
     "at": "target",
     "size": 0.8
    },
-   "sfx": "Self Destruct"
+   "sfx": "Self Destruct",
+   "sfx_windup": "Charge Beam part 1"
   },
   "EggBomb": {
    "body": "hop",
@@ -1207,7 +1211,8 @@
    "element": "normal",
    "react": "multi",
    "hits": 3,
-   "sfx": "Barrage 1hit"
+   "sfx": "Barrage 1hit",
+   "sfx_align": true
   },
   "SmallBomb": {
    "body": "hop",
@@ -1280,7 +1285,9 @@
     "flash": "#ffd0a0",
     "shake": 8
    },
-   "sfx": "Hyper Beam"
+   "sfx": "Hyper Beam",
+   "sfx_align": true,
+   "sfx_windup": "Charge Beam part 1"
   },
   "HyperVoice": {
    "body": "shake",
@@ -1348,7 +1355,8 @@
     "at": "target",
     "size": 0.6
    },
-   "sfx": "Screech"
+   "sfx": "Screech",
+   "sfx_start": true
   },
   "Supersonic": {
    "body": "shake",
@@ -1369,7 +1377,8 @@
    ],
    "element": "sound",
    "react": "spin",
-   "sfx": "Supersonic"
+   "sfx": "Supersonic",
+   "sfx_start": true
   },
   "Growl": {
    "body": "shake",
@@ -1605,7 +1614,8 @@
     }
    ],
    "element": "fairy",
-   "sfx": "Flatter"
+   "sfx": "Flatter",
+   "sfx_start": true
   },
   "Swagger": {
    "body": "sway",
@@ -1654,7 +1664,8 @@
     }
    ],
    "element": "fairy",
-   "sfx": "Encore"
+   "sfx": "Encore",
+   "sfx_start": true
   },
   "Metronome": {
    "body": "sway",
@@ -1943,7 +1954,8 @@
     }
    ],
    "element": "heal",
-   "sfx": "Heal Bell"
+   "sfx": "Heal Bell",
+   "sfx_start": true
   },
   "Agility": {
    "body": "hop",
@@ -3861,7 +3873,8 @@
     }
    ],
    "element": "ground",
-   "sfx": "Mud Slap"
+   "sfx": "Mud Slap",
+   "sfx_align": true
   },
   "MudSport": {
    "body": "hop",
@@ -4081,7 +4094,8 @@
    "element": "fire",
    "react": "multi",
    "hits": 4,
-   "sfx": "Flamethrower"
+   "sfx": "Flamethrower",
+   "sfx_start": true
   },
   "FireBlast": {
    "body": "charge",
@@ -4371,7 +4385,8 @@
     }
    ],
    "element": "fire",
-   "sfx": "Lava Plume"
+   "sfx": "Lava Plume",
+   "sfx_align": true
   },
   "Magma": {
    "body": "shake",
@@ -4399,7 +4414,8 @@
    "screen": {
     "shake": 7
    },
-   "sfx": "Magma Storm"
+   "sfx": "Magma Storm",
+   "sfx_align": true
   },
   "FireWall": {
    "body": "hop",
@@ -4588,7 +4604,8 @@
     "flash": "#ffe0a0",
     "shake": 6
    },
-   "sfx": "Sacred Fire"
+   "sfx": "Sacred Fire",
+   "sfx_align": true
   },
   "FlameStar": {
    "body": "hop",
@@ -4722,7 +4739,8 @@
    "element": "water",
    "react": "multi",
    "hits": 3,
-   "sfx": "Water Gun"
+   "sfx": "Water Gun",
+   "sfx_start": true
   },
   "WaterPulse": {
    "body": "hop",
@@ -6858,7 +6876,8 @@
     }
    ],
    "element": "poison",
-   "sfx": "Acid"
+   "sfx": "Acid",
+   "sfx_start": true
   },
   "Sludge": {
    "body": "sway",
@@ -6935,7 +6954,8 @@
     "at": "target",
     "size": 0.6
    },
-   "sfx": "Smog"
+   "sfx": "Smog",
+   "sfx_align": true
   },
   "Toxic": {
    "body": "sway",
@@ -7068,7 +7088,8 @@
     }
    ],
    "element": "poison",
-   "sfx": "Acid"
+   "sfx": "Acid",
+   "sfx_start": true
   },
   "Confusion": {
    "body": "sway",
@@ -7750,7 +7771,8 @@
     }
    ],
    "element": "dark",
-   "sfx": "Feint Attack"
+   "sfx": "Feint Attack",
+   "sfx_align": true
   },
   "DarkSlash": {
    "body": "lunge",
@@ -8132,7 +8154,8 @@
    "screen": {
     "shake": 7
    },
-   "sfx": "Dragon Rage"
+   "sfx": "Dragon Rage",
+   "sfx_windup": "Roar"
   },
   "Dragonbreath": {
    "body": "hop",
@@ -8378,7 +8401,8 @@
     }
    ],
    "element": "flying",
-   "sfx": "Silver Wind"
+   "sfx": "Silver Wind",
+   "sfx_start": true
   },
   "EnergyAbsorbLong": {
    "body": "hop",
@@ -8432,7 +8456,8 @@
    ],
    "element": "rock",
    "sfx": "Rock Throw",
-   "sfx_pitch": 1.15
+   "sfx_pitch": 1.15,
+   "sfx_align": true
   },
   "NatureBoost": {
    "body": "hop",

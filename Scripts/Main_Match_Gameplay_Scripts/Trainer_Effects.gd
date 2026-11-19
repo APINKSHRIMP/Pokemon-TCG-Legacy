@@ -431,12 +431,37 @@ func _ensure_validator_dispatch_ready() -> void:
 	_register_base_validations()
 	_register_gym1_validations()
 	_register_gym2_validations()
+	_register_ex4_validations()   # AUDIT 2026-11-18 #16/#17 (+ #76 Wally's Training)
 	_register_ex5_validations()
 	_register_ex11_validations()
 	_register_ex13_validations()
 	_register_ex14_validations()
 	_register_ex16_validations()
 	# When adding Neo1/Neo2/etc., append: _register_neo1_validations()
+
+# AUDIT 2026-11-18 #16/#17: Team Aqua / Magma Schemer - discarding a Pokémon from your hand is the cost; with none in
+# hand the card can't be played (it used to draw 3 for free).
+func _register_ex4_validations() -> void:
+	# AUDIT 2026-11-18 #76: Wally's Training can't be played when the Active may not evolve right now.
+	# AUDIT 2026-11-18 #163: Archie / Maxie put a Pokémon onto the Bench - not playable with a full Bench.
+	for bid in ["ex4-71", "ex4-73"]:
+		_validator_dispatch[bid] = func(c, opp):
+			var bench = main.opponent_bench if opp else main.player_bench
+			if bench.size() >= main.get_max_bench_size():
+				return "Your Bench is full!"
+			return ""
+	for wid in ["ex2-89", "ex9-85"]:
+		_validator_dispatch[wid] = func(c, opp):
+			var act = main.opponent_active_pokemon if opp else main.player_active_pokemon
+			if act == null or not (act in main.get_pokemon_that_may_evolve_now(opp)):
+				return "Your Active Pokémon can't evolve this turn!"
+			return ""
+	for sid in ["ex4-69", "ex4-70"]:
+		_validator_dispatch[sid] = func(c, opp):
+			var hand = main.opponent_hand if opp else main.player_hand
+			if not hand.any(func(x): return x != c and x.metadata.get("supertype", "") == "Pokémon"):
+				return "No Pokémon in hand to discard!"
+			return ""
 
 func _register_base_validations() -> void:
 	_validator_dispatch["base1-76"] = func(c, opp):  # Pokemon Breeder
@@ -1319,7 +1344,8 @@ func play_trainer_card(card: card_object, is_opponent: bool) -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_trainer_sound)
 
 	# NEO1 Mind Games (Slowking): whenever opponent plays a Trainer, may flip — heads: cancel it (card goes to top of deck)
-	if not is_stadium_trainer(card):
+	# AUDIT 2026-11-18 #175: Stadium cards are Trainer cards too - checked before the Stadium enters play.
+	if true:
 		if await main.powers_and_bodies.check_mind_games(is_opponent):
 			var opp_deck = main.opponent_deck if is_opponent else main.player_deck
 			card.current_location = "deck"
@@ -9382,12 +9408,20 @@ func power_plant_activate(is_opponent: bool) -> void:
 # POKEMON PARK (ecard2-131): passive/reactive — whenever a player attaches an Energy card from
 # hand to one of their OWN Benched Pokemon, remove 1 damage counter from it. Called from the
 # energy-attach code paths (Main + CPU_AI) right after a successful hand-to-bench attach.
+# AUDIT 2026-11-18 #183: "Once during each player's turn" - side -> turn_number it was used (the first Bench attach
+# of the turn uses it); the heal is announced over the Pokémon (it was a silent HP change) and obeys heal rules.
+var _pokemon_park_turn: Dictionary = {}
 func pokemon_park_on_bench_energy_attach(pokemon: card_object, is_opponent: bool) -> void:
 	if not main.is_stadium_in_play(StadiumIds.POKEMON_PARK): return
+	if int(_pokemon_park_turn.get(is_opponent, -1)) == main.turn_number: return
+	_pokemon_park_turn[is_opponent] = main.turn_number
 	if pokemon.current_hp >= pokemon.get_max_hp(): return
-	pokemon.current_hp = min(pokemon.get_max_hp(), pokemon.current_hp + 10)
+	var pp_heal: int = mini(main.match_effects.modify_heal_amount(10, is_opponent), pokemon.get_max_hp() - pokemon.current_hp)
+	if pp_heal <= 0: return
+	pokemon.current_hp = min(pokemon.get_max_hp(), pokemon.current_hp + pp_heal)
+	main.float_label_over(pokemon, "POKEMON PARK +" + str(pp_heal), Color.GREEN, is_opponent)
 	main.display_hp_circles_above_align(pokemon, is_opponent)
-	print("STADIUM: Pokemon Park — healed 10 HP on ", pokemon.metadata.get("name",""))
+	print("STADIUM: Pokemon Park — healed ", pp_heal, " HP on ", pokemon.metadata.get("name",""))
 
 ######################################################################################################################################################
 ######################################################### ECARD2 (AQUAPOLIS) TOOLS ###################################################################
@@ -10405,29 +10439,33 @@ func effect_ex2_double_full_heal(is_opponent: bool) -> void:
 # Pokemon (excluding Baby Pokemon), to hand. Pre-filters the pool to 1 card per type so any subset
 # picked satisfies "different types" (same technique as Lady Outing).
 func effect_ex2_lanettes_net_search(is_opponent: bool) -> void:
+	# AUDIT 2026-11-18 #74: EVERY non-Baby Basic is offered (it offered only the first one of each type); "different types"
+	# is a validator on the one multi-select screen (distinct_key_validator), and the CPU takes its best card per type.
 	var deck = main.opponent_deck if is_opponent else main.player_deck
-	var seen_types: Array = []
-	var candidates: Array = []
-	for c in deck:
-		if not main.is_basic_pokemon(c):
-			continue
-		if "Baby" in c.metadata.get("subtypes", []):
-			continue
-		var types = c.metadata.get("types", [])
-		if types.is_empty():
-			continue
-		var t = types[0]
-		if t in seen_types:
-			continue
-		seen_types.append(t)
-		candidates.append(c)
+	var hand = main.opponent_hand if is_opponent else main.player_hand
+	var candidates: Array = deck.filter(func(c): return main.is_basic_pokemon(c) and "Baby" not in c.metadata.get("subtypes", []) \
+		and not c.metadata.get("types", []).is_empty())
 	if candidates.is_empty():
 		await main.show_message("LANETTE'S NET SEARCH: NO BASIC POKEMON IN DECK!")
 		if main._should_bail(): return
+		deck.shuffle()
 		return
-	var filter_fn = func(c): return c in candidates
-	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "LANETTE'S NET SEARCH: CHOOSE UP TO 3 DIFFERENT-TYPE BASICS", 3)
+	var type_key = func(c): return c.metadata.get("types", ["Colorless"])[0]
+	var found: Array = await main.card_ops.choose_cards(candidates, is_opponent, 0, 3, "LANETTE'S NET SEARCH",
+		"Choose up to 3 Basic Pokémon of different types", "TAKE CARDS", false,
+		func(c): return main.cpu_ai.cpu_rank_keep_value(c), true, main.card_ops.distinct_key_validator(type_key))
 	if main._should_bail(): return
+	for card in found:
+		deck.erase(card)
+		card.current_location = "hand"
+		hand.append(card)
+		await main.card_ops.fly_card(card, "deck", "hand", is_opponent)
+		if main._should_bail(): return
+	await main.card_ops.reveal_searched_cards(found, is_opponent)
+	if main._should_bail(): return
+	deck.shuffle()
+	main.refresh_hand_display(is_opponent)
+	main.update_deck_icon(is_opponent)
 	await main.show_message("LANETTE'S NET SEARCH! ADDED " + str(found.size()) + " POKEMON TO HAND!" if found.size() > 0 else "NO MATCHING POKEMON FOUND!")
 	if main._should_bail(): return
 	print("TRAINER: Lanette's Net Search — found ", found.size())
@@ -10455,28 +10493,45 @@ func _ex2_do_evolution(evo_card: card_object, target: card_object, is_opponent: 
 # evolves from it in hand, evolve it (counts as evolving that Pokemon).
 func effect_ex2_rare_candy(is_opponent: bool) -> void:
 	var hand = main.opponent_hand if is_opponent else main.player_hand
+	# AUDIT 2026-11-18 #13: "a Stage 1 or Stage 2 card that evolves from that Pokémon" - a Stage 2 whose line starts at
+	# the Basic counts (skipping the Stage 1 is the card's whole point); it only ever accepted direct Stage 1s.
+	var fits = func(h: card_object, p: card_object) -> bool:
+		if h.metadata.get("supertype","") != "Pokémon":
+			return false
+		if main.can_evolve_from(h, p):
+			return true
+		return "Stage 2" in h.metadata.get("subtypes", []) and _basic_matches_stage2(p, h)
 	var valid_basics: Array = []
 	var may_evolve: Array = main.get_pokemon_that_may_evolve_now(is_opponent)   # ISSUE #403: same rules as Breeder
 	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
 		if not main.is_basic_pokemon(p) or not (p in may_evolve):
 			continue
 		for h in hand:
-			if h.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(h, p):
+			if fits.call(h, p):
 				valid_basics.append(p)
 				break
 	if valid_basics.is_empty():
 		await main.show_message("RARE CANDY: NO BASIC POKEMON HAS A MATCHING EVOLUTION IN HAND!")
 		if main._should_bail(): return
 		return
-	var target = await main.card_ops.choose_card(valid_basics, is_opponent, "RARE CANDY", "Choose a Basic Pokemon to evolve", "SELECT", false)
+	# CPU: a Stage 2 jump first, then the biggest evolution; the Active breaks ties.
+	var evo_rank = func(c: card_object) -> float:
+		return float(int(c.metadata.get("hp","0"))) + (1000.0 if "Stage 2" in c.metadata.get("subtypes", []) else 0.0)
+	var basic_rank = func(p: card_object) -> float:
+		var best := 0.0
+		for h in hand:
+			if fits.call(h, p):
+				best = maxf(best, evo_rank.call(h))
+		var act = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
+		return best + (5.0 if p == act else 0.0)
+	var target = await main.card_ops.choose_card(valid_basics, is_opponent, "RARE CANDY", "Choose a Basic Pokemon to evolve", "SELECT", false, basic_rank)
 	if main._should_bail(): return
 	if target == null:
 		return
-	var evos = hand.filter(func(h): return h.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(h, target))
+	var evos = hand.filter(func(h): return fits.call(h, target))
 	if evos.is_empty():
 		return
-	var rank = func(c): return float(int(c.metadata.get("hp","0")))
-	var evo_card = await main.card_ops.choose_card(evos, is_opponent, "RARE CANDY", "Choose an Evolution card from your hand", "EVOLVE", false, rank)
+	var evo_card = await main.card_ops.choose_card(evos, is_opponent, "RARE CANDY", "Choose an Evolution card from your hand", "EVOLVE", false, evo_rank)
 	if main._should_bail(): return
 	if evo_card == null:
 		return
@@ -10495,6 +10550,11 @@ func effect_ex2_wallys_training(is_opponent: bool) -> void:
 		return
 	var active = actives[0]
 	var deck = main.opponent_deck if is_opponent else main.player_deck
+	# AUDIT 2026-11-18 #76: the normal evolve rules (first turn, played / evolved this turn, evolve locks).
+	if not (active in main.get_pokemon_that_may_evolve_now(is_opponent)):
+		await main.show_message("WALLY'S TRAINING: " + active.metadata.get("name","").to_upper() + " CAN'T EVOLVE THIS TURN!")
+		if main._should_bail(): return
+		return
 	var evos = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(c, active))
 	if evos.is_empty():
 		await main.show_message("WALLY'S TRAINING: NO EVOLUTION FOR " + active.metadata.get("name","").to_upper() + " IN DECK!")
@@ -10691,14 +10751,17 @@ func effect_ex4_schemer(is_opponent: bool, team: String) -> void:
 	if not pokes.is_empty():
 		var chosen: card_object = null
 		if is_opponent:
-			for c in pokes:
-				if team in c.metadata.get("name",""):
-					chosen = c
-					break
-			if chosen == null:
-				# No bonus-team Pokemon in hand — discard the least valuable Pokemon, not just the first.
-				var priority = cpu_get_discard_priority(pokes, 1)
-				chosen = priority[0] if not priority.is_empty() else pokes[0]
+			# AUDIT 2026-11-18 #162: the least valuable Pokémon in general vs the least valuable team one - the team one
+			# (+1 card) only when it costs at most about one card's worth more (it took the FIRST team Pokémon).
+			var priority = cpu_get_discard_priority(pokes, 1)
+			var general: card_object = priority[0] if not priority.is_empty() else pokes[0]
+			var team_pokes: Array = pokes.filter(func(c): return team in c.metadata.get("name",""))
+			chosen = general
+			if not team_pokes.is_empty() and not (team in general.metadata.get("name","")):
+				var tp = cpu_get_discard_priority(team_pokes, 1)
+				var team_pick: card_object = tp[0] if not tp.is_empty() else team_pokes[0]
+				if main.cpu_ai.cpu_rank_keep_value(team_pick) <= main.cpu_ai.cpu_rank_keep_value(general) + 25.0:
+					chosen = team_pick
 		else:
 			chosen = await main.card_ops.choose_card(pokes, is_opponent, team.to_upper() + " SCHEMER", "Discard 1 Pokemon from your hand", "DISCARD", false)
 			if main._should_bail(): return

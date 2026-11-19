@@ -155,6 +155,8 @@ func run_pre_wr_hooks(damage: int, attacker: card_object, defender: card_object,
 		damage = _hook_ex15_extra_smoke(damage, attacker, defender, modifiers)
 		damage = _hook_ex10_solid_rage(damage, attacker, defender, modifiers)
 		damage = _hook_ecard1_strength_charm(damage, attacker, defender, modifiers)
+		damage = _hook_dragon_dance(damage, attacker, defender, modifiers)    # 2026-11-19: printed "(before applying W/R)"
+		damage = _hook_ex8_bay_dance(damage, attacker, defender, modifiers)   # 2026-11-19: printed "(before applying W/R)"
 	_pre_wr_pass = false
 	return max(0, damage)
 
@@ -361,6 +363,12 @@ func is_power_blocked_by_status(pokemon: card_object) -> bool:
 
 # Full power-blocker check: status conditions, Toxic Gas, Goop Gas, and temporary disable flag.
 # Pass works_through_status=true for powers like Buzzap that still work while statused.
+# 2026-11-19 (audit follow-up): the gate every CPU power phase uses before announcing a Power. is_power_blocked_by_status
+# (Special Conditions, Toxic Gas, Dark Impact) did not know the Poké-Power locks in is_power_blocked (Wise Aura, Battle
+# Frontier, Stench, Lazy, Intimidating Ring, Dark Gaze, Energy Root, Cessation Crystal...), so the CPU used locked Powers.
+func _cpu_power_locked(pokemon: card_object) -> bool:
+	return is_power_blocked_by_status(pokemon) or is_power_blocked(pokemon)
+
 func is_power_blocked(pokemon: card_object, works_through_status: bool = false) -> bool:
 	if pokemon == null:
 		return true
@@ -533,6 +541,9 @@ func body_lock_active(pokemon: card_object) -> bool:
 	if not main.is_basic_pokemon(pokemon) and not main.is_ex_pokemon(pokemon) and _ex13_dual_aura_active():
 		_note_425("Dual Aura is stopping Evolved non-ex Poke-Bodies")
 		return true
+	# AUDIT 2026-11-18 #22: Space Center (ex8-91) ignores Basic non-ex, non-owner Poké-Bodies - every Body gate now.
+	if ex8_space_center_ignores_body(pokemon):
+		return true
 	return false
 
 # Returns true if a card is a trainer card
@@ -656,6 +667,10 @@ func is_power_usable(pokemon: card_object, ability: Dictionary) -> bool:
 		return false
 
 	if is_toxic_gas_active():
+		return false
+	# AUDIT 2026-11-18 #23: the full Power lock gate (Wise Aura, Battle Frontier, Lazy, Stench, Intimidating Ring,
+	# Dark Gaze...) - the menu only knew Toxic Gas / Special Conditions / Mt. Moon.
+	if is_power_blocked(pokemon, ability_name in ["[Bear]", "[Yield]", "[Search]", "[Tell]"]):
 		return false
 	if pokemon.power_disabled_until_end_of_next_turn:
 		return false
@@ -907,6 +922,12 @@ func activate_power(pokemon: card_object, ability: Dictionary) -> void:
 			await main.show_message("MT. MOON PREVENTS " + pokemon.metadata.get("name","").to_upper() + " FROM USING POKE-POWERS!")
 		return
 	var ability_name = ability.get("name", "")
+	# AUDIT 2026-11-18 #23: the same Power-lock gate for every activation (player and CPU). Rules actions exempt.
+	if pokemon != null and ability_name not in [main.card_ops.SECRET_PLAN_FLIP, "Discard", "Discard Form"] 			and str(ability.get("type", "")) in ["Pokémon Power", "Pokemon Power", "Poké-Power", "Poke-Power"] 			and is_power_blocked(pokemon, ability_name in ["[Bear]", "[Yield]", "[Search]", "[Tell]"]):
+		print("AUDIT 2026-11-18 #23: ", ability_name, " is locked - not used")
+		if not main.opponents_turn_active:
+			await main.show_message(ability_name.to_upper() + " CAN'T BE USED RIGHT NOW!")
+		return
 	if GameState.autotest != null: GameState.autotest.note("power", pokemon.uid if pokemon != null else "stadium", ability_name, main.opponents_turn_active)
 	if pokemon != null and main.card_fx != null and not main.opponents_turn_active: main.card_fx.power_used(pokemon)   # ISSUE #348
 	if pokemon != null and main.attack_vfx != null and not main.opponents_turn_active: main.attack_vfx.play_power(pokemon)   # AUDIT 2026-11-17: animation + sound
@@ -1305,7 +1326,7 @@ func get_retreat_cost_reduction(is_opponent: bool) -> int:
 		for ab in abilities:
 			if ab.get("name", "") == "Retreat Aid":
 				if not is_power_blocked_by_status(bp):
-					reduction += 1
+					reduction += 2 if "colorlesscolorless less" in str(ab.get("text", "")).to_lower() else 1   # AUDIT 2026-11-18 #19
 					print("RETREAT AID: Dodrio reduces retreat cost by 1")
 	return reduction
 
@@ -2020,7 +2041,7 @@ func is_clairvoyance_active() -> bool:
 
 func cpu_phase_activate_powers() -> void:
 	# Note: Toxic Gas blocks individual powers. Each power section checks is_toxic_gas_active()
-	# or is_power_blocked_by_status() as appropriate. Rain Dance/Energy Trans/etc. are also
+	# or _cpu_power_locked() as appropriate. Rain Dance/Energy Trans/etc. are also
 	# blocked by Toxic Gas since they are Pokemon Powers.
 	var toxic_gas = is_toxic_gas_active()
 
@@ -2083,7 +2104,7 @@ func cpu_phase_activate_powers() -> void:
 	# basep-5 Special Delivery (Dragonite): CPU draws if deck not empty
 	if not toxic_gas:
 		var dragonite = _find_cpu_pokemon_with_power("Special Delivery")
-		if dragonite != null and not is_power_blocked_by_status(dragonite) and not dragonite.power_used_this_turn:
+		if dragonite != null and not _cpu_power_locked(dragonite) and not dragonite.power_used_this_turn:
 			if main.opponent_deck.size() > 0:
 				await announce_cpu_power(dragonite, "Special Delivery")   # ISSUE #106
 				if main._should_bail(): return
@@ -2099,7 +2120,7 @@ func cpu_phase_activate_powers() -> void:
 	# the CPU cured it for them. Now only when curing ours is worth more than curing theirs.
 	if not toxic_gas:
 		var venusaur = _find_cpu_pokemon_with_power("Solar Power")
-		if venusaur != null and not is_power_blocked_by_status(venusaur) and not venusaur.power_used_this_turn:
+		if venusaur != null and not _cpu_power_locked(venusaur) and not venusaur.power_used_this_turn:
 			var own_sev: int = _solar_power_severity(main.opponent_active_pokemon)
 			var opp_sev: int = _solar_power_severity(main.player_active_pokemon)
 			if own_sev > opp_sev:
@@ -2168,7 +2189,7 @@ func cpu_phase_activate_powers() -> void:
 
 	# Rain Dance: attach all Water Energy to Water Pokemon
 	var blastoise = _find_cpu_pokemon_with_power("Rain Dance")
-	if blastoise != null and not is_power_blocked_by_status(blastoise) and not toxic_gas:
+	if blastoise != null and not _cpu_power_locked(blastoise) and not toxic_gas:
 		var rain_dance_announced = false   # ISSUE #106: announce the power once per turn, not per attach
 		var keep_going = true
 		while keep_going:
@@ -2245,7 +2266,7 @@ func cpu_phase_activate_powers() -> void:
 
 	# Energy Trans: consolidate Grass Energy to the pokemon that needs it most
 	var venusaur = _find_cpu_pokemon_with_power("Energy Trans")
-	if venusaur != null and not is_power_blocked_by_status(venusaur) and not toxic_gas:
+	if venusaur != null and not _cpu_power_locked(venusaur) and not toxic_gas:
 		# Find pokemon that needs Grass Energy most
 		var all_pokemon = main.cpu_ai.get_all_cpu_field_pokemon()
 		var best_target: card_object = null
@@ -2309,13 +2330,14 @@ func cpu_phase_activate_powers() -> void:
 	
 	# Vileplume Heal: CPU tries to heal damaged pokemon
 	var vileplume = _find_cpu_pokemon_with_power("Heal")
-	if vileplume != null and not is_power_blocked_by_status(vileplume) and not toxic_gas and not vileplume.power_used_this_turn:
+	if vileplume != null and not _cpu_power_locked(vileplume) and not toxic_gas and not vileplume.power_used_this_turn:
 		# Only use if there's damage to heal
 		var all_cpu = main.cpu_ai.get_all_cpu_field_pokemon()
 		# OLD ISSUE 307: shared heal scorer (survival thresholds, the Active first) — was "most damage counters"
 		var most_damaged: card_object = main.cpu_ai.cpu_pick_heal_target(all_cpu, 10)
 		var most_damage = (most_damaged.get_max_hp() - most_damaged.current_hp) if most_damaged != null else 0
-		if most_damaged != null and most_damage > 0:
+		# AUDIT 2026-11-18 #141: the match-rule heal gate (no_healing / healing_multiplier), decided before announcing.
+		if most_damaged != null and most_damage > 0 and main.match_effects.modify_heal_amount(10, true) > 0:
 			vileplume.power_used_this_turn = true
 			# ISSUE #106 FIX ACTIVE: the four-beat flow. Previously a coin appeared with no warning and
 			# the only message was the combined "Vileplume Heal: Tails! Failed!" — the player never saw
@@ -2329,16 +2351,15 @@ func cpu_phase_activate_powers() -> void:
 			if coin:
 				await main.show_message("HEADS! " + most_damaged.metadata.get("name", "").to_upper() + " RECOVERS 10 HP!")   # 3. explain
 				if main._should_bail(): return
-				most_damaged.current_hp = min(most_damaged.get_max_hp(), most_damaged.current_hp + 10)      # 4. animate
-				SoundManagerScript.play_sfx(SoundManagerScript.SFX_heal_sound)
-				main.display_hp_circles_above_align(most_damaged, true)
+				await main.card_ops.heal_pokemon(most_damaged, 10, true)      # 4. animate (AUDIT 2026-11-18 #141: shared heal path)
+				if main._should_bail(): return
 			else:
 				await main.show_message("TAILS! HEAL FAILED!")
 				if main._should_bail(): return
 	
 	# Venomoth Shift: CPU shifts to the type that gives best coverage
 	var venomoth = _find_cpu_pokemon_with_power("Shift")
-	if venomoth != null and not is_power_blocked_by_status(venomoth) and not toxic_gas and not venomoth.power_used_this_turn:
+	if venomoth != null and not _cpu_power_locked(venomoth) and not toxic_gas and not venomoth.power_used_this_turn:
 		# ISSUE #46 FIX: only bother shifting if it can actually matter — i.e. Venomoth is the ACTIVE
 		# (so its shifted type can exploit the player's Weakness when it attacks), OR some effect in
 		# play scales with "for each <type> ... in play/on the Bench". A benched Venomoth changing
@@ -2372,7 +2393,7 @@ func cpu_phase_activate_powers() -> void:
 		pass
 	elif toxic_gas:
 		print("ISSUE base1-1 FIX ACTIVE: Damage Swap skipped — all powers are blocked this match/turn")
-	elif is_power_blocked_by_status(alakazam):
+	elif _cpu_power_locked(alakazam):
 		print("ISSUE base1-1 FIX ACTIVE: Damage Swap skipped — Alakazam is ", alakazam.special_condition)
 	else:
 		await cpu_damage_swap(alakazam)
@@ -2383,7 +2404,7 @@ func cpu_phase_activate_powers() -> void:
 	# and there are enough total pokemon to survive the prize loss
 	var electrode_buzzap = _find_cpu_pokemon_with_power("Buzzap")
 	if electrode_buzzap != null and not toxic_gas:
-		if not is_power_blocked_by_status(electrode_buzzap):
+		if not _cpu_power_locked(electrode_buzzap):
 			var total_pokemon = (1 if main.opponent_active_pokemon != null else 0) + main.opponent_bench.size()
 			if total_pokemon > 1 and electrode_buzzap != main.opponent_active_pokemon:
 				# Find a pokemon that needs 2+ energy to attack
@@ -2434,7 +2455,7 @@ func cpu_phase_activate_powers() -> void:
 	# Step In (Dragonite): Switch to active if better than current active
 	var dragonite = _find_cpu_bench_pokemon_with_power("Step In")
 	if dragonite != null and not dragonite.power_used_this_turn:
-		if not is_power_blocked_by_status(dragonite) and not is_toxic_gas_active():
+		if not _cpu_power_locked(dragonite) and not is_toxic_gas_active():
 			var active = main.opponent_active_pokemon
 			if active != null:
 				# Switch in if Dragonite has better attack readiness
@@ -2471,7 +2492,7 @@ func cpu_phase_activate_powers() -> void:
 	for gengar in main.cpu_ai.get_all_cpu_field_pokemon():
 		if not gengar.has_ability("Curse") or gengar.power_used_this_turn:
 			continue
-		if is_power_blocked_by_status(gengar) or is_toxic_gas_active():
+		if _cpu_power_locked(gengar) or is_toxic_gas_active():
 			continue
 		var move: Dictionary = main.cpu_ai.cpu_pick_curse_move()
 		if move.is_empty():
@@ -2494,7 +2515,7 @@ func cpu_phase_activate_powers() -> void:
 
 	# Strange Behavior (Slowbro): Move damage off CPU active to Slowbro
 	var slowbro = _find_cpu_pokemon_with_power("Strange Behavior")
-	if slowbro != null and not is_power_blocked_by_status(slowbro) and not is_toxic_gas_active():
+	if slowbro != null and not _cpu_power_locked(slowbro) and not is_toxic_gas_active():
 		var active = main.opponent_active_pokemon
 		if active != null and active != slowbro:
 			var active_damage = int(active.metadata.get("hp", "0")) - active.current_hp
@@ -2514,7 +2535,7 @@ func cpu_phase_activate_powers() -> void:
 	
 	# Cowardice (Tentacool): CPU returns Tentacool if badly damaged
 	var tentacool = _find_cpu_pokemon_with_power("Cowardice")
-	if tentacool != null and not is_power_blocked_by_status(tentacool) and not is_toxic_gas_active():
+	if tentacool != null and not _cpu_power_locked(tentacool) and not is_toxic_gas_active():
 		# OLD ISSUE 307: returning the Active Tentacool with an empty Bench loses the game on the spot.
 		var tc_safe = tentacool != main.opponent_active_pokemon or not main.opponent_bench.is_empty()
 		if not tc_safe:
@@ -2566,7 +2587,7 @@ func cpu_phase_activate_powers() -> void:
 	# Evolutionary Light (Dark Dragonair): Search deck for Evolution card
 	var dragonair = _find_cpu_pokemon_with_power("Evolutionary Light")
 	if dragonair != null and not dragonair.power_used_this_turn and not dragonair.power_disabled_until_end_of_next_turn:
-		if not is_power_blocked_by_status(dragonair) and not toxic_gas:
+		if not _cpu_power_locked(dragonair) and not toxic_gas:
 			var cpu_deck = main.opponent_deck
 			var evolutions: Array = []
 			for card in cpu_deck:
@@ -2607,7 +2628,7 @@ func cpu_phase_activate_powers() -> void:
 	# Matter Exchange (Dark Kadabra): Discard 1, draw 1
 	var kadabra = _find_cpu_pokemon_with_power("Matter Exchange")
 	if kadabra != null and not kadabra.power_used_this_turn and not kadabra.power_disabled_until_end_of_next_turn:
-		if not is_power_blocked_by_status(kadabra) and not toxic_gas:
+		if not _cpu_power_locked(kadabra) and not toxic_gas:
 			if main.opponent_hand.size() >= 2 and main.opponent_deck.size() > 0:
 				var to_discard = main.trainer_effects.cpu_get_discard_priority(main.opponent_hand, 1)
 				# CPU v2 (think like a person): only cycle a card that is really junk (spare Energy, a dead line, a
@@ -2640,7 +2661,7 @@ func cpu_phase_activate_powers() -> void:
 	# Pollen Stench (Dark Gloom): Flip for confusion
 	var gloom = _find_cpu_pokemon_with_power("Pollen Stench")
 	if gloom != null and not gloom.power_used_this_turn and not gloom.power_disabled_until_end_of_next_turn:
-		if not is_power_blocked_by_status(gloom) and not toxic_gas:
+		if not _cpu_power_locked(gloom) and not toxic_gas:
 			# OLD ISSUE 307: tails Confuses the CPU's OWN Active — only gamble when that costs nothing: its Active
 			# is already Confused, or has no attack it can pay for this turn anyway.
 			var ps_cpu_act = main.opponent_active_pokemon
@@ -2668,7 +2689,7 @@ func cpu_phase_activate_powers() -> void:
 	# Gather Fire (Charmander): Move Fire Energy from another Pokemon
 	var charmander = _find_cpu_pokemon_with_power("Gather Fire")
 	if charmander != null and not charmander.power_used_this_turn and not charmander.power_disabled_until_end_of_next_turn:
-		if not is_power_blocked_by_status(charmander) and not toxic_gas:
+		if not _cpu_power_locked(charmander) and not toxic_gas:
 			var all_cpu = main.cpu_ai.get_all_cpu_field_pokemon()
 			var best_source: card_object = null
 			var best_energy: card_object = null
@@ -2711,7 +2732,7 @@ func cpu_phase_activate_powers() -> void:
 	# Long-Distance Hypnosis (Drowzee): Flip for sleep
 	var drowzee = _find_cpu_pokemon_with_power("Long-Distance Hypnosis")
 	if drowzee != null and not drowzee.power_used_this_turn and not drowzee.power_disabled_until_end_of_next_turn:
-		if not is_power_blocked_by_status(drowzee) and not toxic_gas:
+		if not _cpu_power_locked(drowzee) and not toxic_gas:
 			# OLD ISSUE 307: tails puts the CPU's OWN Active to sleep — only when it can't attack this turn anyway
 			# (or is already Asleep).
 			var ldh_act = main.opponent_active_pokemon
@@ -2738,7 +2759,7 @@ func cpu_phase_activate_powers() -> void:
 	# Trickery (Rattata): Switch prize with top of deck — CPU uses if deck top might be better
 	var rattata = _find_cpu_pokemon_with_power("Trickery")
 	if rattata != null and not rattata.power_used_this_turn and not rattata.power_disabled_until_end_of_next_turn:
-		if not is_power_blocked_by_status(rattata) and not toxic_gas:
+		if not _cpu_power_locked(rattata) and not toxic_gas:
 			if main.opponent_prize_cards.size() > 0 and main.opponent_deck.size() > 0:
 				# Simple heuristic: use if prizes > 3 remaining (more chances to improve)
 				if main.opponent_prize_cards.size() >= 3:
@@ -4085,6 +4106,41 @@ func power_natural_healing(vulpix: card_object) -> void:
 # --- gym2-3 Brock's Ninetales — Shapeshift ---
 # Active: attach Evolution card from hand; Ninetales uses that card's attacks instead of its own.
 # Card's ability/HP/types stay as Ninetales. Discarding the form (also a free action) is a separate menu entry.
+# AUDIT 2026-11-18 #126: the CPU's Shapeshift form, or null. Same rule as before (OLD ISSUE 307: a form whose attack
+# Ninetales can pay for now, hitting harder than its own options, not needed to evolve a Pokémon in play), now also
+# weighing the form's HP against the damage already on Ninetales and a Weakness to the player's Active. Called by the
+# CPU phase BEFORE announcing, so it never announces and then skips.
+func _cpu_pick_shapeshift_form(ninetales: card_object) -> card_object:
+	if ninetales == null or ninetales.shapeshift_form_card != null:
+		return null
+	var own_best := 0
+	for atk in ninetales.metadata.get("attacks", []):
+		if main.cpu_ai.get_unmet_energy_count(atk, ninetales) == 0:
+			own_best = max(own_best, main.attack_effects.parse_attack_base_damage(atk))
+	var dmg_on: int = ninetales.get_max_hp() - ninetales.current_hp
+	var foe_types: Array = main.player_active_pokemon.get_effective_types() if main.player_active_pokemon != null else []
+	var chosen: card_object = null
+	var best_s := float(own_best)
+	for ev in main.opponent_hand:
+		var sts = ev.metadata.get("subtypes", [])
+		if ev.metadata.get("supertype", "").to_lower() not in ["pokémon", "pokemon"] or not ("Stage 1" in sts or "Stage 2" in sts):
+			continue
+		if not main.get_valid_evolution_targets(ev, true).is_empty():
+			continue
+		if int(ev.metadata.get("hp", "0")) <= dmg_on:
+			continue   # the form would be Knocked Out by the damage already on Ninetales
+		var weak := 0.0
+		for w in ev.metadata.get("weaknesses", []):
+			if w.get("type", "") in foe_types: weak = 15.0
+		for atk in ev.metadata.get("attacks", []):
+			if main.cpu_ai.get_unmet_energy_count(atk, ninetales) > 0:
+				continue
+			var s := float(main.attack_effects.parse_attack_base_damage(atk)) - weak
+			if s > best_s:
+				best_s = s
+				chosen = ev
+	return chosen
+
 func power_shapeshift(ninetales: card_object) -> void:
 	if ninetales == null:
 		return
@@ -4104,23 +4160,7 @@ func power_shapeshift(ninetales: card_object) -> void:
 		return
 	var chosen: card_object = null
 	if is_opp:
-		# OLD ISSUE 307: only a form whose attack Ninetales can pay for with its current Energy, that hits
-		# harder than Ninetales' own options, and that isn't needed to evolve a Pokémon in play.
-		var own_best := 0
-		for atk in ninetales.metadata.get("attacks", []):
-			if main.cpu_ai.get_unmet_energy_count(atk, ninetales) == 0:
-				own_best = max(own_best, main.attack_effects.parse_attack_base_damage(atk))
-		var best_dmg = own_best
-		for ev in evolutions:
-			if not main.get_valid_evolution_targets(ev, true).is_empty():
-				continue
-			for atk in ev.metadata.get("attacks", []):
-				if main.cpu_ai.get_unmet_energy_count(atk, ninetales) > 0:
-					continue
-				var d = main.attack_effects.parse_attack_base_damage(atk)
-				if d > best_dmg:
-					best_dmg = d
-					chosen = ev
+		chosen = _cpu_pick_shapeshift_form(ninetales)   # AUDIT 2026-11-18 #126: the same pick the CPU phase decided on
 		if chosen == null:
 			return
 	else:
@@ -4517,6 +4557,9 @@ func check_scram(pokemon: card_object, is_opp: bool) -> bool:
 		deck.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "deck", is_opp, -1, {})   # AUDIT 2026-11-17: flight
 	pokemon.attached_pre_evolutions.clear()
+	# AUDIT 2026-11-18 #127: leaving play - Special Conditions and effect flags go (they rode along into the deck).
+	main.card_ops.reset_returned_pokemon(pokemon, is_opp)
+	var scram_was_active: bool = pokemon == main.opponent_active_pokemon or pokemon == main.player_active_pokemon
 	pokemon.current_hp = pokemon.get_max_hp()
 	pokemon.current_location = "deck"
 	if pokemon == main.opponent_active_pokemon:
@@ -4534,7 +4577,23 @@ func check_scram(pokemon: card_object, is_opp: bool) -> bool:
 	main.update_deck_icon(is_opp)
 	await main.show_message("SCRAM: " + pokemon.metadata.get("name", "").to_upper() + " WAS SHUFFLED INTO DECK!")
 	if main._should_bail(): return true
+	if scram_was_active:   # AUDIT 2026-11-18 #127: refill the empty Active spot (as Rebellion / Obscuring Gas do)
+		await main.handle_post_knockout(is_opp)
 	return true
+
+# AUDIT 2026-11-18 #127: "If Brock's Primeape EVER has exactly 10 HP left" - not only after attack damage (its own Mega
+# Thrash recoil, Poison / Burn, Bench damage, counters). Swept from check_all_knockouts, before the KO pass.
+var _scram_sweeping := false
+func sweep_scram() -> void:
+	if _scram_sweeping:
+		return
+	_scram_sweeping = true
+	for side in [false, true]:
+		for p in main.card_ops.get_all_pokemon_in_play(side):
+			if p.current_hp == 10 and p.has_ability("Scram"):
+				await check_scram(p, side)
+				if main._should_bail(): break
+	_scram_sweeping = false
 
 # --- gym2-38 Erika's Bellsprout — Soak Up ---
 # Once/turn: move up to 2 Grass energy from your other pokemon to Bellsprout.
@@ -4880,7 +4939,7 @@ func cpu_phase_gym_powers() -> void:
 				if "Stage 1" in sts or "Stage 2" in sts:
 					has_evo = true
 					break
-		if has_evo and ninetales.shapeshift_form_card == null:
+		if has_evo and ninetales.shapeshift_form_card == null and _cpu_pick_shapeshift_form(ninetales) != null:   # AUDIT 2026-11-18 #126
 			await announce_cpu_power(ninetales, "Shapeshift")   # ISSUE #106
 			if main._should_bail(): return
 			await power_shapeshift(ninetales)
@@ -4896,14 +4955,12 @@ func cpu_phase_gym_powers() -> void:
 			if main.opponent_active_pokemon != null:
 				all_p.append(main.opponent_active_pokemon)
 			all_p.append_array(main.opponent_bench)
+			# AUDIT 2026-11-18 #128: the executor's own test - basic Grass Energy on a Pokémon that can spare it.
 			for p in all_p:
 				if p == bellsprout:
 					continue
-				for e in p.attached_energies:
-					if "Grass" in main.get_energy_provided_by_card(e):
-						has_grass = true
-						break
-				if has_grass:
+				if _cpu_type_surplus(p, "Grass") > 0 and p.attached_energies.any(func(e): return _is_basic_energy_of(e, "Grass")):
+					has_grass = true
 					break
 			if has_grass:
 				await announce_cpu_power(bellsprout, "Soak Up")   # ISSUE #106
@@ -5366,13 +5423,9 @@ func _register_neo1_powers() -> void:
 
 # WILD GROWTH (neo1-11 Meganium): each Grass Energy on Grass Pokemon counts as 2 Grass
 # Called from get_energy_provided_by_card when a Grass energy is on a Grass pokemon
-func is_wild_growth_active() -> bool:
-	var all_poke: Array = []
-	if main.player_active_pokemon != null: all_poke.append(main.player_active_pokemon)
-	if main.opponent_active_pokemon != null: all_poke.append(main.opponent_active_pokemon)
-	all_poke.append_array(main.player_bench)
-	all_poke.append_array(main.opponent_bench)
-	for p in all_poke:
+# AUDIT 2026-11-18 #27: "your Grass Pokémon" - only the Meganium owner's side gets double Grass.
+func is_wild_growth_active(side_is_opp: bool) -> bool:
+	for p in main.card_ops.get_all_pokemon_in_play(side_is_opp):
 		if _power_active_on(p, "Wild Growth", false):
 			return true
 	return false
@@ -5479,7 +5532,26 @@ func check_focus_band(pokemon: card_object, is_opp: bool) -> bool:
 			break
 	return false
 
-# Process Pokemon Tools at start of turn: Gold Berry, Miracle Berry, Berry, Char counter
+# AUDIT 2026-11-18 #28: Char (neo1-47 Quilava) - "A Char counter requires your opponent to flip a coin after every
+# turn. If tails, put 2 damage counters on the Pokémon with that Char counter." It used to flip only at the start of
+# the countered Pokémon's owner's turn (once a round). Run from the between-turns checkup, both sides.
+func process_char_counters_between_turns() -> void:
+	for side in [false, true]:
+		for pokemon in main.card_ops.get_all_pokemon_in_play(side):
+			if main._should_bail(): return
+			if not pokemon.has_char_counter or pokemon.current_hp <= 0:
+				continue
+			await main.show_message("CHAR COUNTER ON " + pokemon.metadata.get("name","").to_upper() + "! FLIPPING...")
+			if main._should_bail(): return
+			var coin = await main.flip_coin(false, side)
+			if main._should_bail(): return
+			if not coin:
+				await main.attack_effects.gym1_place_counters(pokemon, 20, side)
+				await main.show_message("TAILS! CHAR PUT 2 DAMAGE COUNTERS ON " + pokemon.metadata.get("name","").to_upper() + "!")
+				if main._should_bail(): return
+	await main.check_all_knockouts()
+
+# Process Pokemon Tools at start of turn: Gold Berry, Miracle Berry, Berry
 func process_turn_start_tools_and_counters(is_opponent: bool) -> void:
 	var all_poke: Array = []
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
@@ -5489,17 +5561,7 @@ func process_turn_start_tools_and_counters(is_opponent: bool) -> void:
 	for pokemon in all_poke:
 		if main._should_bail(): return
 		var poke_is_opp = (pokemon == main.opponent_active_pokemon or pokemon in main.opponent_bench)
-		# Char counter: owner must flip — tails = 20 damage
-		if pokemon.has_char_counter:
-			var coin = await main.flip_coin(false, poke_is_opp)
-			if main._should_bail(): return
-			if not coin:
-				pokemon.current_hp = max(0, pokemon.current_hp - 20)
-				main.display_hp_circles_above_align(pokemon, poke_is_opp)
-				await main.show_message("CHAR COUNTER! " + pokemon.metadata.get("name","").to_upper() + " TOOK 20 DAMAGE!")
-				if main._should_bail(): return
-				await main.check_all_knockouts()
-				if main._should_bail(): return
+		# Char counters: AUDIT 2026-11-18 #28 - flipped after EVERY turn in process_char_counters_between_turns().
 		# Tool processing for this side's pokemon only
 		if poke_is_opp == is_opponent:
 			for tool in pokemon.attached_cards.duplicate():
@@ -5662,9 +5724,14 @@ func trigger_neo1_fire_boost(pokemon: card_object, is_opp: bool) -> void:
 		await main.show_message("FIRE BOOST: HEADS! BUT NO FIRE ENERGY IN DECK!")
 		if main._should_bail(): return
 		return
-	var picks = min(4, fire_in_deck.size())
+	# AUDIT 2026-11-18 #130: "up to 4" - the player picks on one screen (any number, 0-4); the CPU takes 4.
+	var fb_cards: Array = fire_in_deck.slice(0, mini(4, fire_in_deck.size()))
+	if not is_opp:
+		fb_cards = await main.card_ops.prompt_select_cards(fire_in_deck, 0, mini(4, fire_in_deck.size()), "FIRE BOOST", "Choose up to 4 Fire Energy to attach to Typhlosion", "ATTACH", false, true)
+		if main._should_bail(): return
+	var picks = fb_cards.size()
 	for i in range(picks):
-		var e = fire_in_deck[i]
+		var e = fb_cards[i]
 		deck.erase(e)
 		e.current_location = "attached"
 		pokemon.attached_energies.append(e)
@@ -5761,8 +5828,10 @@ func power_neo1_fire_recharge(pokemon: card_object) -> void:
 	var target: card_object = null
 	var energy: card_object = null
 	if is_opp:
-		target = fire_poke[0]
 		energy = fire_in_discard[0]
+		# AUDIT 2026-11-18 #129: the Fire Pokémon that needs it most (was fire_poke[0]).
+		target = main.cpu_ai.cpu_pick_benefit_recipient(fire_poke, "energy", energy)
+		if target == null: target = fire_poke[0]
 	else:
 		if fire_poke.size() == 1: target = fire_poke[0]
 		else:
@@ -5925,7 +5994,7 @@ func get_unown_anger_bonus(attacker: card_object, is_opponent: bool) -> int:
 
 # FROG SONG (Politoed neo2-8/27): if 4+ poliwag-line in play, Politoed's attacks do +40
 func get_frog_song_bonus(attacker: card_object) -> int:
-	if "Politoed" not in attacker.metadata.get("name",""):
+	if not attacker.has_ability("Frog Song"):   # AUDIT 2026-11-18 #29: the Power, not the name
 		return 0
 	if is_power_blocked_by_status(attacker): return 0
 	if is_toxic_gas_active() or main.goop_gas_active: return 0
@@ -6418,7 +6487,7 @@ func cpu_phase_neo2_powers() -> void:
 	if toxic: return
 	# Revive Friends (Kabuto): use if bench not full and Kabuto in deck
 	var kabuto = _find_cpu_pokemon_with_power("Revive Friends")
-	if kabuto != null and not kabuto.power_used_this_turn and not is_power_blocked_by_status(kabuto):
+	if kabuto != null and not kabuto.power_used_this_turn and not _cpu_power_locked(kabuto):
 		if main.opponent_bench.size() < main.get_max_bench_size():
 			var has_kabuto_in_deck = false
 			for c in main.opponent_deck:
@@ -6432,7 +6501,7 @@ func cpu_phase_neo2_powers() -> void:
 				if main._should_bail(): return
 	# Revive Fossil (Omanyte): use if bench not full and fossil in deck
 	var omanyte = _find_cpu_pokemon_with_power("Revive Fossil")
-	if omanyte != null and not omanyte.power_used_this_turn and not is_power_blocked_by_status(omanyte):
+	if omanyte != null and not omanyte.power_used_this_turn and not _cpu_power_locked(omanyte):
 		if main.opponent_bench.size() < main.get_max_bench_size():
 			var has_fossil = false
 			for c in main.opponent_deck:
@@ -6455,7 +6524,7 @@ func cpu_phase_neo2_powers() -> void:
 			if main._should_bail(): return
 	# Gaze (Igglybuff): use if opponent has a powerful bench power
 	var igglybuff = _find_cpu_pokemon_with_power("Gaze")
-	if igglybuff != null and not igglybuff.power_used_this_turn and not is_power_blocked_by_status(igglybuff):
+	if igglybuff != null and not igglybuff.power_used_this_turn and not _cpu_power_locked(igglybuff):
 		var opp_bench_powers: Array = []
 		for bp in main.player_bench:
 			for ab in bp.metadata.get("abilities",[]):
@@ -6487,20 +6556,22 @@ func cpu_phase_neo1_powers() -> void:
 	if toxic: return
 	# Fire Recharge (Typhlosion): flip to attach Fire from discard
 	var typhlosion = _find_cpu_pokemon_with_power("Fire Recharge")
-	if typhlosion != null and not typhlosion.power_used_this_turn and not is_power_blocked_by_status(typhlosion):
+	if typhlosion != null and not typhlosion.power_used_this_turn and not _cpu_power_locked(typhlosion):
 		var fire_in_discard = false
 		for c in main.opponent_discard_pile:
 			if c.metadata.get("supertype","") == "Energy" and "Fire" in main.get_energy_provided_by_card(c):
 				fire_in_discard = true
 				break
-		if fire_in_discard:
+		# AUDIT 2026-11-18 #129: and a Fire Pokémon of its own that still needs Energy.
+		var fr_needy: bool = main.card_ops.get_all_pokemon_in_play(true).any(func(p): return "Fire" in p.metadata.get("types", []) and _r4_min_unmet(p) > 0 and _r4_min_unmet(p) < 99)
+		if fire_in_discard and fr_needy:
 			await announce_cpu_power(typhlosion, "Fire Recharge")   # ISSUE #106
 			if main._should_bail(): return
 			await power_neo1_fire_recharge(typhlosion)
 			if main._should_bail(): return
 	# Glaring Gaze (Noctowl): use if player has trainers in hand
 	var noctowl = _find_cpu_pokemon_with_power("Glaring Gaze")
-	if noctowl != null and not noctowl.power_used_this_turn and not is_power_blocked_by_status(noctowl):
+	if noctowl != null and not noctowl.power_used_this_turn and not _cpu_power_locked(noctowl):
 		var player_has_trainer = false
 		for c in main.player_hand:
 			if c.metadata.get("supertype","") == "Trainer":
@@ -6514,7 +6585,7 @@ func cpu_phase_neo1_powers() -> void:
 	# Downpour (Feraligatr): discard surplus water from hand to boost Riptide
 	# Keeps at least 1 water in hand as a buffer; stops if Riptide already KOs the target
 	var feraligtr = _find_cpu_pokemon_with_power("Downpour")
-	if feraligtr != null and not is_power_blocked_by_status(feraligtr):
+	if feraligtr != null and not _cpu_power_locked(feraligtr):
 		var has_riptide = false
 		for atk in feraligtr.metadata.get("attacks", []):
 			if atk.get("name","").to_lower() == "riptide":
@@ -6548,13 +6619,15 @@ func cpu_phase_neo1_powers() -> void:
 	# Playful Punch (Elekid): the power ENDS the turn (OLD ISSUE 374), so the CPU only gambles on it when the
 	# 20 (after W/R) would Knock Out the player's Active, or when its Active has no attack it can pay for anyway.
 	var elekid = _find_cpu_pokemon_with_power("Playful Punch")
-	if elekid != null and not elekid.power_used_this_turn and not is_power_blocked_by_status(elekid):
+	if elekid != null and not elekid.power_used_this_turn and not _cpu_power_locked(elekid):
 		var pp_use := false
 		var pp_t = main.player_active_pokemon
 		if pp_t != null and int(main.calculate_final_damage(20, elekid.get_effective_types(), pp_t, elekid)["damage"]) >= pp_t.current_hp:
 			pp_use = true
 		var pp_act = main.opponent_active_pokemon
-		if not pp_use and pp_act != null:
+		# AUDIT 2026-11-18 #131: the "can't attack anyway" branch ENDS the turn, so it waits for the final power pass
+		# (Energy attached, Trainers and evolutions played) - it used to fire in the first pass.
+		if not pp_use and pp_act != null and main.cpu_ai.cpu_final_power_check:
 			pp_use = not main.get_attacks_for_card(pp_act).any(func(a): return main.cpu_ai.get_unmet_energy_count(a, pp_act) == 0)
 		if pp_use:
 			await announce_cpu_power(elekid, "Playful Punch")   # ISSUE #106
@@ -6700,6 +6773,7 @@ func clear_neo3_flags_end_of_turn(is_opponent: bool) -> void:
 	for p in main.card_ops.get_all_pokemon_in_play(is_opponent):
 		p.submerge_active = false
 		p.neo4_prevent_high_damage = 0
+		p.neo4_counter_flip_20 = false   # AUDIT 2026-11-18 #31: Reflect Shield lasts only the opponent's next turn
 		p.neo4_prevent_bench_damage = false
 	for p in main.card_ops.get_all_pokemon_in_play(not is_opponent):
 		p.triggered_poison_active = false
@@ -7506,8 +7580,10 @@ func trigger_neo4_surprise_bite(crobat: card_object, is_opponent: bool) -> void:
 func trigger_neo4_gift(togetic: card_object, is_opponent: bool) -> void:
 	if is_power_blocked(togetic):
 		return
-	# Opponent searches first (auto)
-	_neo4_search_tool_to_hand(not is_opponent, true)
+	# AUDIT 2026-11-18 #32: the opponent searches first and MAY decline; only the CPU side picks automatically
+	# (the player's search was automatic and un-awaited when the CPU played Light Togetic).
+	await _neo4_search_tool_to_hand(not is_opponent, not is_opponent)
+	if main._should_bail(): return
 	# You search
 	await _neo4_search_tool_to_hand(is_opponent, is_opponent)
 	if main._should_bail(): return
@@ -7526,10 +7602,17 @@ func _neo4_search_tool_to_hand(side_is_opponent: bool, auto: bool) -> void:
 		return
 	var chosen: card_object = tools[0]
 	if not auto:
-		chosen = await main.card_ops.prompt_select_card(tools, "GIFT!", "Choose a Pokemon Tool from your deck", "SELECT", false)
+		chosen = await main.card_ops.prompt_select_card(tools, "GIFT!", "You may take a Pokemon Tool from your deck", "SELECT", true)
 		if main._should_bail(): return
 		if chosen == null:
+			deck.shuffle()   # "each player who searched shuffles"
 			return
+	else:
+		# AUDIT 2026-11-18 #32: the CPU takes its most useful Tool and shows it ("show that card to you").
+		var best = main.cpu_ai.cpu_pick_best_keep(tools)
+		if best != null: chosen = best
+		await main.card_ops.show_cards([chosen], "GIFT!", "Your opponent took " + chosen.metadata.get("name", ""))
+		if main._should_bail(): return
 	deck.erase(chosen)
 	chosen.current_location = "hand"
 	hand.append(chosen)
@@ -7577,12 +7660,6 @@ func trigger_neo4_tag_team(machamp: card_object, is_opponent: bool) -> void:
 func trigger_neo4_vanish(unown_v: card_object, is_opponent: bool) -> void:
 	if is_power_blocked(unown_v):
 		return
-	var coin = await main.flip_coin(false, is_opponent)
-	if main._should_bail(): return
-	if not coin:
-		await main.show_message("[VANISH]: TAILS!")
-		if main._should_bail(): return
-		return
 	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var own_bench = main.opponent_bench if is_opponent else main.player_bench
 	var unowns: Array = []
@@ -7592,10 +7669,29 @@ func trigger_neo4_vanish(unown_v: card_object, is_opponent: bool) -> void:
 		if bp != unown_v and "Unown" in bp.metadata.get("name",""):
 			unowns.append(bp)
 	if unowns.is_empty():
-		await main.show_message("[VANISH]: NO OTHER UNOWN TO RETURN!")
+		return
+	# AUDIT 2026-11-18 #35: "you MAY flip". The CPU only returns a damaged Unown (most damage, least Energy, Benched
+	# first) - it used to return unowns[0], often its Active, leaving the Active spot empty.
+	var cpu_pick: card_object = null
+	if is_opponent:
+		var best_s := -INF
+		for u in unowns:
+			var dmg: int = u.get_max_hp() - u.current_hp
+			if dmg <= 0:
+				continue
+			var s := float(dmg) - 15.0 * float(u.attached_energies.size()) - (25.0 if u == own_active else 0.0)
+			if s > best_s:
+				best_s = s
+				cpu_pick = u
+	if not await _r4_power_may(unown_v, is_opponent, "[VANISH]", "Flip a coin to return another Unown to your hand?", cpu_pick != null):
+		return
+	var coin = await main.flip_coin(false, is_opponent)
+	if main._should_bail(): return
+	if not coin:
+		await main.show_message("[VANISH]: TAILS!")
 		if main._should_bail(): return
 		return
-	var chosen: card_object = unowns[0]
+	var chosen: card_object = cpu_pick if cpu_pick != null else unowns[0]
 	if not is_opponent:
 		chosen = await main.card_ops.prompt_select_card(unowns, "[VANISH]!", "Choose an Unown to return to your hand", "SELECT", false)
 		if main._should_bail(): return
@@ -7615,6 +7711,7 @@ func trigger_neo4_vanish(unown_v: card_object, is_opponent: bool) -> void:
 		else: main.player_active_pokemon = null
 	else:
 		own_bench.erase(chosen)
+	main.card_ops.reset_returned_pokemon(chosen, is_opponent)
 	chosen.current_hp = chosen.get_max_hp()
 	chosen.current_location = "hand"
 	hand.append(chosen)
@@ -7624,6 +7721,9 @@ func trigger_neo4_vanish(unown_v: card_object, is_opponent: bool) -> void:
 	main.update_discard_pile_display(is_opponent)
 	await main.show_message("[VANISH]! HEADS! " + chosen.metadata.get("name","").to_upper() + " RETURNED TO HAND!")
 	if main._should_bail(): return
+	if own_active == chosen:   # AUDIT 2026-11-18 #35: promote a new Active (Bubble Jump does the same)
+		await main.handle_post_knockout(is_opponent)
+		if main._should_bail(): return
 	print("POWER: [Vanish]")
 
 # ── NEO4 PASSIVE HOOKS ────────────────────────────────────────────────────────
@@ -7644,9 +7744,12 @@ func check_neo4_conductivity(target: card_object, target_is_opponent: bool) -> v
 	var amp = amphs[0]
 	if is_power_blocked_by_status(amp) or is_toxic_gas_active() or main.goop_gas_active:
 		return
-	main.card_ops.apply_bench_damage(target, 10, target_is_opponent, false)
+	# AUDIT 2026-11-18 #135: awaited, then a KO check (a Pokémon left at 0 HP stayed in play until some later check).
+	await main.card_ops.apply_bench_damage(target, 10, target_is_opponent, false)
+	if main._should_bail(): return
 	main.display_pokemon(target_is_opponent)
 	print("CONDUCTIVITY: 10 damage to ", target.metadata.get("name",""))
+	await main.check_all_knockouts()
 
 # HOT PLATE (neo4-18 Dark Magcargo): when a Basic/Baby is benched from hand, active Magcargo deals 10 to it
 func check_neo4_hot_plate(benched: card_object, benched_is_opponent: bool) -> void:
@@ -7666,7 +7769,7 @@ func check_neo4_fluffy_wool(defender: card_object, attacker: card_object, is_def
 	if not defender.has_ability("Fluffy Wool"): return
 	var own_active = main.opponent_active_pokemon if is_def_opp else main.player_active_pokemon
 	if defender != own_active: return
-	if defender.is_status_blocked(): return
+	if is_power_blocked(defender) or defender.is_status_blocked(): return   # AUDIT 2026-11-18 #139: Toxic Gas / Goop Gas / power locks
 	var coin = await main.flip_coin(false, is_def_opp)
 	if main._should_bail(): return
 	if coin:
@@ -7677,16 +7780,7 @@ func check_neo4_fluffy_wool(defender: card_object, attacker: card_object, is_def
 # REFLECT SHIELD / COUNTERATTACK CLAWS: if Active was damaged, flip → 20/2-counters to attacker
 func check_neo4_counters(defender: card_object, attacker: card_object, is_def_opp: bool) -> void:
 	if defender == null or attacker == null: return
-	# Reflect Shield (Shining Mewtwo)
-	if defender.neo4_counter_flip_20:
-		defender.neo4_counter_flip_20 = false
-		var coin = await main.flip_coin(false, is_def_opp)
-		if main._should_bail(): return
-		if coin:
-			await main.card_ops.apply_bench_damage(attacker, 20, not is_def_opp)
-			main.display_pokemon(not is_def_opp)
-			await main.show_message("REFLECT SHIELD! 20 DAMAGE TO " + attacker.metadata.get("name","").to_upper() + "!")
-			if main._should_bail(): return
+	# Reflect Shield (Shining Mewtwo): AUDIT 2026-11-18 #31 - resolved before the damage in Main.display_and_apply_attack_damage.
 	# Counterattack Claws (neo4-97 Tool)
 	var has_claws = false
 	for ac in defender.attached_cards:
@@ -8225,7 +8319,7 @@ func apply_np_between_turn_bodies() -> void:
 	for side in [false, true]:
 		for p in main.card_ops.get_all_pokemon_in_play(side):
 			if p.current_hp <= 0: continue
-			if p.has_ability("Rest Up") and p.special_condition == "Asleep":
+			if p.has_ability("Rest Up") and p.special_condition == "Asleep" and not is_power_blocked(p, true):   # AUDIT 2026-11-18 #167
 				var missing = p.get_max_hp() - p.current_hp
 				if missing > 0:
 					var heal = min(missing, 20)
@@ -8367,7 +8461,7 @@ func cpu_phase_np_powers() -> void:
 	all_opp.append_array(main.opponent_bench)
 	for p in all_opp:
 		if p.power_used_this_turn: continue
-		if is_power_blocked_by_status(p): continue
+		if _cpu_power_locked(p): continue
 		for ab in p.metadata.get("abilities", []):
 			if ab.get("name", "") == "Magnetic Call":
 				if main.opponent_bench.size() < 5:
@@ -8517,9 +8611,13 @@ func power_ecard1_chaos_move(gengar: card_object) -> void:
 	var source: card_object = null
 	var dest: card_object = null
 	if is_opponent:
-		source = sources[0]
-		var dests = all_pokemon.filter(func(p): return p != source)
-		dest = dests[0] if dests.size() > 0 else null
+		# AUDIT 2026-11-18 #45: a planned move (own counter onto a player Pokémon, a counter that Knocks Out) - it took
+		# sources[0] / the first other Pokémon, usually healing the player's Active onto the player's next Pokémon.
+		var plan: Array = _cpu_chaos_move_pair()
+		if plan.is_empty():
+			return
+		source = plan[0]
+		dest = plan[1]
 	else:
 		source = await main.card_ops.prompt_select_card(sources, "CHAOS MOVE - SOURCE", "Select a Pokemon to move a damage counter FROM", "SELECT", true)
 		if main._should_bail(): return
@@ -8549,6 +8647,22 @@ func power_ecard1_energy_connect(ampharos: card_object) -> void:
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	if active == null: return
+	if is_opponent:
+		# AUDIT 2026-11-18 #46: the CPU moves only Energy that brings an Active attack closer to payable (the shared
+		# r4 planner, which spares Energy the Bench needs), as many as help - it used to move basics[0] every time.
+		var moves: Array = _cpu_energy_connect_plan(false)
+		for m in moves:
+			var mr: Dictionary = main.card_ops.capture_rect(m["e"], "attached", true)
+			m["from"].attached_energies.erase(m["e"])
+			m["to"].attached_energies.append(m["e"])
+			await main.card_ops.fly_attach(m["e"], "attached", mr)
+			if main._should_bail(): return
+			main.play_energy_attach_sfx()
+		if not moves.is_empty():
+			main.display_active_pokemon_energies(true)
+			main.display_pokemon(true)
+			await main.show_message("ENERGY CONNECT! MOVED " + str(moves.size()) + " ENERGY TO " + active.metadata.get("name","").to_upper() + "!")
+		return
 	var keep_going = true
 	while keep_going:
 		var sources = bench.filter(func(p): return p.attached_energies.any(func(e): return e.metadata.get("supertype","") == "Energy" and "Special" not in e.metadata.get("subtypes",[])))
@@ -8590,6 +8704,19 @@ func power_ecard1_energy_connect(ampharos: card_object) -> void:
 			keep_going = false
 	print("POWER USED: Energy Connect")
 
+# AUDIT 2026-11-18 #46: the CPU's Energy Connect moves (Bench basic Energy -> Active). The planner leaves the moves
+# undone here, in order; `dry` asks for one helpful move only (the decide-before-announce check).
+func _cpu_energy_connect_plan(dry: bool) -> Array:
+	var act = main.opponent_active_pokemon
+	if act == null or main.opponent_bench.is_empty():
+		return []
+	var pool = func(p): return p.attached_energies.filter(func(e): return e.metadata.get("supertype","") == "Energy" and "Special" not in e.metadata.get("subtypes",[]))
+	var moves: Array = r4_cpu_plan_energy_moves(main.opponent_bench, pool, 1 if dry else -1, false, [act])
+	for i in range(moves.size() - 1, -1, -1):
+		moves[i]["to"].attached_energies.erase(moves[i]["e"])
+		moves[i]["from"].attached_energies.append(moves[i]["e"])
+	return moves
+
 # HARVEST BOUNTY (Venusaur ecard1-30): once per turn, attach an extra basic Energy from hand to your Active
 func power_ecard1_harvest_bounty(venusaur: card_object) -> void:
 	var is_opponent = venusaur.is_owner_opp(main)
@@ -8603,17 +8730,30 @@ func power_ecard1_harvest_bounty(venusaur: card_object) -> void:
 		return
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	if active == null: return
+	# AUDIT 2026-11-18 #48: only "if you attach an Energy card to your Active Pokémon as part of your turn" - this turn's
+	# normal attachment must have gone to the current Active. The extra card may be ANY Energy card (Special too).
+	var attached_to = main.opponent_energy_attached_to if is_opponent else main.player_energy_attached_to
+	if attached_to == null or attached_to != active:
+		await main.show_message("HARVEST BOUNTY: ATTACH AN ENERGY TO YOUR ACTIVE POKEMON FIRST!")
+		if main._should_bail(): return
+		return
 	var hand = main.opponent_hand if is_opponent else main.player_hand
-	var basics = hand.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Special" not in c.metadata.get("subtypes",[]))
+	var basics = hand.filter(func(c): return c.metadata.get("supertype","") == "Energy")
 	if basics.is_empty():
-		await main.show_message("NO BASIC ENERGY IN HAND!")
+		await main.show_message("NO ENERGY IN HAND!")
 		if main._should_bail(): return
 		return
 	var chosen: card_object = null
 	if is_opponent:
-		chosen = main.cpu_ai.cpu_pick_best_keep(basics)
+		var hb_best := -INF
+		for c in basics:
+			var v: float = main.cpu_ai.cpu_energy_need_value(c)
+			if v > hb_best:
+				hb_best = v
+				chosen = c
+		if chosen == null: chosen = main.cpu_ai.cpu_pick_best_keep(basics)
 	else:
-		chosen = await main.card_ops.prompt_select_card(basics, "HARVEST BOUNTY", "Select a basic Energy to attach to your Active", "ATTACH", true)
+		chosen = await main.card_ops.prompt_select_card(basics, "HARVEST BOUNTY", "Select an Energy card to attach to your Active", "ATTACH", true)
 		if main._should_bail(): return
 	if chosen == null: return
 	venusaur.power_used_this_turn = true
@@ -8626,6 +8766,9 @@ func power_ecard1_harvest_bounty(venusaur: card_object) -> void:
 	main.play_energy_attach_sfx()
 	main.refresh_hand_display(is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
+	if "Special" in chosen.metadata.get("subtypes", []):   # AUDIT 2026-11-18 #48: Special Energy on-attach effects
+		await main.special_energy_effects.apply_on_attach_effects(chosen, active, is_opponent)
+		if main._should_bail(): return
 	await main.show_message("HARVEST BOUNTY! " + chosen.metadata.get("name","").to_upper() + " ATTACHED TO " + active.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
 	print("POWER USED: Harvest Bounty")
@@ -8673,7 +8816,9 @@ func power_ecard1_heat_up(typhlosion: card_object) -> void:
 		return
 	var target: card_object = null
 	if is_opponent:
-		target = own_bench[0]
+		# AUDIT 2026-11-18 #47: the Benched Pokémon that needs Fire most (was own_bench[0]).
+		target = main.cpu_ai.cpu_pick_benefit_recipient(own_bench, "energy", fire_energies[0])
+		if target == null: target = own_bench[0]
 	else:
 		target = await main.card_ops.prompt_select_card(own_bench, "HEAT UP", "Select a Benched Pokemon to attach Fire Energy to", "ATTACH", false)
 		if main._should_bail(): return
@@ -8984,6 +9129,18 @@ func power_ecard1_psymimic(alakazam: card_object) -> void:
 		await main.show_message("PSYMIMIC REQUIRES ALAKAZAM TO BE ACTIVE!")
 		if main._should_bail(): return
 		return
+	# AUDIT 2026-11-18 #6: Psymimic is used "instead of Alakazam's attack" - the normal attack rules apply: not on the
+	# first player's first turn, not after an attack this turn, not while a "can't attack" lock is on it.
+	if main.turn_number <= 1:
+		await main.show_message("YOU CAN'T ATTACK ON THE FIRST TURN!")
+		return
+	if main.opponent_attacked_this_turn if is_opponent else main.player_attacked_this_turn:
+		await main.show_message("ALAKAZAM ALREADY ATTACKED THIS TURN!")
+		return
+	var lock_reason: String = main.attack_effects.attack_unusable_reason({}, alakazam)
+	if lock_reason != "":
+		await main.show_message(lock_reason.to_upper())
+		return
 	var opp_active = main.player_active_pokemon if is_opponent else main.opponent_active_pokemon
 	var opp_bench = main.player_bench if is_opponent else main.opponent_bench
 	if opp_active == null: return
@@ -8996,7 +9153,7 @@ func power_ecard1_psymimic(alakazam: card_object) -> void:
 			var n = atk.get("name", "")
 			# Only offer attacks Alakazam can actually pay for — per card text the copied attack's
 			# cost is paid from Alakazam's own energy, so an unaffordable attack is never a real choice.
-			if n != "" and not seen_names.has(n) and main.cpu_ai.get_unmet_energy_count(atk, alakazam) == 0:
+			if n != "" and not seen_names.has(n) and main.cpu_ai.get_unmet_energy_count(atk, alakazam) == 0 					and main.attack_effects.attack_unusable_reason(atk, alakazam) == "":
 				seen_names[n] = true
 				candidate_attacks.append(atk)
 	if candidate_attacks.is_empty():
@@ -9015,9 +9172,58 @@ func power_ecard1_psymimic(alakazam: card_object) -> void:
 	alakazam.power_used_this_turn = true
 	await main.show_message("PSYMIMIC! COPYING " + chosen_attack.get("name","").to_upper() + "!")
 	if main._should_bail(): return
-	await main.attack_effects.execute_copied_attack(chosen_attack, alakazam, opp_active, is_opponent, true)
+	# AUDIT 2026-11-18 #5/#6: it IS this turn's attack - run the shared pre-attack checks (Leer, Smokescreen,
+	# Confusion...) and end the CPU's turn afterwards (it used to attack again in its attack phase).
+	var ae = main.attack_effects
+	ae.begin_attack(chosen_attack, alakazam, opp_active, is_opponent)
+	if await ae.run_attack_prechecks(alakazam, opp_active, is_opponent):
+		if main._should_bail(): return
+		await ae._attack_finish(false, 0, chosen_attack, alakazam.get_effective_types(), is_opponent)
+	else:
+		if main._should_bail(): return
+		var def_now = ae.current_defender if ae.current_defender != null else opp_active
+		await ae.execute_copied_attack(chosen_attack, alakazam, def_now, is_opponent, true)
 	if main._should_bail(): return
+	if is_opponent:
+		main.opponent_attacked_this_turn = true
+		main.opponent_turn_force_end = true
+	else:
+		main.player_attacked_this_turn = true
 	print("POWER USED: Psymimic — copied ", chosen_attack.get("name",""))
+
+# AUDIT 2026-11-18 #45: the CPU's Chaos Move [source, dest], or [] when no move helps. Value = healing its own
+# Pokémon (more when it is near a KO) + damaging the player's (a KO is worth most, the Active a little more).
+func _cpu_chaos_move_pair() -> Array:
+	var own: Array = main.card_ops.get_all_pokemon_in_play(true)
+	var foe: Array = main.card_ops.get_all_pokemon_in_play(false)
+	var best: Array = []
+	var best_v := 0.0
+	var dest_value = func(d: card_object) -> float:
+		var v := 6.0 + (4.0 if d == main.player_active_pokemon else 0.0)
+		if d.current_hp <= 10:
+			v += 100.0 + 20.0 * float(5 - main.player_prize_cards.size())
+		return v
+	for s in own:
+		if s.current_hp >= s.get_max_hp():
+			continue
+		var heal_v := 10.0 + (20.0 if s.current_hp <= 30 else 0.0)
+		for d in foe:
+			var v: float = heal_v + dest_value.call(d)
+			if v > best_v:
+				best_v = v
+				best = [s, d]
+	# A counter moved between two of the player's Pokémon only when it Knocks one Out.
+	for s in foe:
+		if s.current_hp >= s.get_max_hp():
+			continue
+		for d in foe:
+			if d == s or d.current_hp > 10:
+				continue
+			var v2: float = dest_value.call(d) - 10.0
+			if v2 > best_v:
+				best_v = v2
+				best = [s, d]
+	return best
 
 # SOOTHING AROMA (Meganium ecard1-18): once per turn, flip; heads remove 1 damage counter from each of your damaged Pokemon
 func power_ecard1_soothing_aroma(meganium: card_object) -> void:
@@ -9101,41 +9307,21 @@ func power_ecard1_terraforming(machamp: card_object) -> void:
 		if main._should_bail(): return
 		return
 	machamp.power_used_this_turn = true
-	var count = min(4, deck.size())
-	var top_cards: Array = []
-	for i in range(count):
-		top_cards.append(deck[i])
+	# AUDIT 2026-11-18 #145: the shared reorder helper (Card_Ops.prompt_reorder_cards for the player, keep-value order for
+	# the CPU) instead of the legacy Pokédex state machine. N from the text: ecard1 Machamp 4, ex16 Aggron 5 (it shares
+	# this handler and was given 4).
+	var tf_n: int = 4
+	var tf_m = RegExMatch.new()
+	var tf_rx := RegEx.new()
+	tf_rx.compile("top (\\d+) cards")
+	tf_m = tf_rx.search(main.card_ops.ability_text(machamp).to_lower())
+	if tf_m != null:
+		tf_n = int(tf_m.get_string(1))
+	var count = mini(tf_n, deck.size())
 	await main.show_message("TERRAFORMING: LOOKING AT TOP " + str(count) + " CARDS!")
 	if main._should_bail(): return
-
-	if is_opponent:
-		top_cards.sort_custom(func(a, b): return main.trainer_effects._cpu_pokedex_priority(a) > main.trainer_effects._cpu_pokedex_priority(b))
-		for i in range(count):
-			deck[i] = top_cards[i]
-		await main.show_message("OPPONENT REARRANGED THE TOP " + str(count) + " CARDS OF THEIR DECK!")
-		if main._should_bail(): return
-	else:
-		main.pokedex_cards = top_cards.duplicate()
-		main.pokedex_reorder_result.clear()
-		main.trainer_reorder_active = true
-
-		main.show_enlarged_array_selection_mode(main.pokedex_cards)
-		main.header_label.text = "TERRAFORMING - CLICK CARDS IN ORDER"
-		main.hint_label.text = "Click cards in the order you want them (top of deck first)"
-		main.action_button.text = "0/" + str(count) + " SELECTED"
-		main.action_button.disabled = true
-		main.action_button.theme = main.theme_disabled
-		main.cancel_button.visible = false
-
-		await main.trainer_reorder_done
-		if main._should_bail(): return
-		main.trainer_reorder_active = false
-		main.hide_selection_mode_display_main()
-
-		for i in range(main.pokedex_reorder_result.size()):
-			deck[i] = main.pokedex_reorder_result[i]
-		main.pokedex_cards.clear()
-		main.pokedex_reorder_result.clear()
+	await main.attack_effects.r3_reorder_top(is_opponent, count, is_opponent, "TERRAFORMING - TOP OF DECK FIRST")
+	if main._should_bail(): return
 	print("POWER USED: Terraforming")
 
 # CPU phase for ECARD1 active powers
@@ -9143,14 +9329,14 @@ func cpu_phase_ecard1_powers() -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 
 	var poison_pollen = _find_cpu_pokemon_with_power("Poison Pollen")
-	if poison_pollen != null and not poison_pollen.power_used_this_turn and not is_power_blocked_by_status(poison_pollen):
+	if poison_pollen != null and not poison_pollen.power_used_this_turn and not _cpu_power_locked(poison_pollen):
 		await announce_cpu_power(poison_pollen, "Poison Pollen")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ecard1_poison_pollen(poison_pollen)
 		if main._should_bail(): return
 
 	var miraculous_powder = _find_cpu_pokemon_with_power("Miraculous Powder")
-	if miraculous_powder != null and not miraculous_powder.power_used_this_turn and not is_power_blocked_by_status(miraculous_powder):
+	if miraculous_powder != null and not miraculous_powder.power_used_this_turn and not _cpu_power_locked(miraculous_powder):
 		if main.opponent_active_pokemon != null and (main.opponent_active_pokemon.special_condition != "" or main.opponent_active_pokemon.is_poisoned):
 			await announce_cpu_power(miraculous_powder, "Miraculous Powder")   # ISSUE #106
 			if main._should_bail(): return
@@ -9158,7 +9344,7 @@ func cpu_phase_ecard1_powers() -> void:
 			if main._should_bail(): return
 
 	var soothing_aroma = _find_cpu_pokemon_with_power("Soothing Aroma")
-	if soothing_aroma != null and not soothing_aroma.power_used_this_turn and not is_power_blocked_by_status(soothing_aroma):
+	if soothing_aroma != null and not soothing_aroma.power_used_this_turn and not _cpu_power_locked(soothing_aroma):
 		var any_opp_damaged = false
 		var all_opp_p: Array = []
 		if main.opponent_active_pokemon != null: all_opp_p.append(main.opponent_active_pokemon)
@@ -9172,31 +9358,32 @@ func cpu_phase_ecard1_powers() -> void:
 			if main._should_bail(): return
 
 	var jet_stream = _find_cpu_pokemon_with_power("Jet Stream")
-	if jet_stream != null and jet_stream == main.opponent_active_pokemon and not jet_stream.power_used_this_turn and not is_power_blocked_by_status(jet_stream):
-		if main.player_active_pokemon != null and main.player_active_pokemon.attached_energies.size() > 0:
+	if jet_stream != null and jet_stream == main.opponent_active_pokemon and not jet_stream.power_used_this_turn and not _cpu_power_locked(jet_stream):
+		if main.player_active_pokemon != null and main.player_active_pokemon.attached_energies.size() > 0 and _cpu_jet_stream_worth(jet_stream):   # AUDIT 2026-11-18 #147
 			await announce_cpu_power(jet_stream, "Jet Stream")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard1_jet_stream(jet_stream)
 			if main._should_bail(): return
 
 	var harvest_bounty = _find_cpu_pokemon_with_power("Harvest Bounty")
-	if harvest_bounty != null and not harvest_bounty.power_used_this_turn and not is_power_blocked_by_status(harvest_bounty):
-		var has_basic_energy_in_hand = main.opponent_hand.any(func(c): return c.metadata.get("supertype","") == "Energy" and "Special" not in c.metadata.get("subtypes",[]))
-		if has_basic_energy_in_hand:
+	if harvest_bounty != null and not harvest_bounty.power_used_this_turn and not _cpu_power_locked(harvest_bounty):
+		var has_basic_energy_in_hand = main.opponent_hand.any(func(c): return c.metadata.get("supertype","") == "Energy")
+		# AUDIT 2026-11-18 #48: only after this turn's attachment went to the Active.
+		if has_basic_energy_in_hand and main.opponent_energy_attached_to != null and main.opponent_energy_attached_to == main.opponent_active_pokemon:
 			await announce_cpu_power(harvest_bounty, "Harvest Bounty")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard1_harvest_bounty(harvest_bounty)
 			if main._should_bail(): return
 
 	var energy_connect = _find_cpu_pokemon_with_power("Energy Connect")
-	if energy_connect != null and not is_power_blocked_by_status(energy_connect):
+	if energy_connect != null and not _cpu_power_locked(energy_connect) and not _cpu_energy_connect_plan(true).is_empty():   # AUDIT 2026-11-18 #46
 		await announce_cpu_power(energy_connect, "Energy Connect")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ecard1_energy_connect(energy_connect)
 		if main._should_bail(): return
 
 	var tailwind = _find_cpu_bench_pokemon_with_power("Tailwind")
-	if tailwind != null and not tailwind.power_used_this_turn and not is_power_blocked_by_status(tailwind):
+	if tailwind != null and not tailwind.power_used_this_turn and not _cpu_power_locked(tailwind):
 		if main.opponent_active_pokemon != null and main.get_retreat_cost(main.opponent_active_pokemon) > 0:
 			await announce_cpu_power(tailwind, "Tailwind")   # ISSUE #106
 			if main._should_bail(): return
@@ -9204,15 +9391,15 @@ func cpu_phase_ecard1_powers() -> void:
 			if main._should_bail(): return
 
 	var chaos_move = _find_cpu_pokemon_with_power("Chaos Move")
-	if chaos_move != null and not chaos_move.power_used_this_turn and not is_power_blocked_by_status(chaos_move):
-		if main.player_prize_cards.size() <= 3:
+	if chaos_move != null and not chaos_move.power_used_this_turn and not _cpu_power_locked(chaos_move):
+		if main.player_prize_cards.size() <= 3 and not _cpu_chaos_move_pair().is_empty():   # AUDIT 2026-11-18 #45: decide first
 			await announce_cpu_power(chaos_move, "Chaos Move")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard1_chaos_move(chaos_move)
 			if main._should_bail(): return
 
 	var beating_wings = _find_cpu_pokemon_with_power("Beating Wings")
-	if beating_wings != null and beating_wings == main.opponent_active_pokemon and not beating_wings.power_used_this_turn and not is_power_blocked_by_status(beating_wings):
+	if beating_wings != null and beating_wings == main.opponent_active_pokemon and not beating_wings.power_used_this_turn and not _cpu_power_locked(beating_wings):
 		# Only worth it to reclaim a bench Pokemon that's badly damaged and not pulling its weight
 		var worst_ratio = 1.0
 		for bp in main.opponent_bench:
@@ -9226,7 +9413,7 @@ func cpu_phase_ecard1_powers() -> void:
 			if main._should_bail(): return
 
 	var burning_energy = _find_cpu_pokemon_with_power("Burning Energy")
-	if burning_energy != null and not burning_energy.power_used_this_turn and not is_power_blocked_by_status(burning_energy):
+	if burning_energy != null and not burning_energy.power_used_this_turn and not _cpu_power_locked(burning_energy):
 		# Only useful if the CPU's Active has a Fire-cost attack it currently can't pay for
 		var needs_fire = false
 		if main.opponent_active_pokemon != null:
@@ -9241,7 +9428,7 @@ func cpu_phase_ecard1_powers() -> void:
 			if main._should_bail(): return
 
 	var heat_up = _find_cpu_pokemon_with_power("Heat Up")
-	if heat_up != null and not heat_up.power_used_this_turn and not is_power_blocked_by_status(heat_up):
+	if heat_up != null and not heat_up.power_used_this_turn and not _cpu_power_locked(heat_up):
 		var own_total = 0
 		var all_own: Array = []
 		if main.opponent_active_pokemon != null: all_own.append(main.opponent_active_pokemon)
@@ -9260,7 +9447,7 @@ func cpu_phase_ecard1_powers() -> void:
 			if main._should_bail(): return
 
 	var major_tsunami = _find_cpu_pokemon_with_power("Major Tsunami")
-	if major_tsunami != null and major_tsunami == main.opponent_active_pokemon and not major_tsunami.power_used_this_turn and not is_power_blocked_by_status(major_tsunami):
+	if major_tsunami != null and major_tsunami == main.opponent_active_pokemon and not major_tsunami.power_used_this_turn and not _cpu_power_locked(major_tsunami):
 		# Use it defensively: disrupt the opponent's setup while retreating a badly-hurt Feraligatr
 		var hp_ratio = float(major_tsunami.current_hp) / float(max(1, major_tsunami.get_max_hp()))
 		if hp_ratio < 0.5 and main.opponent_bench.size() > 0:
@@ -9270,7 +9457,7 @@ func cpu_phase_ecard1_powers() -> void:
 			if main._should_bail(): return
 
 	var moonlight = _find_cpu_pokemon_with_power("Moonlight")
-	if moonlight != null and not moonlight.power_used_this_turn and not is_power_blocked_by_status(moonlight):
+	if moonlight != null and not moonlight.power_used_this_turn and not _cpu_power_locked(moonlight):
 		var has_basic_energy_in_deck = main.opponent_deck.any(func(c): return c.metadata.get("supertype","") == "Energy" and "Special" not in c.metadata.get("subtypes",[]))
 		# Don't sacrifice the CPU's only card in hand, and don't bother if there's nothing to fetch
 		if main.opponent_hand.size() >= 2 and has_basic_energy_in_deck:
@@ -9280,7 +9467,7 @@ func cpu_phase_ecard1_powers() -> void:
 			if main._should_bail(): return
 
 	var plunge = _find_cpu_bench_pokemon_with_power("Plunge")
-	if plunge != null and not plunge.power_used_this_turn and not is_power_blocked_by_status(plunge):
+	if plunge != null and not plunge.power_used_this_turn and not _cpu_power_locked(plunge):
 		var current_active = main.opponent_active_pokemon
 		if current_active != null and current_active.attached_energies.size() > 0:
 			var hp_ratio = float(current_active.current_hp) / float(max(1, current_active.get_max_hp()))
@@ -9292,7 +9479,9 @@ func cpu_phase_ecard1_powers() -> void:
 				if main._should_bail(): return
 
 	var psymimic = _find_cpu_pokemon_with_power("Psymimic")
-	if psymimic != null and psymimic == main.opponent_active_pokemon and not psymimic.power_used_this_turn and not is_power_blocked_by_status(psymimic):
+	# AUDIT 2026-11-18 #5: Psymimic replaces the attack, so it waits for the final power pass (after Trainers,
+	# Energy and retreat) and only when the attack itself would be legal.
+	if psymimic != null and psymimic == main.opponent_active_pokemon and not psymimic.power_used_this_turn and not _cpu_power_locked(psymimic) 			and main.cpu_ai.cpu_final_power_check and main.turn_number > 1 and not main.opponent_attacked_this_turn 			and main.attack_effects.attack_unusable_reason({}, psymimic) == "":
 		var opp_target = main.player_active_pokemon
 		if opp_target != null:
 			# Compare Alakazam's own best attack against the best attack it could copy; only use
@@ -9325,7 +9514,7 @@ func cpu_phase_ecard1_powers() -> void:
 				if main._should_bail(): return
 
 	var terraforming = _find_cpu_pokemon_with_power("Terraforming")
-	if terraforming != null and not terraforming.power_used_this_turn and not is_power_blocked_by_status(terraforming):
+	if terraforming != null and not terraforming.power_used_this_turn and not _cpu_power_locked(terraforming):
 		await announce_cpu_power(terraforming, "Terraforming")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ecard1_terraforming(terraforming)
@@ -9559,8 +9748,15 @@ func power_ecard2_flower_supplement(bellossom: card_object) -> void:
 		await main.show_message("TAILS! FLOWER SUPPLEMENT HAD NO EFFECT!")
 		if main._should_bail(): return
 		return
-	var energy: card_object = main.cpu_ai.cpu_pick_best_keep(basics) if is_opponent else basics[0]
-	var target: card_object = main.cpu_ai.cpu_pick_benefit_recipient(bench, "energy", energy) if is_opponent else bench[0]
+	var energy: card_object = basics[0]
+	var target: card_object = bench[0]
+	if is_opponent:
+		# AUDIT 2026-11-18 #153: recipient first, then the Energy THAT Pokémon needs (it attached the card it most wanted
+		# to keep in hand).
+		target = main.cpu_ai.cpu_pick_benefit_recipient(bench, "energy")
+		if target == null: target = bench[0]
+		var fs_e = main.attack_effects._r3_cpu_needed_energy(basics, target)
+		energy = fs_e if fs_e != null else basics[0]
 	if not is_opponent:
 		if basics.size() > 1:
 			energy = await main.card_ops.prompt_select_card(basics, "FLOWER SUPPLEMENT", "Select a basic Energy to attach", "SELECT", false)
@@ -9612,7 +9808,7 @@ func power_ecard2_happy_healing(blissey: card_object) -> void:
 		await main.show_message("TAILS! HAPPY HEALING HAD NO EFFECT!")
 		if main._should_bail(): return
 		return
-	var heal = blissey.attached_energies.size() * 10
+	var heal = main.attack_effects.r4_energy_amount(blissey) * 10   # AUDIT 2026-11-18 #154: amount of Energy, not cards
 	if heal > 0:
 		await main.card_ops.heal_pokemon(target, heal, is_opponent)
 		if main._should_bail(): return
@@ -9652,6 +9848,10 @@ func power_ecard2_super_dynamo(electrode: card_object) -> void:
 	var all_own = build_field_pokemon_array_ecard2(is_opponent)
 	var energy: card_object = lightning_e[0]
 	var target: card_object = electrode
+	if is_opponent:
+		# AUDIT 2026-11-18 #56: "attach it to 1 of your Pokémon" - the one that needs it most (was always Electrode).
+		var sd_t = main.cpu_ai.cpu_pick_benefit_recipient(all_own, "energy", energy)
+		if sd_t != null: target = sd_t
 	if not is_opponent:
 		if lightning_e.size() > 1:
 			energy = await main.card_ops.prompt_select_card(lightning_e, "SUPER DYNAMO", "Select a Lightning Energy to attach", "SELECT", false, true)
@@ -9691,15 +9891,19 @@ func power_ecard2_energy_return(espeon: card_object) -> void:
 				if main._should_bail(): return
 			break
 		var source: card_object = null
+		var er_pick: Dictionary = _cpu_energy_return_pick() if is_opponent else {}
 		if is_opponent:
-			source = sources[0]
+			# AUDIT 2026-11-18 #58/#59: the same Pokémon the gate chose (badly damaged - its Energy is about to be lost)
+			# and its most useful Energy card (was sources[0] / attached_energies[0], usually the healthy Active).
+			if er_pick.is_empty(): break
+			source = er_pick["source"]
 		else:
 			source = await main.card_ops.prompt_select_card(sources, "ENERGY RETURN", "Select a Pokemon to return Energy from (cancel to stop)", "SELECT", true)
 			if main._should_bail(): return
 		if source == null: break
 		var energy: card_object = null
 		if is_opponent:
-			energy = source.attached_energies[0]
+			energy = er_pick["energy"]
 		else:
 			energy = await main.card_ops.prompt_select_card(source.attached_energies, "ENERGY RETURN", "Select the Energy to return", "SELECT", true)
 			if main._should_bail(): return
@@ -9841,6 +10045,12 @@ func power_ecard2_magnetic_flow(magneton: card_object) -> void:
 		return
 	var pokemon_a: card_object = with_energy[0]
 	var pokemon_b: card_object = with_energy[1]
+	var mf_plan: Dictionary = _cpu_magnetic_flow_plan() if is_opponent else {}   # AUDIT 2026-11-18 #50
+	if is_opponent:
+		if mf_plan.is_empty():
+			return
+		pokemon_a = mf_plan["a"]
+		pokemon_b = mf_plan["b"]
 	if not is_opponent:
 		# MULTI-SELECT: both Pokemon on one screen
 		var mfl_picks: Array = await main.card_ops.prompt_select_cards(with_energy, 2, 2, "MAGNETIC FLOW", "Choose the 2 Pokemon to swap an Energy between", "SELECT")
@@ -9849,10 +10059,16 @@ func power_ecard2_magnetic_flow(magneton: card_object) -> void:
 		pokemon_a = mfl_picks[0]
 		pokemon_b = mfl_picks[1]
 	# OLD ISSUE 368: "Choose 1 of the Energy cards attached to each" — attached_energies[0] was taken on both.
-	var energy_a = await main.attack_effects.r3_pick_defender_energy(pokemon_a, is_opponent, "MAGNETIC FLOW: ENERGY ON " + pokemon_a.metadata.get("name","").to_upper())
-	if main._should_bail(): return
-	var energy_b = await main.attack_effects.r3_pick_defender_energy(pokemon_b, is_opponent, "MAGNETIC FLOW: ENERGY ON " + pokemon_b.metadata.get("name","").to_upper())
-	if main._should_bail(): return
+	var energy_a: card_object = null
+	var energy_b: card_object = null
+	if is_opponent:
+		energy_a = mf_plan["ea"]
+		energy_b = mf_plan["eb"]
+	else:
+		energy_a = await main.attack_effects.r3_pick_defender_energy(pokemon_a, is_opponent, "MAGNETIC FLOW: ENERGY ON " + pokemon_a.metadata.get("name","").to_upper())
+		if main._should_bail(): return
+		energy_b = await main.attack_effects.r3_pick_defender_energy(pokemon_b, is_opponent, "MAGNETIC FLOW: ENERGY ON " + pokemon_b.metadata.get("name","").to_upper())
+		if main._should_bail(): return
 	if energy_a == null: energy_a = pokemon_a.attached_energies[0]
 	if energy_b == null: energy_b = pokemon_b.attached_energies[0]
 	var _emr_9825: Dictionary = main.card_ops.capture_rect(energy_a, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
@@ -9871,6 +10087,39 @@ func power_ecard2_magnetic_flow(magneton: card_object) -> void:
 	await main.show_message("HEADS! ENERGY SWAPPED BETWEEN " + pokemon_a.metadata.get("name","").to_upper() + " AND " + pokemon_b.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
 	print("POWER USED: Magnetic Flow")
+
+# AUDIT 2026-11-18 #50/#51: the CPU's Magnetic Flow swap {a, b, ea, eb} that most delays the player's attacks (sum of
+# the change in each Pokémon's cheapest unmet attack cost; the Active counts double), or {} when none helps / fewer
+# than 2 of the player's Pokémon have Energy.
+func _cpu_magnetic_flow_plan() -> Dictionary:
+	var field: Array = main.card_ops.get_all_pokemon_in_play(false).filter(func(p): return p.attached_energies.size() > 0)
+	if field.size() < 2:
+		return {}
+	var best := {}
+	var best_v := 0.0
+	for i in range(field.size()):
+		for j in range(i + 1, field.size()):
+			var a: card_object = field[i]
+			var b: card_object = field[j]
+			var wa := 2.0 if a == main.player_active_pokemon else 1.0
+			var wb := 2.0 if b == main.player_active_pokemon else 1.0
+			var a0 := _r4_min_unmet(a)
+			var b0 := _r4_min_unmet(b)
+			for ea in a.attached_energies.duplicate():
+				for eb in b.attached_energies.duplicate():
+					a.attached_energies.erase(ea)
+					b.attached_energies.erase(eb)
+					a.attached_energies.append(eb)
+					b.attached_energies.append(ea)
+					var v := float(mini(_r4_min_unmet(a), 9) - mini(a0, 9)) * wa + float(mini(_r4_min_unmet(b), 9) - mini(b0, 9)) * wb
+					a.attached_energies.erase(eb)
+					b.attached_energies.erase(ea)
+					a.attached_energies.append(ea)
+					b.attached_energies.append(eb)
+					if v > best_v:
+						best_v = v
+						best = {"a": a, "b": b, "ea": ea, "eb": eb}
+	return best
 
 # EARTH RAGE (Nidoking): once per turn if Active, flip; heads put a damage counter on EACH opponent Benched Pokemon
 func power_ecard2_earth_rage(nidoking: card_object) -> void:
@@ -10045,8 +10294,11 @@ func power_ecard2_miracle_shift(togetic: card_object) -> void:
 		await main.show_message("NO BASIC ENERGY TO DISCARD!")
 		if main._should_bail(): return
 		return
-	var target: card_object = main.cpu_ai.cpu_pick_benefit_recipient(sources, "energy") if is_opponent else sources[0]
-	if target == null: target = sources[0]
+	# AUDIT 2026-11-18 #54: the CPU swaps only when the new type brings an attack closer to payable.
+	var ms_plan: Dictionary = _cpu_miracle_shift_plan() if is_opponent else {}
+	if is_opponent and ms_plan.is_empty():
+		return
+	var target: card_object = ms_plan["target"] if is_opponent else sources[0]
 	if not is_opponent and sources.size() > 1:
 		target = await main.card_ops.prompt_select_card(sources, "MIRACLE SHIFT", "Select a Pokemon to shift Energy on", "SELECT", false)
 		if main._should_bail(): return
@@ -10054,22 +10306,25 @@ func power_ecard2_miracle_shift(togetic: card_object) -> void:
 	var basics = target.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e))
 	var to_discard: card_object = basics[0]
 	if is_opponent:
-		for e in basics:
-			if main.cpu_ai.cpu_rank_keep_value(e) < main.cpu_ai.cpu_rank_keep_value(to_discard): to_discard = e
+		to_discard = ms_plan["out"]
 	elif basics.size() > 1:
 		to_discard = await main.card_ops.prompt_select_card(basics, "MIRACLE SHIFT", "Select the Energy to discard", "DISCARD", false)
 		if main._should_bail(): return
 		if to_discard == null: return
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-	var discard_basics_before = discard.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 	togetic.power_used_this_turn = true
 	main.card_ops.discard_energy_from_pokemon(to_discard, is_opponent)
 	main.display_active_pokemon_energies(is_opponent)
+	# AUDIT 2026-11-18 #53: chosen from the discard pile AFTER the discard (the card just discarded is a legal pick) -
+	# with no other basic Energy there it used to discard and attach nothing.
+	var discard_basics_before = discard.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
 	if discard_basics_before.is_empty():
-		await main.show_message("NO OTHER BASIC ENERGY IN DISCARD TO ATTACH!")
+		await main.show_message("NO BASIC ENERGY IN DISCARD TO ATTACH!")
 		if main._should_bail(): return
 		return
 	var new_energy: card_object = discard_basics_before[0]
+	if is_opponent and ms_plan["in"] in discard_basics_before:
+		new_energy = ms_plan["in"]
 	if not is_opponent and discard_basics_before.size() > 1:
 		new_energy = await main.card_ops.prompt_select_card(discard_basics_before, "MIRACLE SHIFT", "Select a basic Energy to attach", "ATTACH", false, true)
 		if main._should_bail(): return
@@ -10086,6 +10341,61 @@ func power_ecard2_miracle_shift(togetic: card_object) -> void:
 	await main.show_message("MIRACLE SHIFT! " + new_energy.metadata.get("name","").to_upper() + " ATTACHED TO " + target.metadata.get("name","").to_upper() + "!")
 	if main._should_bail(): return
 	print("POWER USED: Miracle Shift")
+
+# AUDIT 2026-11-18 #54: the CPU's Miracle Shift {target, out, in}: a basic Energy on one of its Pokémon swapped for a
+# basic Energy card in its discard pile of a type that lowers that Pokémon's cheapest unmet attack cost. {} if none.
+func _cpu_miracle_shift_plan() -> Dictionary:
+	var pile: Array = main.opponent_discard_pile.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c))
+	var best := {}
+	var best_v := 0.0
+	for p in build_field_pokemon_array_ecard2(true):
+		var before := _r4_min_unmet(p)
+		if before <= 0 or before >= 99:
+			continue
+		for e in p.attached_energies.filter(func(x): return main.attack_effects.gym1_is_basic_energy(x)):
+			var cands: Array = pile.duplicate()
+			cands.append(e)
+			var seen := {}
+			for d in cands:
+				var nm: String = d.metadata.get("name", "")
+				if seen.has(nm) or nm == e.metadata.get("name", ""):
+					continue
+				seen[nm] = true
+				p.attached_energies.erase(e)
+				p.attached_energies.append(d)
+				var after := _r4_min_unmet(p)
+				p.attached_energies.erase(d)
+				p.attached_energies.append(e)
+				if after >= before:
+					continue
+				var v := float(before - after) * 50.0 + (30.0 if p == main.opponent_active_pokemon else 0.0)
+				if v > best_v:
+					best_v = v
+					best = {"target": p, "out": e, "in": d}
+	return best
+
+# AUDIT 2026-11-18 #58/#59: the CPU's Energy Return {source, energy}: from its most badly damaged Pokémon (under 30% HP
+# - the Energy is about to be lost with it), the Energy card it needs most. {} if no Pokémon qualifies.
+func _cpu_energy_return_pick() -> Dictionary:
+	var src: card_object = null
+	var worst := 0.3
+	for p in build_field_pokemon_array_ecard2(true):
+		if p.attached_energies.is_empty():
+			continue
+		var r := float(p.current_hp) / float(maxi(1, p.get_max_hp()))
+		if r < worst:
+			worst = r
+			src = p
+	if src == null:
+		return {}
+	var best: card_object = src.attached_energies[0]
+	var best_v := -INF
+	for e in src.attached_energies:
+		var v: float = main.cpu_ai.cpu_energy_need_value(e)
+		if v > best_v:
+			best_v = v
+			best = e
+	return {"source": src, "energy": best}
 
 # DARK MOON (Umbreon): while Active with Darkness Energy attached, once per turn, look at
 # opponent's hand and shuffle up to (Darkness Energy count) cards into their deck; they draw that many
@@ -10121,7 +10431,10 @@ func power_ecard2_dark_moon(umbreon: card_object) -> void:
 	var want = min(darkness_count, opp_hand.size())
 	var chosen: Array = []
 	if is_opponent:
-		for i in range(want): chosen.append(opp_hand[i])
+		# AUDIT 2026-11-18 #55: the player's most valuable cards (was the first N in hand).
+		var dm_sorted: Array = opp_hand.duplicate()
+		dm_sorted.sort_custom(func(x, y): return main.cpu_ai.cpu_rank_keep_value(x) > main.cpu_ai.cpu_rank_keep_value(y))
+		for i in range(want): chosen.append(dm_sorted[i])
 	else:
 		chosen = await main.card_ops.prompt_select_cards(opp_hand.duplicate(), 0, want, "DARK MOON",
 			"Choose up to " + str(want) + " cards from your opponent's hand to shuffle into their deck", "SELECT")
@@ -10237,6 +10550,14 @@ func power_ecard2_scavenger_hunt(furret: card_object) -> void:
 		if main._should_bail(): return
 		return
 	var chosen: card_object = energies[0]
+	if is_opponent:
+		# AUDIT 2026-11-18 #49: the Energy its Pokémon need most.
+		var sh_best := -INF
+		for e in energies:
+			var v: float = main.cpu_ai.cpu_energy_need_value(e)
+			if v > sh_best:
+				sh_best = v
+				chosen = e
 	if not is_opponent and energies.size() > 1:
 		chosen = await main.card_ops.prompt_select_card(energies, "SCAVENGER HUNT", "Select an Energy card to add to hand", "SELECT", false, true)
 		if main._should_bail(): return
@@ -10255,6 +10576,26 @@ func power_ecard2_scavenger_hunt(furret: card_object) -> void:
 	if main._should_bail(): return
 	print("POWER USED: Scavenger Hunt")
 
+# AUDIT 2026-11-18 #49: Scavenger Hunt costs 2 hand cards for 1 Energy - only when the deck has an Energy the CPU's
+# Pokémon need, the hand has none of that, and 2 junk cards (not needed Energy) can go back.
+func _cpu_scavenger_hunt_worth() -> bool:
+	var best_deck := -INF
+	for c in main.opponent_deck:
+		if c.metadata.get("supertype","") == "Energy":
+			best_deck = maxf(best_deck, main.cpu_ai.cpu_energy_need_value(c))
+	if best_deck < 16.0:   # 10 = baseline (nothing unpaid needs it)
+		return false
+	var best_hand := -INF
+	var junk := 0
+	for c in main.opponent_hand:
+		if c.metadata.get("supertype","") == "Energy":
+			best_hand = maxf(best_hand, main.cpu_ai.cpu_energy_need_value(c))
+			if main.cpu_ai.cpu_energy_need_value(c) <= 12.0:
+				junk += 1
+		elif main.cpu_ai.cpu_rank_keep_value(c) < 40.0:
+			junk += 1
+	return best_hand < best_deck and junk >= 2
+
 # ── Small shared helpers for ecard2 ──────────────────────────────────────────────
 
 # Same shape as build_field_pokemon_array (Trainer_Effects.gd) — local copy avoids a cross-script
@@ -10270,8 +10611,13 @@ func build_field_pokemon_array_ecard2(is_opponent: bool) -> Array:
 # Simple CPU discard-priority fallback for Scavenger Hunt (lowest-value-first), mirroring the
 # general spirit of Trainer_Effects.cpu_get_discard_priority without depending on its internals.
 func cpu_get_discard_priority_ecard2(hand: Array, count: int) -> Array:
+	# AUDIT 2026-11-18 #49: the least valuable cards first (it put ENERGY first - and the comparator was not a valid
+	# strict ordering), never an Energy the CPU's Pokémon still need while a junk card is available.
 	var pool = hand.duplicate()
-	pool.sort_custom(func(a, b): return a.metadata.get("supertype","") == "Energy" and b.metadata.get("supertype","") != "Energy")
+	var keep = func(c: card_object) -> float:
+		var v: float = main.cpu_ai.cpu_rank_keep_value(c)
+		return v
+	pool.sort_custom(func(a, b): return keep.call(a) < keep.call(b))
 	var result: Array = []
 	for i in range(min(count, pool.size())):
 		result.append(pool[i])
@@ -10374,7 +10720,7 @@ func cpu_phase_ecard2_powers() -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 
 	var bubble_turn = _find_cpu_bench_pokemon_with_power("Bubble Turn")
-	if bubble_turn != null and not bubble_turn.power_used_this_turn and not is_power_blocked_by_status(bubble_turn):
+	if bubble_turn != null and not bubble_turn.power_used_this_turn and not _cpu_power_locked(bubble_turn):
 		# Only worth retreating to hand if it's significantly damaged (protect the investment)
 		if bubble_turn.current_hp < bubble_turn.get_max_hp() * 0.4:
 			await announce_cpu_power(bubble_turn, "Bubble Turn")   # ISSUE #106
@@ -10383,7 +10729,7 @@ func cpu_phase_ecard2_powers() -> void:
 			if main._should_bail(): return
 
 	var flower_supplement = _find_cpu_pokemon_with_power("Flower Supplement")
-	if flower_supplement != null and not flower_supplement.power_used_this_turn and not is_power_blocked_by_status(flower_supplement):
+	if flower_supplement != null and not flower_supplement.power_used_this_turn and not _cpu_power_locked(flower_supplement):
 		if main.opponent_bench.size() > 0 and main.opponent_hand.any(func(c): return main.attack_effects.gym1_is_basic_energy(c)):
 			await announce_cpu_power(flower_supplement, "Flower Supplement")   # ISSUE #106
 			if main._should_bail(): return
@@ -10391,7 +10737,7 @@ func cpu_phase_ecard2_powers() -> void:
 			if main._should_bail(): return
 
 	var happy_healing = _find_cpu_pokemon_with_power("Happy Healing")
-	if happy_healing != null and not happy_healing.power_used_this_turn and not is_power_blocked_by_status(happy_healing):
+	if happy_healing != null and not happy_healing.power_used_this_turn and not _cpu_power_locked(happy_healing):
 		var damaged_bench = main.opponent_bench.filter(func(p): return p.current_hp < p.get_max_hp())
 		if damaged_bench.size() > 0 and happy_healing.attached_energies.size() > 0:
 			await announce_cpu_power(happy_healing, "Happy Healing")   # ISSUE #106
@@ -10400,28 +10746,25 @@ func cpu_phase_ecard2_powers() -> void:
 			if main._should_bail(): return
 
 	var super_dynamo = _find_cpu_pokemon_with_power("Super Dynamo")
-	if super_dynamo != null and super_dynamo == main.opponent_active_pokemon and not super_dynamo.power_used_this_turn and not is_power_blocked_by_status(super_dynamo):
+	# AUDIT 2026-11-18 #57: only with a Lightning Energy card in the discard pile (decide before announcing).
+	if super_dynamo != null and super_dynamo == main.opponent_active_pokemon and not super_dynamo.power_used_this_turn and not _cpu_power_locked(super_dynamo) \
+			and main.opponent_discard_pile.any(func(c): return main.is_typed_energy_card(c, "Lightning")):
 		await announce_cpu_power(super_dynamo, "Super Dynamo")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ecard2_super_dynamo(super_dynamo)
 		if main._should_bail(): return
 
 	var energy_return = _find_cpu_pokemon_with_power("Energy Return")
-	if energy_return != null and not is_power_blocked_by_status(energy_return):
+	if energy_return != null and not _cpu_power_locked(energy_return):
 		# Only pull energy back if it's from a heavily-damaged Pokemon worth abandoning
-		var worth_it = false
-		for p in build_field_pokemon_array_ecard2(true):
-			if p.attached_energies.size() > 0 and p.current_hp < p.get_max_hp() * 0.3:
-				worth_it = true
-				break
-		if worth_it:
+		if not _cpu_energy_return_pick().is_empty():   # AUDIT 2026-11-18 #59: same rule as the pick
 			await announce_cpu_power(energy_return, "Energy Return")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard2_energy_return(energy_return)
 			if main._should_bail(): return
 
 	var sleep_pendulum = _find_cpu_pokemon_with_power("Sleep Pendulum")
-	if sleep_pendulum != null and sleep_pendulum == main.opponent_active_pokemon and not sleep_pendulum.power_used_this_turn and not is_power_blocked_by_status(sleep_pendulum):
+	if sleep_pendulum != null and sleep_pendulum == main.opponent_active_pokemon and not sleep_pendulum.power_used_this_turn and not _cpu_power_locked(sleep_pendulum):
 		if main.player_active_pokemon != null and main.player_active_pokemon.special_condition == "":
 			await announce_cpu_power(sleep_pendulum, "Sleep Pendulum")   # ISSUE #106
 			if main._should_bail(): return
@@ -10429,7 +10772,7 @@ func cpu_phase_ecard2_powers() -> void:
 			if main._should_bail(): return
 
 	var water_cyclone = _find_cpu_pokemon_with_power("Water Cyclone")
-	if water_cyclone != null and water_cyclone == main.opponent_active_pokemon and not is_power_blocked_by_status(water_cyclone):
+	if water_cyclone != null and water_cyclone == main.opponent_active_pokemon and not _cpu_power_locked(water_cyclone):
 		if water_cyclone.current_hp < water_cyclone.get_max_hp() * 0.3 and main.opponent_bench.size() > 0:
 			await announce_cpu_power(water_cyclone, "Water Cyclone")   # ISSUE #106
 			if main._should_bail(): return
@@ -10437,12 +10780,17 @@ func cpu_phase_ecard2_powers() -> void:
 			if main._should_bail(): return
 
 	var ion_coating = _find_cpu_pokemon_with_power("Ion Coating")
-	if ion_coating != null and ion_coating == main.opponent_active_pokemon and not ion_coating.power_used_this_turn and not is_power_blocked_by_status(ion_coating):
+	# AUDIT 2026-11-18 #150: Ion Coating works on whatever Pokémon is Active (Lanturn may be Benched) - used when treating
+	# its Lightning Energy as Water brings the Active's cheapest attack closer to payable.
+	if ion_coating != null and main.opponent_active_pokemon != null and not ion_coating.power_used_this_turn and not _cpu_power_locked(ion_coating):
+		var ic_act = main.opponent_active_pokemon
 		var needs_water = false
-		for atk in ion_coating.metadata.get("attacks", []):
-			if "Water" in atk.get("cost", []) and main.cpu_ai.get_unmet_energy_count(atk, ion_coating) > 0:
-				needs_water = true
-				break
+		if not ic_act.has_effect("ecard2_ion_coating"):
+			var ic_before := _r4_min_unmet(ic_act)
+			ic_act.set_effect("ecard2_ion_coating", "end_of_own_turn")
+			var ic_after := _r4_min_unmet(ic_act)
+			ic_act.clear_effect("ecard2_ion_coating")
+			needs_water = ic_after < ic_before
 		if needs_water:
 			await announce_cpu_power(ion_coating, "Ion Coating")   # ISSUE #106
 			if main._should_bail(): return
@@ -10450,14 +10798,15 @@ func cpu_phase_ecard2_powers() -> void:
 			if main._should_bail(): return
 
 	var magnetic_flow = _find_cpu_pokemon_with_power("Magnetic Flow")
-	if magnetic_flow != null and magnetic_flow == main.opponent_active_pokemon and not magnetic_flow.power_used_this_turn and not is_power_blocked_by_status(magnetic_flow):
-		await announce_cpu_power(magnetic_flow, "Magnetic Flow")   # ISSUE #106
-		if main._should_bail(): return
-		await power_ecard2_magnetic_flow(magnetic_flow)
-		if main._should_bail(): return
+	if magnetic_flow != null and magnetic_flow == main.opponent_active_pokemon and not magnetic_flow.power_used_this_turn and not _cpu_power_locked(magnetic_flow):
+		if not _cpu_magnetic_flow_plan().is_empty():   # AUDIT 2026-11-18 #51: decide before announcing
+			await announce_cpu_power(magnetic_flow, "Magnetic Flow")   # ISSUE #106
+			if main._should_bail(): return
+			await power_ecard2_magnetic_flow(magnetic_flow)
+			if main._should_bail(): return
 
 	var earth_rage = _find_cpu_pokemon_with_power("Earth Rage")
-	if earth_rage != null and earth_rage == main.opponent_active_pokemon and not earth_rage.power_used_this_turn and not is_power_blocked_by_status(earth_rage):
+	if earth_rage != null and earth_rage == main.opponent_active_pokemon and not earth_rage.power_used_this_turn and not _cpu_power_locked(earth_rage):
 		if main.player_bench.size() > 0:
 			await announce_cpu_power(earth_rage, "Earth Rage")   # ISSUE #106
 			if main._should_bail(): return
@@ -10465,7 +10814,7 @@ func cpu_phase_ecard2_powers() -> void:
 			if main._should_bail(): return
 
 	var backup = _find_cpu_pokemon_with_power("Backup")
-	if backup != null and not backup.power_used_this_turn and not is_power_blocked_by_status(backup):
+	if backup != null and not backup.power_used_this_turn and not _cpu_power_locked(backup):
 		# ISSUE #490: the card's own target (3 or 6); "may draw", so never draw into a deck-out.
 		var bk_draw: int = backup_hand_target(backup) - main.opponent_hand.size()
 		if bk_draw > 0 and main.opponent_deck.size() > bk_draw:
@@ -10475,7 +10824,7 @@ func cpu_phase_ecard2_powers() -> void:
 			if main._should_bail(): return
 
 	var strange_tentacles = _find_cpu_pokemon_with_power("Strange Tentacles")
-	if strange_tentacles != null and not strange_tentacles.power_used_this_turn and not is_power_blocked_by_status(strange_tentacles) 			and _cpu_strange_tentacles_worth(main.opponent_active_pokemon, main.player_active_pokemon):   # ISSUE #498
+	if strange_tentacles != null and not strange_tentacles.power_used_this_turn and not _cpu_power_locked(strange_tentacles) 			and _cpu_strange_tentacles_worth(main.opponent_active_pokemon, main.player_active_pokemon):   # ISSUE #498
 		print("ISSUE #498 FIX ACTIVE: Strange Tentacles pays off this turn")
 		await announce_cpu_power(strange_tentacles, "Strange Tentacles")   # ISSUE #106
 		if main._should_bail(): return
@@ -10483,24 +10832,27 @@ func cpu_phase_ecard2_powers() -> void:
 		if main._should_bail(): return
 
 	var miracle_shift = _find_cpu_pokemon_with_power("Miracle Shift")
-	if miracle_shift != null and not miracle_shift.power_used_this_turn and not is_power_blocked_by_status(miracle_shift):
-		var has_diff_energy = main.opponent_discard_pile.any(func(c): return main.attack_effects.gym1_is_basic_energy(c))
-		if has_diff_energy:
+	if miracle_shift != null and not miracle_shift.power_used_this_turn and not _cpu_power_locked(miracle_shift):
+		if not _cpu_miracle_shift_plan().is_empty():   # AUDIT 2026-11-18 #54: only a swap that helps
 			await announce_cpu_power(miracle_shift, "Miracle Shift")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard2_miracle_shift(miracle_shift)
 			if main._should_bail(): return
 
 	var dark_moon = _find_cpu_pokemon_with_power("Dark Moon")
-	if dark_moon != null and dark_moon == main.opponent_active_pokemon and not dark_moon.power_used_this_turn and not is_power_blocked_by_status(dark_moon):
-		if main.player_hand.size() > 0:
+	if dark_moon != null and dark_moon == main.opponent_active_pokemon and not dark_moon.power_used_this_turn and not _cpu_power_locked(dark_moon):
+		# AUDIT 2026-11-18 #55: only when the player holds something worth taking away (they redraw as many).
+		var dm_top := -INF
+		for c in main.player_hand:
+			dm_top = maxf(dm_top, main.cpu_ai.cpu_rank_keep_value(c))
+		if main.player_hand.size() > 0 and dm_top >= 60.0:
 			await announce_cpu_power(dark_moon, "Dark Moon")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard2_dark_moon(dark_moon)
 			if main._should_bail(): return
 
 	var fragrance_trap = _find_cpu_pokemon_with_power("Fragrance Trap")
-	if fragrance_trap != null and not fragrance_trap.uid.begins_with("gym1-") and not fragrance_trap.power_used_this_turn and not is_power_blocked_by_status(fragrance_trap):
+	if fragrance_trap != null and not fragrance_trap.uid.begins_with("gym1-") and not fragrance_trap.power_used_this_turn and not _cpu_power_locked(fragrance_trap):
 		if main.player_bench.size() > 0 and _cpu_fragrance_trap_worth():   # ISSUE #498
 			await announce_cpu_power(fragrance_trap, "Fragrance Trap")   # ISSUE #106
 			if main._should_bail(): return
@@ -10508,8 +10860,8 @@ func cpu_phase_ecard2_powers() -> void:
 			if main._should_bail(): return
 
 	var scavenger_hunt = _find_cpu_pokemon_with_power("Scavenger Hunt")
-	if scavenger_hunt != null and not scavenger_hunt.power_used_this_turn and not is_power_blocked_by_status(scavenger_hunt):
-		if main.opponent_hand.size() >= 2:
+	if scavenger_hunt != null and not scavenger_hunt.power_used_this_turn and not _cpu_power_locked(scavenger_hunt):
+		if main.opponent_hand.size() >= 2 and _cpu_scavenger_hunt_worth():   # AUDIT 2026-11-18 #49
 			await announce_cpu_power(scavenger_hunt, "Scavenger Hunt")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard2_scavenger_hunt(scavenger_hunt)
@@ -10680,6 +11032,23 @@ func power_ecard3_carry_off(crobat: card_object) -> void:
 		if main._should_bail(): return
 		return
 	var chosen: card_object = candidates[0]
+	if is_opponent:
+		# AUDIT 2026-11-18 #67: the player's most valuable Pokémon card - an Evolution that fits something they have in play
+		# first, then other Evolutions, Basics, Babies (it took candidates[0]).
+		var in_play_names: Array = main.card_ops.get_all_pokemon_in_play(false).map(func(p): return p.metadata.get("name", ""))
+		var co_best := -INF
+		for c in candidates:
+			var st: Array = c.metadata.get("subtypes", [])
+			var v := 40.0
+			if "Baby" in st: v = 20.0
+			elif "Stage 2" in st or "Stage 1" in st:
+				v = 60.0 + (10.0 if "Stage 2" in st else 0.0)
+				if c.metadata.get("evolvesFrom", "") in in_play_names: v += 50.0
+			elif main.player_bench.size() < main.get_max_bench_size(): v += 10.0
+			v += float(int(c.metadata.get("hp", "0"))) * 0.05
+			if v > co_best:
+				co_best = v
+				chosen = c
 	if not is_opponent:
 		chosen = await main.card_ops.prompt_select_card(candidates, "CARRY OFF", "Choose a card from your opponent's hand to shuffle into their deck", "SELECT", false)
 		if main._should_bail(): return
@@ -10765,8 +11134,10 @@ func power_ecard3_strange_spiral(poliwrath: card_object) -> void:
 		return
 	var energy: card_object = basics[0]
 	if is_opponent:
-		for e in basics:
-			if main.cpu_ai.cpu_rank_keep_value(e) < main.cpu_ai.cpu_rank_keep_value(energy): energy = e
+		var ss_e = _cpu_strange_spiral_energy(poliwrath)   # AUDIT 2026-11-18 #66
+		if ss_e == null:
+			return
+		energy = ss_e
 	elif basics.size() > 1:
 		energy = await main.card_ops.prompt_select_card(basics, "STRANGE SPIRAL", "Choose a basic Energy to discard", "DISCARD", false)
 		if main._should_bail(): return
@@ -10785,6 +11156,8 @@ func power_ecard3_strange_spiral(poliwrath: card_object) -> void:
 
 # GOOD NEIGHBOR (Wigglytuff): once per turn, if on your bench, flip; heads each player removes
 # up to 2 damage counters from their Active
+var _good_neighbor_turn: Dictionary = {}   # AUDIT 2026-11-18 #61: side -> turn_number Good Neighbor was last used
+
 func power_ecard3_good_neighbor(wigglytuff: card_object) -> void:
 	var is_opponent = wigglytuff.is_owner_opp(main)
 	if is_power_blocked(wigglytuff, false):
@@ -10800,6 +11173,12 @@ func power_ecard3_good_neighbor(wigglytuff: card_object) -> void:
 		await main.show_message("WIGGLYTUFF MUST BE ON YOUR BENCH!")
 		if main._should_bail(): return
 		return
+	# AUDIT 2026-11-18 #61: "can't be used if you have already used another Wigglytuff's Good Neighbor this turn".
+	if int(_good_neighbor_turn.get(is_opponent, -1)) == main.turn_number:
+		await main.show_message("GOOD NEIGHBOR WAS ALREADY USED THIS TURN!")
+		if main._should_bail(): return
+		return
+	_good_neighbor_turn[is_opponent] = main.turn_number
 	wigglytuff.power_used_this_turn = true
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
@@ -10819,6 +11198,76 @@ func power_ecard3_good_neighbor(wigglytuff: card_object) -> void:
 	await main.show_message("GOOD NEIGHBOR! HEADS — BOTH ACTIVE POKEMON HEALED UP TO 20!")
 	if main._should_bail(): return
 	print("POWER USED: Good Neighbor")
+
+# AUDIT 2026-11-18 #66: the basic Energy the CPU's Poliwrath can discard for Strange Spiral without losing an attack it
+# can pay for now (the least useful such card), or null. If it can't attack anyway, the least useful basic Energy.
+func _cpu_strange_spiral_energy(poliwrath: card_object) -> card_object:
+	var basics: Array = poliwrath.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e))
+	if basics.is_empty():
+		return null
+	var could_attack: bool = _cpu_active_can_attack(poliwrath)
+	var best: card_object = null
+	var best_v := INF
+	for e in basics:
+		poliwrath.attached_energies.erase(e)
+		var still: bool = _cpu_active_can_attack(poliwrath)
+		poliwrath.attached_energies.append(e)
+		if could_attack and not still:
+			continue
+		var v: float = main.cpu_ai.cpu_own_energy_value(poliwrath, e)
+		if v < best_v:
+			best_v = v
+			best = e
+	return best
+
+# AUDIT 2026-11-18 #147: Jet Stream costs Blastoise an Energy on heads - only when it can spare one (it still has an
+# attack it can pay for, or can't attack anyway), or when taking one Energy off the player's Active stops its attack.
+func _cpu_jet_stream_worth(blastoise: card_object) -> bool:
+	var could: bool = _cpu_active_can_attack(blastoise)
+	var spare := blastoise.attached_energies.is_empty() or not could
+	for e in blastoise.attached_energies.duplicate():
+		if spare: break
+		blastoise.attached_energies.erase(e)
+		spare = _cpu_active_can_attack(blastoise)
+		blastoise.attached_energies.append(e)
+	var foe = main.player_active_pokemon
+	var deny := false
+	if foe != null and _r4_min_unmet(foe) == 0:
+		for e in foe.attached_energies.duplicate():
+			foe.attached_energies.erase(e)
+			var u := _r4_min_unmet(foe)
+			foe.attached_energies.append(e)
+			if u > 0:
+				deny = true
+				break
+	return spare or deny
+
+# AUDIT 2026-11-18 #62: heads heals BOTH Actives up to 20 - only when the CPU's heal is worth more than the player's
+# and the player's heal would not save a Pokémon the CPU's Active is about to Knock Out.
+func _cpu_good_neighbor_worth() -> bool:
+	var me = main.opponent_active_pokemon
+	var foe = main.player_active_pokemon
+	if me == null:
+		return false
+	var mine: int = mini(20, me.get_max_hp() - me.current_hp)
+	if mine <= 0:
+		return false
+	var theirs: int = 0 if foe == null else mini(20, foe.get_max_hp() - foe.current_hp)
+	if foe != null and theirs > 0:
+		var reach: int = main.cpu_ai.cpu_best_damage_vs(foe)
+		if reach >= foe.current_hp and reach < foe.current_hp + theirs:
+			return false
+	return mine > theirs
+
+# AUDIT 2026-11-18 #60: can this CPU Active use any attack this turn (paid, not locked, not turn 1)?
+func _cpu_active_can_attack(p: card_object) -> bool:
+	if p == null or main.turn_number <= 1 or main.opponent_attacked_this_turn:
+		return false
+	for atk in main.get_attacks_for_card(p):
+		if main.cpu_ai.get_unmet_energy_count(atk, p) == 0 and not main.is_attack_disabled(p, atk.get("name", "")) \
+				and main.attack_effects.attack_unusable_reason(atk, p) == "":
+			return true
+	return false
 
 # INVESTIGATE (Noctowl): once per turn, look at the top 2 cards of any player's deck, or up to 2
 # of any player's Prizes; put back in the same order (read-only, informational)
@@ -11111,6 +11560,12 @@ func trigger_ecard3_streaming_mantle(magcargo: card_object, is_opponent: bool) -
 	var active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	if magcargo != active: return
 	var do_it = is_opponent
+	if is_opponent:
+		# AUDIT 2026-11-18 #64: only with a deck big enough to mill 3, 3+ basic Energy in its discard to recycle, and no
+		# bigger gain for the player (who does the same) - it always fired.
+		var own_b: int = main.opponent_discard_pile.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c)).size()
+		var foe_b: int = main.player_discard_pile.filter(func(c): return main.attack_effects.gym1_is_basic_energy(c)).size()
+		do_it = main.opponent_deck.size() > 10 and own_b >= 3 and (own_b >= foe_b or main.player_deck.size() <= main.opponent_deck.size())
 	if not is_opponent:
 		do_it = await main.trainer_effects.gym1_prompt_yes_no(magcargo, "STREAMING MANTLE", "Discard the top 3 of your deck and shuffle 3 basic Energy from discard into your deck?", "YES", "NO")
 		if main._should_bail(): return
@@ -11164,30 +11619,47 @@ func trigger_ecard3_attract_energy(magneton: card_object, is_opponent: bool) -> 
 	if others.is_empty(): return
 	var moved = 0
 	if is_opponent:
-		for p in others:
-			for e in p.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e)).duplicate():
-				var _emr_11125: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
-				p.attached_energies.erase(e)
-				magneton.attached_energies.append(e)
-				await main.card_ops.fly_attach(e, "attached", _emr_11125)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
-				if main._should_bail(): return
-				main.play_energy_attach_sfx()
-				moved += 1
+		# AUDIT 2026-11-18 #65: only Energy that brings Magneton's attacks closer to payable (r4 planner), and never one
+		# the Active needs for its own cheapest attack unless Magneton IS the Active - it moved every basic Energy.
+		var own_act = main.opponent_active_pokemon
+		var ae_pool = func(p: card_object) -> Array:
+			var bs: Array = p.attached_energies.filter(func(x): return main.attack_effects.gym1_is_basic_energy(x))
+			if p == own_act and own_act != magneton:
+				var base_u := _r4_min_unmet(p)
+				bs = bs.filter(func(x):
+					p.attached_energies.erase(x)
+					var u := _r4_min_unmet(p)
+					p.attached_energies.append(x)
+					return u <= base_u)
+			return bs
+		var ae_moves: Array = r4_cpu_plan_energy_moves(others, ae_pool, -1, false, [magneton])
+		for i in range(ae_moves.size() - 1, -1, -1):
+			ae_moves[i]["to"].attached_energies.erase(ae_moves[i]["e"])
+			ae_moves[i]["from"].attached_energies.append(ae_moves[i]["e"])
+		for m in ae_moves:
+			var e: card_object = m["e"]
+			var _emr_11125: Dictionary = main.card_ops.capture_rect(e, "attached", true)
+			m["from"].attached_energies.erase(e)
+			magneton.attached_energies.append(e)
+			await main.card_ops.fly_attach(e, "attached", _emr_11125)
+			if main._should_bail(): return
+			main.play_energy_attach_sfx()
+			moved += 1
 	else:
-		var do_it = await main.trainer_effects.gym1_prompt_yes_no(magneton, "ATTRACT ENERGY", "Move basic Energy from your other Pokemon onto Magneton?", "YES", "NO")
+		# AUDIT 2026-11-18 #156: "any number" on ONE screen - every basic Energy on your other Pokémon (0 = don't use it).
+		var ae_cards: Array = []
+		for p in all_own:
+			if p != magneton:
+				ae_cards.append_array(p.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e)))
+		var ae_picks: Array = await main.card_ops.prompt_select_cards(ae_cards, 0, ae_cards.size(), "ATTRACT ENERGY", "Choose any number of basic Energy to move onto Magneton", "MOVE")
 		if main._should_bail(): return
-		if not do_it: return
-		var keep_going = true
-		while keep_going:
-			var pool = all_own.filter(func(p): return p != magneton and p.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e)).size() > 0)
-			if pool.is_empty(): break
-			var source = await main.card_ops.prompt_select_card(pool, "ATTRACT ENERGY", "Select a Pokemon to move Energy from (or cancel to stop)", "SELECT", true)
-			if main._should_bail(): return
-			if source == null: break
-			var basics = source.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e))
-			var e = await main.card_ops.prompt_select_card(basics, "ATTRACT ENERGY", "Select the Energy to move", "MOVE", false)
-			if main._should_bail(): return
-			if e == null: continue
+		for e in ae_picks:
+			var source: card_object = null
+			for p in all_own:
+				if e in p.attached_energies:
+					source = p
+					break
+			if source == null: continue
 			var _emr_11144: Dictionary = main.card_ops.capture_rect(e, "attached", false)   # AUDIT 2026-11-17: flight (Energy moves between Pokemon)
 			source.attached_energies.erase(e)
 			magneton.attached_energies.append(e)
@@ -11224,7 +11696,7 @@ func cpu_phase_ecard3_powers() -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 
 	var ancient_wind = _find_cpu_pokemon_with_power("Ancient Wind")
-	if ancient_wind != null and main.opponent_active_pokemon == ancient_wind and not ancient_wind.power_used_this_turn and not is_power_blocked_by_status(ancient_wind):
+	if ancient_wind != null and main.opponent_active_pokemon == ancient_wind and not ancient_wind.power_used_this_turn and not _cpu_power_locked(ancient_wind):
 		await announce_cpu_power(ancient_wind, "Ancient Wind")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ecard3_ancient_wind(ancient_wind)
@@ -11232,14 +11704,14 @@ func cpu_phase_ecard3_powers() -> void:
 
 	var carry_off = _find_cpu_pokemon_with_power("Carry Off")
 	if carry_off == null: carry_off = _find_cpu_bench_pokemon_with_power("Carry Off")
-	if carry_off != null and not carry_off.power_used_this_turn and not is_power_blocked_by_status(carry_off):
+	if carry_off != null and not carry_off.power_used_this_turn and not _cpu_power_locked(carry_off):
 		await announce_cpu_power(carry_off, "Carry Off")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ecard3_carry_off(carry_off)
 		if main._should_bail(): return
 
 	var evo_helper = _find_cpu_bench_pokemon_with_power("Evolution Helper")
-	if evo_helper != null and not evo_helper.power_used_this_turn and not is_power_blocked_by_status(evo_helper):
+	if evo_helper != null and not evo_helper.power_used_this_turn and not _cpu_power_locked(evo_helper):
 		if main.opponent_active_pokemon != null:
 			await announce_cpu_power(evo_helper, "Evolution Helper")   # ISSUE #106
 			if main._should_bail(): return
@@ -11247,16 +11719,16 @@ func cpu_phase_ecard3_powers() -> void:
 			if main._should_bail(): return
 
 	var strange_spiral = _find_cpu_pokemon_with_power("Strange Spiral")
-	if strange_spiral != null and main.opponent_active_pokemon == strange_spiral and not strange_spiral.power_used_this_turn and not is_power_blocked_by_status(strange_spiral):
-		if strange_spiral.attached_energies.filter(func(e): return main.attack_effects.gym1_is_basic_energy(e)).size() > 0 and main.player_active_pokemon != null and main.player_active_pokemon.special_condition == "":
+	if strange_spiral != null and main.opponent_active_pokemon == strange_spiral and not strange_spiral.power_used_this_turn and not _cpu_power_locked(strange_spiral):
+		if _cpu_strange_spiral_energy(strange_spiral) != null and main.player_active_pokemon != null and main.player_active_pokemon.special_condition == "":   # AUDIT 2026-11-18 #66
 			await announce_cpu_power(strange_spiral, "Strange Spiral")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard3_strange_spiral(strange_spiral)
 			if main._should_bail(): return
 
 	var good_neighbor = _find_cpu_bench_pokemon_with_power("Good Neighbor")
-	if good_neighbor != null and not good_neighbor.power_used_this_turn and not is_power_blocked_by_status(good_neighbor):
-		if main.opponent_active_pokemon != null and main.opponent_active_pokemon.current_hp < main.opponent_active_pokemon.get_max_hp():
+	if good_neighbor != null and not good_neighbor.power_used_this_turn and not _cpu_power_locked(good_neighbor):
+		if _cpu_good_neighbor_worth() and int(_good_neighbor_turn.get(true, -1)) != main.turn_number:   # AUDIT 2026-11-18 #61/#62
 			await announce_cpu_power(good_neighbor, "Good Neighbor")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard3_good_neighbor(good_neighbor)
@@ -11264,22 +11736,25 @@ func cpu_phase_ecard3_powers() -> void:
 
 	var reconstruction = _find_cpu_pokemon_with_power("Reconstruction")
 	if reconstruction == null: reconstruction = _find_cpu_bench_pokemon_with_power("Reconstruction")
-	if reconstruction != null and not reconstruction.power_used_this_turn and not is_power_blocked_by_status(reconstruction):
+	if reconstruction != null and not reconstruction.power_used_this_turn and not _cpu_power_locked(reconstruction):
 		await announce_cpu_power(reconstruction, "Reconstruction")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ecard3_reconstruction(reconstruction)
 		if main._should_bail(): return
 
 	var lolling_about = _find_cpu_pokemon_with_power("Lolling About")
-	if lolling_about != null and main.opponent_active_pokemon == lolling_about and not lolling_about.power_used_this_turn and not is_power_blocked_by_status(lolling_about):
-		if lolling_about.current_hp < lolling_about.get_max_hp() and main.opponent_active_pokemon.special_condition == "":
+	if lolling_about != null and main.opponent_active_pokemon == lolling_about and not lolling_about.power_used_this_turn and not _cpu_power_locked(lolling_about):
+		# AUDIT 2026-11-18 #60: Snorlax falls Asleep - only in the final power pass, when it has no attack it can use anyway.
+		if lolling_about.current_hp < lolling_about.get_max_hp() and main.opponent_active_pokemon.special_condition == "" \
+				and main.cpu_ai.cpu_final_power_check and not _cpu_active_can_attack(lolling_about):
 			await announce_cpu_power(lolling_about, "Lolling About")   # ISSUE #106
 			if main._should_bail(): return
 			await power_ecard3_lolling_about(lolling_about)
 			if main._should_bail(): return
 
-	# Energy Jump/Investigate are low-value CPU actions (no clear board-state trigger) — skipped
-	# intentionally, consistent with other "no obvious heuristic" powers elsewhere in this file.
+	# Energy Jump: AUDIT 2026-11-18 #63 - the ex11 registration of "Energy Jump" (power_ex11_energy_jump) replaces this
+	# set's handler, and cpu_phase_ex11_powers already uses it for ANY holder (Alakazam included) via the r4 planner.
+	# Investigate stays unused by the CPU (look-only, no board-state trigger).
 
 ######################################################################################################################################################
 ######################################################### EX1 (RUBY & SAPPHIRE) POWERS AND BODIES ###################################################
@@ -11538,6 +12013,7 @@ func power_ex1_water_call(swampert: card_object) -> void:
 	target.attached_energies.append(chosen)
 	await main.card_ops.fly_attach(chosen, "hand", _atr_11438)   # AUDIT 2026-11-17: flight
 	if main._should_bail(): return
+	on_effect_attach_from_hand(target, chosen, false)   # AUDIT 2026-11-18 #157
 	main.play_energy_attach_sfx()
 	main.refresh_hand_display(false)
 	main.display_active_pokemon_energies(false)
@@ -11559,6 +12035,7 @@ func cpu_ex1_water_call(swampert: card_object) -> void:
 	target.attached_energies.append(chosen)
 	await main.card_ops.fly_attach(chosen, "hand", _atr_11456)   # AUDIT 2026-11-17: flight
 	if main._should_bail(): return
+	on_effect_attach_from_hand(target, chosen, true)   # AUDIT 2026-11-18 #157
 	# ISSUE #106: explain before the hand and energy displays update.
 	await main.show_message("WATER CALL! A WATER ENERGY WAS ATTACHED TO "
 		+ target.metadata.get("name","").to_upper() + "!")
@@ -11740,17 +12217,26 @@ func check_ex1_natural_cure(target_pokemon: card_object, energy_card: card_objec
 			matches = true
 			break
 	if not matches: return
-	main.clear_all_statuses(target_pokemon, is_opponent)
+	# "remove all Special Conditions" - only those (clear_all_statuses also wiped shields / Leer / Conversion...).
+	main.cure_special_conditions(target_pokemon, is_opponent)
 	print("BODY: Natural Cure — cured ", target_pokemon.metadata.get("name",""))
 
 # NATURAL REMEDY (Swampert ex1-23): when you attach a Water Energy card from your hand, remove
 # 1 damage counter.
+# AUDIT 2026-11-18 #157: the "when you attach an Energy card from your hand" Bodies for attaches made by EFFECTS (Water
+# Call, Plus Energy, ex5 attach-from-hand...) - they only ran on the normal once-per-turn attach.
+func on_effect_attach_from_hand(target_pokemon: card_object, energy_card: card_object, is_opponent: bool) -> void:
+	check_ex1_natural_cure(target_pokemon, energy_card, is_opponent)
+	check_ex1_natural_remedy(target_pokemon, energy_card, is_opponent)
+
 func check_ex1_natural_remedy(target_pokemon: card_object, energy_card: card_object, is_opponent: bool) -> void:
 	if target_pokemon == null: return
 	if is_power_blocked(target_pokemon): return
 	if not target_pokemon.has_ability("Natural Remedy"): return
 	if "Water" not in main.get_energy_provided_by_card(energy_card): return
+	if target_pokemon.has_effect("ex1_natural_remedy_used"): return   # AUDIT 2026-11-18 #157: "Once during your turn"
 	if target_pokemon.current_hp >= target_pokemon.get_max_hp(): return
+	target_pokemon.set_effect("ex1_natural_remedy_used", "end_of_own_turn")
 	target_pokemon.current_hp = min(target_pokemon.get_max_hp(), target_pokemon.current_hp + 10)
 	main.display_hp_circles_above_align(target_pokemon, is_opponent)
 	print("BODY: Natural Remedy — healed 10 on ", target_pokemon.metadata.get("name",""))
@@ -11763,14 +12249,14 @@ func cpu_phase_ex1_powers() -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 
 	var blaziken = _find_cpu_pokemon_with_power("Firestarter")
-	if blaziken != null and not blaziken.power_used_this_turn and not is_power_blocked_by_status(blaziken):
+	if blaziken != null and not blaziken.power_used_this_turn and not _cpu_power_locked(blaziken):
 		await announce_cpu_power(blaziken, "Firestarter")   # ISSUE #106
 		if main._should_bail(): return
 		await cpu_ex1_firestarter(blaziken)
 		if main._should_bail(): return
 
 	var delcatty = _find_cpu_pokemon_with_power("Energy Draw")
-	if delcatty != null and not delcatty.power_used_this_turn and not is_power_blocked_by_status(delcatty) \
+	if delcatty != null and not delcatty.power_used_this_turn and not _cpu_power_locked(delcatty) \
 			and main.opponent_deck.size() > 2 and main.opponent_hand.size() >= 2 and main.opponent_hand.any(func(c): return c.metadata.get("supertype","") == "Energy"):
 		await announce_cpu_power(delcatty, "Energy Draw")   # ISSUE #106
 		if main._should_bail(): return
@@ -11778,21 +12264,21 @@ func cpu_phase_ex1_powers() -> void:
 		if main._should_bail(): return
 
 	var gardevoir = _find_cpu_pokemon_with_power("Psy Shadow")
-	if gardevoir != null and not gardevoir.power_used_this_turn and not is_power_blocked_by_status(gardevoir) and _r4_cpu_psy_shadow_target() != null:
+	if gardevoir != null and not gardevoir.power_used_this_turn and not _cpu_power_locked(gardevoir) and _r4_cpu_psy_shadow_target() != null:
 		await announce_cpu_power(gardevoir, "Psy Shadow")   # ISSUE #106
 		if main._should_bail(): return
 		await cpu_ex1_psy_shadow(gardevoir)
 		if main._should_bail(): return
 
 	var swampert = _find_cpu_pokemon_with_power("Water Call")
-	if swampert != null and not swampert.power_used_this_turn and not is_power_blocked_by_status(swampert):
+	if swampert != null and not swampert.power_used_this_turn and not _cpu_power_locked(swampert):
 		await announce_cpu_power(swampert, "Water Call")   # ISSUE #106
 		if main._should_bail(): return
 		await cpu_ex1_water_call(swampert)
 		if main._should_bail(): return
 
 	var swellow = _find_cpu_pokemon_with_power("Drive Off")
-	if swellow != null and main.opponent_active_pokemon == swellow and not swellow.power_used_this_turn and not is_power_blocked_by_status(swellow) and _r4_cpu_drive_off_wanted():
+	if swellow != null and main.opponent_active_pokemon == swellow and not swellow.power_used_this_turn and not _cpu_power_locked(swellow) and _r4_cpu_drive_off_wanted():
 		await announce_cpu_power(swellow, "Drive Off")   # ISSUE #106
 		if main._should_bail(): return
 		await cpu_ex1_drive_off(swellow)
@@ -12175,7 +12661,7 @@ func cpu_phase_ex2_powers() -> void:
 
 	# Baby Evolution: evolve whenever the CPU holds the evolution in hand.
 	for baby in main.card_ops.get_all_pokemon_in_play(true):
-		if baby.has_ability("Baby Evolution") and not baby.power_used_this_turn and not is_power_blocked_by_status(baby):
+		if baby.has_ability("Baby Evolution") and not baby.power_used_this_turn and not is_power_blocked(baby):
 			var ability = baby.get_ability("Baby Evolution")
 			var lo = ability.get("text","").to_lower()
 			var p1 = lo.find("put ")
@@ -12191,7 +12677,7 @@ func cpu_phase_ex2_powers() -> void:
 
 	# Fan Away: disrupt whenever the Defending Pokemon has Energy attached.
 	var shiftry = _find_cpu_pokemon_with_power("Fan Away")
-	if shiftry != null and not shiftry.power_used_this_turn and not is_power_blocked_by_status(shiftry):
+	if shiftry != null and not shiftry.power_used_this_turn and not _cpu_power_locked(shiftry):
 		if main.player_active_pokemon != null and not main.player_active_pokemon.attached_energies.is_empty():
 			await announce_cpu_power(shiftry, "Fan Away")   # ISSUE #106
 			if main._should_bail(): return
@@ -12202,7 +12688,7 @@ func cpu_phase_ex2_powers() -> void:
 	var golduck = _find_cpu_pokemon_with_power("Chaos Flash")
 	# OLD ISSUE 345: no point flipping when the Defending Pokemon is already Confused.
 	var cf_def = main.player_active_pokemon
-	if golduck != null and main.opponent_active_pokemon == golduck and not golduck.power_used_this_turn and not is_power_blocked_by_status(golduck) and cf_def != null and cf_def.special_condition != "Confused":
+	if golduck != null and main.opponent_active_pokemon == golduck and not golduck.power_used_this_turn and not _cpu_power_locked(golduck) and cf_def != null and cf_def.special_condition != "Confused":
 		await announce_cpu_power(golduck, "Chaos Flash")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex2_chaos_flash(golduck)
@@ -12210,7 +12696,7 @@ func cpu_phase_ex2_powers() -> void:
 
 	# Healing Wind: use whenever an Active Pokemon is damaged.
 	var xatu = _find_cpu_pokemon_with_power("Healing Wind")
-	if xatu != null and not xatu.power_used_this_turn and not is_power_blocked_by_status(xatu):
+	if xatu != null and not xatu.power_used_this_turn and not _cpu_power_locked(xatu):
 		for p in main.card_ops.get_active_pokemon(true):
 			if p.current_hp < p.get_max_hp():
 				await announce_cpu_power(xatu, "Healing Wind")   # ISSUE #106
@@ -12523,7 +13009,7 @@ func cpu_phase_ex3_powers() -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 
 	var salamence = _find_cpu_pokemon_with_power("Dragon Wind")
-	if salamence != null and main.opponent_active_pokemon == salamence and not salamence.power_used_this_turn and not is_power_blocked_by_status(salamence):
+	if salamence != null and main.opponent_active_pokemon == salamence and not salamence.power_used_this_turn and not _cpu_power_locked(salamence):
 		# OLD ISSUE 345: only gust when it beats the current Defender (it used to gust every turn).
 		var dw_pick = _r4_cpu_power_gust_pick(salamence)
 		if dw_pick != null:
@@ -12533,14 +13019,14 @@ func cpu_phase_ex3_powers() -> void:
 			if main._should_bail(): return
 
 	var magneton = _find_cpu_pokemon_with_power("Magnetic Field")
-	if magneton != null and not magneton.power_used_this_turn and not is_power_blocked_by_status(magneton):
+	if magneton != null and not magneton.power_used_this_turn and not _cpu_power_locked(magneton):
 		await announce_cpu_power(magneton, "Magnetic Field")   # ISSUE #106
 		if main._should_bail(): return
 		await cpu_ex3_magnetic_field(magneton)
 		if main._should_bail(): return
 
 	var dragonite = _find_cpu_pokemon_with_power("Call for Power")
-	if dragonite != null and not is_power_blocked_by_status(dragonite) and dragonite == main.opponent_active_pokemon \
+	if dragonite != null and not _cpu_power_locked(dragonite) and dragonite == main.opponent_active_pokemon \
 			and dragonite.metadata.get("attacks", []).any(func(at): return main.cpu_ai.get_unmet_energy_count(at, dragonite) > 0):
 		await announce_cpu_power(dragonite, "Call for Power")   # ISSUE #106
 		if main._should_bail(): return
@@ -12607,10 +13093,11 @@ func _r4_min_unmet(p: card_object) -> int:
 		m = min(m, main.cpu_ai.get_unmet_energy_count(at, p))
 	return m
 
-func r4_cpu_plan_energy_moves(sources: Array, pool_fn: Callable, max_n: int, same_source: bool = false, dests: Array = []) -> Array:
+func r4_cpu_plan_energy_moves(sources: Array, pool_fn: Callable, max_n: int, same_source: bool = false, dests: Array = [], same_dest: bool = false) -> Array:
 	var moves: Array = []
 	var mine = dests if not dests.is_empty() else main.card_ops.get_all_pokemon_in_play(true)
 	var locked_src: card_object = null
+	var locked_dst: card_object = null   # AUDIT 2026-11-18 #82: "to another (single) Pokémon"
 	for _i in range(max_n if max_n > 0 else 8):
 		var best := {}
 		var best_s := -INF
@@ -12620,6 +13107,7 @@ func r4_cpu_plan_energy_moves(sources: Array, pool_fn: Callable, max_n: int, sam
 				if main.cpu_ai.cpu_own_energy_value(src, e) >= 1000.0: continue
 				for dst in mine:
 					if dst == src: continue
+					if locked_dst != null and dst != locked_dst: continue
 					var before = _r4_min_unmet(dst)
 					if before <= 0 or before >= 99: continue
 					src.attached_energies.erase(e)
@@ -12638,6 +13126,7 @@ func r4_cpu_plan_energy_moves(sources: Array, pool_fn: Callable, max_n: int, sam
 		best["e"].current_location = "attached"
 		moves.append(best)
 		if same_source: locked_src = best["from"]
+		if same_dest: locked_dst = best["to"]
 	return moves
 
 # POWER SHIFT (Manectric ex4-4) / MAGMA SWITCH (Claydol ex4-8): move Energy from one of your Team
@@ -12657,9 +13146,19 @@ func power_ex4_energy_move(pokemon: card_object, team: String, max_move: int) ->
 	var basic_only = (max_move == -1)
 	if is_opponent:
 		var cpu_src = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return team in p.metadata.get("name",""))
-		var cpu_moves = r4_cpu_plan_energy_moves(cpu_src, func(p): return _ex4_energy_pool(p, basic_only), max_move, true)
+		var cpu_moves = r4_cpu_plan_energy_moves(cpu_src, func(p): return _ex4_energy_pool(p, basic_only), max_move, true, [], true)
 		if cpu_moves.is_empty(): return
 		pokemon.power_used_this_turn = true
+		# AUDIT 2026-11-18 #81: undo the planner's data moves, then redo each one with its flight.
+		for i in range(cpu_moves.size() - 1, -1, -1):
+			cpu_moves[i]["to"].attached_energies.erase(cpu_moves[i]["e"])
+			cpu_moves[i]["from"].attached_energies.append(cpu_moves[i]["e"])
+		for m in cpu_moves:
+			var pm_r: Dictionary = main.card_ops.capture_rect(m["e"], "attached", true)
+			m["from"].attached_energies.erase(m["e"])
+			m["to"].attached_energies.append(m["e"])
+			await main.card_ops.fly_attach(m["e"], "attached", pm_r)
+			if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		main.display_pokemon(true)
 		main.display_active_pokemon_energies(true)
@@ -12848,7 +13347,7 @@ func cpu_phase_ex4_powers() -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 
 	var camerupt = _find_cpu_pokemon_with_power("Overheat")
-	if camerupt != null and not camerupt.power_used_this_turn and not is_power_blocked_by_status(camerupt) and _r4_cpu_self_charge_ok(camerupt) \
+	if camerupt != null and not camerupt.power_used_this_turn and not _cpu_power_locked(camerupt) and _r4_cpu_self_charge_ok(camerupt) \
 			and main.opponent_discard_pile.any(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", [])):
 		await announce_cpu_power(camerupt, "Overheat")   # ISSUE #106
 		if main._should_bail(): return
@@ -12856,7 +13355,7 @@ func cpu_phase_ex4_powers() -> void:
 		if main._should_bail(): return
 
 	var lanturn = _find_cpu_pokemon_with_power("Auxiliary Light")
-	if lanturn != null and not lanturn.power_used_this_turn and not is_power_blocked_by_status(lanturn) and _r4_cpu_self_charge_ok(lanturn) \
+	if lanturn != null and not lanturn.power_used_this_turn and not _cpu_power_locked(lanturn) and _r4_cpu_self_charge_ok(lanturn) \
 			and main.opponent_hand.any(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", [])):
 		await announce_cpu_power(lanturn, "Auxiliary Light")   # ISSUE #106
 		if main._should_bail(): return
@@ -12866,7 +13365,7 @@ func cpu_phase_ex4_powers() -> void:
 	# OLD ISSUE 346: Power Shift / Magma Switch — the CPU never used them.
 	for ps in [["Power Shift", "Team Aqua", -1], ["Magma Switch", "Team Magma", 1]]:
 		var mover = _find_cpu_pokemon_with_power(ps[0])
-		if mover == null or mover.power_used_this_turn or is_power_blocked_by_status(mover): continue
+		if mover == null or mover.power_used_this_turn or _cpu_power_locked(mover): continue
 		var srcs = main.card_ops.get_all_pokemon_in_play(true).filter(func(p): return ps[1] in p.metadata.get("name",""))
 		var bo: bool = ps[2] == -1
 		var want := false
@@ -12885,7 +13384,7 @@ func cpu_phase_ex4_powers() -> void:
 		if main._should_bail(): return
 
 	var mightyena = _find_cpu_pokemon_with_power("Call for Help")
-	if mightyena != null and main.opponent_active_pokemon == mightyena and not mightyena.power_used_this_turn and not is_power_blocked_by_status(mightyena):
+	if mightyena != null and main.opponent_active_pokemon == mightyena and not mightyena.power_used_this_turn and not _cpu_power_locked(mightyena):
 		await announce_cpu_power(mightyena, "Call for Help")   # ISSUE #106
 		if main._should_bail(): return
 		await cpu_ex4_call_for_help(mightyena)
@@ -13123,6 +13622,7 @@ func trigger_ex5_healing_shower(milotic: card_object, is_opponent: bool) -> void
 
 # METAL JUNCTURE (Metagross ex5-11): as often as you like, move a Metal Energy from one of your Benched
 # Pokemon to your Active. Player-interactive; CPU skips (low heuristic value, like ex4 energy moves).
+# AUDIT 2026-11-18 #18: "a Metal Energy card" = is_typed_energy_card (every Metal Energy card is Special; the Basic-only filter moved nothing).
 func power_ex5_metal_juncture(metagross: card_object) -> void:
 	var is_opponent = metagross.is_owner_opp(main)
 	if is_power_blocked_by_status(metagross):
@@ -13133,7 +13633,7 @@ func power_ex5_metal_juncture(metagross: card_object) -> void:
 		# OLD ISSUE 347: the CPU never used it. Move bench Metal Energy the Bench doesn't need onto the Active while that
 		# brings an Active attack closer to payable.
 		if main.opponent_active_pokemon == null: return
-		var mj_moves = r4_cpu_plan_energy_moves(main.opponent_bench, func(p): return p.attached_energies.filter(func(e): return "Metal" in main.get_energy_provided_by_card(e) and "Basic" in e.metadata.get("subtypes", [])), -1, false, [main.opponent_active_pokemon])
+		var mj_moves = r4_cpu_plan_energy_moves(main.opponent_bench, func(p): return p.attached_energies.filter(func(e): return main.is_typed_energy_card(e, "Metal")), -1, false, [main.opponent_active_pokemon])
 		if mj_moves.is_empty(): return
 		main.play_energy_attach_sfx()
 		main.display_pokemon(true)
@@ -13146,7 +13646,7 @@ func power_ex5_metal_juncture(metagross: card_object) -> void:
 	var bench = main.player_bench
 	var sources = bench.filter(func(p):
 		for e in p.attached_energies:
-			if "Metal" in main.get_energy_provided_by_card(e) and "Basic" in e.metadata.get("subtypes", []): return true
+			if main.is_typed_energy_card(e, "Metal"): return true
 		return false)
 	if sources.is_empty():
 		await main.show_message("NO METAL ENERGY ON YOUR BENCH TO MOVE!")
@@ -13157,7 +13657,7 @@ func power_ex5_metal_juncture(metagross: card_object) -> void:
 	if source == null: return
 	var metal: card_object = null
 	for e in source.attached_energies:
-		if "Metal" in main.get_energy_provided_by_card(e) and "Basic" in e.metadata.get("subtypes", []):
+		if main.is_typed_energy_card(e, "Metal"):
 			metal = e
 			break
 	if metal == null: return
@@ -13404,21 +13904,21 @@ func _r4_cpu_best_castform(castform: card_object, pool: Array) -> card_object:
 func cpu_phase_ex5_powers() -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 	var walrein = _find_cpu_pokemon_with_power("Crush Draw")
-	if walrein != null and not walrein.power_used_this_turn and not is_power_blocked_by_status(walrein):
+	if walrein != null and not walrein.power_used_this_turn and not _cpu_power_locked(walrein):
 		await announce_cpu_power(walrein, "Crush Draw")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex5_crush_draw(walrein)
 		if main._should_bail(): return
 	var beldum = _find_cpu_pokemon_with_power("Magnetic Call")
-	if beldum != null and not beldum.power_used_this_turn and not is_power_blocked_by_status(beldum):
+	if beldum != null and not beldum.power_used_this_turn and not _cpu_power_locked(beldum):
 		await announce_cpu_power(beldum, "Magnetic Call")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex5_magnetic_call(beldum)
 		if main._should_bail(): return
 	# OLD ISSUE 347: Metal Juncture — the CPU never used it (dry-run the plan first so it only announces a real move).
 	var metagross = _find_cpu_pokemon_with_power("Metal Juncture")
-	if metagross != null and not is_power_blocked_by_status(metagross) and main.opponent_active_pokemon != null:
-		var mj_pool = func(p): return p.attached_energies.filter(func(e): return "Metal" in main.get_energy_provided_by_card(e) and "Basic" in e.metadata.get("subtypes", []))
+	if metagross != null and not _cpu_power_locked(metagross) and main.opponent_active_pokemon != null:
+		var mj_pool = func(p): return p.attached_energies.filter(func(e): return main.is_typed_energy_card(e, "Metal"))
 		var mj_try = r4_cpu_plan_energy_moves(main.opponent_bench, mj_pool, 1, false, [main.opponent_active_pokemon])
 		if not mj_try.is_empty():
 			mj_try[0]["to"].attached_energies.erase(mj_try[0]["e"])
@@ -13431,7 +13931,7 @@ func cpu_phase_ex5_powers() -> void:
 	# is clearly better against the player's Active.
 	if not main.opponent_ex5_weather_used:
 		var cf = main.opponent_active_pokemon
-		if cf != null and cf.has_ability("Temperamental Weather") and not cf.power_used_this_turn and not is_power_blocked_by_status(cf):
+		if cf != null and cf.has_ability("Temperamental Weather") and not cf.power_used_this_turn and not _cpu_power_locked(cf):
 			var forms = ["Castform", "Rain Castform", "Sunny Castform", "Snow-cloud Castform"]
 			var cf_pool = main.opponent_deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("name","") in forms and c.metadata.get("name","") != cf.metadata.get("name",""))
 			if _r4_cpu_best_castform(cf, cf_pool) != null:
@@ -13440,7 +13940,7 @@ func cpu_phase_ex5_powers() -> void:
 				await power_ex5_temperamental_weather(cf)
 				if main._should_bail(): return
 	var bellossom = _find_cpu_pokemon_with_power("Heal Dance")
-	if bellossom != null and not bellossom.power_used_this_turn and not main.opponent_ex5_heal_dance_used and not is_power_blocked_by_status(bellossom):
+	if bellossom != null and not bellossom.power_used_this_turn and not main.opponent_ex5_heal_dance_used and not _cpu_power_locked(bellossom):
 		# Only bother if something is damaged.
 		for p in main.card_ops.get_all_pokemon_in_play(true):
 			if p.current_hp < p.get_max_hp():
@@ -13500,6 +14000,20 @@ func power_ex6_form_variation(ditto: card_object) -> void:
 	new_basic.is_poisoned = ditto.is_poisoned
 	new_basic.poison_damage = ditto.poison_damage
 	new_basic.is_burned = ditto.is_burned
+	# AUDIT 2026-11-18 #168: "effects on it are now on the new Pokémon" - the lingering-effect stores and locks move too,
+	# plus the turn flags (it is the same Pokémon in play: no fresh once-per-turn Power, no "played this turn" reset).
+	new_basic.active_effects = ditto.active_effects.duplicate(true)
+	new_basic.disabled_attacks = ditto.disabled_attacks.duplicate(true)
+	new_basic.is_blind = ditto.is_blind
+	new_basic.damage_reduction_next_turn = ditto.damage_reduction_next_turn
+	new_basic.damage_reduction_source_id = ditto.damage_reduction_source_id
+	new_basic.attack_blocked_next_turn = ditto.attack_blocked_next_turn
+	new_basic.attack_blocked_by_id = ditto.attack_blocked_by_id
+	new_basic.has_char_counter = ditto.has_char_counter
+	new_basic.imprison_markers = ditto.imprison_markers
+	new_basic.shockwave_markers = ditto.shockwave_markers
+	new_basic.power_used_this_turn = true
+	new_basic.placed_on_field_this_turn = ditto.placed_on_field_this_turn
 	new_basic.current_hp = max(0, new_basic.get_max_hp() - counters * 10)
 	discard.erase(new_basic)
 	# Put the new Basic into Ditto's board slot.
@@ -13558,16 +14072,20 @@ func _r4_cpu_best_form(holder: card_object, pool: Array) -> card_object:
 
 # QUICK SEARCH (Pidgeot ex6-10): once per turn, choose any 1 card from your deck and put it into your
 # hand, then shuffle your deck.
+var _quick_search_turn: Dictionary = {}   # AUDIT 2026-11-18 #97: side -> turn_number Quick Search was last used
+
 func power_ex6_quick_search(pidgeot: card_object) -> void:
 	var is_opponent = pidgeot.is_owner_opp(main)
 	if is_power_blocked_by_status(pidgeot):
 		await main.show_message("QUICK SEARCH IS BLOCKED BY STATUS!")
 		if main._should_bail(): return
 		return
-	if pidgeot.power_used_this_turn:
+	# AUDIT 2026-11-18 #97: "You can't use more than 1 Quick Search Poké-Power each turn" (all Pidgeot together).
+	if pidgeot.power_used_this_turn or int(_quick_search_turn.get(is_opponent, -1)) == main.turn_number:
 		await main.show_message("QUICK SEARCH ALREADY USED THIS TURN!")
 		if main._should_bail(): return
 		return
+	_quick_search_turn[is_opponent] = main.turn_number
 	pidgeot.power_used_this_turn = true
 	var found = await main.card_ops.search_deck_to_hand(is_opponent, func(_c): return true, "QUICK SEARCH: CHOOSE ANY CARD", 1)
 	if main._should_bail(): return
@@ -13847,14 +14365,15 @@ func cpu_phase_ex6_powers() -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 	# Quick Search: grab a card from the deck.
 	var pidgeot = _find_cpu_pokemon_with_power("Quick Search")
-	if pidgeot != null and not pidgeot.power_used_this_turn and not is_power_blocked_by_status(pidgeot):
+	if pidgeot != null and not pidgeot.power_used_this_turn and not _cpu_power_locked(pidgeot) \
+			and int(_quick_search_turn.get(true, -1)) != main.turn_number:   # AUDIT 2026-11-18 #97
 		await announce_cpu_power(pidgeot, "Quick Search")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex6_quick_search(pidgeot)
 		if main._should_bail(): return
 	# Form Variation: only worth it if the discard has a strong Basic to become.
 	var ditto = _find_cpu_pokemon_with_power("Form Variation")
-	if ditto != null and not ditto.power_used_this_turn and not is_power_blocked_by_status(ditto):
+	if ditto != null and not ditto.power_used_this_turn and not _cpu_power_locked(ditto):
 		var fv_pool = main.opponent_discard_pile.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and "Basic" in c.metadata.get("subtypes", []) and not main.is_ex_pokemon(c) and c.metadata.get("name","") != "Ditto")
 		if _r4_cpu_best_form(ditto, fv_pool) != null:   # OLD ISSUE 348
 			await announce_cpu_power(ditto, "Form Variation")   # ISSUE #106
@@ -13863,7 +14382,7 @@ func cpu_phase_ex6_powers() -> void:
 			if main._should_bail(): return
 	# OLD ISSUE 348: Strange Behavior / Energy Rain — the CPU never used them.
 	var slowbro = _find_cpu_pokemon_with_power("Strange Behavior")
-	if slowbro != null and not is_power_blocked_by_status(slowbro) and slowbro.current_hp > STRANGE_BEHAVIOR_CPU_HP_FLOOR:
+	if slowbro != null and not _cpu_power_locked(slowbro) and slowbro.current_hp > STRANGE_BEHAVIOR_CPU_HP_FLOOR:
 		var oa_sb = main.opponent_active_pokemon
 		var sb_need = (oa_sb != null and oa_sb != slowbro and oa_sb.get_damage_counters() > 0) or main.opponent_bench.any(func(p): return p != slowbro and main.is_ex_pokemon(p) and p.get_damage_counters() > 0)
 		if sb_need:
@@ -13872,7 +14391,7 @@ func cpu_phase_ex6_powers() -> void:
 			await power_ex6_strange_behavior(slowbro)
 			if main._should_bail(): return
 	var blastoise = _find_cpu_pokemon_with_power("Energy Rain")
-	if blastoise != null and not is_power_blocked_by_status(blastoise):
+	if blastoise != null and not _cpu_power_locked(blastoise):
 		var er_any = main.opponent_hand.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []) and "Water" in main.get_energy_provided_by_card(c))
 		var er_help := false
 		if not er_any.is_empty():
@@ -13890,7 +14409,7 @@ func cpu_phase_ex6_powers() -> void:
 			if main._should_bail(): return
 	# Assistance: cure the CPU's Active if it has a Special Condition.
 	var wigglytuff = _find_cpu_pokemon_with_power("Assistance")
-	if wigglytuff != null and not wigglytuff.power_used_this_turn and not is_power_blocked_by_status(wigglytuff) and wigglytuff in main.opponent_bench:
+	if wigglytuff != null and not wigglytuff.power_used_this_turn and not _cpu_power_locked(wigglytuff) and wigglytuff in main.opponent_bench:
 		var oa = main.opponent_active_pokemon
 		if oa != null and (oa.special_condition != "" or oa.is_poisoned or oa.is_burned):
 			await announce_cpu_power(wigglytuff, "Assistance")   # ISSUE #106
@@ -13899,7 +14418,7 @@ func cpu_phase_ex6_powers() -> void:
 			if main._should_bail(): return
 	# Extra Energy Bomb: fire it when the discard holds enough Energy to redeploy.
 	var electrode = _find_cpu_pokemon_with_power("Extra Energy Bomb")
-	if electrode != null and not electrode.power_used_this_turn and not is_power_blocked_by_status(electrode):
+	if electrode != null and not electrode.power_used_this_turn and not _cpu_power_locked(electrode):
 		var energy_in_discard = 0
 		for c in main.opponent_discard_pile:
 			if c.metadata.get("supertype","") == "Energy": energy_in_discard += 1
@@ -14318,7 +14837,7 @@ func cpu_phase_ex7_powers() -> void:
 	var oa = main.opponent_active_pokemon
 	# Black Beam: poison the player's Active.
 	var crobat = _find_cpu_pokemon_with_power("Black Beam")
-	if crobat != null and crobat == oa and not crobat.power_used_this_turn and not is_power_blocked_by_status(crobat):
+	if crobat != null and crobat == oa and not crobat.power_used_this_turn and not _cpu_power_locked(crobat):
 		var pa = main.player_active_pokemon
 		if pa != null and not pa.is_poisoned:
 			await announce_cpu_power(crobat, "Black Beam")   # ISSUE #106
@@ -14327,21 +14846,21 @@ func cpu_phase_ex7_powers() -> void:
 			if main._should_bail(): return
 	# Darkness Navigation: ramp Dark Electrode.
 	var electrode = _find_cpu_pokemon_with_power("Darkness Navigation")
-	if electrode != null and electrode.attached_energies.is_empty() and not electrode.power_used_this_turn and not is_power_blocked_by_status(electrode):
+	if electrode != null and electrode.attached_energies.is_empty() and not electrode.power_used_this_turn and not _cpu_power_locked(electrode):
 		await announce_cpu_power(electrode, "Darkness Navigation")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex7_darkness_navigation(electrode)
 		if main._should_bail(): return
 	# Gift Exchange: cycle a card.
 	var delibird = _find_cpu_pokemon_with_power("Gift Exchange")
-	if delibird != null and delibird == oa and not delibird.power_used_this_turn and not is_power_blocked_by_status(delibird) and not main.opponent_hand.is_empty():
+	if delibird != null and delibird == oa and not delibird.power_used_this_turn and not _cpu_power_locked(delibird) and not main.opponent_hand.is_empty():
 		await announce_cpu_power(delibird, "Gift Exchange")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex7_gift_exchange(delibird)
 		if main._should_bail(): return
 	# Fire Breath: try to Burn the player's Active.
 	var houndoom = _find_cpu_pokemon_with_power("Fire Breath")
-	if houndoom != null and houndoom == oa and not houndoom.power_used_this_turn and not is_power_blocked_by_status(houndoom):
+	if houndoom != null and houndoom == oa and not houndoom.power_used_this_turn and not _cpu_power_locked(houndoom):
 		var pa2 = main.player_active_pokemon
 		if pa2 != null and not pa2.is_burned:
 			await announce_cpu_power(houndoom, "Fire Breath")   # ISSUE #106
@@ -14350,14 +14869,14 @@ func cpu_phase_ex7_powers() -> void:
 			if main._should_bail(): return
 	# Dark Spell: chip the player.
 	var misdreavus = _find_cpu_pokemon_with_power("Dark Spell")
-	if misdreavus != null and misdreavus == oa and not misdreavus.power_used_this_turn and not is_power_blocked_by_status(misdreavus):
+	if misdreavus != null and misdreavus == oa and not misdreavus.power_used_this_turn and not _cpu_power_locked(misdreavus):
 		await announce_cpu_power(misdreavus, "Dark Spell")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex7_dark_spell(misdreavus)
 		if main._should_bail(): return
 	# OLD ISSUE 349: Dark Trance — the CPU never used it (dry run so it only announces a real move).
 	var dragonite_dt = _find_cpu_pokemon_with_power("Dark Trance")
-	if dragonite_dt != null and not is_power_blocked_by_status(dragonite_dt):
+	if dragonite_dt != null and not _cpu_power_locked(dragonite_dt):
 		var dt_fn = func(p): return p.attached_energies.filter(func(e): return "Darkness" in main.get_energy_provided_by_card(e))
 		var dt_try = r4_cpu_plan_energy_moves(main.card_ops.get_all_pokemon_in_play(true), dt_fn, 1)
 		if not dt_try.is_empty():
@@ -14369,7 +14888,7 @@ func cpu_phase_ex7_powers() -> void:
 			if main._should_bail(): return
 	# Ripples: heal a damaged CPU Pokémon.
 	var mantine = _find_cpu_pokemon_with_power("Ripples")
-	if mantine != null and not mantine.power_used_this_turn and not is_power_blocked_by_status(mantine):
+	if mantine != null and not mantine.power_used_this_turn and not _cpu_power_locked(mantine):
 		var has_dmg = main.card_ops.get_all_pokemon_in_play(true).any(func(c): return c != mantine and c.current_hp < c.get_max_hp())
 		if has_dmg:
 			await announce_cpu_power(mantine, "Ripples")   # ISSUE #106
@@ -14634,12 +15153,18 @@ func trigger_ex7_froth(azumarill: card_object, is_opponent: bool) -> void:
 
 # DARKEST IMPULSE (Dark Ampharos ex7-2): whenever your opponent plays an Evolution card to evolve one
 # of their Pokémon, put 2 damage counters on that Pokémon. Called from Main after an evolution.
+var _darkest_impulse_turn: Dictionary = {}   # AUDIT 2026-11-18 #104: Ampharos side -> turn_number it last fired
+
 func check_ex7_darkest_impulse(evolved_card: card_object, evolver_is_opponent: bool) -> void:
 	if evolved_card == null: return
 	# The Ampharos owner is the OPPOSITE side of the player who just evolved.
 	var ampharos_side = not evolver_is_opponent
+	# AUDIT 2026-11-18 #104: "You can't use more than 1 Darkest Impulse Poké-Body each turn" - once per turn, not per evolution.
+	if int(_darkest_impulse_turn.get(ampharos_side, -1)) == main.turn_number:
+		return
 	for p in main.card_ops.get_all_pokemon_in_play(ampharos_side):
 		if p.has_ability("Darkest Impulse") and not is_power_blocked_by_status(p):
+			_darkest_impulse_turn[ampharos_side] = main.turn_number
 			evolved_card.current_hp = max(0, evolved_card.current_hp - 20)
 			main.display_hp_circles_above_align(evolved_card, evolver_is_opponent)
 			await main.show_message("DARKEST IMPULSE! 2 DAMAGE COUNTERS ON " + evolved_card.metadata.get("name","").to_upper() + "!")
@@ -14865,6 +15390,10 @@ func power_ex8_form_change(deoxys: card_object) -> void:
 		if idx != -1:
 			bench[idx] = chosen
 			chosen.current_location = "bench"
+	# AUDIT 2026-11-18 #140: effects carry to the new Form - a pending / live Crystal Laser follows the Deoxys.
+	for dd_var in ["player_dragon_dance_src", "opponent_dragon_dance_src", "player_dragon_dance_pending_src", "opponent_dragon_dance_pending_src"]:
+		if main.get(dd_var) == deoxys:
+			main.set(dd_var, chosen)
 	deoxys.attached_energies.clear()
 	deoxys.attached_pre_evolutions.clear()
 	deoxys.attached_cards.clear()
@@ -15062,14 +15591,14 @@ func cpu_phase_ex8_powers() -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 	var oa = main.opponent_active_pokemon
 	var swing = _find_cpu_pokemon_with_power("Swing Dance")
-	if swing != null and not swing.power_used_this_turn and not is_power_blocked_by_status(swing):
+	if swing != null and not swing.power_used_this_turn and not _cpu_power_locked(swing):
 		await announce_cpu_power(swing, "Swing Dance")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex8_swing_dance(swing)
 		if main._should_bail(): return
 	var meta = _find_cpu_pokemon_with_power("Super Connectivity")
 	# OLD ISSUE 351: only when the Active still needs Energy and can take the counter (it fed the Active every turn).
-	if meta != null and not meta.power_used_this_turn and not is_power_blocked_by_status(meta) and oa != null and _r4_cpu_self_charge_ok(oa):
+	if meta != null and not meta.power_used_this_turn and not _cpu_power_locked(meta) and oa != null and _r4_cpu_self_charge_ok(oa):
 		var has_e = main.opponent_discard_pile.any(func(c):
 			if c.metadata.get("supertype","") != "Energy": return false
 			var prov = main.get_energy_provided_by_card(c)
@@ -15080,7 +15609,7 @@ func cpu_phase_ex8_powers() -> void:
 			await power_ex8_super_connectivity(meta)
 			if main._should_bail(): return
 	var ludi = _find_cpu_pokemon_with_power("Happy Dance")
-	if ludi != null and not ludi.power_used_this_turn and not main.opponent_ex8_happy_dance_used and not is_power_blocked_by_status(ludi):
+	if ludi != null and not ludi.power_used_this_turn and not main.opponent_ex8_happy_dance_used and not _cpu_power_locked(ludi):
 		var dmgd = main.card_ops.get_all_pokemon_in_play(true).any(func(c): return c.current_hp < c.get_max_hp())
 		if dmgd:
 			await announce_cpu_power(ludi, "Happy Dance")   # ISSUE #106
@@ -15088,7 +15617,7 @@ func cpu_phase_ex8_powers() -> void:
 			await power_ex8_happy_dance(ludi)
 			if main._should_bail(): return
 	var claydol = _find_cpu_pokemon_with_power("Psychic Trace")
-	if claydol != null and claydol == oa and not claydol.power_used_this_turn and not is_power_blocked_by_status(claydol):
+	if claydol != null and claydol == oa and not claydol.power_used_this_turn and not _cpu_power_locked(claydol):
 		if main.player_hand.size() > main.opponent_hand.size():
 			await announce_cpu_power(claydol, "Psychic Trace")   # ISSUE #106
 			if main._should_bail(): return
@@ -15097,43 +15626,51 @@ func cpu_phase_ex8_powers() -> void:
 	# OLD ISSUE 351: powers the CPU never used.
 	# Smooth Over: put its best card on top of the deck for next turn's draw.
 	var magcargo = _find_cpu_pokemon_with_power("Smooth Over")
-	if magcargo != null and not magcargo.power_used_this_turn and not is_power_blocked_by_status(magcargo) and main.opponent_deck.size() > 1:
+	if magcargo != null and not magcargo.power_used_this_turn and not _cpu_power_locked(magcargo) and main.opponent_deck.size() > 1:
 		await announce_cpu_power(magcargo, "Smooth Over")
 		if main._should_bail(): return
 		await power_ex8_smooth_over(magcargo)
 		if main._should_bail(): return
 	# Form Change: switch the Active Deoxys when another form attacks clearly better.
-	if not main.opponent_ex8_form_change_used and oa != null and oa.has_ability("Form Change") and not is_power_blocked_by_status(oa):
-		var fc_pool = main.opponent_deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("name","") == oa.metadata.get("name","") and c.uid != oa.uid)
-		if _r4_cpu_best_form(oa, fc_pool) != null:
-			await announce_cpu_power(oa, "Form Change")
+	# AUDIT 2026-11-18 #172: if the Active doesn't qualify, a Benched Deoxys may change into the form that will hit
+	# best next turn (still once per turn).
+	var fc_mons: Array = []
+	if oa != null: fc_mons.append(oa)
+	fc_mons.append_array(main.opponent_bench)
+	for fc_mon in fc_mons:
+		if main.opponent_ex8_form_change_used: break
+		if not fc_mon.has_ability("Form Change") or is_power_blocked(fc_mon): continue
+		var fc_pool = main.opponent_deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("name","") == fc_mon.metadata.get("name","") and c.uid != fc_mon.uid)
+		if _r4_cpu_best_form(fc_mon, fc_pool) != null:
+			await announce_cpu_power(fc_mon, "Form Change")
 			if main._should_bail(): return
-			await power_ex8_form_change(oa)
+			await power_ex8_form_change(fc_mon)
 			if main._should_bail(): return
 			oa = main.opponent_active_pokemon
+			break
 	# Fan Action: same test as Drive Off (the player picks their replacement).
 	var shiftry_fa = _find_cpu_pokemon_with_power("Fan Action")
-	if shiftry_fa != null and not shiftry_fa.power_used_this_turn and not is_power_blocked_by_status(shiftry_fa) and _r4_cpu_drive_off_wanted():
+	if shiftry_fa != null and not shiftry_fa.power_used_this_turn and not _cpu_power_locked(shiftry_fa) and _r4_cpu_drive_off_wanted():
 		await announce_cpu_power(shiftry_fa, "Fan Action")
 		if main._should_bail(): return
 		await power_ex8_fan_action(shiftry_fa)
 		if main._should_bail(): return
 	# Magnetic Reversal: coin-flip gust when there's a better target on the Bench.
 	var nosepass = _find_cpu_pokemon_with_power("Magnetic Reversal")
-	if nosepass != null and nosepass == oa and not nosepass.power_used_this_turn and not is_power_blocked_by_status(nosepass) and _r4_cpu_power_gust_pick(nosepass) != null:
+	if nosepass != null and nosepass == oa and not nosepass.power_used_this_turn and not _cpu_power_locked(nosepass) and _r4_cpu_power_gust_pick(nosepass) != null:
 		await announce_cpu_power(nosepass, "Magnetic Reversal")
 		if main._should_bail(): return
 		await power_ex8_magnetic_reversal(nosepass)
 		if main._should_bail(): return
 	# Wishing Star: only when Jirachi can't attack anyway (it falls Asleep).
 	var jirachi = _find_cpu_pokemon_with_power("Wishing Star")
-	if jirachi != null and jirachi == oa and not jirachi.power_used_this_turn and not is_power_blocked_by_status(jirachi) and not main.opponent_deck.is_empty() and _r4_min_unmet(jirachi) > 0:
+	if jirachi != null and jirachi == oa and not jirachi.power_used_this_turn and not _cpu_power_locked(jirachi) and not main.opponent_deck.is_empty() and _r4_min_unmet(jirachi) > 0:
 		await announce_cpu_power(jirachi, "Wishing Star")
 		if main._should_bail(): return
 		await power_ex8_wishing_star(jirachi)
 		if main._should_bail(): return
 	var crobat = _find_cpu_pokemon_with_power("Distortion")
-	if crobat != null and crobat == oa and not crobat.power_used_this_turn and not is_power_blocked_by_status(crobat):
+	if crobat != null and crobat == oa and not crobat.power_used_this_turn and not _cpu_power_locked(crobat):
 		await announce_cpu_power(crobat, "Distortion")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex8_distortion(crobat)
@@ -15216,24 +15753,32 @@ func _hook_ex8_hard_protection(damage: int, attacker: card_object, defender: car
 	return damage
 
 func _hook_ex8_bay_dance(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if not _pre_wr_pass: return damage   # 2026-11-19: "+30 (before applying Weakness and Resistance)" - runs in run_pre_wr_hooks
 	if damage <= 0 or attacker == null: return damage
 	var atk_is_opp = (attacker == main.opponent_active_pokemon or attacker in main.opponent_bench)
 	var active = main.opponent_active_pokemon if atk_is_opp else main.player_active_pokemon
 	if attacker != active: return damage
 	var boosted = main.opponent_ex8_bay_dance_active if atk_is_opp else main.player_ex8_bay_dance_active
-	if boosted:
+	# AUDIT 2026-11-18 #115: only the Pelipper that used it ("your CURRENT Active"), and only damage to the Defending Pokémon.
+	var bd_src = main.ex8_bay_dance_src.get(atk_is_opp, null)
+	var bd_def = main.player_active_pokemon if atk_is_opp else main.opponent_active_pokemon
+	if boosted and (bd_src == null or bd_src == attacker) and defender == bd_def:
 		modifiers.append("BAY DANCE +30")
 		return damage + 30
 	return damage
 
 # EX3/EX9 Dragon Dance: while a side's Dragon Dance buff is active, its Active Pokemon deal +N damage.
 func _hook_dragon_dance(damage: int, attacker: card_object, defender: card_object, modifiers: Array) -> int:
+	if not _pre_wr_pass: return damage   # 2026-11-19: Dragon Dance / Crystal Laser are "(before applying W/R)" - run_pre_wr_hooks
 	if damage <= 0 or attacker == null: return damage
 	var atk_is_opp = (attacker == main.opponent_active_pokemon or attacker in main.opponent_bench)
 	var active = main.opponent_active_pokemon if atk_is_opp else main.player_active_pokemon
 	if attacker != active: return damage
 	var bonus = main.opponent_dragon_dance_active if atk_is_opp else main.player_dragon_dance_active
-	if bonus > 0:
+	# AUDIT 2026-11-18 #78: only the Pokémon that used it (a retreat / switch used to hand the +N to the new Active).
+	var dd_src = main.opponent_dragon_dance_src if atk_is_opp else main.player_dragon_dance_src
+	var dd_tgt = main.opponent_dragon_dance_target if atk_is_opp else main.player_dragon_dance_target   # AUDIT 2026-11-18 #140
+	if bonus > 0 and (dd_src == null or dd_src == attacker) and (dd_tgt == null or dd_tgt == defender):
 		modifiers.append("DRAGON DANCE +" + str(bonus))
 		return damage + bonus
 	return damage
@@ -15545,7 +16090,7 @@ func cpu_phase_ex9_powers() -> void:
 	# OLD ISSUE 352: Water Cyclone — rescue the Water Energy off a doomed Active that can't KO this turn.
 	var wc_sw = _find_cpu_pokemon_with_power("Water Cyclone")
 	var wc_a = main.opponent_active_pokemon
-	if wc_sw != null and wc_a != null and not is_power_blocked_by_status(wc_sw) and not main.opponent_bench.is_empty() \
+	if wc_sw != null and wc_a != null and not is_power_blocked(wc_sw) and not main.opponent_bench.is_empty() \
 			and wc_a.attached_energies.any(func(e): return "Water" in main.get_energy_provided_by_card(e)):
 		var th = main.cpu_ai.evaluate_ko_threats()
 		var pa = main.player_active_pokemon
@@ -15557,7 +16102,9 @@ func cpu_phase_ex9_powers() -> void:
 			if main._should_bail(): return
 	# Heal Dance (Gardevoir): heal the CPU's most-damaged Pokemon if any is damaged.
 	var gard = _find_cpu_pokemon_with_power("Heal Dance")
-	if gard != null and not gard.power_used_this_turn and not main.opponent_ex5_heal_dance_used and not is_power_blocked_by_status(gard):
+	# AUDIT 2026-11-18 #122: the full Power-lock gate (Wise Aura, Battle Frontier...) here, for Water Cyclone above, Form
+	# Change and Baby Evolution - they only checked Special Conditions / Toxic Gas.
+	if gard != null and not gard.power_used_this_turn and not main.opponent_ex5_heal_dance_used and not is_power_blocked(gard):
 		var any_damaged = main.card_ops.get_all_pokemon_in_play(true).any(func(p): return p != null and p.get_damage_counters() > 0)
 		if any_damaged:
 			await announce_cpu_power(gard, "Heal Dance")   # ISSUE #106
@@ -15618,8 +16165,10 @@ func _hook_ex9_rai_shield(damage: int, attacker: card_object, defender: card_obj
 #    affected by any Special Conditions, as long as a Sceptile with Green Essence is in play.
 func ex9_blocks_status(pokemon: card_object, status: String) -> bool:
 	if pokemon == null or status == "": return false
-	if battle_frontier_disables(pokemon): return false
-	if pokemon.has_ability("Magma Armor") and status in ["Asleep", "Paralyzed"] and not is_power_blocked_by_status(pokemon):
+	# AUDIT 2026-11-18 #171: Battle Frontier stops a Pokémon's OWN Bodies (Magma Armor), not the Green Essence that a
+	# (Grass) Sceptile gives it - checked per Body holder now.
+	if pokemon.has_ability("Magma Armor") and status in ["Asleep", "Paralyzed"] and not is_power_blocked_by_status(pokemon) \
+			and not battle_frontier_disables(pokemon):
 		return true
 	var side_opp = pokemon.is_owner_opp(main)
 	var active = main.opponent_active_pokemon if side_opp else main.player_active_pokemon
@@ -15631,7 +16180,7 @@ func ex9_blocks_status(pokemon: card_object, status: String) -> bool:
 				break
 		if has_grass:
 			for p in main.card_ops.get_all_pokemon_in_play(side_opp):
-				if p.has_ability("Green Essence") and not is_power_blocked_by_status(p):
+				if p.has_ability("Green Essence") and not is_power_blocked_by_status(p) and not battle_frontier_disables(p):
 					return true
 	return false
 
@@ -16025,7 +16574,7 @@ func cpu_phase_ex10_powers() -> void:
 	if is_toxic_gas_active() or main.goop_gas_active: return
 	# Item Search (Slowking): search a tool if the CPU still has one in its deck.
 	var slowking = _find_cpu_pokemon_with_power("Item Search")
-	if slowking != null and not slowking.power_used_this_turn and not is_power_blocked_by_status(slowking):
+	if slowking != null and not slowking.power_used_this_turn and not _cpu_power_locked(slowking):
 		if main.opponent_deck.any(func(c): return "Pokémon Tool" in c.metadata.get("subtypes", [])):
 			await announce_cpu_power(slowking, "Item Search")   # ISSUE #106
 			if main._should_bail(): return
@@ -16033,7 +16582,7 @@ func cpu_phase_ex10_powers() -> void:
 			if main._should_bail(): return
 	# Nurture and Heal (Meganium ex): attach Grass Energy + heal if beneficial.
 	var meg = _find_cpu_pokemon_with_power("Nurture and Heal")
-	if meg != null and not meg.power_used_this_turn and not is_power_blocked_by_status(meg):
+	if meg != null and not meg.power_used_this_turn and not _cpu_power_locked(meg):
 		var has_grass = main.opponent_hand.any(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes",[]) and "Grass" in main.get_energy_provided_by_card(c))
 		if has_grass:
 			await announce_cpu_power(meg, "Nurture and Heal")   # ISSUE #106
@@ -16042,14 +16591,14 @@ func cpu_phase_ex10_powers() -> void:
 			if main._should_bail(): return
 	# OLD ISSUE 353: Makeover — swap a wrong-type basic Energy for one an attack needs.
 	var smeargle = _find_cpu_pokemon_with_power("Makeover")
-	if smeargle != null and not smeargle.power_used_this_turn and not is_power_blocked_by_status(smeargle) and not _r4_cpu_makeover_plan().is_empty():
+	if smeargle != null and not smeargle.power_used_this_turn and not _cpu_power_locked(smeargle) and not _r4_cpu_makeover_plan().is_empty():
 		await announce_cpu_power(smeargle, "Makeover")
 		if main._should_bail(): return
 		await power_ex10_makeover(smeargle)
 		if main._should_bail(): return
 	# OLD ISSUE 353: Snappy Move — cycle a bare Benched Aipom into a card when the Bench is full or the hand is thin.
 	var aipom = _find_cpu_pokemon_with_power("Snappy Move")
-	if aipom != null and aipom in main.opponent_bench and not aipom.power_used_this_turn and not is_power_blocked_by_status(aipom) \
+	if aipom != null and aipom in main.opponent_bench and not aipom.power_used_this_turn and not _cpu_power_locked(aipom) \
 			and aipom.attached_energies.is_empty() and aipom.attached_cards.is_empty() and main.opponent_deck.size() > 3 \
 			and (main.opponent_bench.size() >= main.get_max_bench_size() or main.opponent_hand.size() <= 3):
 		await announce_cpu_power(aipom, "Snappy Move")
@@ -16631,6 +17180,14 @@ func power_ex11_energy_jump(gardevoir: card_object) -> void:
 		var ej = r4_cpu_plan_energy_moves(main.card_ops.get_all_pokemon_in_play(true), func(p): return p.attached_energies, 1)
 		if ej.is_empty(): return
 		gardevoir.power_used_this_turn = true
+		# 2026-11-19 (audit follow-up): undo the planner's data move and redo it with the Energy's flight (it teleported).
+		ej[0]["to"].attached_energies.erase(ej[0]["e"])
+		ej[0]["from"].attached_energies.append(ej[0]["e"])
+		var ej_r: Dictionary = main.card_ops.capture_rect(ej[0]["e"], "attached", true)
+		ej[0]["from"].attached_energies.erase(ej[0]["e"])
+		ej[0]["to"].attached_energies.append(ej[0]["e"])
+		await main.card_ops.fly_attach(ej[0]["e"], "attached", ej_r)
+		if main._should_bail(): return
 		main.play_energy_attach_sfx()
 		main.display_pokemon(true)
 		main.display_active_pokemon_energies(true)
@@ -17166,32 +17723,32 @@ func cpu_phase_ex11_powers() -> void:
 		return
 	# Beneficial, low-risk powers the CPU will use each turn when available.
 	var metal_nav = _find_cpu_pokemon_with_power("Metal Navigation")
-	if metal_nav != null and not is_power_blocked_by_status(metal_nav) and not metal_nav.power_used_this_turn:
+	if metal_nav != null and not _cpu_power_locked(metal_nav) and not metal_nav.power_used_this_turn:
 		await announce_cpu_power(metal_nav, "Metal Navigation")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex11_metal_navigation(metal_nav)
 		if main._should_bail(): return
 	var delta_ctrl = _find_cpu_pokemon_with_power("Delta Control")
-	if delta_ctrl != null and not is_power_blocked_by_status(delta_ctrl) and not delta_ctrl.power_used_this_turn:
+	if delta_ctrl != null and not _cpu_power_locked(delta_ctrl) and not delta_ctrl.power_used_this_turn:
 		await announce_cpu_power(delta_ctrl, "Delta Control")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex11_delta_control(delta_ctrl)
 		if main._should_bail(): return
 	var crush_draw = _find_cpu_pokemon_with_power("Crush Draw")
-	if crush_draw != null and not is_power_blocked_by_status(crush_draw) and not crush_draw.power_used_this_turn:
+	if crush_draw != null and not _cpu_power_locked(crush_draw) and not crush_draw.power_used_this_turn:
 		await announce_cpu_power(crush_draw, "Crush Draw")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex11_crush_draw(crush_draw)
 		if main._should_bail(): return
 	var delta_charge = _find_cpu_pokemon_with_power("Delta Charge")
-	if delta_charge != null and not is_power_blocked_by_status(delta_charge) and not delta_charge.power_used_this_turn:
+	if delta_charge != null and not _cpu_power_locked(delta_charge) and not delta_charge.power_used_this_turn:
 		await announce_cpu_power(delta_charge, "Delta Charge")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex11_delta_charge(delta_charge)
 		if main._should_bail(): return
 	# OLD ISSUE 354: Energy Jump / Duplicate — the CPU never used them.
 	var ej_g = _find_cpu_pokemon_with_power("Energy Jump")
-	if ej_g != null and not is_power_blocked_by_status(ej_g) and not ej_g.power_used_this_turn and ej_g.special_condition == "" and not ej_g.is_poisoned and not ej_g.is_burned:
+	if ej_g != null and not _cpu_power_locked(ej_g) and not ej_g.power_used_this_turn and ej_g.special_condition == "" and not ej_g.is_poisoned and not ej_g.is_burned:
 		var ej_try = r4_cpu_plan_energy_moves(main.card_ops.get_all_pokemon_in_play(true), func(p): return p.attached_energies, 1)
 		if not ej_try.is_empty():
 			ej_try[0]["to"].attached_energies.erase(ej_try[0]["e"])
@@ -17201,7 +17758,7 @@ func cpu_phase_ex11_powers() -> void:
 			await power_ex11_energy_jump(ej_g)
 			if main._should_bail(): return
 	var dup = main.opponent_active_pokemon
-	if dup != null and dup.has_ability("Duplicate") and not dup.power_used_this_turn and not is_power_blocked_by_status(dup) and dup.special_condition == "" and not dup.is_poisoned and not dup.is_burned:
+	if dup != null and dup.has_ability("Duplicate") and not dup.power_used_this_turn and not _cpu_power_locked(dup) and dup.special_condition == "" and not dup.is_poisoned and not dup.is_burned:
 		var dup_pool = main.opponent_deck.filter(func(c): return c.metadata.get("name","") == "Ditto")
 		if _r4_cpu_best_form(dup, dup_pool) != null:
 			await announce_cpu_power(dup, "Duplicate")
@@ -17209,7 +17766,7 @@ func cpu_phase_ex11_powers() -> void:
 			await power_ex11_duplicate(dup)
 			if main._should_bail(): return
 	var delta_heal = _find_cpu_pokemon_with_power("Delta Heal")
-	if delta_heal != null and not is_power_blocked_by_status(delta_heal) and not delta_heal.power_used_this_turn:
+	if delta_heal != null and not _cpu_power_locked(delta_heal) and not delta_heal.power_used_this_turn:
 		# Only bother if some δ Pokemon is damaged.
 		var any_damaged = false
 		for p in main.card_ops.get_all_pokemon_in_play(true):
@@ -17823,7 +18380,7 @@ func cpu_phase_ex12_powers() -> void:
 
 	# Reactive Generator (Huntail): attach a React Energy from deck if it has none.
 	var huntail = _find_cpu_pokemon_with_power("Reactive Generator")
-	if huntail != null and not huntail.power_used_this_turn and not is_power_blocked_by_status(huntail) and huntail.react_energy_count() == 0:
+	if huntail != null and not huntail.power_used_this_turn and not _cpu_power_locked(huntail) and huntail.react_energy_count() == 0:
 		await announce_cpu_power(huntail, "Reactive Generator")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex12_reactive_generator(huntail)
@@ -17831,7 +18388,7 @@ func cpu_phase_ex12_powers() -> void:
 
 	# Power Circulation (Sealeo): recycle a basic Energy from discard onto the deck (self-damage cost).
 	var sealeo = _find_cpu_pokemon_with_power("Power Circulation")
-	if sealeo != null and not sealeo.power_used_this_turn and not is_power_blocked_by_status(sealeo) and sealeo.current_hp > 10 + PSY_SHADOW_CPU_HP_MARGIN \
+	if sealeo != null and not sealeo.power_used_this_turn and not _cpu_power_locked(sealeo) and sealeo.current_hp > 10 + PSY_SHADOW_CPU_HP_MARGIN \
 			and main.opponent_discard_pile.any(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", [])):
 		await announce_cpu_power(sealeo, "Power Circulation")   # ISSUE #106
 		if main._should_bail(): return
@@ -17840,7 +18397,7 @@ func cpu_phase_ex12_powers() -> void:
 
 	# Shady Move (Banette ex): shuffle a damage counter from own Pokemon onto the opponent's Active.
 	var banette = main.opponent_active_pokemon
-	if banette != null and banette.has_ability("Shady Move") and not banette.power_used_this_turn and not is_power_blocked_by_status(banette) and not _r4_cpu_shady_move_plan().is_empty():
+	if banette != null and banette.has_ability("Shady Move") and not banette.power_used_this_turn and not _cpu_power_locked(banette) and not _r4_cpu_shady_move_plan().is_empty():
 		await announce_cpu_power(banette, "Shady Move")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex12_shady_move(banette)
@@ -17848,7 +18405,7 @@ func cpu_phase_ex12_powers() -> void:
 
 	# Nectar Pod (Victreebel): drag one of the opponent's Benched Stage 2 Pokemon into the Active spot.
 	var victreebel = _find_cpu_pokemon_with_power("Nectar Pod")
-	if victreebel != null and not victreebel.power_used_this_turn and not is_power_blocked_by_status(victreebel):
+	if victreebel != null and not victreebel.power_used_this_turn and not _cpu_power_locked(victreebel):
 		if _r4_cpu_nectar_pod_pick() != null:   # OLD ISSUE 356
 			await announce_cpu_power(victreebel, "Nectar Pod")   # ISSUE #106
 			if main._should_bail(): return
@@ -17857,7 +18414,7 @@ func cpu_phase_ex12_powers() -> void:
 
 	# Emerge (Cascoon): flip to evolve into Dustox/Dustox ex from the deck.
 	var cascoon = main.opponent_active_pokemon
-	if cascoon != null and cascoon.has_ability("Emerge") and not cascoon.power_used_this_turn and not is_power_blocked_by_status(cascoon):
+	if cascoon != null and cascoon.has_ability("Emerge") and not cascoon.power_used_this_turn and not _cpu_power_locked(cascoon):
 		await announce_cpu_power(cascoon, "Emerge")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex12_emerge(cascoon)
@@ -17866,7 +18423,7 @@ func cpu_phase_ex12_powers() -> void:
 	# OLD ISSUE 356: Reactive Shift — the CPU never used it. (Baby Evolution is handled for every baby by the ex2 phase,
 	# which checks the hand first; this block used to announce it here even with no evolution in hand.)
 	var delcatty_rs = _find_cpu_pokemon_with_power("Reactive Shift")
-	if delcatty_rs != null and not delcatty_rs.power_used_this_turn and not is_power_blocked_by_status(delcatty_rs):
+	if delcatty_rs != null and not delcatty_rs.power_used_this_turn and not _cpu_power_locked(delcatty_rs):
 		var rs_try = r4_cpu_plan_energy_moves(main.card_ops.get_all_pokemon_in_play(true), func(p): return p.attached_energies.filter(func(e): return e.metadata.get("name","") == "React Energy"), 1)
 		if not rs_try.is_empty():
 			rs_try[0]["to"].attached_energies.erase(rs_try[0]["e"])
@@ -18173,7 +18730,7 @@ func cpu_phase_ex13_powers() -> void:
 
 	# Delta Supply (Flygon): attach a basic/δ Rainbow Energy from hand to a δ Pokemon.
 	var flygon = _find_cpu_pokemon_with_power("Delta Supply")
-	if flygon != null and not flygon.power_used_this_turn and not is_power_blocked_by_status(flygon):
+	if flygon != null and not flygon.power_used_this_turn and not _cpu_power_locked(flygon):
 		var has_e = main.opponent_hand.any(func(c): return _ex13_is_basic_or_delta_rainbow(c))
 		var has_delta = main.card_ops.get_all_pokemon_in_play(true).any(func(p): return p.is_delta())
 		if has_e and has_delta:
@@ -18184,7 +18741,7 @@ func cpu_phase_ex13_powers() -> void:
 
 	# Primal Light (Aerodactyl): fetch a basic Energy to hand.
 	var aerodactyl = _find_cpu_pokemon_with_power("Primal Light")
-	if aerodactyl != null and not aerodactyl.power_used_this_turn and not is_power_blocked_by_status(aerodactyl):
+	if aerodactyl != null and not aerodactyl.power_used_this_turn and not _cpu_power_locked(aerodactyl):
 		await announce_cpu_power(aerodactyl, "Primal Light")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex13_primal_light(aerodactyl)
@@ -18192,7 +18749,7 @@ func cpu_phase_ex13_powers() -> void:
 
 	# Delta Support (Chimecho): recover a basic/δ Rainbow Energy from discard if a Holon Supporter is in play.
 	var chimecho = _find_cpu_pokemon_with_power("Delta Support")
-	if chimecho != null and not chimecho.power_used_this_turn and not is_power_blocked_by_status(chimecho):
+	if chimecho != null and not chimecho.power_used_this_turn and not _cpu_power_locked(chimecho):
 		if _ex13_holon_supporter_in_play(true) and main.opponent_discard_pile.any(func(c): return _ex13_is_basic_or_delta_rainbow(c)):
 			await announce_cpu_power(chimecho, "Delta Support")   # ISSUE #106
 			if main._should_bail(): return
@@ -18201,7 +18758,7 @@ func cpu_phase_ex13_powers() -> void:
 
 	# Dragon Curse (Kingdra Active): put 2 counters on a player δ Pokemon.
 	var kingdra = main.opponent_active_pokemon
-	if kingdra != null and kingdra.has_ability("Dragon Curse") and not kingdra.power_used_this_turn and not is_power_blocked_by_status(kingdra):
+	if kingdra != null and kingdra.has_ability("Dragon Curse") and not kingdra.power_used_this_turn and not _cpu_power_locked(kingdra):
 		if main.card_ops.get_all_pokemon_in_play(false).any(func(p): return p.is_delta()):
 			await announce_cpu_power(kingdra, "Dragon Curse")   # ISSUE #106
 			if main._should_bail(): return
@@ -18210,7 +18767,7 @@ func cpu_phase_ex13_powers() -> void:
 
 	# Poison Pollen (Vileplume): flip to poison the Defending Pokemon (if not already poisoned).
 	var vileplume = _find_cpu_pokemon_with_power("Poison Pollen")
-	if vileplume != null and not vileplume.power_used_this_turn and not is_power_blocked_by_status(vileplume):
+	if vileplume != null and not vileplume.power_used_this_turn and not _cpu_power_locked(vileplume):
 		if main.player_active_pokemon != null and not main.player_active_pokemon.is_poisoned:
 			await announce_cpu_power(vileplume, "Poison Pollen")   # ISSUE #106
 			if main._should_bail(): return
@@ -18219,7 +18776,7 @@ func cpu_phase_ex13_powers() -> void:
 
 	# Splash Back (Crawdaunt ex): bounce a player Benched Pokemon if they have 4+ benched.
 	var crawdaunt = _find_cpu_pokemon_with_power("Splash Back")
-	if crawdaunt != null and not crawdaunt.power_used_this_turn and not is_power_blocked_by_status(crawdaunt) and main.player_bench.size() >= 4:
+	if crawdaunt != null and not crawdaunt.power_used_this_turn and not _cpu_power_locked(crawdaunt) and main.player_bench.size() >= 4:
 		await announce_cpu_power(crawdaunt, "Splash Back")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex13_splash_back(crawdaunt)
@@ -18228,7 +18785,7 @@ func cpu_phase_ex13_powers() -> void:
 	# Driving Howl (Mightyena ex): drag one of the player's Benched Pokemon into the Active spot.
 	var mightyena = _find_cpu_pokemon_with_power("Driving Howl")
 	# OLD ISSUE 357: the player picks the replacement, so only when the player's Active is the problem (Drive Off test).
-	if mightyena != null and not mightyena.power_used_this_turn and not is_power_blocked_by_status(mightyena) and not main.player_bench.is_empty() and _r4_cpu_drive_off_wanted():
+	if mightyena != null and not mightyena.power_used_this_turn and not _cpu_power_locked(mightyena) and not main.player_bench.is_empty() and _r4_cpu_drive_off_wanted():
 		await announce_cpu_power(mightyena, "Driving Howl")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex13_driving_howl(mightyena)
@@ -18749,21 +19306,21 @@ func check_ex14_dark_eyes(power_user: card_object) -> void:
 func cpu_phase_ex14_powers() -> void:
 	# Echo Draw (Swampert): always draw.
 	var swampert = _find_cpu_pokemon_with_power("Echo Draw")
-	if swampert != null and not swampert.power_used_this_turn and not is_power_blocked_by_status(swampert):
+	if swampert != null and not swampert.power_used_this_turn and not _cpu_power_locked(swampert):
 		await announce_cpu_power(swampert, "Echo Draw")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex14_echo_draw(swampert)
 		if main._should_bail(): return
 	# Excavate (Sableye): dig for a better top card.
 	var sableye = _find_cpu_pokemon_with_power("Excavate")
-	if sableye != null and not sableye.power_used_this_turn and not is_power_blocked_by_status(sableye):
+	if sableye != null and not sableye.power_used_this_turn and not _cpu_power_locked(sableye):
 		await announce_cpu_power(sableye, "Excavate")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex14_excavate(sableye)
 		if main._should_bail(): return
 	# Delta Sign (Fearow): fetch a δ Pokémon if the deck has one.
 	var fearow = _find_cpu_pokemon_with_power("Delta Sign")
-	if fearow != null and not fearow.power_used_this_turn and not is_power_blocked_by_status(fearow):
+	if fearow != null and not fearow.power_used_this_turn and not _cpu_power_locked(fearow):
 		if main.opponent_deck.any(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.is_delta()):
 			await announce_cpu_power(fearow, "Delta Sign")   # ISSUE #106
 			if main._should_bail(): return
@@ -18771,7 +19328,7 @@ func cpu_phase_ex14_powers() -> void:
 			if main._should_bail(): return
 	# Spike Storm (Cacturne δ): snipe a damaged Pokémon if Active.
 	var cacturne = _find_cpu_pokemon_with_power("Spike Storm")
-	if cacturne != null and cacturne == main.opponent_active_pokemon and not cacturne.power_used_this_turn and not is_power_blocked_by_status(cacturne):
+	if cacturne != null and cacturne == main.opponent_active_pokemon and not cacturne.power_used_this_turn and not _cpu_power_locked(cacturne):
 		if main.card_ops.get_all_pokemon_in_play(false).any(func(c): return c.get_damage_counters() > 0):
 			await announce_cpu_power(cacturne, "Spike Storm")   # ISSUE #106
 			if main._should_bail(): return
@@ -18779,7 +19336,7 @@ func cpu_phase_ex14_powers() -> void:
 			if main._should_bail(): return
 	# Delta Transport (Pelipper δ): only if the Active is a δ that would benefit from retreating for free.
 	var pelipper = _find_cpu_pokemon_with_power("Delta Transport")
-	if pelipper != null and pelipper != main.opponent_active_pokemon and not pelipper.power_used_this_turn and not is_power_blocked_by_status(pelipper):
+	if pelipper != null and pelipper != main.opponent_active_pokemon and not pelipper.power_used_this_turn and not _cpu_power_locked(pelipper):
 		var oa = main.opponent_active_pokemon
 		# OLD ISSUE 358: same test as every "you may switch" (danger / badly hurt / Special Condition, better Bench option).
 		if oa != null and oa.is_delta() and not main.opponent_bench.is_empty() and main.attack_effects.r4_cpu_wants_self_switch(oa):
@@ -18789,7 +19346,7 @@ func cpu_phase_ex14_powers() -> void:
 			if main._should_bail(): return
 	# Constrain (Delcatty ex): use it when the player is holding a large hand.
 	var delcatty = _find_cpu_pokemon_with_power("Constrain")
-	if delcatty != null and not delcatty.power_used_this_turn and not is_power_blocked_by_status(delcatty):
+	if delcatty != null and not delcatty.power_used_this_turn and not _cpu_power_locked(delcatty):
 		if main.player_hand.size() > 6 and main.player_hand.size() - 6 >= main.opponent_hand.size() - 6:
 			await announce_cpu_power(delcatty, "Constrain")   # ISSUE #106
 			if main._should_bail(): return
@@ -19428,7 +19985,7 @@ func trigger_ex15_tropical_heal(tropius: card_object, is_opponent: bool) -> void
 func cpu_phase_ex15_powers() -> void:
 	# Invitation (Nidoqueen δ): fetch a Pokémon if the deck has one.
 	var nidoqueen = _find_cpu_pokemon_with_power("Invitation")
-	if nidoqueen != null and not nidoqueen.power_used_this_turn and not is_power_blocked_by_status(nidoqueen):
+	if nidoqueen != null and not nidoqueen.power_used_this_turn and not _cpu_power_locked(nidoqueen):
 		if main.opponent_deck.any(func(c): return c.metadata.get("supertype","") == "Pokémon"):
 			await announce_cpu_power(nidoqueen, "Invitation")   # ISSUE #106
 			if main._should_bail(): return
@@ -19436,14 +19993,14 @@ func cpu_phase_ex15_powers() -> void:
 			if main._should_bail(): return
 	# Power of Evolution (Electabuzz δ): draw if Evolved.
 	var electabuzz = _find_cpu_pokemon_with_power("Power of Evolution")
-	if electabuzz != null and not electabuzz.attached_pre_evolutions.is_empty() and not electabuzz.power_used_this_turn and not is_power_blocked_by_status(electabuzz):
+	if electabuzz != null and not electabuzz.attached_pre_evolutions.is_empty() and not electabuzz.power_used_this_turn and not _cpu_power_locked(electabuzz):
 		await announce_cpu_power(electabuzz, "Power of Evolution")   # ISSUE #106
 		if main._should_bail(): return
 		await power_ex15_power_of_evolution(electabuzz)
 		if main._should_bail(): return
 	# Power Circulation (Mantine δ): recycle a basic Energy back onto the deck (only if healthy enough).
 	var mantine = _find_cpu_pokemon_with_power("Power Circulation")
-	if mantine != null and mantine.current_hp > 10 + PSY_SHADOW_CPU_HP_MARGIN and not mantine.power_used_this_turn and not is_power_blocked_by_status(mantine):   # OLD ISSUE 359
+	if mantine != null and mantine.current_hp > 10 + PSY_SHADOW_CPU_HP_MARGIN and not mantine.power_used_this_turn and not _cpu_power_locked(mantine):   # OLD ISSUE 359
 		if main.opponent_discard_pile.any(func(c): return _ex15_is_basic_energy(c)):
 			await announce_cpu_power(mantine, "Power Circulation")   # ISSUE #106
 			if main._should_bail(): return
@@ -19451,7 +20008,7 @@ func cpu_phase_ex15_powers() -> void:
 			if main._should_bail(): return
 	# Extra Boost (Altaria ex δ): attach a basic Energy to a Stage 2 Pokémon-ex.
 	var altaria = _find_cpu_pokemon_with_power("Extra Boost")
-	if altaria != null and not altaria.power_used_this_turn and not is_power_blocked_by_status(altaria):
+	if altaria != null and not altaria.power_used_this_turn and not _cpu_power_locked(altaria):
 		var has_energy = main.opponent_hand.any(func(c): return _ex15_is_basic_energy(c))
 		var has_target = main.card_ops.get_all_pokemon_in_play(true).any(func(p): return "Stage 2" in p.metadata.get("subtypes", []) and main.is_ex_pokemon(p))
 		if has_energy and has_target:
@@ -19461,7 +20018,7 @@ func cpu_phase_ex15_powers() -> void:
 			if main._should_bail(): return
 	# Imprison (Gardevoir ex δ): lock down a player Pokémon that has a Power/Body.
 	var gardevoir = _find_cpu_pokemon_with_power("Imprison")
-	if gardevoir != null and gardevoir == main.opponent_active_pokemon and not gardevoir.power_used_this_turn and not is_power_blocked_by_status(gardevoir):
+	if gardevoir != null and gardevoir == main.opponent_active_pokemon and not gardevoir.power_used_this_turn and not _cpu_power_locked(gardevoir):
 		if main.card_ops.get_all_pokemon_in_play(false).any(func(p): return not p.metadata.get("abilities", []).is_empty() and p.imprison_markers == 0):
 			await announce_cpu_power(gardevoir, "Imprison")   # ISSUE #106
 			if main._should_bail(): return
@@ -19470,7 +20027,7 @@ func cpu_phase_ex15_powers() -> void:
 	# OLD ISSUE 359: Dozing (Snorlax δ) — the CPU never used it. Trade the attack for 2 counters of healing when Snorlax
 	# can't attack this turn anyway, or is about to be Knocked Out and the heal takes it out of range.
 	var snorlax = main.opponent_active_pokemon
-	if snorlax != null and snorlax.has_ability("Dozing") and not snorlax.power_used_this_turn and not is_power_blocked_by_status(snorlax) and snorlax.get_damage_counters() >= 2:
+	if snorlax != null and snorlax.has_ability("Dozing") and not snorlax.power_used_this_turn and not _cpu_power_locked(snorlax) and snorlax.get_damage_counters() >= 2:
 		var dz_threat = main.cpu_ai.evaluate_ko_threats()
 		if _r4_min_unmet(snorlax) > 0 or dz_threat.get("cpu_active_potential_ko", false):
 			await announce_cpu_power(snorlax, "Dozing")
@@ -19479,7 +20036,7 @@ func cpu_phase_ex15_powers() -> void:
 			if main._should_bail(): return
 	# Volunteer (Ninetales δ): upgrade to Ninetales ex if it is in the deck.
 	var ninetales = _find_cpu_pokemon_with_power("Volunteer")
-	if ninetales != null and not ninetales.attached_pre_evolutions.is_empty() and not ninetales.power_used_this_turn and not is_power_blocked_by_status(ninetales):
+	if ninetales != null and not ninetales.attached_pre_evolutions.is_empty() and not ninetales.power_used_this_turn and not _cpu_power_locked(ninetales):
 		if main.opponent_deck.any(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("name","").begins_with("Ninetales") and main.is_ex_pokemon(c)):
 			await announce_cpu_power(ninetales, "Volunteer")   # ISSUE #106
 			if main._should_bail(): return
@@ -19556,7 +20113,7 @@ func power_ex16_poison_structure(cacturne: card_object) -> void:
 func cpu_phase_ex16_powers() -> void:
 	# Magnetic Redraw (Metagross ex): refresh a small/clogged hand.
 	var metagross = _find_cpu_pokemon_with_power("Magnetic Redraw")
-	if metagross != null and metagross == main.opponent_active_pokemon and not metagross.power_used_this_turn and not is_power_blocked_by_status(metagross):
+	if metagross != null and metagross == main.opponent_active_pokemon and not metagross.power_used_this_turn and not _cpu_power_locked(metagross):
 		# OLD ISSUE 360: also to strip a big player hand (it only fired on its own small hand).
 		if main.opponent_hand.size() <= 2 or (main.player_hand.size() >= 7 and main.opponent_hand.size() <= 5):
 			await announce_cpu_power(metagross, "Magnetic Redraw")   # ISSUE #106
@@ -19565,7 +20122,7 @@ func cpu_phase_ex16_powers() -> void:
 			if main._should_bail(): return
 	# Poison Structure (Cacturne): poison the Defending Pokemon when Sidney's Stadium is up.
 	var cacturne = _find_cpu_pokemon_with_power("Poison Structure")
-	if cacturne != null and not cacturne.power_used_this_turn and not is_power_blocked_by_status(cacturne) and main.is_stadium_in_play(StadiumIds.SIDNEYS_STADIUM):
+	if cacturne != null and not cacturne.power_used_this_turn and not _cpu_power_locked(cacturne) and main.is_stadium_in_play(StadiumIds.SIDNEYS_STADIUM):
 		var defenders = main.card_ops.get_defending_pokemon(true)
 		if not defenders.is_empty() and defenders[0] != null and not defenders[0].is_poisoned:
 			await announce_cpu_power(cacturne, "Poison Structure")   # ISSUE #106

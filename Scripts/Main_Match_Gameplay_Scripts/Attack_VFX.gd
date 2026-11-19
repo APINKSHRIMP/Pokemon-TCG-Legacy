@@ -138,6 +138,7 @@ const MAX_VOICES := 16
 const SFX_END_TAIL := 0.45        # a move sound still playing this long (real s) after its animation has ended fades out
 const SFX_END_FADE := 0.3         # ...over this long
 const SFX_ALIGN_SLACK := 0.08     # a build-up whose own hit would land this much before the visual impact starts later instead
+const SFX_RUN_GAP := 0.35         # AUDIT 2026-11-19: clip onsets closer than this are one run of hits (Swift's three stars)
 
 # ── TWEAKABLE: screen ──────────────────────────────────────────────────────────────────
 const DIM_IN := 0.18
@@ -1376,11 +1377,41 @@ func _sfx_begin(ctx: _Ctx, steps: Array, body: String, contact: bool, est: float
 	var pitch := float(ctx.recipe.get("sfx_pitch", 1.0))
 	var db: float = STATUS_DB if ctx.attacker == ctx.defender else MOVE_DB
 	var est_real := GameState.match_time(est)
-	if ctx.attacker == ctx.defender or ctx.react.is_empty() or not _has_target(steps):
-		_sfx_play(clip, 0.0, minf(float(info.get("dur", 1.0)), est_real + SFX_TAIL), db, pitch)
+	var hit := float(info.get("hit", 0.0))
+	var base := clip.trim_suffix(" part 1").trim_suffix(" part 2")
+	var split := _sfx.has(base + " part 1") and _sfx.has(base + " part 2")
+	# AUDIT 2026-11-18: a non-damaging attack with an effect ON the defender (Sleep Powder, Confuse Ray, Attract...)
+	# now lines its clip's main hit up with that effect like a damaging one does - it used to play from the start
+	# and was cut at the animation's end, often before its hit (236 attacks). Clips without a build-up keep
+	# starting with the animation. "sfx_start" recipes (the attacker IS the sound: Screech, Hyper Voice,
+	# Growl...) always play from the start.
+	# AUDIT 2026-11-19: "sfx_align" recipes (Hyper Beam, Sonic Boom, Stomp...) line a no-build-up clip up with the
+	# impact even at 0 damage, the way their damaging versions already did - they used to sound 0.3-1.1 s early.
+	var aligned := not ctx.react.is_empty() or hit > 0.2 or split or bool(ctx.recipe.get("sfx_align", false))
+	var from_start := bool(ctx.recipe.get("sfx_start", false))
+	if ctx.attacker == ctx.defender or not _has_target(steps) or not aligned or from_start:
+		var dur := float(info.get("dur", 1.0))
+		var from := 0.0
+		# AUDIT 2026-11-19: a self-side clip whose main hit comes after the animation is over (Charge, Wish, Nasty
+		# Plot, Baton Pass...) used to fade before its hit was ever heard: skip in so the hit lands as it ends.
+		if ctx.attacker != ctx.defender and (not _has_target(steps) or from_start) and hit > 0.2 \
+				and hit / pitch > est_real + SFX_ALIGN_SLACK:
+			from = hit - est_real * pitch
+			print("AUDIT 2026-11-19 FIX ACTIVE: ", clip, " skipped ", snappedf(from, 0.01), "s so its hit lands at the end")
+		var cap := (dur - from) / pitch
+		if ctx.attacker == ctx.defender or ctx.react.is_empty():
+			cap = minf(cap, est_real + SFX_TAIL)
+		ctx.sfx_players.append(_sfx_play(clip, from, cap, db, pitch))
 		return
 	var hits := int(ctx.recipe.get("hits", 1))
 	var one := _one_hit(clip)
+	var est_imp := GameState.match_time(_impact_estimate(steps, body, contact))
+	# AUDIT 2026-11-18: a recipe with a long charge before its hit (Selfdestruct's gather, Dragon Rage's roar) and a
+	# clip that only starts at the hit gets "sfx_windup" played from the start, cut when the impact lands.
+	var windup := str(ctx.recipe.get("sfx_windup", ""))
+	if windup != "" and _sfx.has(windup) and not split and hit <= 0.2:
+		ctx.sfx_start = _sfx_play(windup, 0.0, -1.0, db - 3.0, 1.0)
+		ctx.sfx_players.append(ctx.sfx_start)
 	if hits > 1 and one != "":
 		ctx.sfx_plan = {"multi": one, "hits": hits, "pitch": pitch, "db": db, "len": float(ctx.recipe.get("_sfx_len", -1.0))}
 		return
@@ -1388,19 +1419,53 @@ func _sfx_begin(ctx: _Ctx, steps: Array, body: String, contact: bool, est: float
 		# ISSUE #383: one head -> one punch.
 		ctx.sfx_plan = {"multi": one, "hits": 1, "pitch": pitch, "db": db, "len": float(ctx.recipe["_sfx_len"])}
 		return
-	var est_imp := GameState.match_time(_impact_estimate(steps, body, contact))
-	var base := clip.trim_suffix(" part 1").trim_suffix(" part 2")
-	if _sfx.has(base + " part 1") and _sfx.has(base + " part 2"):
+	if split:
 		var d1 := float(_sfx[base + " part 1"].get("dur", 0.0))
-		ctx.sfx_start = _sfx_play(base + " part 1", maxf(0.0, d1 - est_imp), -1.0, db, pitch)
+		_sfx_build_up(ctx, base + " part 1", d1, d1 / pitch, est_imp, db, pitch)
 		ctx.sfx_plan = {"clip": base + " part 2", "from": 0.0, "pitch": pitch, "db": db}
 		return
-	var hit := float(info.get("hit", 0.0))
 	if hit > 0.2:
-		ctx.sfx_start = _sfx_play(clip, maxf(0.0, hit - est_imp), -1.0, db, pitch)
+		# AUDIT 2026-11-19: a multi-hit recipe lines up the FIRST hit of the clip's last run of hits (Swift's three
+		# stars, Twineedle's two jabs) with the first visual hit - lining up the last one put the rest before it.
+		if hits > 1:
+			hit = _run_start(info)
+		_sfx_build_up(ctx, clip, hit, hit / pitch, est_imp, db, pitch)
 		ctx.sfx_plan = {"clip": clip, "from": maxf(0.0, hit - 0.02), "pitch": pitch, "db": db}
 	else:
 		ctx.sfx_plan = {"clip": clip, "from": 0.0, "pitch": pitch, "db": db}
+
+
+## AUDIT 2026-11-18: the build-up of `clip`, whose hit is `hit` clip-seconds in (`hit_real` real seconds at this pitch),
+## so that hit lands on the estimated impact `est_imp`: skipped into when the animation is quicker, and STARTED LATER
+## when it is slower - it used to start with the animation anyway, so its hit sounded early and again at the impact.
+## AUDIT 2026-11-19: the first onset of the run of quick hits (onsets < SFX_RUN_GAP apart) that ends at the clip's "hit".
+func _run_start(info: Dictionary) -> float:
+	var hit := float(info.get("hit", 0.0))
+	var onsets: Array = info.get("onsets", [])
+	var start := hit
+	for i in range(onsets.size() - 1, -1, -1):
+		var o := float(onsets[i])
+		if o > hit + 0.001:
+			continue
+		if start - o > SFX_RUN_GAP:
+			break
+		start = o
+	return start
+
+
+func _sfx_build_up(ctx: _Ctx, clip: String, hit: float, hit_real: float, est_imp: float, db: float, pitch: float) -> void:
+	var late := est_imp - hit_real
+	if late <= SFX_ALIGN_SLACK:
+		ctx.sfx_start = _sfx_play(clip, maxf(0.0, (hit_real - est_imp) * pitch), -1.0, db, pitch)
+		ctx.sfx_players.append(ctx.sfx_start)
+		return
+	await get_tree().create_timer(late).timeout
+	if ctx.impact_done or _bail():
+		return
+	if ctx.sfx_start != null and is_instance_valid(ctx.sfx_start):
+		_sfx_stop(ctx.sfx_start, SFX_CUT_FADE)   # a windup gives way to the move's own build-up
+	ctx.sfx_start = _sfx_play(clip, 0.0, -1.0, db, pitch)
+	ctx.sfx_players.append(ctx.sfx_start)
 
 
 func _sfx_impact(ctx: _Ctx) -> void:
@@ -1410,9 +1475,9 @@ func _sfx_impact(ctx: _Ctx) -> void:
 	var plan := ctx.sfx_plan
 	ctx.sfx_plan = {}
 	if plan.has("multi"):
-		_sfx_repeat(str(plan["multi"]), int(plan["hits"]), float(plan["pitch"]), float(plan["db"]), float(plan.get("len", -1.0)))
+		_sfx_repeat(str(plan["multi"]), int(plan["hits"]), float(plan["pitch"]), float(plan["db"]), float(plan.get("len", -1.0)), ctx)
 	elif plan.has("clip"):
-		_sfx_play(str(plan["clip"]), float(plan["from"]), SFX_MAX_LEN, float(plan["db"]), float(plan["pitch"]))
+		ctx.sfx_players.append(_sfx_play(str(plan["clip"]), float(plan["from"]), SFX_MAX_LEN, float(plan["db"]), float(plan["pitch"])))
 	# The battle "hit" thump on damage.
 	var damage := int(ctx.react.get("damage", 0))
 	var resisted := bool(ctx.react.get("resisted", false))
@@ -1440,11 +1505,18 @@ func _sfx_later(clip: String, delay: float, db: float, pitch: float) -> void:
 
 ## One hit per reaction hit, MULTI_GAP apart (match-time scaled, like the reaction itself).
 ## ISSUE #383: `length` > 0 cuts each repeat to that many seconds (Comet Punch: one punch per head).
-func _sfx_repeat(clip: String, hits: int, pitch: float, db: float, length: float = -1.0) -> void:
+func _sfx_repeat(clip: String, hits: int, pitch: float, db: float, length: float = -1.0, ctx: _Ctx = null) -> void:
 	if length > 0.0:
 		print("ISSUE #383 FIX ACTIVE: ", clip, " x", hits, " cut to ", length, "s each")
+	# AUDIT 2026-11-19: a "1hit" clip with a lead-in before its hit (Pin Missile 1hit 0.93 s, Double Slap 1hit
+	# 0.58 s) starts at that hit, so every repeat lands on its reaction hit instead of that late.
+	var from := 0.0
+	if length <= 0.0:
+		from = maxf(0.0, float(_sfx.get(clip, {}).get("hit", 0.0)) - 0.02)
 	for i in hits:
-		var pl := _sfx_play(clip, 0.0, -1.0, db, pitch * (1.0 + 0.04 * float(i % 2)))
+		var pl := _sfx_play(clip, from, -1.0, db, pitch * (1.0 + 0.04 * float(i % 2)))
+		if ctx != null and pl != null:
+			ctx.sfx_players.append(pl)   # AUDIT 2026-11-18
 		if length > 0.0 and pl != null:
 			_sfx_cut_at(pl, length / maxf(pl.pitch_scale, 0.1))
 		if i < hits - 1:
@@ -1669,10 +1741,17 @@ func _run_groups(ctx: _Ctx, steps: Array) -> void:
 		if _bail():
 			return
 		var join := _Join.new()
+		# AUDIT 2026-11-18: a quake that runs alongside a real hit (Hyper Beam's beam, Explosion's blast) is not the
+		# impact - it fired the knock-back, flash and hit sound as the beam only started to grow.
+		var quake_hits := true
+		for s in g:
+			if str(s.get("at", "target")) in ["target", "drop", "screen", "beam"] or bool(s.get("impact", false)):
+				quake_hits = false
 		for s in g:
 			# The first target-side step is the impact, unless a step says "impact" itself.
 			var at := str(s.get("at", "target"))
-			var is_impact: bool = bool(s.get("impact", false)) or at in ["target", "drop", "screen", "bench", "quake"]
+			var is_impact: bool = bool(s.get("impact", false)) or at in ["target", "drop", "screen", "bench"] \
+				or (at == "quake" and quake_hits)
 			join.add()
 			_play_step(ctx, s, join, is_impact)
 		await join.wait_all()

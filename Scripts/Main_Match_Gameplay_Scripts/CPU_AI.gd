@@ -690,7 +690,7 @@ func get_unmet_energy_count(attack: Dictionary, pokemon: card_object) -> int:
 	# gym1-47 Erika's Oddish Photosynthesis: all energy attached provides Grass instead of usual type
 	var photosynthesis_on = main.powers_and_bodies.is_photosynthesis_active(pokemon)
 	# NEO1 Wild Growth: Grass Energy on Grass Pokemon counts as 2 Grass
-	var wild_growth_on = main.powers_and_bodies.is_wild_growth_active() and "Grass" in pokemon.metadata.get("types", [])
+	var wild_growth_on = main.powers_and_bodies.is_wild_growth_active(main.match_effects.is_card_on_opponent_side(pokemon)) and "Grass" in pokemon.get_effective_types()   # AUDIT 2026-11-18 #27
 	# MATCH EFFECT: rainbow_energy — every attached energy provides any type
 	# (multi-providers like DCE provide that many "Any" units)
 	var rainbow_rule_on = main.match_effects.rainbow_energy_active(main.match_effects.is_card_on_opponent_side(pokemon))
@@ -2362,6 +2362,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	# MATCH EFFECT: extra_energy_per_turn — flag only set once the per-turn limit is reached
 	main.opponent_energy_attach_count += 1
 	main.opponent_energy_played_this_turn = main.opponent_energy_attach_count >= main.match_effects.energy_attach_limit(true)
+	main.opponent_energy_attached_to = target   # AUDIT 2026-11-18 #48
 
 	# ISSUE #6 FIX ACTIVE: every CPU action follows the same three beats — announce what the
 	# opponent is ABOUT to do, play the animation, then snap the board to the new state. This
@@ -2432,7 +2433,7 @@ func cpu_phase_energy_attachment(cpu_eval: Dictionary) -> void:
 	await main.powers_and_bodies.check_lightning_burst(target, energy, true)
 	if main._should_bail(): return
 	# NEO4 Conductivity (Dark Ampharos neo4-1): opponent's Ampharos deals 10 to this Pokemon
-	main.powers_and_bodies.check_neo4_conductivity(target, true)
+	await main.powers_and_bodies.check_neo4_conductivity(target, true)   # AUDIT 2026-11-18 #135
 	if main._should_bail(): return
 	# NP Pure Body (Suicune): discard an energy after Water Energy attached
 	await main.powers_and_bodies.check_pure_body_discard(energy, target, true)
@@ -3335,6 +3336,8 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	# deliberate skip was reported as SKIPPED ATTACK (Tusk Toss, Eerie Howl, Sleep Inducer in the 2026-11-06 batch).
 	cpu_skip_reason = ""
 	
+	if main.opponent_attacked_this_turn:   # AUDIT 2026-11-18 #5: already attacked (Psymimic in the power pass)
+		return
 	if main.turn_number <= 1:
 		print("CPU: Not attacking — it's turn " + str(main.turn_number) + " (the first player cannot attack on their first turn of the game)")
 		return
@@ -3841,8 +3844,10 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			score += min(spare_fire * 8.0, 40.0)
 		if attack_name_lower == "protective flame":
 			score += main.opponent_bench.size() * 10.0
-		if attack_name_lower == "paint" or attack_name_lower == "texture magic":
+		if attack_name_lower == "texture magic":
 			score += 15.0
+		if attack_name_lower == "paint":   # AUDIT 2026-11-18 #42: only when the foe hits one of our Weaknesses
+			score += 15.0 if main.attack_effects.cpu_paint_useful() else -10.0
 		if attack_name_lower == "rapid spin":
 			score += 15.0
 
@@ -4220,10 +4225,22 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 				var md_has_special = false
 				for e in main.opponent_active_pokemon.attached_energies:
 					if "Special" in e.metadata.get("subtypes", []): md_has_special = true
+				# AUDIT 2026-11-18 #93: weigh the prizes and Benches - a mutual KO wins when the player has no Bench or it takes
+				# the CPU's last Prizes, loses when the CPU has no Bench or Electrode is the player's last Prize; an ex
+				# Defender is 2 Prizes for 1.
+				var md_prizes: int = 2 if (main.player_active_pokemon != null and main.is_ex_pokemon(main.player_active_pokemon)) else 1
+				var md_cpu_wins: bool = (main.player_bench.is_empty() and not main.opponent_bench.is_empty()) or md_prizes >= main.opponent_prize_cards.size()
+				var md_cpu_loses: bool = main.opponent_bench.is_empty() or main.player_prize_cards.size() <= 1
 				if md_has_special:
 					score = -9999.0  # does nothing
+				elif md_cpu_wins and not md_cpu_loses:
+					score += 1000.0
+				elif md_cpu_loses:
+					score = -9999.0
 				elif cpu_will_be_koed:
 					score += 300.0  # trading an Active that's dying anyway is good value
+				elif md_prizes >= 2:
+					score += 200.0  # 2 Prizes for 1
 				else:
 					score -= 150.0  # avoid needlessly sacrificing a healthy Active
 			# Breaking Sound (Girafarig): 10 to every opponent Pokemon (Active + Bench, no W/R).
@@ -4299,13 +4316,22 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			if attack_name_lower == "feint attack":
 				score += 40.0
 				if 20 >= player_hp: score += 500.0
+			# AUDIT 2026-11-18 #102/#107: read the per-target number ("N damage to each") - Spinning Tail and Double Tackle
+			# do 20 each, Dark Drain 10; they were all scored as 10.
 			if attack_name_lower == "dark drain" or attack_name_lower == "spinning tail":
+				var dr_n: int = main.attack_effects.extract_number_before(attack.get("text", "").to_lower(), "damage to each")
+				if dr_n <= 0: dr_n = 10
 				var dr_count = 1 + main.player_bench.size()
-				score += 20.0 * dr_count
-				if 10 >= player_hp: score += 500.0
-			if attack_name_lower == "black suction cups" or attack_name_lower == "double tackle":
+				score += 2.0 * float(dr_n) * dr_count
+				if dr_n >= player_hp: score += 500.0
+			if attack_name_lower == "black suction cups":
 				score += 20.0
 				if 10 >= player_hp: score += 500.0
+			if attack_name_lower == "double tackle":
+				var dt_n: int = main.attack_effects.extract_number_before(attack.get("text", "").to_lower(), "damage to each")
+				if dt_n <= 0: dt_n = 20
+				score += 2.0 * float(dt_n)
+				if dt_n >= player_hp: score += 500.0
 			if attack_name_lower == "double wing attack":
 				score += 60.0
 				if 30 >= player_hp: score += 500.0
@@ -4851,7 +4877,11 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			best_attack_index = i
 
 	if best_attack_index == -1:
-		print("CPU found no suitable attack")
+		# 2026-11-19: every payable attack was scored as doing nothing here (Hydro Wave / Stretch Tail / Pebble Throw with
+		# an empty player Bench...), so passing is deliberate - say so, or the autotester reports SKIPPED ATTACK.
+		if not attack_score_log.is_empty():
+			cpu_skip_reason = "no_useful_attack"
+		print("CPU found no suitable attack: ", attack_score_log.map(func(r): return str(r["name"]) + "=" + str(int(r["score"]))))
 		return
 	# ISSUE #333: a person always takes a guaranteed Knock Out. If the best score went to an attack that
 	# doesn't KO while one that does was payable, use the best-scoring KO attack instead.
@@ -5560,7 +5590,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ecard1-147": return 40.0  # Power Charge: coin-flip energy recycling
 		"ecard1-148": return _cpu_score_evolution_search()  # OLD ISSUE 373: Professor Elm's Training Method searches an Evolution
 		"ecard1-149": return _cpu_score_professor_oak(card)  # Professor Oak's Research
-		"ecard1-150": return 35.0  # Strength Charm: modest one-off damage boost
+		"ecard1-150": return _cpu_score_strength_charm()  # AUDIT 2026-11-18 #121
 		"ecard1-151": return _cpu_score_scoop_family(true, true)  # OLD ISSUE 373: Super Scoop Up
 		"ecard1-152": return _cpu_score_warp_point()  # ISSUE #493: Warp Point - the player picks their new Active, so not a gust
 		"ecard1-153": return _cpu_score_energy_fetch(1, false)  # OLD ISSUE 373: Energy Search
@@ -5622,7 +5652,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex1-92": return _cpu_score_switch()  # Switch
 		# ---- EX2 (SANDSTORM) TRAINER SCORING ----
 		"ex2-86": return _cpu_score_full_heal()  # Double Full Heal: same value as Full Heal
-		"ex2-87": return 55.0  # Lanette's Net Search (Supporter): flexible multi-type Basic search
+		"ex2-87": return _cpu_score_lanettes_net_search()  # AUDIT 2026-11-18 #75: by need (was a flat 55)
 		"ex2-88": return _cpu_score_ex2_rare_candy()  # Rare Candy: only if a valid evolution jump exists
 		"ex2-89": return _cpu_score_ex2_wallys_training()  # Wally's Training (Supporter): only if Active can evolve
 		"ex2-90", "ex2-91", "ex2-92", "ex13-91", "ex13-92", "ex13-93", "ex16-84", "ex16-85", "ex16-86":
@@ -5637,28 +5667,29 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		# ── EX4 (Team Magma vs Team Aqua) ──
 		"ex4-69": return 55.0  # Team Aqua Schemer (Supporter): discard 1 Pokemon, draw 3-4
 		"ex4-70": return 55.0  # Team Magma Schemer (Supporter): discard 1 Pokemon, draw 3-4
-		"ex4-71": return 50.0  # Archie (Supporter): fetch a Team Aqua Pokemon to the Bench
-		"ex4-72": return 45.0  # Dual Ball (Item): coin-flip Basic search
-		"ex4-73": return 50.0  # Maxie (Supporter): fetch a Team Magma Pokemon to the Bench
-		"ex4-74": return 35.0  # Strength Charm (Tool): one-off +10 damage
-		"ex4-75": return 45.0  # Team Aqua Ball (Item): coin-flip Team Aqua search
-		"ex4-76": return 40.0  # Team Aqua Belt (Tool): between-turn free evolution
-		"ex4-77": return 55.0  # Team Aqua Conspirator (Supporter): up to 2 Basic/Energy search
-		"ex4-80": return 45.0  # Team Magma Ball (Item): coin-flip Team Magma search
-		"ex4-81": return 40.0  # Team Magma Belt (Tool): between-turn free evolution
-		"ex4-82": return 55.0  # Team Magma Conspirator (Supporter): up to 2 Basic/Energy search
+		# AUDIT 2026-11-18 #83-#91: the ex4 Team trainers are scored by what they can actually find (were flat 40-55).
+		"ex4-71": return _cpu_score_ex4_team_bench("Team Aqua", main.opponent_deck)   # Archie
+		"ex4-72": return _cpu_score_ex4_basic_search(false, "")                         # Dual Ball
+		"ex4-73": return _cpu_score_ex4_team_bench("Team Magma", main.opponent_hand + main.opponent_discard_pile)   # Maxie
+		"ex4-74": return _cpu_score_strength_charm()      # AUDIT 2026-11-18 #121
+		"ex4-75": return _cpu_score_ex4_basic_search(true, "Team Aqua")    # Team Aqua Ball
+		"ex4-76": return _cpu_score_ex4_belt("Team Aqua")                  # Team Aqua Belt
+		"ex4-77": return _cpu_score_ex4_conspirator("Team Aqua")           # Team Aqua Conspirator
+		"ex4-80": return _cpu_score_ex4_basic_search(true, "Team Magma")   # Team Magma Ball
+		"ex4-81": return _cpu_score_ex4_belt("Team Magma")                 # Team Magma Belt
+		"ex4-82": return _cpu_score_ex4_conspirator("Team Magma")          # Team Magma Conspirator
 		"ex4-85": return _cpu_score_warp_point()  # ISSUE #493: Warp Point (was a flat 40)
 		# ── EX8 (EX Deoxys) ──
-		"ex8-84": return 35.0  # Balloon Berry (Tool): free-retreat safety net
-		"ex8-85": return 30.0  # Crystal Shard (Tool): type-override utility
-		"ex8-86": return 30.0  # Energy Charge (Item): coin-flip Energy recovery to deck
+		"ex8-84": return _cpu_score_balloon_berry()   # AUDIT 2026-11-18 #170 (was a flat 35)
+		"ex8-85": return _cpu_score_crystal_shard()  # AUDIT 2026-11-18 #117: same card as ex14-76 (was a flat 30)
+		"ex8-86": return _cpu_score_ex8_energy_charge()   # AUDIT 2026-11-18 #118 (was a flat 30)
 		"ex8-87": return _cpu_score_energy_fetch(3, true)  # OLD ISSUE 373: Lady Outing (Supporter)
-		"ex8-88": return 55.0  # Master Ball (Item): dig 7 for any Pokemon
+		"ex8-88": return _cpu_score_ex8_master_ball()     # AUDIT 2026-11-18 #119 (was a flat 55)
 		"ex8-90": return 55.0  # Professor Cozmo's Discovery (Supporter): draw 2-3
-		"ex8-92": return 35.0  # Strength Charm (Tool): one-off +10 damage
+		"ex8-92": return _cpu_score_strength_charm()      # AUDIT 2026-11-18 #121 (was a flat 35)
 		# ── EX9 (EX Emerald) — mostly ex1/ex2 reprints, mirror those scores ──
 		"ex9-76": return _cpu_score_full_heal()          # Double Full Heal
-		"ex9-77": return 55.0                            # Lanette's Net Search (Supporter)
+		"ex9-77": return _cpu_score_lanettes_net_search()   # AUDIT 2026-11-18 #75
 		"ex9-78": return 30.0                            # Lum Berry (Tool): between-turn status cure
 		"ex9-79": return _cpu_score_energy_fetch(2, true)  # OLD ISSUE 373: Mr. Stone's Project (Supporter)
 		"ex9-80": return 30.0                            # Oran Berry (Tool): between-turn heal 20
@@ -5702,7 +5733,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"ex15-78": return 30.0  # Old Rod (Item): coin-flip discard recovery
 		"ex15-79": return _cpu_score_evolution_search()  # OLD ISSUE 373: Professor Elm's Training Method (Supporter)
 		"ex15-80": return 55.0  # Professor Oak's Research (Supporter): shuffle hand, draw 5
-		"ex15-81": return 35.0  # Strength Charm (Tool): one-off +10 damage
+		"ex15-81": return _cpu_score_strength_charm()     # AUDIT 2026-11-18 #121
 		"ex15-82": return 60.0  # TV Reporter (Supporter): net +2 cards
 		"ex15-83": return _cpu_score_switch()  # Switch (Item)
 		# Holon Legacy (ex15-74 Stadium) uses the generic stadium-play heuristic.
@@ -5747,7 +5778,10 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"np-27", "np-36": return _cpu_score_np_tropical_tidal_wave()  # coin-flip Trainer wipe, favors whichever side has more in play
 		# Championship Arena (Stadium) uses the generic stadium heuristic.
 		# ── EX5 (EX HIDDEN LEGENDS) ──
-		"ex5-84", "ex5-85", "ex5-86": return 35.0  # Ancient Technical Machine [Ice/Rock/Steel]: extra attack option
+		# AUDIT 2026-11-18 #94-#96: only when its attack does something on this board and the Active may hold it.
+		"ex5-84": return _cpu_score_ex5_atm("ice generator")     # Ancient Technical Machine [Ice]
+		"ex5-85": return _cpu_score_ex5_atm("stone generator")   # Ancient Technical Machine [Rock]
+		"ex5-86": return _cpu_score_ex5_atm("steel generator")   # Ancient Technical Machine [Steel]
 		"ex5-90": return _cpu_score_life_herb()  # Life Herb: coin-flip full cure + heal 60 (excludes ex)
 		"ex5-92": return 55.0  # Steven's Advice (Supporter): draw = opponent's Pokemon in play
 		# Ancient Tomb / Desert Ruins / Island Cave / Magnetic Storm (Stadiums) use the generic heuristic.
@@ -5856,6 +5890,13 @@ func _cpu_score_stadium_generic(card: card_object) -> float:
 		"ex6-94":    # Mt. Moon: Pokémon under 70 max HP can't use Poké-Powers
 			var small := func(p): return p.get_max_hp() < 70 and has_power.call(p)
 			return s + 15.0 * (theirs.filter(small).size() - mine.filter(small).size())
+		"ex8-91":    # AUDIT 2026-11-18 #120 Space Center: ignore Basic (non-ex, non-owner) Poké-Bodies
+			var sc_body := func(p): return main.is_basic_pokemon(p) and not main.is_ex_pokemon(p) and not ("'s " in p.metadata.get("name", "")) \
+				and p.metadata.get("abilities", []).any(func(a): return a.get("type", "") == "Poké-Body")
+			return s + 12.0 * (theirs.filter(sc_body).size() - mine.filter(sc_body).size())
+		"ex8-89":    # AUDIT 2026-11-18 #120 Meteor Falls: Active Evolved non-ex may use its pre-evolutions' attacks
+			var mf_ev := func(p): return not p.attached_pre_evolutions.is_empty() and not main.is_ex_pokemon(p)
+			return s + 10.0 * (mine.filter(mf_ev).size() - theirs.filter(mf_ev).size())
 		"ex7-90":    # Rocket's Tricky Gym: Dark / Rocket's Pokémon may use its attacks
 			var rk := func(p): return "Dark" in p.metadata.get("name", "") or "Rocket's" in p.metadata.get("name", "")
 			return s + 12.0 * (mine.filter(rk).size() - theirs.filter(rk).size())
@@ -5928,7 +5969,7 @@ func _cpu_score_ex2_rare_candy() -> float:
 # WALLY'S TRAINING (ex2-89): only useful if the Active can be evolved by a card in the deck.
 func _cpu_score_ex2_wallys_training() -> float:
 	var active = main.opponent_active_pokemon
-	if active == null or active.placed_on_field_this_turn:
+	if active == null or not (active in main.get_pokemon_that_may_evolve_now(true)):   # AUDIT 2026-11-18 #76
 		return -100.0
 	for c in main.opponent_deck:
 		if c.metadata.get("supertype","") == "Pokémon" and main.can_evolve_from(c, active):
@@ -8339,6 +8380,40 @@ func cpu_best_damage_vs(target: card_object) -> int:
 # OLD ISSUE 312: board-aware value of a utility attack (no damage, nothing the text parser scores). Positive
 # when the effect actually helps right now, negative when it would do nothing or hurt. Comparable to the
 # damage scale used by cpu_phase_attack (score ≈ 2 × damage).
+# AUDIT 2026-11-18 #94-#96: what an Ancient Technical Machine attack does on this board (-50 = nothing).
+#   Ice Generator: discards the player's Trainers in play (Tools / TMs on their Pokémon, their Stadium) + a shield.
+#   Stone Generator: devolves each of the player's Evolved Pokémon.
+#   Steel Generator: needs a Power/Body on the player's Active and basic Energy elsewhere on their side to move onto it.
+func _cpu_atm_attack_value(n: String) -> float:
+	var foe_field: Array = main.card_ops.get_all_pokemon_in_play(false)
+	match n:
+		"ice generator":
+			var k := 0
+			for p in foe_field:
+				k += p.attached_cards.filter(func(c): return c.metadata.get("supertype", "") == "Trainer").size()
+			if main.current_stadium_card != null and not main.current_stadium_owner_is_opponent:
+				k += 1
+			return 40.0 + 15.0 * float(k) if k > 0 else -50.0
+		"stone generator":
+			var ev := foe_field.filter(func(p): return not p.attached_pre_evolutions.is_empty()).size()
+			return 30.0 + 20.0 * float(ev) if ev > 0 else -50.0
+		"steel generator":
+			var fa = main.player_active_pokemon
+			if fa == null or fa.metadata.get("abilities", []).is_empty():
+				return -50.0
+			for p in foe_field:
+				if p != fa and p.attached_energies.any(func(e): return main.attack_effects.gym1_is_basic_energy(e)):
+					return 35.0
+			return -50.0
+	return -50.0
+
+func _cpu_score_ex5_atm(attack_name: String) -> float:
+	var act = main.opponent_active_pokemon
+	if act == null or main.is_basic_pokemon(act) or main.is_ex_pokemon(act) or "'s " in act.metadata.get("name", ""):
+		return -100.0
+	var v := _cpu_atm_attack_value(attack_name)
+	return -100.0 if v <= 0.0 else clampf(v, 31.0, 75.0)
+
 func cpu_utility_attack_value(attack: Dictionary, me: card_object, foe: card_object, doomed: bool) -> float:
 	var n: String = attack.get("name", "").to_lower()
 	var t: String = attack.get("text", "").to_lower()
@@ -8355,6 +8430,8 @@ func cpu_utility_attack_value(attack: Dictionary, me: card_object, foe: card_obj
 		if deck.size() <= k: return -200.0
 		return float(min(k, max(0, 8 - hand.size()))) * 12.0
 	match n:
+		"ice generator", "stone generator", "steel generator":   # AUDIT 2026-11-18 #94-#96
+			return _cpu_atm_attack_value(n)
 		"call for family", "call for friend", "sprout", "jellyfish pod", "messenger":
 			var hits = deck.filter(func(c): return main.is_basic_pokemon(c) or c.metadata.get("supertype", "") in ["Pokémon", "Pokemon"]).size()
 			if hits == 0: return -60.0
@@ -9487,6 +9564,129 @@ func _cpu_score_gambler() -> float:
 		return 30.0
 	# With bigger hands, risk of losing good cards is too high
 	return -50.0
+
+# AUDIT 2026-11-18 #75: Lanette's Net Search - worth it by how many different-type Basics the deck can give that the
+# Bench has room for, less when the hand already holds Basics to bench; never with nothing to find.
+func _cpu_score_lanettes_net_search() -> float:
+	var types := {}
+	for c in main.opponent_deck:
+		if main.is_basic_pokemon(c) and "Baby" not in c.metadata.get("subtypes", []) and not c.metadata.get("types", []).is_empty():
+			types[c.metadata.get("types")[0]] = true
+	if types.is_empty():
+		return -100.0
+	var room: int = main.get_max_bench_size() - main.opponent_bench.size()
+	var hand_basics: int = main.opponent_hand.filter(func(c): return main.is_basic_pokemon(c)).size()
+	var useful: int = mini(mini(types.size(), 3), maxi(0, room - hand_basics))
+	if useful <= 0:
+		return 15.0   # still fills the hand with evolution bases, but low
+	return clampf(35.0 + 10.0 * float(useful) - 5.0 * float(hand_basics), 31.0, 70.0)
+
+# AUDIT 2026-11-18 #83/#85: Archie / Maxie - a Team Pokémon from `pool` straight onto the Bench as a Basic. Useless with a
+# full Bench or nothing to find; best when it skips evolving (a Stage 1 / Stage 2), worse when the Stage 2 lands at <= 20 HP.
+func _cpu_score_ex4_team_bench(team: String, pool: Array) -> float:
+	if main.opponent_bench.size() >= main.get_max_bench_size():
+		return -100.0
+	var cands: Array = pool.filter(func(c): return c.metadata.get("supertype", "") == "Pokémon" and team in c.metadata.get("name", ""))
+	if cands.is_empty():
+		return -100.0
+	var s := 45.0
+	for c in cands:
+		var st: Array = c.metadata.get("subtypes", [])
+		if "Stage 2" in st:
+			s = maxf(s, 70.0 if int(c.metadata.get("hp", "0")) > 40 else 30.0)
+		elif "Stage 1" in st:
+			s = maxf(s, 65.0)
+	return s
+
+# AUDIT 2026-11-18 #84/#86/#89: Dual Ball / Team Aqua Ball / Team Magma Ball - a (coin-flip) Basic / Team search: useless
+# when the deck has nothing it can find; better with an empty-ish Bench.
+func _cpu_score_ex4_basic_search(any_stage: bool, team: String) -> float:
+	var cands: Array = main.opponent_deck.filter(func(c):
+		if c.metadata.get("supertype", "") != "Pokémon": return false
+		if team != "" and not (team in c.metadata.get("name", "")): return false
+		return any_stage or main.is_basic_pokemon(c))
+	if cands.is_empty():
+		return -100.0
+	var room: int = main.get_max_bench_size() - main.opponent_bench.size()
+	var s := 32.0 + 6.0 * float(mini(room, 3))
+	if get_all_cpu_field_pokemon().size() <= 2: s += 10.0
+	return clampf(s, 31.0, 60.0)
+
+# AUDIT 2026-11-18 #87/#90: Team Aqua / Magma Belt - only works when a Team Pokémon of that team in play (the Active best)
+# has an evolution left in the deck.
+func _cpu_score_ex4_belt(team: String) -> float:
+	var best := -100.0
+	for p in get_all_cpu_field_pokemon():
+		if not (team in p.metadata.get("name", "")):
+			continue
+		if p.attached_cards.any(func(t): return "Pokémon Tool" in t.metadata.get("subtypes", [])):
+			continue
+		if main.opponent_deck.any(func(c): return c.metadata.get("supertype", "") == "Pokémon" and main.can_evolve_from(c, p)):
+			best = maxf(best, 50.0 if p == main.opponent_active_pokemon else 35.0)
+	return best
+
+# AUDIT 2026-11-18 #88/#91: Team Aqua / Magma Conspirator - up to 2 Basic Team Pokémon / basic Energy from the deck.
+func _cpu_score_ex4_conspirator(team: String) -> float:
+	var n := 0
+	var energy_need := 0.0
+	for c in main.opponent_deck:
+		if c.metadata.get("supertype", "") == "Pokémon" and main.is_basic_pokemon(c) and team in c.metadata.get("name", ""):
+			n += 1
+		elif main.attack_effects.gym1_is_basic_energy(c):
+			n += 1
+			energy_need = maxf(energy_need, cpu_energy_need_value(c))
+	if n == 0:
+		return -100.0
+	var s := 35.0 + (10.0 if n >= 2 else 0.0) + clampf(energy_need - 10.0, 0.0, 20.0)
+	if main.opponent_bench.size() < main.get_max_bench_size(): s += 5.0
+	return clampf(s, 31.0, 70.0)
+
+# AUDIT 2026-11-18 #118: Energy Charge - (coin flip) 2 Energy cards from the discard back into the deck. Only worth a card
+# when the discard holds Energy and the deck is running short of it.
+func _cpu_score_ex8_energy_charge() -> float:
+	var k: int = main.opponent_discard_pile.filter(func(c): return c.metadata.get("supertype", "") == "Energy").size()
+	if k == 0:
+		return -100.0
+	var deck_e: int = main.opponent_deck.filter(func(c): return c.metadata.get("supertype", "") == "Energy").size()
+	if deck_e > 4:
+		return 10.0
+	return 25.0 + 10.0 * float(mini(2, k))
+
+# AUDIT 2026-11-18 #119: Master Ball - a Basic or Evolution card from the top 7. Scored like the other Pokémon searches
+# (no coin flip, so a little better); never with a thin deck or no Pokémon left in it.
+func _cpu_score_ex8_master_ball() -> float:
+	if main.opponent_deck.size() < 2 or not main.opponent_deck.any(func(c): return c.metadata.get("supertype", "") == "Pokémon"):
+		return -100.0
+	return clampf(_cpu_score_poke_ball() + 8.0, -100.0, 75.0)
+
+# AUDIT 2026-11-18 #121: Strength Charm (+10 to the Active, discarded at the end of the turn its holder attacks) - best on
+# an Active that attacks this turn when the +10 turns it into a KO; a weak play otherwise.
+func _cpu_score_strength_charm() -> float:
+	var me = main.opponent_active_pokemon
+	var foe = main.player_active_pokemon
+	if me == null or foe == null:
+		return 10.0
+	if me.attached_cards.any(func(t): return "Pokémon Tool" in t.metadata.get("subtypes", [])):
+		return -100.0
+	var best: int = main.attack_effects.r4_best_payable_damage(me)
+	if best <= 0 or main.turn_number <= 1:
+		return 15.0
+	if main.attack_effects.r4_would_ko(me, foe, best + 10) and not main.attack_effects.r4_would_ko(me, foe, best):
+		return 70.0
+	return 25.0
+
+# AUDIT 2026-11-18 #170: Balloon Berry (free retreat once) - worth it on an Active that is stuck (Retreat Cost 2+) and
+# wants out; pointless at Retreat Cost 0.
+func _cpu_score_balloon_berry() -> float:
+	var act = main.opponent_active_pokemon
+	if act == null or act.attached_cards.any(func(t): return "Pokémon Tool" in t.metadata.get("subtypes", [])):
+		return -100.0
+	var rc: int = main.get_retreat_cost(act)
+	if rc <= 0:
+		return -100.0
+	if rc >= 2 and main.attack_effects.r4_cpu_wants_self_switch(act):
+		return 60.0
+	return 20.0 + 5.0 * float(rc)
 
 func _cpu_score_poke_ball() -> float:
 	# Poké Ball: coin flip search for any Basic or Evolution card

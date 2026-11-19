@@ -782,7 +782,7 @@
         ],
         "convertedEnergyCost": 3,
         "damage": "30×",
-        "text": "Flip a coins. This attack does 30 damage times the number of heads. If you get 2 or more heads, Dark Vileplume is now Confused (after doing damage)."
+        "text": "Flip 3 coins. This attack does 30 damage times the number of heads. If you get 2 or more heads, Dark Vileplume is now Confused (after doing damage)."
       }
     ],
     "weaknesses": [

@@ -124,6 +124,9 @@ var bench_setup_phase_active = false
 
 var player_energy_played_this_turn: bool = false
 var opponent_energy_played_this_turn: bool = false
+# AUDIT 2026-11-18 #48: the Pokémon this turn's normal (from-hand, rules) Energy attachment went to - Harvest Bounty.
+var player_energy_attached_to: card_object = null
+var opponent_energy_attached_to: card_object = null
 # MATCH EFFECT: extra_energy_per_turn — attach counters. The bools above keep meaning
 # "limit reached" so all existing readers work unchanged; these track how many so far.
 var player_energy_attach_count: int = 0
@@ -181,12 +184,25 @@ var player_ex8_bay_dance_pending: bool = false
 var opponent_ex8_bay_dance_pending: bool = false
 var player_ex8_bay_dance_active: bool = false
 var opponent_ex8_bay_dance_active: bool = false
+# AUDIT 2026-11-18 #115: side (is_opponent) -> the Pelipper that used Bay Dance (pending = set this turn, live = next turn).
+var ex8_bay_dance_src_pending: Dictionary = {}
+var ex8_bay_dance_src: Dictionary = {}
 # EX3/EX9 Dragon Dance: side-wide "your Active Pokemon do +N damage next turn" buff. Stores the bonus
 # amount (0 = inactive); pending set the turn Dragon Dance is used, promoted to active next turn.
 var player_dragon_dance_pending: int = 0
 var opponent_dragon_dance_pending: int = 0
 var player_dragon_dance_active: int = 0
 var opponent_dragon_dance_active: int = 0
+# AUDIT 2026-11-18 #78: "if any of your CURRENT Active Pokémon" - the Pokémon the buff belongs to (Dragon Dance / Crystal Laser).
+var player_dragon_dance_pending_src: card_object = null
+var opponent_dragon_dance_pending_src: card_object = null
+var player_dragon_dance_src: card_object = null
+var opponent_dragon_dance_src: card_object = null
+# AUDIT 2026-11-18 #140: Crystal Laser's +40 is only "to the Defending Pokémon" it was used on (null = any, Dragon Dance).
+var player_dragon_dance_pending_target: card_object = null
+var opponent_dragon_dance_pending_target: card_object = null
+var player_dragon_dance_target: card_object = null
+var opponent_dragon_dance_target: card_object = null
 
 # Mirror Move: stores the last attack result so Pidgeotto can copy it
 var last_attack_on_player: Dictionary = {}   # {"damage": int, "attack": Dictionary, "attacker_types": Array}
@@ -280,6 +296,7 @@ var opponent_neo4_stadium_used_this_turn: bool = false
 var vermilion_lt_surge_bonus_damage: int = 0          # +10 added by calculate_final_damage when set, cleared after read
 var vermilion_lt_surge_self_damage_pending: int = 0   # 10 applied to attacker after damage resolves
 var vermilion_lt_surge_attacker_is_opponent: bool = false  # which side the pending self-damage belongs to
+var vermilion_lt_surge_attacker: card_object = null   # AUDIT 2026-11-18 #24: the Lt. Surge Pokémon the flip belongs to
 
 # POKEMON POWER VARIABLES
 var power_menu_active: bool = false
@@ -7534,6 +7551,7 @@ func perform_energy_attachment() -> void:
 	# MATCH EFFECT: extra_energy_per_turn — flag only set once the per-turn limit is reached
 	player_energy_attach_count += 1
 	player_energy_played_this_turn = player_energy_attach_count >= match_effects.energy_attach_limit(false)
+	player_energy_attached_to = target_pokemon   # AUDIT 2026-11-18 #48
 	
 	# Clear the attachment variables and exit attach mode
 	energy_card_awaiting_target = null
@@ -7591,7 +7609,7 @@ func perform_energy_attachment() -> void:
 	await powers_and_bodies.check_lightning_burst(target_pokemon, energy_card, false)
 	if _should_bail(): return
 	# NEO4 Conductivity (Dark Ampharos neo4-1): opponent's Ampharos deals 10 to this Pokemon
-	powers_and_bodies.check_neo4_conductivity(target_pokemon, false)
+	await powers_and_bodies.check_neo4_conductivity(target_pokemon, false)   # AUDIT 2026-11-18 #135
 	if _should_bail(): return
 	# NP Pure Body (Suicune): discard an energy after Water Energy is attached
 	await powers_and_bodies.check_pure_body_discard(energy_card, target_pokemon, false)
@@ -8094,6 +8112,7 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 	card.attached_as_energy = false
 	card.pokemon_energy_types = []
 	# EX15: markers and Holon Veil grant are cleared when a Pokémon leaves play.
+	card.has_char_counter = false   # AUDIT 2026-11-18 #133: a Char counter leaves play with the Pokémon
 	card.imprison_markers = 0
 	card.shockwave_markers = 0
 	card.granted_delta = false
@@ -8311,10 +8330,14 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 	# OLD ISSUE 291: no attack is in progress between turns (safety net for any attack exit path that
 	# didn't close its context) — Fortitude and Transparency rely on this being accurate.
 	attack_effects.end_attack()
+	await vermilion_settle()   # AUDIT 2026-11-18 #24
+	if _should_bail(): return
 
 	player_energy_played_this_turn = false
 	player_retreated_this_turn = false
 	opponent_energy_played_this_turn = false
+	player_energy_attached_to = null   # AUDIT 2026-11-18 #48
+	opponent_energy_attached_to = null
 	opponent_retreated_this_turn = false
 	player_energy_attach_count = 0
 	opponent_energy_attach_count = 0
@@ -8337,19 +8360,35 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		player_ex8_bay_dance_active = false
 		opponent_ex8_bay_dance_active = opponent_ex8_bay_dance_pending
 		opponent_ex8_bay_dance_pending = false
+		ex8_bay_dance_src.erase(false)
+		ex8_bay_dance_src[true] = ex8_bay_dance_src_pending.get(true, null)
+		ex8_bay_dance_src_pending.erase(true)
 	else:
 		opponent_ex8_bay_dance_active = false
 		player_ex8_bay_dance_active = player_ex8_bay_dance_pending
 		player_ex8_bay_dance_pending = false
+		ex8_bay_dance_src.erase(true)
+		ex8_bay_dance_src[false] = ex8_bay_dance_src_pending.get(false, null)
+		ex8_bay_dance_src_pending.erase(false)
 	# EX3/EX9 Dragon Dance: same pending→active promotion as Bay Dance above.
 	if beginning_is_opponent:
 		player_dragon_dance_active = 0
+		player_dragon_dance_src = null
 		opponent_dragon_dance_active = opponent_dragon_dance_pending
+		opponent_dragon_dance_src = opponent_dragon_dance_pending_src
+		opponent_dragon_dance_target = opponent_dragon_dance_pending_target
 		opponent_dragon_dance_pending = 0
+		opponent_dragon_dance_pending_src = null
+		opponent_dragon_dance_pending_target = null
 	else:
 		opponent_dragon_dance_active = 0
+		opponent_dragon_dance_src = null
 		player_dragon_dance_active = player_dragon_dance_pending
+		player_dragon_dance_src = player_dragon_dance_pending_src
+		player_dragon_dance_target = player_dragon_dance_pending_target
 		player_dragon_dance_pending = 0
+		player_dragon_dance_pending_src = null
+		player_dragon_dance_pending_target = null
 	xxxxx_used_this_turn = false
 	# EX8 Sunbeam (Solrock): recompute Lunatone max-HP boost each turn transition.
 	powers_and_bodies.refresh_ex8_sunbeam_hp()
@@ -8521,6 +8560,9 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		return
 
 	await check_all_knockouts()
+	if _should_bail():
+		return
+	await powers_and_bodies.process_char_counters_between_turns()   # AUDIT 2026-11-18 #28
 
 	if _should_bail():
 		return
@@ -8682,6 +8724,11 @@ func clear_defensive_statuses(pokemon: card_object, is_opponent: bool) -> void:
 		print("EXPIRED: ", pokemon_name, " destiny bond wore off")
 		changed = true
 
+	# AUDIT 2026-11-18 #2: Mirror Shell lasts only during the opponent's next turn.
+	if pokemon.mirror_shell_active:
+		pokemon.mirror_shell_active = false
+		changed = true
+
 	if changed:
 		update_status_icons(pokemon, is_opponent)
 
@@ -8836,6 +8883,9 @@ func perform_evolution(is_opponent: bool, defer_after: bool = false) -> void:
 	evo_card.defender_turns_remaining = target_card.defender_turns_remaining
 	evo_card.defender_count = target_card.defender_count
 	evo_card.pluspower_count = target_card.pluspower_count
+	# AUDIT 2026-11-18 #133: "Char counters stay on the Pokémon as long as it's in play" - evolving keeps it.
+	evo_card.has_char_counter = target_card.has_char_counter
+	target_card.has_char_counter = false
 	target_card.defender_turns_remaining = -1
 	target_card.defender_count = 0
 	target_card.pluspower_count = 0
@@ -8954,6 +9004,10 @@ func _after_evolution(evo_card: card_object, target_card: card_object, is_oppone
 	# EX3 Loose Shell (Ninjask ex3-18): when Ninjask evolves from hand, may search deck for Shedinja onto Bench
 	elif evo_card.has_ability("Loose Shell"):
 		await powers_and_bodies.trigger_ex3_loose_shell(evo_card, is_opponent)
+	# AUDIT 2026-11-18 #26: Giovanni's Persian (gym2-8, Stage 1) is played from the hand by evolving - Call the Boss
+	# only ever ran on the bench-from-hand paths, so it never triggered.
+	elif evo_card.has_ability("Call the Boss"):
+		await powers_and_bodies.trigger_call_the_boss(evo_card, is_opponent)
 	# EX5 Healing Shower (Milotic ex5-12): on evolve, may remove all damage from all Pokemon (excl ex)
 	elif evo_card.has_ability("Healing Shower"):
 		await powers_and_bodies.trigger_ex5_healing_shower(evo_card, is_opponent)
@@ -9755,6 +9809,22 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 			show_floating_label("DODGED!", ndg_pos, Color.BLUE, true)
 			return
 
+	# AUDIT 2026-11-18 #31: Reflect Shield (neo4-109 Shining Mewtwo) - "flip a coin. If heads, prevent all damage done
+	# to Shining Mewtwo from that attack ... and do 20 damage to the attacking Pokémon". Resolved BEFORE the damage lands
+	# (it used to fire after, from the on-damage hook, so it never prevented anything).
+	if defender.neo4_counter_flip_20 and final_damage > 0 and attacker != null:
+		defender.neo4_counter_flip_20 = false
+		await show_message(defender.metadata.get("name", "").to_upper() + "'S REFLECT SHIELD! FLIPPING...")
+		var rs_coin = await flip_coin(false, !is_opponent)
+		if _should_bail(): return
+		if rs_coin:
+			float_label_over(defender, "REFLECTED!", Color.BLUE, !is_opponent)
+			await card_ops.apply_bench_damage(attacker, 20, is_opponent, false)
+			if _should_bail(): return
+			display_pokemon(is_opponent)
+			await show_message("REFLECT SHIELD! 20 DAMAGE TO " + attacker.metadata.get("name","").to_upper() + "!")
+			return
+
 	# NEO2 Slime (Wooper neo2-71): if defender has slime_active, attacker must flip; tails = no damage
 	if defender.slime_active and final_damage > 0:
 		defender.slime_active = false
@@ -9868,7 +9938,7 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	await tutorial.on_attack_damage(attacker, defender, final_damage, modifiers, is_opponent)
 
 	# GYM1-120 Vermilion City Gym: queued self-damage from Lt. Surge tails — apply to attacker after damage resolves
-	if vermilion_lt_surge_self_damage_pending > 0 and attacker != null:
+	if vermilion_lt_surge_self_damage_pending > 0 and attacker != null and attacker == vermilion_lt_surge_attacker:   # AUDIT 2026-11-18 #24
 		# ISSUE #85 / ISSUE #61: PlusPower +10 each, Defender -20 each on this queued self-damage.
 		var v_self_dmg = apply_self_damage_modifiers(attacker, vermilion_lt_surge_self_damage_pending)
 		vermilion_lt_surge_self_damage_pending = 0
@@ -10366,10 +10436,12 @@ func calculate_final_damage(base_damage: int, attacking_types: Array, defending_
 				player_misty_boost_active = false
 
 	# GYM1-120 Vermilion City Gym — one-shot bonus damage from Lt. Surge attacker coin flip (set by pre-attack hook)
-	if damage > 0 and vermilion_lt_surge_bonus_damage > 0:
+	# AUDIT 2026-11-18 #24: only the Vermilion attacker's attack on its Defending Pokémon, while that attack is in
+	# progress (it used to leak to the next damage calc by anyone, CPU estimates included). Cleared by vermilion_settle().
+	if damage > 0 and vermilion_lt_surge_bonus_damage > 0 and attacker_pokemon != null and attacker_pokemon == vermilion_lt_surge_attacker \
+			and attack_effects.is_attack_in_progress() and defending_pokemon == attack_effects.current_defender:
 		damage += vermilion_lt_surge_bonus_damage
 		modifiers_applied.append("VERMILION +" + str(vermilion_lt_surge_bonus_damage))
-		vermilion_lt_surge_bonus_damage = 0
 	
 	# Apply Defender reduction (-20 damage per Defender attached to the defending pokemon)
 	if damage > 0 and not is_self_damage:
@@ -10713,6 +10785,8 @@ func sweep_illegal_special_energy() -> void:
 func check_all_knockouts() -> Dictionary:
 	var results = {"player_kos": 0, "opponent_kos": 0}
 	sweep_illegal_special_energy()   # ISSUE #429
+	await powers_and_bodies.sweep_scram()   # AUDIT 2026-11-18 #127
+	if _should_bail(): return results
 	# OLD ISSUE 309: a face-down Secret Plan card is flipped before it could be Knocked Out / once it's Active
 	await card_ops.reveal_pending_secret_plans()
 	if _should_bail(): return results
@@ -11143,6 +11217,17 @@ func clear_all_statuses(pokemon: card_object, is_opponent: bool) -> void:
 	pokemon.is_invincible = false
 	pokemon.has_destiny_bond = false
 	pokemon.shielded_damage_threshold = 0
+	pokemon.mirror_shell_active = false   # AUDIT 2026-11-18 #2: Benching ends Mirror Shell
+	if pokemon.dodge_active:   # AUDIT 2026-11-18 #25: Shadow Images ends when Benched or evolved
+		pokemon.dodge_active = false
+		had_status = true
+	pokemon.neo4_counter_flip_20 = false   # AUDIT 2026-11-18 #31: Reflect Shield ends when Benched
+	pokemon.clear_effect("ecard2_ion_coating")   # AUDIT 2026-11-18 #149: "ends if your Active Pokémon retreats"
+	# AUDIT 2026-11-18 #123: Crosscounter / Fire Wall / Deflector were only cleared on the Active at the end of the
+	# opponent's turn - a Pokémon Benched during that turn kept them for later.
+	pokemon.counter_attack_double = false
+	pokemon.counter_attack_fixed = 0
+	pokemon.damage_halved_next_turn = false
 	# OLD ISSUE 291 / #301: "Benching either Pokemon ends this effect" (Leer, Tail Wag, Intimidate) and Ink
 	# Spurt "lasts until the Defending Pokemon evolves or is Benched".
 	pokemon.attack_blocked_next_turn = false
@@ -11170,16 +11255,18 @@ func clear_all_statuses(pokemon: card_object, is_opponent: bool) -> void:
 
 	# GYM2 Koga's Ditto Giant Growth: benching ends the HP / Pound boost
 	if pokemon.ditto_giant_growth:
+		# AUDIT 2026-11-18 #125: the damage counters stay when the boost ends (80 max with 30 damage -> 10/40; 40+ damage
+		# -> 0, Knocked Out by the next KO check). It used to cap at the printed HP, wiping the damage.
+		var gg_dmg: int = pokemon.get_max_hp() - pokemon.current_hp
 		pokemon.ditto_giant_growth = false
 		pokemon.max_hp_override = 0
-		var real_max = int(pokemon.metadata.get("hp", "0"))
-		if pokemon.current_hp > real_max:
-			pokemon.current_hp = real_max
+		pokemon.current_hp = maxi(0, pokemon.get_max_hp() - gg_dmg)
 	
-	# Clear disabled attacks that are "while_in_play" (not "entire_game")
+	# Clear turn-limited disabled attacks. AUDIT 2026-11-18 #1: "while_in_play" (Leek Slap: "even putting
+	# Farfetch'd on the Bench won't let you use it again") survives benching - only leaving play clears it.
 	var keys_to_remove = []
 	for atk_name in pokemon.disabled_attacks:
-		if pokemon.disabled_attacks[atk_name] != "entire_game":
+		if not pokemon.disabled_attacks[atk_name] in ["entire_game", "while_in_play"]:
 			keys_to_remove.append(atk_name)
 	for key in keys_to_remove:
 		pokemon.disabled_attacks.erase(key)
@@ -11399,8 +11486,13 @@ func get_retreat_cost(pokemon: card_object) -> int:
 		var bp_abilities = bp.metadata.get("abilities", [])
 		for _ability in bp_abilities:
 			if _ability.get("name", "") == "Retreat Aid":
-				if bp.special_condition not in ["Paralyzed", "Asleep", "Confused"] and not bp.is_poisoned:
-					cost = max(0, cost - 1)
+				# AUDIT 2026-11-18 #19: ex6 Dodrio's Body is ColorlessColorless less, excludes Pokémon-ex / Baby
+				# Pokémon, and works through Special Conditions (Body); the shared gate knows Powers vs Bodies.
+				if not powers_and_bodies.is_power_blocked_by_status(bp):
+					var ra_text: String = str(_ability.get("text", "")).to_lower()
+					if "excluding pokémon-ex" in ra_text and (is_ex_pokemon(pokemon) or "Baby" in pokemon.metadata.get("subtypes", [])):
+						break
+					cost = max(0, cost - (2 if "colorlesscolorless less" in ra_text else 1))
 					break
 
 	# EX15 Stages of Evolution (Jynx δ ex15-17): while an Evolved Jynx with this Body is in play, you pay
@@ -11687,6 +11779,7 @@ func maybe_vermilion_lt_surge_flip(attacker: card_object, is_opponent: bool) -> 
 	if _should_bail(): return
 	var heads = await flip_coin(false, is_opponent)
 	if _should_bail(): return
+	vermilion_lt_surge_attacker = attacker   # AUDIT 2026-11-18 #24
 	if heads:
 		vermilion_lt_surge_bonus_damage = 10
 		vermilion_lt_surge_self_damage_pending = 0
@@ -11697,6 +11790,28 @@ func maybe_vermilion_lt_surge_flip(attacker: card_object, is_opponent: bool) -> 
 		vermilion_lt_surge_attacker_is_opponent = is_opponent
 		await show_message("TAILS! " + attacker.metadata.get("name", "") + " takes 10 self-damage after the attack.")
 	if _should_bail(): return
+
+# AUDIT 2026-11-18 #24: Vermilion City Gym tails is "10 damage to itself in addition to whatever its attack usually
+# does" - an attack that dealt no damage to the Defender never paid it, and the pending 10 (or a heads +10) leaked onto
+# the next damage by anyone. Every turn ends through inbetween_turn_checks, so the attack's leftovers settle here.
+func vermilion_settle() -> void:
+	var atk_mon: card_object = vermilion_lt_surge_attacker
+	var pending: int = vermilion_lt_surge_self_damage_pending
+	var side: bool = vermilion_lt_surge_attacker_is_opponent
+	vermilion_lt_surge_bonus_damage = 0
+	vermilion_lt_surge_self_damage_pending = 0
+	vermilion_lt_surge_attacker = null
+	if pending <= 0 or atk_mon == null or atk_mon.current_hp <= 0:
+		return
+	if atk_mon != (opponent_active_pokemon if side else player_active_pokemon) and not (atk_mon in (opponent_bench if side else player_bench)):
+		return
+	var v_self_dmg = apply_self_damage_modifiers(atk_mon, pending)
+	if v_self_dmg > 0:
+		float_label_over(atk_mon, "VERMILION -" + str(v_self_dmg), Color.RED, side)
+		atk_mon.current_hp = max(0, atk_mon.current_hp - v_self_dmg)
+		display_hp_circles_above_align(atk_mon, side)
+		print("AUDIT 2026-11-18 #24: Vermilion tails self-damage settled after a no-damage attack")
+		await check_all_knockouts()
 
 # Loads the small card image texture for any card object by its UID
 func get_card_texture(card: card_object) -> Texture2D:
