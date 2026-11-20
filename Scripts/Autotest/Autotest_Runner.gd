@@ -1116,7 +1116,7 @@ func _extra_checks(m) -> void:
 				# "You can attach this card to your Pokémon that has..." (Bounce Energy) is checked only AT attach time —
 				# Bounce itself then returns that basic Energy, so failing it later is legal.
 				var attach_time_only: bool = "you can attach this card to" in str(e.metadata.get("rules", [])).to_lower()
-				if "Special" in e.metadata.get("subtypes", []) and not attach_time_only and not bool(m.special_energy_effects.can_attach_to(e, p).get("allowed", true)):
+				if "Special" in e.metadata.get("subtypes", []) and not attach_time_only and not bool(m.special_energy_effects.type_lock_check(e, p).get("allowed", true)):
 					_problem("ILLEGAL ENERGY", "%s's %s holds %s, which can't be attached to it" % [nm, _cname(p), _cname(e)], "illeg" + str(e.get_instance_id()))
 
 

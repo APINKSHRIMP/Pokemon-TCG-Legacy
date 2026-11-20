@@ -229,6 +229,10 @@ var forced_switch_selection_active: bool = false
 # Track whether an attack was made this turn (for mirror move clearing)
 var player_attacked_this_turn: bool = false
 var opponent_attacked_this_turn: bool = false
+# AUDIT 2026-11-19: "did this side attack in the turn that just ended" - kept for gym1_end_of_turn_cleanup (Memory Berry / Crystal Shard
+# discard), because inbetween_turn_checks clears the two flags above before that cleanup runs.
+var player_attacked_turn_just_ended: bool = false
+var opponent_attacked_turn_just_ended: bool = false
 
 # TRAINER CARD VARIABLES
 var trainer_card_mode_active: bool = false
@@ -5420,6 +5424,16 @@ func animate_attach_to_pokemon(card: card_object, target: card_object,
 # behind a timer that had nothing to do with it. Awaiting means the Pokemon's own
 # flight (the caller's next step on a knockout) cannot start until the last energy
 # has actually landed.
+func _recycle_energy_to_hand(energy: card_object, is_opponent: bool) -> bool:
+	if energy.metadata.get("name", "") != "Recycle Energy":
+		return false
+	var hand = opponent_hand if is_opponent else player_hand
+	energy.current_location = "hand"
+	if not hand.has(energy):
+		hand.append(energy)
+	refresh_hand_display(is_opponent)
+	return true
+
 func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_opponent: bool) -> void:
 	var discard_node = opponent_discard_icon if is_opponent else player_discard_icon
 	var discard_pile = opponent_discard_pile if is_opponent else player_discard_pile
@@ -5434,6 +5448,8 @@ func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_o
 		for energy in energy_cards:
 			if energy in pokemon.attached_energies:
 				pokemon.attached_energies.erase(energy)
+				if _recycle_energy_to_hand(energy, is_opponent):
+					continue
 				energy.current_location = "discard"
 				discard_pile.append(energy)
 		update_discard_pile_display(is_opponent)
@@ -5453,6 +5469,11 @@ func animate_energies_to_discard(energy_cards: Array, pokemon: card_object, is_o
 		# Remove this energy from the pokemon's attached list NOW,
 		# so the redraw reflects one fewer energy each frame
 		pokemon.attached_energies.erase(energy)
+
+		# AUDIT 2026-11-19: Recycle Energy returns to the hand when put into the discard pile from play (KO, retreat, Trainers).
+		if _recycle_energy_to_hand(energy, is_opponent):
+			display_active_pokemon_energies(is_opponent)
+			continue
 
 		# Actually add the energy to the discard pile array
 		energy.current_location = "discard"
@@ -8426,6 +8447,8 @@ func inbetween_turn_checks(player_turn_just_ended: bool = true) -> void:
 		opponent_healing_field_used_this_turn = false
 		opponent_neo4_stadium_used_this_turn = false
 	
+	player_attacked_turn_just_ended = player_attacked_this_turn   # AUDIT 2026-11-19
+	opponent_attacked_turn_just_ended = opponent_attacked_this_turn
 	# Mirror move tracking: clear if the side that just ended their turn didn't attack
 	if player_turn_just_ended:
 		if not player_attacked_this_turn:

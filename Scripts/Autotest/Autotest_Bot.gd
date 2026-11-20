@@ -710,7 +710,11 @@ func _smart_multi_pick(pool: Array) -> bool:
 		if m.trainer_discard_selected.size() >= want:
 			break
 		if c not in m.trainer_discard_selected:
+			# Only one click per frame counts, so never spend it on a card the prompt's own rule refuses.
+			if m.trainer_discard_validator.is_valid() and not m.trainer_discard_validator.call(c, m.trainer_discard_selected.duplicate()):
+				continue
 			_click(c)
+			break
 	if _press_action():
 		_log("smart multi-pick %d on '%s'" % [m.trainer_discard_selected.size(), m.header_label.text])
 		return true

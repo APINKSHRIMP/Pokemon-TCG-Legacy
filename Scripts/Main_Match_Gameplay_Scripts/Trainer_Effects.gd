@@ -1228,6 +1228,13 @@ func validate_trainer_can_be_played(card: card_object, is_opponent: bool) -> Str
 	if "Stadium" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex13_delta_block_active(is_opponent):
 		return "Delta Block: you can't play Stadium cards!"
 
+	# AUDIT 2026-11-19: "If a Stadium card with the same name is in play, you can't play this card." (20 ex/pop cards). Only
+	# cards that PRINT the clause are refused - older Stadiums may replace a same-named one.
+	if "Stadium" in card.metadata.get("subtypes", []) and main.current_stadium_card != null \
+			and main.current_stadium_card.metadata.get("name", "") == card.metadata.get("name", "") \
+			and "with the same name is in play" in " ".join(PackedStringArray(card.metadata.get("rules", []))).to_lower():
+		return card.metadata.get("name", "") + ": a Stadium with the same name is already in play!"
+
 	# ex9 Mystic Scale (Milotic ex ex9-96): while a Milotic ex is in play, no player can play a
 	# Technical Machine card.
 	if "Technical Machine" in card.metadata.get("subtypes", []) and main.powers_and_bodies.is_ex9_mystic_scale_in_play():
@@ -3430,6 +3437,11 @@ func effect_potion(is_opponent: bool) -> void:
 ## for the Pokémon it may go on; an invalid Callable when the Tool has no such rule. Team Magma Belt was
 ## going onto any Pokémon (autotester: Diglett).
 func tool_team_filter(card: card_object) -> Callable:
+	# AUDIT 2026-11-19: Curse Powder (ex10-80) goes on an Evolved Pokémon that is not a Pokémon-ex.
+	if card.uid.to_lower() == "ex10-80":
+		return func(p):
+			var subs: Array = p.metadata.get("subtypes", [])
+			return not main.is_basic_pokemon(p) and "EX" not in subs and "ex" not in subs
 	var rules: String = " ".join(card.metadata.get("rules", []))
 	for team in ["Team Aqua", "Team Magma"]:
 		if ("with " + team + " in its name") in rules:
@@ -4497,7 +4509,7 @@ func gym1_end_of_turn_cleanup(side_is_opponent: bool) -> void:
 			main.update_discard_pile_display(side_is_opponent)
 
 		# ECARD2 Memory Berry (ecard2-128): discarded at the end of any turn its holder attacked
-		var attacked_this_turn = main.opponent_attacked_this_turn if side_is_opponent else main.player_attacked_this_turn
+		var attacked_this_turn = main.opponent_attacked_turn_just_ended if side_is_opponent else main.player_attacked_turn_just_ended   # AUDIT 2026-11-19: the live flags are already cleared here
 		if attacked_this_turn:
 			var mb_card: card_object = null
 			for ac in pokemon.attached_cards:

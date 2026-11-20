@@ -74,7 +74,12 @@ func _register_all_powers() -> void:
 	_power_dispatch["Special Delivery"]     = func(p): await power_special_delivery(p)
 	_power_dispatch["Solar Power"]          = func(p): await power_solar_power(p)
 	_power_dispatch["[Join]"]               = func(p): await power_join_unown(p)
-	_power_dispatch["Lucky Stadium"]        = func(p): await main.trainer_effects.basep_lucky_stadium_activate(false)
+	_power_dispatch["Lucky Stadium"]        = func(p):
+		# AUDIT 2026-11-19: basep-41 and neo4-100 share this name; neo4-100 has its own once-per-turn flag (the basep handler never set it, so the menu entry never went away).
+		if main.current_stadium_card != null and main.current_stadium_card.uid.to_lower() == StadiumIds.NEO4_LUCKY_STADIUM:
+			await main.trainer_effects.neo4_lucky_stadium_activate(false)
+		else:
+			await main.trainer_effects.basep_lucky_stadium_activate(false)
 	_power_dispatch["Healing Field"]        = func(p): await main.trainer_effects.neo3_healing_field_activate(false)
 	# ISSUE #72: Chain Reaction (basep-11 Eevee) is a TRIGGERED power — "can only be used when a
 	# Pokémon evolves". It is fired from perform_evolution via trigger_chain_reaction_after_evolution,
@@ -17015,6 +17020,9 @@ func check_ex10_curse_powder(pokemon: card_object, attacker: card_object, is_pok
 	for ac in pokemon.attached_cards:
 		if ac.uid.to_lower() == "ex10-80": has_tool = true
 	if not has_tool: return
+	# Only works on an Evolved Pokémon that isn't a Pokémon-ex (printed rule: otherwise the Tool is discarded).
+	var subs: Array = pokemon.metadata.get("subtypes", [])
+	if "Basic" in subs or "EX" in subs or "ex" in subs: return
 	var active = main.opponent_active_pokemon if is_pokemon_opp else main.player_active_pokemon
 	if pokemon != active: return
 	if attacker.is_owner_opp(main) == is_pokemon_opp: return

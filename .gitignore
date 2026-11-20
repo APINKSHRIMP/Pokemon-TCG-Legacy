@@ -21,3 +21,9 @@ CLAUDE.md
 
 # Office lock files (exist while a workbook is open)
 ~$*
+
+# Card audit tooling and output (kept on disk, never committed)
+audit_out/
+Scripts/Utilities/audit/
+AUDIT_FINDINGS_*.md
+Scripts/Utilities/attack_sfx_timing_audit.py

@@ -774,6 +774,21 @@ func attack_unusable_reason(attack: Dictionary, attacker: card_object) -> String
 		return attacker.metadata.get("name", "") + " has no damage counters!"
 	if ("unless " + nm + " has 2 or more damage counters") in t and attacker.get_damage_counters() < 2:
 		return attacker.metadata.get("name", "") + " needs 2 or more damage counters!"
+	# AUDIT 2026-11-20: "Discard N <Type> Energy card(s) attached to X in order to use this attack" is a cost. The attack is
+	# payable with Double Rainbow Energy (counts as 2 of any type) yet only real <Type> Energy cards can be discarded, so
+	# Typhlosion's Flame Wheel showed as usable and then did nothing. Disable the row when too few qualifying cards are attached.
+	var disc_re := RegEx.new()
+	disc_re.compile("discard (\\d+|an?) (?:(fire|water|grass|lightning|psychic|fighting|darkness|metal) )?energy cards? attached to [^.]*?in order to use this attack")
+	var disc_m := disc_re.search(t)
+	if disc_m != null:
+		var need_n: int = 1 if disc_m.get_string(1) in ["a", "an"] else int(disc_m.get_string(1))
+		var need_type: String = disc_m.get_string(2).capitalize()
+		var have_n := 0
+		for e in attacker.attached_energies:
+			if need_type == "" or need_type in main.get_energy_provided_by_card(e):
+				have_n += 1
+		if have_n < need_n:
+			return "Needs " + str(need_n) + " " + (need_type + " " if need_type != "" else "") + "Energy card(s) to discard!"
 	if "have the same number of energy cards attached" in t and defender != null \
 			and attacker.attached_energies.size() != defender.attached_energies.size():
 		return "Both Pokémon need the same number of Energy cards attached!"

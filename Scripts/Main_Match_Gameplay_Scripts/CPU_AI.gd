@@ -3416,6 +3416,12 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 
 		var score = 0.0
 		var damage_range = main.attack_effects.estimate_attack_damage_range(damage_source_attack, main.opponent_active_pokemon, main.player_active_pokemon)
+		# AUDIT 2026-11-19: Super Metronome only copies on HEADS - the copied attack's damage is a coin flip, never a
+		# guaranteed KO (autotester: Super Metronome beat a guaranteed Retaliate KO).
+		if damage_source_attack != attack and "flip a coin" in str(attack.get("text", "")).to_lower():
+			damage_range = damage_range.duplicate()
+			damage_range["min"] = 0
+			damage_range["expected"] = int(damage_range.get("expected", 0) / 2)
 		# ISSUE #333: "this attack's damage isn't affected by (Weakness or) Resistance" (46 attacks) -- the
 		# estimate took Resistance off anyway, so a Land Sonic that KOs looked like it didn't.
 		var ign_weak: bool = "isn't affected by weakness" in attack_text
