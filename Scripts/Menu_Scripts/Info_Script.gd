@@ -266,10 +266,10 @@ func _ready() -> void:
 func _build_chrome() -> void:
 	var bars := UIKit.convert_legacy_screen(self, "Trainer card")
 
-	# The medals screen does not exist yet, so the button is left as it is —
-	# present, styled, and wired to nothing. Do not invent a count for it.
+	# Medals chart (Medals_Script.gd); wired to _on_medals_pressed below.
 	UIKit.adopt_button(medals_btn, bars["header"].right, "neutral", false)   # ISSUE #292
 	medals_btn.custom_minimum_size.x = MEDALS_BTN_W
+	medals_btn.pressed.connect(_on_medals_pressed)
 
 	# The Bag (key items: rods, permits). Built here rather
 	# than in the scene -- it is a plain button and the header slot lays it out.
@@ -602,6 +602,14 @@ func _on_field_guide_pressed() -> void:
 	SceneCache.change_scene(path)
 
 
+func _on_medals_pressed() -> void:
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	var path := "res://Scenes/Main_Menu_Scenes/Medals_Scene.tscn"
+	if GameState.open_sub_menu(path):
+		return
+	SceneCache.change_scene(path)
+
+
 func _on_bag_pressed() -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 	# Same shape as the Field Guide: an overlay over the map, else a scene change.
@@ -642,7 +650,7 @@ func _populate_stats() -> void:
 
 	# "Unlocked" means the set's pack is buyable — progress["packs_unlocked"] holds set ids.
 	var sets_unlocked := 0
-	for set_id in prog.get("packs_unlocked", []):
+	for set_id in GameState.get_unlocked_set_ids():
 		if cards["set_ids"].has(String(set_id)):
 			sets_unlocked += 1
 
@@ -775,7 +783,7 @@ func _build_nearest_sets(per_set: Dictionary) -> void:
 	heading.size = Vector2(RIGHT_W - PANEL_PAD * 2.0, 30.0)
 	stats_control.add_child(heading)
 
-	var unlocked: Array = GameState.progress.get("packs_unlocked", [])
+	var unlocked: Array = GameState.get_unlocked_set_ids()
 	var names := _set_name_map()
 
 	var candidates: Array = []

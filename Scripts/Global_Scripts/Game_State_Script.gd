@@ -1452,7 +1452,13 @@ func load_progress():
 
 	save_progress()
 
+## MEDALS: set whenever something that could earn a medal was written (progress saved, cards given or
+## opened). Base_Map_Scene's medal watch clears it and re-checks - so a medal is announced soon after
+## the thing that earned it, not only on the next map load.
+var medals_dirty: bool = true
+
 func save_progress():
+	medals_dirty = true
 	var file = FileAccess.open(PROGRESS_PATH, FileAccess.WRITE)
 	file.store_string(JSON.stringify(progress, "\t"))
 	file.close()
@@ -2073,8 +2079,34 @@ func _migrate_old_coin_name(old: String) -> String:
 func get_cash() -> int:
 	return progress.get("cash", 1000)
 
-func add_cash(amount: int) -> void:
+## `earned` false for cheats / debug sets so they don't count toward the Fat Wallet medal.
+func add_cash(amount: int, earned: bool = true) -> void:
 	progress["cash"] = get_cash() + amount
+	if amount > 0 and earned and not test_match_mode:
+		progress["cash_earned_total"] = int(progress.get("cash_earned_total", 0)) + amount   # MedalData: cash earned
+	save_progress()
+
+## MEDALS: a lifetime counter (coin_flips_total, prizes_taken_total ...). Does NOT save - these tick
+## inside matches, and the match's result (record_match_result) saves once at the end.
+func bump_counter(key: String, amount: int = 1) -> void:
+	if test_match_mode or autotest != null:
+		return
+	progress[key] = int(progress.get(key, 0)) + amount
+
+## MEDALS: called once per finished match with what the match proved:
+## { "archetypes": ["type:Fire", "leader:Brock"], "flawless": bool, "deckout": bool }.
+## A win tallies each archetype the player's deck qualified for and the flawless / deck-out win counters.
+func record_medal_match(won: bool, info: Dictionary) -> void:
+	if test_match_mode or autotest != null or not won:
+		return
+	var tallies: Dictionary = progress.get("archetype_wins", {})
+	for key in info.get("archetypes", []):
+		tallies[String(key)] = int(tallies.get(String(key), 0)) + 1
+	progress["archetype_wins"] = tallies
+	if bool(info.get("flawless", false)):
+		progress["flawless_wins_total"] = int(progress.get("flawless_wins_total", 0)) + 1
+	if bool(info.get("deckout", false)):
+		progress["deckout_wins_total"] = int(progress.get("deckout_wins_total", 0)) + 1
 	save_progress()
 
 # ============================================================
@@ -2392,6 +2424,53 @@ func advance_time(new_time: String = "") -> void:
 	print("Time advanced to: ", new_time, " | Date: ", get_date())
 
 
+# ── SETS UNLOCKED: the ONE check ─────────────────────────────────────────────────────────────
+# A set is unlocked when its pack has been unlocked (progress["packs_unlocked"]: the Card Mart / gifts / the
+# trainer card's "Sets unlocked") OR the player has ever held one of its cards (the owned-cards file's
+# `set_unlocked`, which lets the deck builder browse it). Every screen asks THESE, not the two stores itself.
+# The file flags are cached (one scan of the owned-cards folder) until something that can change them calls
+# invalidate_set_unlocks() - Pack_Opening_Manager and give_cards do.
+var _set_unlock_files: Dictionary = {}       # set_id -> true, from the owned-cards files
+var _set_unlock_files_ok: bool = false
+
+func invalidate_set_unlocks() -> void:
+	_set_unlock_files_ok = false
+	medals_dirty = true
+
+func _load_set_unlock_files() -> void:
+	_set_unlock_files = {}
+	var dir := DirAccess.open(OWNED_CARDS_FOLDER)
+	if dir != null:
+		dir.list_dir_begin()
+		var fname := dir.get_next()
+		while fname != "":
+			if fname.ends_with("_player_owned_cards.json"):
+				var f := FileAccess.open(OWNED_CARDS_FOLDER + fname, FileAccess.READ)
+				if f != null:
+					var parsed = JSON.parse_string(f.get_as_text())
+					f.close()
+					if parsed is Dictionary and bool(parsed.get("set_unlocked", false)):
+						_set_unlock_files[fname.trim_suffix("_player_owned_cards.json")] = true
+			fname = dir.get_next()
+		dir.list_dir_end()
+	_set_unlock_files_ok = true
+
+func is_set_unlocked(set_id: String) -> bool:
+	if set_id in (progress.get("packs_unlocked", []) as Array):
+		return true
+	if not _set_unlock_files_ok:
+		_load_set_unlock_files()
+	return _set_unlock_files.has(set_id)
+
+func get_unlocked_set_ids() -> Array:
+	if not _set_unlock_files_ok:
+		_load_set_unlock_files()
+	var out: Array = (progress.get("packs_unlocked", []) as Array).duplicate()
+	for k in _set_unlock_files.keys():
+		if not (k in out):
+			out.append(k)
+	return out
+
 ## A set counts as unlocked (the trainer card's "Card sets unlocked") from the first day
 ## the Card Mart sells it: Base Set from day 2, Jungle and Fossil from day 3. Mirrors the
 ## stock rule in Pack_Purchase_Script._load_player_data().
@@ -2540,6 +2619,8 @@ func _load_nature_guide() -> void:
 	if data.get("met") is Dictionary:
 		_nature_guide["met"] = data["met"]
 	_nature_guide["fish_caught"] = int(data.get("fish_caught", 0))
+	if data.get("fish_species") is Dictionary:
+		_nature_guide["fish_species"] = data["fish_species"]
 
 
 func save_nature_guide() -> void:
@@ -2586,6 +2667,21 @@ func record_pokemon_met(species: String) -> bool:
 func get_fish_caught() -> int:
 	_load_nature_guide()
 	return int(_nature_guide.get("fish_caught", 0))
+
+
+## MEDALS: species ever LANDED as a fish (not merely met on land), for the Marine Biologist medal.
+func record_fish_species(species: String) -> void:
+	if species == "":
+		return
+	_load_nature_guide()
+	var d: Dictionary = _nature_guide.get("fish_species", {})
+	d[species] = int(d.get(species, 0)) + 1
+	_nature_guide["fish_species"] = d
+	save_nature_guide()
+
+func get_fish_species_caught() -> Dictionary:
+	_load_nature_guide()
+	return _nature_guide.get("fish_species", {})
 
 
 func add_fish_caught(amount: int = 1) -> void:
@@ -2794,6 +2890,7 @@ func add_sleeves_to_collection(sleeve_names: Array) -> int:
 # opens/writes the base1 file once.
 
 func give_cards(card_ids_csv: String) -> void:
+	invalidate_set_unlocks()
 	var ids: Array = []
 	for raw in card_ids_csv.split(","):
 		var trimmed = raw.strip_edges()

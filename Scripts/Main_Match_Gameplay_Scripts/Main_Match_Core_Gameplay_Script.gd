@@ -96,6 +96,11 @@ var player_hand: Array = []
 var player_deck: Array = []
 var player_bench: Array = []
 var player_prize_cards = []
+# MEDALS: what this match can prove (read in game_end_logic -> GameState.record_medal_match).
+var _medal_archetypes: Array = []     # "type:Fire" / "leader:Brock" keys the player's deck qualifies for
+var _medal_opp_start_prizes: int = 0  # the opponent's Prize cards as dealt (Flawless Victories needs the full 6)
+var _medal_player_start_prizes: int = 0   # ...and the player's
+var _medal_deckout_win: bool = false  # the opponent could not draw
 var player_active_pokemon: card_object = null
 var player_discard_pile: Array = []
 
@@ -6544,6 +6549,7 @@ func setup_player():
 
 	# Load and shuffle deck
 	player_deck = load_deck_from_file(player_deck_path)
+	_medal_archetypes = MedalData.classify_deck(player_deck)
 	if GameState.autotest != null:
 		GameState.autotest.stack_player_deck(player_deck)   # AUTOTEST --stack: no-op otherwise
 	tutorial.stack_deck(player_deck, false)
@@ -6652,6 +6658,10 @@ func draw_prize_cards(is_opponent: bool) -> void:
 		var prize_card = deck.pop_front()
 		prize_cards.append(prize_card)
 	
+	if is_opponent:
+		_medal_opp_start_prizes = prize_cards.size()
+	else:
+		_medal_player_start_prizes = prize_cards.size()
 	# Display the prize cards
 	display_prize_cards(is_opponent)
 	
@@ -7714,6 +7724,12 @@ func game_end_logic(loser_is_player: bool, is_draw: bool = false) -> void:
 	# Trainer-card statistics: every finished match counts, win or loss, including each round of
 	# a best-of-3 and a forfeit. Test matches are ignored inside record_match_result().
 	GameState.record_match_result(GameState.battle_result == "win")
+	var medal_win: bool = GameState.battle_result == "win"
+	GameState.record_medal_match(medal_win, {
+		"archetypes": _medal_archetypes,
+		"flawless": medal_win and _medal_opp_start_prizes == 6 and _medal_player_start_prizes == 6 and opponent_prize_cards.size() == 6,
+		"deckout": medal_win and _medal_deckout_win,
+	})
 
 	# AUTOTEST: the runner takes the result and starts the next match itself — no outro, no scene change.
 	if GameState.autotest != null:
@@ -7750,6 +7766,7 @@ func draw_card_from_deck(is_opponent: bool, speed_multiplier: float = 1.0) -> ca
 	var deck = opponent_deck if is_opponent else player_deck
 	var hand = opponent_hand if is_opponent else player_hand
 	if deck.size() == 0:
+		_medal_deckout_win = is_opponent   # MEDALS: the opponent decked out
 		game_end_logic(not is_opponent)
 		return null
 
@@ -7985,6 +8002,7 @@ func choose_heads_or_tails() -> bool:
 func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 	irrevocable_steps += 1
 	trainer_undo_commit("coin")
+	GameState.bump_counter("coin_flips_total")   # MEDALS (every flip, heads or tails)
 	# MATCH EFFECT: coin_flip_override — every flip forced to heads/tails (animation still plays)
 	var rule_override: String = match_effects.coin_override(flipper_is_opponent)
 	var result: bool = (rule_override == "heads") if rule_override != "" else (coin_future.pop_front() if not coin_future.is_empty() else (randi() % 2 == 0))
@@ -8149,6 +8167,8 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 
 # Removes a prize card from the specified player's prizes and adds it to their hand with animation
 func take_prize_card(card: card_object, is_opponent: bool, from_rect: Dictionary = {}) -> void:
+	if not is_opponent:
+		GameState.bump_counter("prizes_taken_total")   # MEDALS
 	card.prize_face_up = false   # OLD ISSUE 364
 	var prizes = opponent_prize_cards if is_opponent else player_prize_cards
 	var hand = opponent_hand if is_opponent else player_hand

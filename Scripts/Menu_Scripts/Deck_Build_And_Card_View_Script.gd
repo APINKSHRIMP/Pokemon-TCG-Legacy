@@ -942,13 +942,7 @@ func _build_unlocked_indices() -> void:
 	unlocked_indices.clear()
 	for i in range(set_list.size()):
 		var set_id : String = set_list[i]["set_id"]
-		var owned_path := OWNED_CARDS_FOLDER + set_id + "_player_owned_cards.json"
-		var file := FileAccess.open(owned_path, FileAccess.READ)
-		if file == null:
-			continue
-		var data = JSON.parse_string(file.get_as_text())
-		file.close()
-		if data is Dictionary and data.get("set_unlocked", false):
+		if GameState.is_set_unlocked(set_id):   # the one global check (GameState)
 			unlocked_indices.append(i)
 	_update_set_nav_buttons()
 

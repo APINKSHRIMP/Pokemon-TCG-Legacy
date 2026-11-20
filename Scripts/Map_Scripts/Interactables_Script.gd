@@ -192,8 +192,7 @@ func _tv_stage() -> int:
 		return 5  # Verdant Forest open
 	if date >= 3:
 		return 4  # SS Anne arrived
-	var packs: Array = GameState.progress.get("packs_unlocked", [])
-	if "base2" in packs or "base3" in packs:
+	if GameState.is_set_unlocked("base2") or GameState.is_set_unlocked("base3"):
 		return 3  # new sets in store
 	if date >= 2:
 		return 2  # shop ready to sell packs

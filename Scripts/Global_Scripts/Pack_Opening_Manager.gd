@@ -764,6 +764,7 @@ func _generate_pack_cards(set_id: String) -> Array:
 			and ((standard_number % GOD_PACK_GUARANTEE == 0) or (randf() < GOD_PACK_CHANCE))
 
 	if is_god_pack and holo_rares.size() > 0:
+		GameState.bump_counter("god_packs_opened")   # MEDALS: the secret "Super Lucky!" medal
 		print("PACK_OPENING: GOD PACK at standard pack #", standard_number, " (", holo_rares.size(), " unique Rare Holos in set)")
 		var god_result : Array = []
 		var god_used   : Dictionary = {}
@@ -872,6 +873,7 @@ func _save_cards_to_player(set_id: String, cards: Array) -> Dictionary:
 				if entry["owned"] == 0:
 					new_card_ids[card_id] = true
 				entry["owned"] = entry["owned"] + 1
+				GameState.medals_dirty = true   # MEDALS
 				found = true
 				break
 		if not found:
@@ -879,6 +881,7 @@ func _save_cards_to_player(set_id: String, cards: Array) -> Dictionary:
 			data["owned_cards"].append({"card_id": card_id, "owned": 1})
 
 	data["set_unlocked"] = true
+	GameState.invalidate_set_unlocks()   # MEDALS + the one set-unlock check
 	var write_file := FileAccess.open(json_path, FileAccess.WRITE)
 	if write_file == null:
 		push_error("PackOpeningManager: cannot write " + json_path)

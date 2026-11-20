@@ -1,0 +1,903 @@
+[
+ {
+  "id": "set_base1",
+  "name": "Base Set",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "base1",
+  "desc": "Collect every card in Base Set.",
+  "emblem": "set:base1",
+  "metal": "gold"
+ },
+ {
+  "id": "set_base2",
+  "name": "Jungle",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "base2",
+  "desc": "Collect every card in Jungle.",
+  "emblem": "set:base2",
+  "metal": "gold"
+ },
+ {
+  "id": "set_base3",
+  "name": "Fossil",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "base3",
+  "desc": "Collect every card in Fossil.",
+  "emblem": "set:base3",
+  "metal": "gold"
+ },
+ {
+  "id": "set_base5",
+  "name": "Team Rocket",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "base5",
+  "desc": "Collect every card in Team Rocket.",
+  "emblem": "set:base5",
+  "metal": "gold"
+ },
+ {
+  "id": "set_basep",
+  "name": "Wizards Promos",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "basep",
+  "desc": "Collect every card in Wizards Promos.",
+  "emblem": "set:basep",
+  "metal": "gold"
+ },
+ {
+  "id": "set_gym1",
+  "name": "Gym Heroes",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "gym1",
+  "desc": "Collect every card in Gym Heroes.",
+  "emblem": "set:gym1",
+  "metal": "gold"
+ },
+ {
+  "id": "set_gym2",
+  "name": "Gym Challenge",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "gym2",
+  "desc": "Collect every card in Gym Challenge.",
+  "emblem": "set:gym2",
+  "metal": "gold"
+ },
+ {
+  "id": "set_neo1",
+  "name": "Neo Genesis",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "neo1",
+  "desc": "Collect every card in Neo Genesis.",
+  "emblem": "set:neo1",
+  "metal": "gold"
+ },
+ {
+  "id": "set_neo2",
+  "name": "Neo Discovery",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "neo2",
+  "desc": "Collect every card in Neo Discovery.",
+  "emblem": "set:neo2",
+  "metal": "gold"
+ },
+ {
+  "id": "set_neo3",
+  "name": "Neo Revelation",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "neo3",
+  "desc": "Collect every card in Neo Revelation.",
+  "emblem": "set:neo3",
+  "metal": "gold"
+ },
+ {
+  "id": "set_neo4",
+  "name": "Neo Destiny",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "neo4",
+  "desc": "Collect every card in Neo Destiny.",
+  "emblem": "set:neo4",
+  "metal": "gold"
+ },
+ {
+  "id": "set_np",
+  "name": "Neo Promos",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "np",
+  "desc": "Collect every card in Neo Promos.",
+  "emblem": "set:np",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ecard1",
+  "name": "Expedition",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ecard1",
+  "desc": "Collect every card in Expedition.",
+  "emblem": "set:ecard1",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ecard2",
+  "name": "Aquapolis",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ecard2",
+  "desc": "Collect every card in Aquapolis.",
+  "emblem": "set:ecard2",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ecard3",
+  "name": "Skyridge",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ecard3",
+  "desc": "Collect every card in Skyridge.",
+  "emblem": "set:ecard3",
+  "metal": "gold"
+ },
+ {
+  "id": "set_si1",
+  "name": "Southern Islands",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "si1",
+  "desc": "Collect every card in Southern Islands.",
+  "emblem": "set:si1",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex1",
+  "name": "Ruby & Sapphire",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex1",
+  "desc": "Collect every card in Ruby & Sapphire.",
+  "emblem": "set:ex1",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex2",
+  "name": "Sandstorm",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex2",
+  "desc": "Collect every card in Sandstorm.",
+  "emblem": "set:ex2",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex3",
+  "name": "Dragon",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex3",
+  "desc": "Collect every card in Dragon.",
+  "emblem": "set:ex3",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex4",
+  "name": "Team Magma vs Team Aqua",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex4",
+  "desc": "Collect every card in Team Magma vs Team Aqua.",
+  "emblem": "set:ex4",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex5",
+  "name": "Hidden Legends",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex5",
+  "desc": "Collect every card in Hidden Legends.",
+  "emblem": "set:ex5",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex6",
+  "name": "FireRed & LeafGreen",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex6",
+  "desc": "Collect every card in FireRed & LeafGreen.",
+  "emblem": "set:ex6",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex7",
+  "name": "Team Rocket Returns",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex7",
+  "desc": "Collect every card in Team Rocket Returns.",
+  "emblem": "set:ex7",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex8",
+  "name": "Deoxys",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex8",
+  "desc": "Collect every card in Deoxys.",
+  "emblem": "set:ex8",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex9",
+  "name": "Emerald",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex9",
+  "desc": "Collect every card in Emerald.",
+  "emblem": "set:ex9",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex10",
+  "name": "Unseen Forces",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex10",
+  "desc": "Collect every card in Unseen Forces.",
+  "emblem": "set:ex10",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex11",
+  "name": "Delta Species",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex11",
+  "desc": "Collect every card in Delta Species.",
+  "emblem": "set:ex11",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex12",
+  "name": "Legend Maker",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex12",
+  "desc": "Collect every card in Legend Maker.",
+  "emblem": "set:ex12",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex13",
+  "name": "Holon Phantoms",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex13",
+  "desc": "Collect every card in Holon Phantoms.",
+  "emblem": "set:ex13",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex14",
+  "name": "Crystal Guardians",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex14",
+  "desc": "Collect every card in Crystal Guardians.",
+  "emblem": "set:ex14",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex15",
+  "name": "Dragon Frontiers",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex15",
+  "desc": "Collect every card in Dragon Frontiers.",
+  "emblem": "set:ex15",
+  "metal": "gold"
+ },
+ {
+  "id": "set_ex16",
+  "name": "Power Keepers",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "ex16",
+  "desc": "Collect every card in Power Keepers.",
+  "emblem": "set:ex16",
+  "metal": "gold"
+ },
+ {
+  "id": "set_pop1",
+  "name": "POP Series 1",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "pop1",
+  "desc": "Collect every card in POP Series 1.",
+  "emblem": "set:pop1",
+  "metal": "gold"
+ },
+ {
+  "id": "set_pop2",
+  "name": "POP Series 2",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "pop2",
+  "desc": "Collect every card in POP Series 2.",
+  "emblem": "set:pop2",
+  "metal": "gold"
+ },
+ {
+  "id": "set_pop3",
+  "name": "POP Series 3",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "pop3",
+  "desc": "Collect every card in POP Series 3.",
+  "emblem": "set:pop3",
+  "metal": "gold"
+ },
+ {
+  "id": "set_pop4",
+  "name": "POP Series 4",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "pop4",
+  "desc": "Collect every card in POP Series 4.",
+  "emblem": "set:pop4",
+  "metal": "gold"
+ },
+ {
+  "id": "set_pop5",
+  "name": "POP Series 5",
+  "group": "Sets",
+  "kind": "set",
+  "set_id": "pop5",
+  "desc": "Collect every card in POP Series 5.",
+  "emblem": "set:pop5",
+  "metal": "gold"
+ },
+ {
+  "id": "cards",
+  "name": "Collector",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "cards_owned",
+  "tiers": [
+   100,
+   500,
+   1000,
+   2000,
+   5000
+  ],
+  "desc": "Own %d cards.",
+  "emblem": "glyph:cards"
+ },
+ {
+  "id": "cash",
+  "name": "Money Bags",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "cash_earned",
+  "tiers": [
+   1000,
+   5000,
+   9999,
+   99999
+  ],
+  "desc": "Earn $%d in total.",
+  "emblem": "glyph:moneybag"
+ },
+ {
+  "id": "packs",
+  "name": "Pack Ripper",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "packs_opened",
+  "tiers": [
+   10,
+   25,
+   50,
+   100,
+   200,
+   500
+  ],
+  "desc": "Open %d packs.",
+  "emblem": "glyph:packs"
+ },
+ {
+  "id": "wins",
+  "name": "Winner Winner Chicken Dinner",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "matches_won",
+  "tiers": [
+   10,
+   25,
+   50,
+   100,
+   200,
+   500
+  ],
+  "desc": "Win %d matches.",
+  "emblem": "glyph:trophy"
+ },
+ {
+  "id": "flips",
+  "name": "Gambler",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "coin_flips",
+  "tiers": [
+   25,
+   100,
+   200,
+   500,
+   1000
+  ],
+  "desc": "Flip %d coins in matches.",
+  "emblem": "glyph:flips"
+ },
+ {
+  "id": "prizes",
+  "name": "Prize Hunter",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "prizes_taken",
+  "tiers": [
+   50,
+   200,
+   500,
+   1000
+  ],
+  "desc": "Take %d Prize cards.",
+  "emblem": "glyph:prizes"
+ },
+ {
+  "id": "flawless",
+  "name": "Flawless Victories",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "flawless_wins",
+  "tiers": [
+   5,
+   20,
+   50,
+   100,
+   250
+  ],
+  "desc": "Win %d matches without your opponent taking a single Prize card.\n• Only counts in matches where both players start with 6 Prize cards",
+  "emblem": "glyph:crown"
+ },
+ {
+  "id": "deckout",
+  "name": "Deck Out Wins",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "deckout_wins",
+  "tiers": [
+   5,
+   20,
+   50,
+   100,
+   250
+  ],
+  "desc": "Win %d matches because your opponent ran out of cards to draw.",
+  "emblem": "glyph:deckout"
+ },
+ {
+  "id": "coins",
+  "name": "Coin Collector",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "coins_owned",
+  "tiers": [
+   10,
+   50,
+   100,
+   200,
+   "all"
+  ],
+  "desc": "Collect %d coins.",
+  "emblem": "glyph:coin"
+ },
+ {
+  "id": "costumes",
+  "name": "Wardrobe",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "costumes_owned",
+  "tiers": [
+   5,
+   20,
+   50,
+   100,
+   "all"
+  ],
+  "desc": "Collect %d costumes.",
+  "emblem": "glyph:costume"
+ },
+ {
+  "id": "sleeves",
+  "name": "Sleeve Collector",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "sleeves_owned",
+  "tiers": [
+   10,
+   25,
+   75,
+   150,
+   "all"
+  ],
+  "desc": "Collect %d sleeves.",
+  "emblem": "glyph:sleeve"
+ },
+ {
+  "id": "fish_total",
+  "name": "Angler",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "fish_caught",
+  "tiers": [
+   10,
+   50,
+   100,
+   250,
+   500
+  ],
+  "desc": "Catch %d fish.",
+  "emblem": "glyph:fish"
+ },
+ {
+  "id": "fish_species",
+  "name": "Marine Biologist",
+  "group": "Milestones",
+  "kind": "stat",
+  "stat": "fish_species",
+  "tiers": [
+   5,
+   10,
+   20,
+   50,
+   "all"
+  ],
+  "desc": "Catch %d different species of fish.",
+  "emblem": "glyph:fish_school"
+ },
+ {
+  "id": "type_grass",
+  "name": "Grass Master",
+  "group": "Type Mastery",
+  "kind": "archetype",
+  "key": "type:Grass",
+  "tiers": [
+   5,
+   10,
+   25,
+   50
+  ],
+  "desc": "Win %d matches with a deck of only Grass type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "emblem": "energy:grass"
+ },
+ {
+  "id": "type_fire",
+  "name": "Fire Master",
+  "group": "Type Mastery",
+  "kind": "archetype",
+  "key": "type:Fire",
+  "tiers": [
+   5,
+   10,
+   25,
+   50
+  ],
+  "desc": "Win %d matches with a deck of only Fire type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "emblem": "energy:fire"
+ },
+ {
+  "id": "type_water",
+  "name": "Water Master",
+  "group": "Type Mastery",
+  "kind": "archetype",
+  "key": "type:Water",
+  "tiers": [
+   5,
+   10,
+   25,
+   50
+  ],
+  "desc": "Win %d matches with a deck of only Water type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "emblem": "energy:water"
+ },
+ {
+  "id": "type_lightning",
+  "name": "Lightning Master",
+  "group": "Type Mastery",
+  "kind": "archetype",
+  "key": "type:Lightning",
+  "tiers": [
+   5,
+   10,
+   25,
+   50
+  ],
+  "desc": "Win %d matches with a deck of only Lightning type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "emblem": "energy:lightning"
+ },
+ {
+  "id": "type_psychic",
+  "name": "Psychic Master",
+  "group": "Type Mastery",
+  "kind": "archetype",
+  "key": "type:Psychic",
+  "tiers": [
+   5,
+   10,
+   25,
+   50
+  ],
+  "desc": "Win %d matches with a deck of only Psychic type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "emblem": "energy:psychic"
+ },
+ {
+  "id": "type_fighting",
+  "name": "Fighting Master",
+  "group": "Type Mastery",
+  "kind": "archetype",
+  "key": "type:Fighting",
+  "tiers": [
+   5,
+   10,
+   25,
+   50
+  ],
+  "desc": "Win %d matches with a deck of only Fighting type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "emblem": "glyph:fist"
+ },
+ {
+  "id": "type_darkness",
+  "name": "Darkness Master",
+  "group": "Type Mastery",
+  "kind": "archetype",
+  "key": "type:Darkness",
+  "tiers": [
+   5,
+   10,
+   25,
+   50
+  ],
+  "desc": "Win %d matches with a deck of only Darkness type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "emblem": "glyph:moon"
+ },
+ {
+  "id": "type_metal",
+  "name": "Metal Master",
+  "group": "Type Mastery",
+  "kind": "archetype",
+  "key": "type:Metal",
+  "tiers": [
+   5,
+   10,
+   25,
+   50
+  ],
+  "desc": "Win %d matches with a deck of only Metal type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "emblem": "energy:metal"
+ },
+ {
+  "id": "type_colorless",
+  "name": "Colorless Master",
+  "group": "Type Mastery",
+  "kind": "archetype",
+  "key": "type:Colorless",
+  "tiers": [
+   5,
+   10,
+   25,
+   50
+  ],
+  "desc": "Win %d matches with a deck of only Colorless type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "emblem": "energy:colorless"
+ },
+ {
+  "id": "leader_brock",
+  "name": "Brock Master",
+  "group": "Gym Leaders",
+  "kind": "archetype",
+  "key": "leader:Brock",
+  "tiers": [
+   1,
+   5,
+   10,
+   20
+  ],
+  "desc": "Win %d matches with a deck of ONLY Brock's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Brock in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "emblem": "badge:boulder"
+ },
+ {
+  "id": "leader_misty",
+  "name": "Misty Master",
+  "group": "Gym Leaders",
+  "kind": "archetype",
+  "key": "leader:Misty",
+  "tiers": [
+   1,
+   5,
+   10,
+   20
+  ],
+  "desc": "Win %d matches with a deck of ONLY Misty's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Misty in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "emblem": "badge:cascade"
+ },
+ {
+  "id": "leader_lt_surge",
+  "name": "Lt. Surge Master",
+  "group": "Gym Leaders",
+  "kind": "archetype",
+  "key": "leader:Lt. Surge",
+  "tiers": [
+   1,
+   5,
+   10,
+   20
+  ],
+  "desc": "Win %d matches with a deck of ONLY Lt. Surge's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Lt. Surge in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "emblem": "badge:thunder"
+ },
+ {
+  "id": "leader_erika",
+  "name": "Erika Master",
+  "group": "Gym Leaders",
+  "kind": "archetype",
+  "key": "leader:Erika",
+  "tiers": [
+   1,
+   5,
+   10,
+   20
+  ],
+  "desc": "Win %d matches with a deck of ONLY Erika's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Erika in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "emblem": "badge:rainbow"
+ },
+ {
+  "id": "leader_koga",
+  "name": "Koga Master",
+  "group": "Gym Leaders",
+  "kind": "archetype",
+  "key": "leader:Koga",
+  "tiers": [
+   1,
+   5,
+   10,
+   20
+  ],
+  "desc": "Win %d matches with a deck of ONLY Koga's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Koga in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "emblem": "badge:soul"
+ },
+ {
+  "id": "leader_sabrina",
+  "name": "Sabrina Master",
+  "group": "Gym Leaders",
+  "kind": "archetype",
+  "key": "leader:Sabrina",
+  "tiers": [
+   1,
+   5,
+   10,
+   20
+  ],
+  "desc": "Win %d matches with a deck of ONLY Sabrina's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Sabrina in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "emblem": "badge:marsh"
+ },
+ {
+  "id": "leader_blaine",
+  "name": "Blaine Master",
+  "group": "Gym Leaders",
+  "kind": "archetype",
+  "key": "leader:Blaine",
+  "tiers": [
+   1,
+   5,
+   10,
+   20
+  ],
+  "desc": "Win %d matches with a deck of ONLY Blaine's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Blaine in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "emblem": "badge:volcano"
+ },
+ {
+  "id": "leader_giovanni",
+  "name": "Giovanni Master",
+  "group": "Gym Leaders",
+  "kind": "archetype",
+  "key": "leader:Giovanni",
+  "tiers": [
+   1,
+   5,
+   10,
+   20
+  ],
+  "desc": "Win %d matches with a deck of ONLY Giovanni's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Giovanni in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "emblem": "badge:earth"
+ },
+ {
+  "id": "leader_rocket",
+  "name": "Team Rocket Master",
+  "group": "Gym Leaders",
+  "kind": "archetype",
+  "key": "leader:Rocket",
+  "tiers": [
+   1,
+   5,
+   10,
+   20
+  ],
+  "desc": "Win %d matches with a deck of ONLY Rocket's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Rocket in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "emblem": "badge:letter_r"
+ },
+ {
+  "id": "elders",
+  "name": "Elder Challenge Champion",
+  "group": "Feats",
+  "kind": "stat",
+  "stat": "elders",
+  "tiers": [
+   1
+  ],
+  "desc": "Beat all three Card Elders.",
+  "emblem": "glyph:three",
+  "metal": "platinum"
+ },
+ {
+  "id": "gym_challenge",
+  "name": "Gym Hero Challenge Champion",
+  "group": "Feats",
+  "kind": "stat",
+  "stat": "gym_challenge",
+  "tiers": [
+   1
+  ],
+  "desc": "Complete the Gym Hero Challenge.",
+  "emblem": "glyph:pokeball_crown",
+  "metal": "platinum"
+ },
+ {
+  "id": "nemesis",
+  "name": "Nemesis",
+  "group": "Feats",
+  "kind": "stat",
+  "stat": "nemesis",
+  "tiers": [
+   1
+  ],
+  "desc": "Beat the same opponent 10 times.",
+  "emblem": "glyph:fists",
+  "metal": "platinum"
+ },
+ {
+  "id": "super_lucky",
+  "name": "Super Lucky!",
+  "group": "Feats",
+  "kind": "stat",
+  "stat": "god_packs",
+  "tiers": [
+   1
+  ],
+  "desc": "Opened a pack of cards containing all rare cards!",
+  "emblem": "glyph:godpack",
+  "metal": "platinum",
+  "hidden": true
+ }
+]

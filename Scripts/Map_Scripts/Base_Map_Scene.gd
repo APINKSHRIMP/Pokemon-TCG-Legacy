@@ -317,6 +317,8 @@ func _ready():
 		[]
 	)
 
+	_medal_watch()   # MEDALS: announces anything earned since the player last heard (runs on, waits its turn)
+
 	# Stepping outside counts toward the café breakfast reminder calls.
 	if came_outside:
 		CafeBreakfastCutscene.note_exterior_return()
@@ -587,6 +589,41 @@ func _input(event: InputEvent) -> void:
 		return
 	get_viewport().set_input_as_handled()
 	_open_menu_overlay()
+
+## MEDALS: tells the player about medals (or new grades) earned since they last heard. Runs for as long
+## as the map is up: whenever something medal-worthy was written (GameState.medals_dirty - the check
+## scans the card files, hence the flag) and nothing else has the screen (the battle-return fade, a
+## cutscene, an open message), it checks and announces each one with its art, once.
+## TWEAKABLE: poll rate, and the beat before a notice.
+const MEDAL_POLL := 0.5
+const MEDAL_NOTICE_DELAY_S := 0.6
+var _medal_notice_up: bool = false
+
+func _medal_screen_busy() -> bool:
+	if MatchTransition.is_returning() or MapManager.cutscene_active or _medal_notice_up:
+		return true
+	var panel = MapManager.message_panel
+	return panel != null and is_instance_valid(panel) and panel.visible
+
+
+func _medal_watch() -> void:
+	if GameState.test_match_mode or GameState.autotest != null:
+		return
+	await get_tree().process_frame
+	while is_inside_tree():
+		if GameState.medals_dirty and not _medal_screen_busy():
+			await get_tree().create_timer(MEDAL_NOTICE_DELAY_S).timeout
+			if not is_inside_tree():
+				return
+			if not _medal_screen_busy():
+				var fresh: Array = MedalData.take_new_awards()
+				GameState.medals_dirty = false   # take_new_awards saves, which re-flags it
+				if not fresh.is_empty():
+					_medal_notice_up = true
+					await MedalReveal.play(self, fresh)   # the spinning 3D medal; press / click to move on
+					_medal_notice_up = false
+		await get_tree().create_timer(MEDAL_POLL).timeout
+
 
 func _open_menu_overlay() -> void:
 	var scene_path := get_scene_path()

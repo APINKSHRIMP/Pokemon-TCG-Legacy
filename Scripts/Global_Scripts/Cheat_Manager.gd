@@ -73,7 +73,7 @@ static func _apply(code: String) -> void:
 				_set_cards_in_set(set_id, 99)
 		"CHT.Gimme_Cash":
 			var current := GameState.get_cash()
-			GameState.add_cash(99999 - current)
+			GameState.add_cash(99999 - current, false)
 		"CHT.Add_Starter_Set":
 			GameState.give_cards(GameState.starter_deck_card_csv(GameState.STARTER_DECK_BASIC))
 		"CHT.Add_Shop_Set":

@@ -4122,7 +4122,7 @@ func _debug_set_date_time(new_date: int, new_time: String) -> void:
 
 
 func debug_set_cash(amount: int) -> void:
-	GameState.add_cash(amount - GameState.get_cash())
+	GameState.add_cash(amount - GameState.get_cash(), false)
 	print("DEBUG: cash = ", GameState.get_cash())
 
 
