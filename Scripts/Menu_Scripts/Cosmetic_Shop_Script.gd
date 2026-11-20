@@ -251,11 +251,22 @@ func _build_page_stepper() -> void:
 	_next_btn.pressed.connect(_step_page.bind(1))
 
 
+## Cursor onto the new page's first item (the old one was freed by the page swap).
+func _focus_first_item() -> void:
+	var first: Control = InputDevice.first_focusable_in(grid)
+	if first == null:
+		first = _next_btn   # a page of nothing but owned items has no tile to land on
+	if first != null:
+		first.grab_focus()
+
+
 func _step_page(step: int) -> void:
 	if _in_purchase_seq:
 		return
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
 	_show_page(_page_index + step)
+	if UIKit.nav_active():
+		_focus_first_item.call_deferred()   # cursor to the new page's first item, whatever turned it
 
 
 ## Swaps the shelf for page `index`: selection cleared, grid and pills rebuilt.
@@ -957,6 +968,14 @@ func _input(event: InputEvent) -> void:
 			_reveal_ok_btn.pressed.emit()
 		return
 	if _in_purchase_seq:
+		return
+	# Controller audit 2026-11-20: PgUp / PgDn and pad LT / RT turn the page (Rods / Bait / ...) like the
+	# deck builder's sets, without hunting for the < > buttons.
+	var page_dir := UIInput.page_step(event)
+	if page_dir != 0:
+		if _pages.size() > 1:
+			get_viewport().set_input_as_handled()
+			_step_page(page_dir)
 		return
 	if UIInput.is_cancel(event):
 		_on_cancel_pressed()

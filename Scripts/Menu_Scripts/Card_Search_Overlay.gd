@@ -556,6 +556,15 @@ func _build_footer() -> void:
 
 ## Lays the filter rows out top to bottom with a running y cursor, so a row that is entirely
 ## gated off (no unlocked options) simply isn't drawn and the rows below close the gap.
+## Pad / keys: the cursor starts on the top field (the card name box's proxy), not on Reset in the header.
+func focus_first_field() -> void:
+	if _name_edit == null or not is_instance_valid(_name_edit):
+		return
+	var proxy: Control = _name_edit.get_node_or_null("OSKProxy") as Control
+	if proxy != null and proxy.is_visible_in_tree():
+		proxy.grab_focus()
+
+
 func _build_rows() -> void:
 	var y := CONTENT_TOP
 

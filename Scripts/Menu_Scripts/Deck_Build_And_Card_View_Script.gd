@@ -2161,6 +2161,7 @@ func _on_view_deck_pressed() -> void:
 	SceneCache.prewarm_card_textures(viewer_paths, true)
 	SceneCache.start_build_budget()
 
+	var viewer_focused := false
 	# Add one TextureRect per copy of each card — no count label
 	for card_id in sorted_ids:
 		if not deck_viewer_active:
@@ -2178,6 +2179,9 @@ func _on_view_deck_pressed() -> void:
 			viewer_grid.add_child(_make_viewer_card_rect(cid, card_texture))
 			if not is_inside_tree():   # ISSUE #33 FIX: bail if freed mid-load
 				return
+			if not viewer_focused and UIKit.nav_active():
+				viewer_focused = true   # cursor onto the first card as soon as it exists
+				(viewer_grid.get_child(0) as Control).grab_focus()
 			await SceneCache.yield_if_over_budget()
 
 	# Clicks were ignored while the grid filled in, so the build and an edit can't both add images.
@@ -2649,6 +2653,7 @@ func _on_next_set() -> void:
 	if search_active:
 		return
 	current_unlock_pos = (current_unlock_pos + 1) % unlocked_indices.size()
+	_focus_grid_after_build = UIKit.nav_active()   # cursor to the new set's first card, whatever turned it
 	_display_current_set()
 	# Scroll back to top when switching sets
 	_reset_scroll_position()
@@ -2663,6 +2668,7 @@ func _on_prev_set() -> void:
 	current_unlock_pos -= 1
 	if current_unlock_pos < 0:
 		current_unlock_pos = unlocked_indices.size() - 1
+	_focus_grid_after_build = UIKit.nav_active()
 	_display_current_set()
 	_reset_scroll_position()
 
@@ -2748,6 +2754,8 @@ func _open_search_overlay() -> void:
 	# Keeps the menu cursor on the filter screen while it shows (ignored while hidden).
 	InputDevice.push_scope(search_overlay)
 	search_overlay.setup(unlocked_set_ids, set_list)
+	if UIKit.nav_active():
+		search_overlay.focus_first_field.call_deferred()   # cursor on the first field (card name), not Reset
 	search_overlay.search_confirmed.connect(_on_search_confirmed)
 	search_overlay.search_cancelled.connect(_on_search_cancelled)
 	search_overlay.search_reset.connect(_on_search_reset)

@@ -578,6 +578,8 @@ func _on_prev_set() -> void:
 ## ISSUE #254: refreshes the shelf with the arrows held down until it is drawn.
 func _step_to_current_set() -> void:
 	_stepping = true
+	# Controller audit 2026-11-20: disabling the arrows (and rebuilding the packs) drops the cursor.
+	# Put it on the first pack of the new set, whichever control turned it.
 	next_btn.disabled = true
 	prev_btn.disabled = true
 	_refresh_display()
@@ -590,6 +592,10 @@ func _step_to_current_set() -> void:
 		next_btn.disabled = false
 		prev_btn.disabled = false
 	_stepping = false
+	if UIKit.nav_active() and not _in_opening_sequence:
+		var first_pack: Control = InputDevice.first_focusable_in(pack_hbox)
+		if first_pack != null:
+			first_pack.grab_focus()
 
 
 # ─── Cancel / Escape ─────────────────────────────────────────────────────────
@@ -614,6 +620,16 @@ func _on_cancel_pressed() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Controller audit 2026-11-20: PgUp / PgDn and pad LT / RT step the set, as in the deck builder.
+	var page_dir := UIInput.page_step(event)
+	if page_dir != 0:
+		if not _in_opening_sequence and not PackOpeningManager.is_active() and unlocked_packs.size() > 1:
+			get_viewport().set_input_as_handled()
+			if page_dir > 0:
+				_on_next_set()
+			else:
+				_on_prev_set()
+		return
 	if UIInput.is_cancel(event):   # Escape, Backspace or pad B
 		if not _in_opening_sequence and not PackOpeningManager.is_active():
 			_on_cancel_pressed()
