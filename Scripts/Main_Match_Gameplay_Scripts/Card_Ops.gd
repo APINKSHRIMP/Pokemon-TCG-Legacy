@@ -254,6 +254,9 @@ func discard_energy_animated(energy: card_object, is_owner_opp: bool) -> void:
 		if energy in p.attached_energies:
 			holder = p
 			break
+	# 2026-11-21: already discarded by something else (no holder, in the pile) - nothing to move or fly.
+	if holder == null and energy in (main.opponent_discard_pile if is_owner_opp else main.player_discard_pile):
+		return
 	var from_node: Control = main.find_card_ui_for_object(holder) if holder != null else null
 	if from_node == null:
 		from_node = main.opponent_active_container if is_owner_opp else main.player_active_container
@@ -289,6 +292,7 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 	var do_fly: bool = fly and not is_ko_discard
 	# OLD ISSUE 317: many callers only sent the card to the discard pile and left it attached as well (one card
 	# in two places — Searing Flames, Dark Flame, Mega Flame, Twister, Lava Flow...). Detach it here.
+	var was_attached := false
 	for side in [false, true]:
 		for p in get_all_pokemon_in_play(side):
 			if energy in p.attached_energies:
@@ -296,6 +300,14 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 				if not is_ko_discard and main.powers_and_bodies.keep_protects_energy(p):
 					return
 				p.attached_energies.erase(energy)
+				was_attached = true
+	# 2026-11-21: an Energy that is no longer attached and is ALREADY in the discard pile has been discarded by
+	# something else in the meantime (Koga's Muk's Energy Drain discards one mid-attack; Continuous Fireball then
+	# discarded its pre-attack list and put the same card in the pile twice). Never discard a card twice.
+	var owner_discard: Array = main.opponent_discard_pile if is_owner_opp else main.player_discard_pile
+	if not was_attached and energy in owner_discard:
+		print("DOUBLE DISCARD FIX ACTIVE (2026-11-21): ", energy.metadata.get("name", ""), " is already in the discard pile")
+		return
 	var card_name = energy.metadata.get("name", "")
 	if card_name == "Recycle Energy":
 		var hand = main.opponent_hand if is_owner_opp else main.player_hand
@@ -332,6 +344,39 @@ func discard_energy_from_pokemon(energy: card_object, is_owner_opp: bool, is_ko_
 ## changed type/Weakness/Resistance. Cowardice put Tentacool in the hand still
 ## wounded, so it came back down damaged. Call this on the card itself AFTER its
 ## attachments have been moved off it.
+## 2026-11-21: A POKEMON LEAVING PLAY TAKES ITS "FORMS" WITH IT.
+## send_card_to_discard (the Knock Out path) already reverted a Transformed Ditto and sent a Brock's Ninetales'
+## Shapeshift form card to the discard pile, but the ~20 other ways out of play (Scoop Up / Hurricane / Minion to the
+## hand, Mr. Fuji / Fuchsia / Scram / Rebellion to the deck, Vanish / Rebirth to the discard pile...) moved only
+## energies, tools and pre-evolutions: the form card vanished from the game (autotester CARD MISSING, Brock's
+## Primeape after Pidgeot's Hurricane) and a Ditto came back to the hand still a copy. `dest` = "hand" / "deck" /
+## "discard": the form card goes where the rest of the attached cards go. Call it while moving the attachments.
+func release_special_forms(pokemon: card_object, is_opponent: bool, dest: String) -> void:
+	if pokemon == null:
+		return
+	main.powers_and_bodies.revert_ditto_if_needed(pokemon)
+	var form: card_object = pokemon.shapeshift_form_card
+	if form == null:
+		return
+	main.powers_and_bodies._shapeshift_restore(pokemon)
+	pokemon.shapeshift_form_card = null
+	pokemon.shapeshift_form_uid = ""
+	pokemon.shapeshift_form_metadata = {}
+	var pile: Array
+	match dest:
+		"hand": pile = main.opponent_hand if is_opponent else main.player_hand
+		"deck": pile = main.opponent_deck if is_opponent else main.player_deck
+		_:
+			pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
+			dest = "discard"
+	form.current_location = dest
+	form.current_hp = form.get_max_hp()
+	if form not in pile:
+		pile.append(form)
+	fly_card(form, "attached", dest, is_opponent, -1, {})
+	print("SHAPESHIFT LEAVE-PLAY FIX ACTIVE (2026-11-21): ", form.metadata.get("name", ""), " goes to the ", dest, " with ", pokemon.metadata.get("name", ""))
+
+
 func reset_returned_pokemon(card: card_object, is_opponent: bool) -> void:
 	main.clear_all_statuses(card, is_opponent)
 	card.has_char_counter = false   # AUDIT 2026-11-18 #133
@@ -422,6 +467,7 @@ func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:
 		card.current_location = "discard"
 		card.current_hp = card.get_max_hp()   # ISSUE #404: leaves play as a fresh card
 		discard.append(card)
+	release_special_forms(pokemon, is_opponent, "discard")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	pokemon.attached_pre_evolutions.clear()
 	for card in pokemon.attached_cards.duplicate():
 		card.current_location = "discard"
@@ -443,6 +489,7 @@ func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:
 func discard_all_attachments_animated(pokemon: card_object, is_opponent: bool) -> void:
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var discard_node = main.opponent_discard_icon if is_opponent else main.player_discard_icon
+	release_special_forms(pokemon, is_opponent, "discard")   # 2026-11-21 (Scoop Up: the form card is an attachment)
 
 	if pokemon.attached_energies.size() > 0:
 		await main.animate_energies_to_discard(pokemon.attached_energies.duplicate(), pokemon, is_opponent)

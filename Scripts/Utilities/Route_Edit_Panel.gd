@@ -314,6 +314,18 @@ func _build_deck_test(actor: Node) -> void:
 	retreat_button.tooltip_text = "ON: their CPU never chooses to retreat, so early matches end quicker.\nThey can still play Switch, and still swap in after a knock out."
 	_row([retreat_button])
 
+	# 2026-11-21 COIN FORESIGHT: this opponent's CPU knows how its coins will land before it chooses (the flips
+	# themselves stay fair). Uses the existing "cpu_cheat_coins" (1 = always; absent = off, the default).
+	_title("Coin foresight")
+	var foresight: bool = float(consts.get("cpu_cheat_coins", 0.0)) > 0.0
+	_label("Knows its coin flips before choosing. Very strong: it never plays Poké Ball or a flip attack into tails." if foresight \
+			else "Flips blind, like the player.", true)
+	var coin_button := _button("Coin foresight: ON" if foresight else "Coin foresight: OFF", func():
+		tool.set_opponent_constant(name, "cpu_cheat_coins", null if foresight else 1))
+	coin_button.theme_type_variation = "ToggleOnButton" if foresight else ""
+	coin_button.tooltip_text = "ON: their CPU knows the result of each coin it is about to flip, and picks attacks and\ncards to match. The coins are still random. Meant for a few late, very hard opponents."
+	_row([coin_button])
+
 	_title("Deck test")
 	var vs_pick := OptionButton.new()
 	vs_pick.focus_mode = Control.FOCUS_NONE

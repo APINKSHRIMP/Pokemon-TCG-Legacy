@@ -1748,6 +1748,7 @@ func power_cowardice(tentacool: card_object) -> void:
 		pre.current_location = "discard"
 		discard.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "discard", false, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(tentacool, false, "discard")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	tentacool.attached_pre_evolutions.clear()
 	for ac in tentacool.attached_cards:
 		ac.current_location = "discard"
@@ -2564,6 +2565,7 @@ func cpu_phase_activate_powers() -> void:
 					pre.current_location = "discard"
 					discard.append(pre)
 					await main.card_ops.fly_card(pre, "attached", "discard", true, -1, {})   # AUDIT 2026-11-17: flight
+				main.card_ops.release_special_forms(tentacool, true, "discard")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 				tentacool.attached_pre_evolutions.clear()
 				for ac in tentacool.attached_cards:
 					ac.current_location = "discard"
@@ -3955,6 +3957,7 @@ func check_rebirth(pokemon: card_object, is_opp: bool) -> bool:
 		pre.current_location = "discard"
 		discard_pile.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "discard", is_opp, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(pokemon, is_opp, "discard")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	pokemon.attached_pre_evolutions.clear()
 	pokemon.current_hp = pokemon.get_max_hp()
 	pokemon.special_condition = ""
@@ -4397,6 +4400,7 @@ func check_rebellion(attacker: card_object, is_opp: bool) -> bool:
 		pre.current_location = "deck"
 		deck.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "deck", is_opp, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(attacker, is_opp, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	attacker.attached_pre_evolutions.clear()
 	attacker.current_hp = attacker.get_max_hp()
 	attacker.special_condition = ""
@@ -4561,6 +4565,7 @@ func check_scram(pokemon: card_object, is_opp: bool) -> bool:
 		pre.current_location = "deck"
 		deck.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "deck", is_opp, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(pokemon, is_opp, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	pokemon.attached_pre_evolutions.clear()
 	# AUDIT 2026-11-18 #127: leaving play - Special Conditions and effect flags go (they rode along into the deck).
 	main.card_ops.reset_returned_pokemon(pokemon, is_opp)
@@ -5235,6 +5240,7 @@ func check_bolt(damaged: card_object, attacker: card_object, damage: int, is_dam
 		pre.current_location = "deck"
 		deck.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "deck", is_damaged_opp, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(damaged, is_damaged_opp, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	damaged.attached_pre_evolutions.clear()
 	for ac in damaged.attached_cards:
 		ac.current_location = "deck"
@@ -6840,6 +6846,7 @@ func check_time_travel(pokemon: card_object, is_opponent: bool) -> bool:
 		main.card_ops.fly_card(c, "attached", "deck", is_opponent)   # AUDIT 2026-11-17: flight
 	pokemon.attached_energies.clear()
 	pokemon.attached_cards.clear()
+	main.card_ops.release_special_forms(pokemon, is_opponent, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	pokemon.attached_pre_evolutions.clear()
 	pokemon.current_hp = pokemon.get_max_hp()
 	pokemon.current_location = "deck"
@@ -7709,6 +7716,7 @@ func trigger_neo4_vanish(unown_v: card_object, is_opponent: bool) -> void:
 		await main.card_ops.fly_card(c, "attached", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	chosen.attached_energies.clear()
 	chosen.attached_cards.clear()
+	main.card_ops.release_special_forms(chosen, is_opponent, "discard")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	chosen.attached_pre_evolutions.clear()
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	if own_active == chosen:
@@ -8547,6 +8555,7 @@ func power_ecard1_beating_wings(pidgeot: card_object) -> void:
 		pre.current_location = "deck"
 		deck.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(target, is_opponent, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	target.attached_pre_evolutions.clear()
 	for ac in target.attached_cards:
 		ac.current_location = "deck"
@@ -19148,6 +19157,7 @@ func check_ex14_time_travel(pokemon: card_object, attacker: card_object, is_opp:
 		pre.current_location = "discard"
 		discard_pile.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "discard", is_opp, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(pokemon, is_opp, "discard")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	pokemon.attached_pre_evolutions.clear()
 	for ac in pokemon.attached_cards:
 		ac.current_location = "discard"

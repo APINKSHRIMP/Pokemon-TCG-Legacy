@@ -111,6 +111,11 @@ func _start_waiting() -> void:
 		var path: String = _waiting.pop_front()
 		if _cache.has(path):
 			continue
+		if not threads_ok():   # 2026-11-21: see threads_ok()
+			var packed := load(path)
+			if packed is PackedScene:
+				_cache[path] = packed
+			continue
 		var err := ResourceLoader.load_threaded_request(path)
 		if err != OK:
 			push_warning("SceneCache: failed to start threaded load: " + path)
@@ -318,10 +323,24 @@ func prewarm_textures(paths: Array, pool: String = "menu", now: bool = false) ->
 		room -= 1
 
 
+## 2026-11-21: headless runs (autotester, probes, sims) load on the main thread. Godot's headless "dummy" renderer
+## keeps its texture RIDs in a NON-thread-safe owner, so a background texture load racing a main-thread load()
+## (a Trainer showcase's large art) broke it: "texture_2d_initialize: Parameter t is null", "rid_owner ...
+## uninitialized RID" - 190 ENGINE ERRORs in the 108k-match sim, on random turns. The real renderers' owners are
+## thread-safe and the windowed game never showed it, so only headless changes.
+static func threads_ok() -> bool:
+	return DisplayServer.get_name() != "headless"
+
+
 func _request_texture(path: String, pool: String) -> void:
 	if _pools[pool].has(path) or _tex_pending.has(path):
 		return
 	if not ResourceLoader.exists(path):
+		return
+	if not threads_ok():
+		var tex := load(path) as Texture2D
+		if tex != null:
+			_store_texture(path, tex, pool)
 		return
 	if ResourceLoader.load_threaded_request(path, "Texture2D", true) != OK:
 		return

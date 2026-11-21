@@ -478,3 +478,126 @@ func sc_cs_waits_for_attach() -> void:
 	ai.cpu_trainer_phase = "early"
 	var s: float = ai.cpu_score_trainer_for_play(find(m.opponent_hand, "Computer Search"))
 	check("CS + 3 Energy, Energy not attached yet -> waits for the attach", s <= ai.CPU_TRAINER_PLAY_THRESHOLD, "score %d" % s)
+
+# ---- 2026-11-21 SELF-KO RULES (CPU_AI.self_ko_verdict, the user's soft rules) ----
+func _verdict(attack_name: String, attack_kos: bool, other_ko: bool, doomed: bool = false) -> Dictionary:
+	var me = m.opponent_active_pokemon
+	var atk: Dictionary = {}
+	for a in me.metadata.get("attacks", []):
+		if a.get("name", "") == attack_name:
+			atk = a
+	var fx: Array = m.attack_effects.parse_card_text_effects(atk.get("text", ""), me.metadata.get("name", ""))
+	return ai.self_ko_verdict(fx, attack_kos, other_ko, {"cpu_active_guaranteed_ko": doomed})
+
+func _prizes(side: String, n: int) -> void:
+	m.set(side + "prize_cards", cards(range(n).map(func(_x): return "base1-97")))
+
+func foe_bench_keep() -> void:
+	var k := mon("base1-3"); k.current_location = "bench"; m.player_bench.append(k)   # 120 HP: survives any bench splash
+
+func sc_selfko_thunderpunch_last_prize() -> void:
+	cpu_active(mon("base1-20", ["base1-100", "base1-100"], 60))   # Electabuzz at 10 HP
+	cpu_bench(mon("base1-58"))
+	foe_bench_keep()
+	foe(mon("base1-58", [], 20))
+	_prizes("player_", 1)
+	var v := _verdict("Thunderpunch", true, false)
+	check("Thunderpunch at 10 HP, player on their last Prize -> avoid (tails loses the game)", bool(v["self_ko"]) and not bool(v["take"]), str(v))
+
+func sc_selfko_thunderpunch_two_prizes() -> void:
+	cpu_active(mon("base1-20", ["base1-100", "base1-100"], 60))
+	cpu_bench(mon("base1-58"))
+	foe_bench_keep()
+	foe(mon("base1-58", [], 20))
+	_prizes("player_", 2)
+	var v := _verdict("Thunderpunch", true, false)
+	check("Thunderpunch at 10 HP, player on 2 Prizes -> take the KO (a coin can't lose the game)", bool(v["self_ko"]) and bool(v["take"]), str(v))
+
+func sc_selfko_thunderpunch_20hp() -> void:
+	cpu_active(mon("base1-20", ["base1-100", "base1-100"], 50))   # 20 HP: 10 recoil can't KO
+	foe_bench_keep()
+	foe(mon("base1-58", [], 20))
+	_prizes("player_", 1)
+	var v := _verdict("Thunderpunch", true, false)
+	check("Thunderpunch at 20 HP -> not a self-KO at all", not bool(v["self_ko"]), str(v))
+
+func sc_selfko_thundertackle_no_bench() -> void:
+	cpu_active(mon("gym2-11", ["base1-100", "base1-100", "base1-100"], 70))   # Lt. Surge's Raichu at 10 HP, nothing benched
+	foe_bench_keep()
+	foe(mon("base1-58", [], 0))
+	var v := _verdict("Thundertackle", true, false)
+	check("Thundertackle at 10 HP with an empty Bench -> avoid (losing our last Pokémon loses)", bool(v["self_ko"]) and not bool(v["take"]), str(v))
+
+func sc_selfko_selfdestruct_wins() -> void:
+	cpu_active(mon("base1-9", ["base1-100", "base1-100", "base1-100", "base1-100"]))
+	cpu_bench(mon("base1-3"))
+	foe_bench_keep()
+	foe(mon("base1-46"))
+	_prizes("opponent_", 1)
+	var v := _verdict("Selfdestruct", true, false)
+	check("Selfdestruct for the CPU's last Prize -> take", bool(v["take"]), str(v))
+
+func sc_selfko_selfdestruct_even_no_reason() -> void:
+	cpu_active(mon("base1-9", ["base1-100", "base1-100", "base1-100", "base1-100"]))
+	cpu_bench(mon("base1-3"))
+	foe_bench_keep()
+	foe(mon("base1-46", [], 20))   # 30 HP: Thunder Wave KOs it too
+	var v := _verdict("Selfdestruct", true, true)
+	check("Selfdestruct, 6 v 6 Prizes, Thunder Wave also KOs -> avoid", bool(v["self_ko"]) and not bool(v["take"]), str(v))
+
+func sc_selfko_selfdestruct_bench_exchange() -> void:
+	cpu_active(mon("base1-9", ["base1-100", "base1-100", "base1-100", "base1-100"]))
+	cpu_bench(mon("base1-3"))
+	foe_bench_keep()
+	foe(mon("base1-46"))
+	var b1 := mon("base1-58", [], 20); b1.current_location = "bench"; m.player_bench.append(b1)
+	var b2 := mon("base1-58", [], 30); b2.current_location = "bench"; m.player_bench.append(b2)
+	var v := _verdict("Selfdestruct", true, false)
+	check("Selfdestruct KOs Active + 2 damaged Benched (3 Prizes for 1) -> take", bool(v["take"]), str(v))
+
+func sc_selfko_selfdestruct_doomed() -> void:
+	cpu_active(mon("base1-9", ["base1-100", "base1-100", "base1-100", "base1-100"]))
+	cpu_bench(mon("base1-3"))
+	foe_bench_keep()
+	foe(mon("base1-46", [], 20))
+	var v := _verdict("Selfdestruct", true, true, true)
+	check("Selfdestruct when our Active is KO'd next turn anyway -> take", bool(v["take"]), str(v))
+
+func sc_selfko_doubleedge_big_target() -> void:
+	cpu_active(mon("base1-3", ["base1-97", "base1-97", "base1-97", "base1-97"], 50))   # Chansey 70 HP, 80 recoil
+	cpu_bench(mon("base1-58"))
+	foe_bench_keep()
+	foe(mon("base1-3", [], 40))   # an 80 HP Chansey only Double-edge reaches
+	var v := _verdict("Double-edge", true, false)
+	check("Double-edge on a big 80 HP target nothing else reaches -> take", bool(v["take"]), str(v))
+
+# ---- 2026-11-21 BABY POKÉMON EVOLUTION (Neo rule) ----
+func sc_baby_can_evolve_from() -> void:
+	var pichu := mon("neo1-12")
+	var tyrogue := mon("neo2-66")
+	check("Pikachu evolves from Pichu", m.can_evolve_from(c("base1-58"), pichu))
+	check("Hitmonchan evolves from Tyrogue", m.can_evolve_from(c("base1-7"), tyrogue))
+	check("Raichu does NOT evolve from Pichu", not m.can_evolve_from(c("base1-14"), pichu))
+	check("Pichu does NOT evolve from Pikachu", not m.can_evolve_from(c("neo1-12"), mon("base1-58")))
+	check("Electabuzz does NOT evolve from Pichu", not m.can_evolve_from(c("base1-20"), pichu))
+
+func sc_baby_cpu_evolves_pichu() -> void:
+	m.turn_number = 7
+	var pichu := cpu_active(mon("neo1-12"))
+	cpu_bench(mon("base1-58"))
+	foe(mon("base1-46"))
+	var pk: Array = hand(["base1-58"])
+	var targets: Array = m.get_valid_evolution_targets(pk[0], true)
+	check("CPU: Pikachu in hand can go onto the Active Pichu", targets == [pichu], str(targets.map(func(p): return p.metadata.get("name", ""))))
+	pichu.placed_on_field_this_turn = true
+	check("...but not onto a Pichu put into play this turn", m.get_valid_evolution_targets(pk[0], true).is_empty())
+
+# ---- 2026-11-21 DOUBLE DISCARD (Continuous Fireball after Energy Drain) ----
+func sc_energy_never_discarded_twice() -> void:
+	var p := cpu_active(mon("base1-4", ["base1-98", "base1-98", "base1-98"]))   # Charizard, 3 Fire
+	foe(mon("base1-58"))
+	var e = p.attached_energies[0]
+	m.card_ops.discard_energy_from_pokemon(e, true, false, false)
+	m.card_ops.discard_energy_from_pokemon(e, true, false, false)   # a stale list discards the same card again
+	var n: int = m.opponent_discard_pile.count(e)
+	check("An Energy discarded twice lands in the discard pile once", n == 1 and p.attached_energies.size() == 2, "in pile %d, attached %d" % [n, p.attached_energies.size()])

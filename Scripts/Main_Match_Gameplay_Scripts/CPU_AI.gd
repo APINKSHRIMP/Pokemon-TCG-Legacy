@@ -3121,6 +3121,125 @@ func resolve_energy_tiebreak(scored_pairs: Array, cpu_eval: Dictionary) -> Dicti
 
 	return tied[0]
 
+## SELF-KO RULES (2026-11-21, the user's soft rules). TWEAKABLE: a "big" Defending Pokémon - one only a heavy hit
+## like Selfdestruct reaches - has at least this much HP left.
+const SELF_KO_BIG_TARGET_HP := 60
+
+## Can this attack's recoil Knock Out the CPU's own Active, and if so should it still be used? Shared by
+## cpu_phase_attack and the autotester's MISSED KO oracle so both judge a self-KO the same way.
+## Returns {"self_ko": false} when the recoil can't KO us; otherwise self_ko=true, "certain" (no coin decides it),
+## "take" (use it) and "why". Rules:
+##   - never take a self-KO that hands the player the game (their Prizes run out, or we have nothing left to promote);
+##   - a COIN-FLIP recoil is otherwise fine: don't throw away a Knock Out for possible self-harm;
+##   - a CERTAIN self-KO is taken only when it wins the game, our Active is doomed next turn anyway, the Prize
+##     exchange is in our favour, we're ahead and it's an even trade, or the target is a big one nothing else reaches.
+## attack_kos = the attack's own minimum damage Knocks Out the Defending Pokémon. other_ko = another attack without
+## a self-KO also Knocks it Out.
+func self_ko_verdict(parsed_effects: Array, attack_kos: bool, other_ko: bool, ko_threats: Dictionary, known_coins: Array = []) -> Dictionary:
+	var me = main.opponent_active_pokemon
+	var foe = main.player_active_pokemon
+	if me == null or foe == null:
+		return {"self_ko": false}
+	var recoil := 0
+	var certain := true
+	var own_bench_dmg := 0
+	var foe_bench_dmg := 0
+	for e in parsed_effects:
+		match String(e.get("type", "")):
+			"self_damage":
+				recoil += int(e.get("damage", 0))
+				if String(e.get("flip", "none")) != "none":
+					certain = false
+			"bench_damage":
+				if String(e.get("flip", "none")) != "none":
+					continue   # coin-decided bench damage: not counted as a sure Prize either way
+				var t := String(e.get("target", ""))
+				if t in ["own_bench", "all_benches"]:
+					own_bench_dmg = maxi(own_bench_dmg, int(e.get("damage", 0)))
+				if t in ["main.opponent_bench", "all_benches"]:
+					foe_bench_dmg = maxi(foe_bench_dmg, int(e.get("damage", 0)))
+	if recoil <= 0 or recoil < int(me.current_hp):
+		return {"self_ko": false}
+	# COIN FORESIGHT: a one-coin recoil (Thunder Punch) whose coin it already knows is either no risk or a certain one.
+	if not certain and known_coins.size() == 1:
+		var recoil_side := ""
+		for e in parsed_effects:
+			if String(e.get("type", "")) == "self_damage":
+				recoil_side = String(e.get("flip", ""))
+		if recoil_side in ["heads", "tails"]:
+			if bool(known_coins[0]) != (recoil_side == "heads"):
+				return {"self_ko": false}
+			certain = true
+	var per_cpu_ko: int = main.match_effects.prizes_per_ko(true)     # the CPU taking Prizes
+	var per_player_ko: int = main.match_effects.prizes_per_ko(false)
+	var we_take := 0
+	var they_take := (2 if main.is_ex_pokemon(me) else 1) * per_player_ko
+	if attack_kos:
+		we_take += (2 if main.is_ex_pokemon(foe) else 1) * per_cpu_ko
+	var foe_bench_left := 0
+	for b in main.player_bench:
+		if foe_bench_dmg > 0 and int(b.current_hp) <= foe_bench_dmg:
+			we_take += (2 if main.is_ex_pokemon(b) else 1) * per_cpu_ko
+		else:
+			foe_bench_left += 1
+	var own_bench_left := 0
+	for b in main.opponent_bench:
+		if own_bench_dmg > 0 and int(b.current_hp) <= own_bench_dmg:
+			they_take += (2 if main.is_ex_pokemon(b) else 1) * per_player_ko
+		else:
+			own_bench_left += 1
+	# House rule (check_all_knockouts): both sides taking their last Prize at once is a loss for the PLAYER.
+	var we_win: bool = attack_kos and (we_take >= main.opponent_prize_cards.size() or foe_bench_left == 0)
+	var they_win: bool = they_take >= main.player_prize_cards.size() or own_bench_left == 0
+	var out := {"self_ko": true, "certain": certain, "take": false, "why": ""}
+	if they_win and not we_win:
+		out["why"] = "the self-KO would lose the game"
+		return out
+	if not attack_kos:
+		out["why"] = "no Knock Out to trade for"
+		return out
+	if not certain:
+		out["take"] = true; out["why"] = "only a coin decides the recoil and it can't lose the game"
+		return out
+	var cpu_left: int = main.opponent_prize_cards.size()
+	var player_left: int = main.player_prize_cards.size()
+	if we_win:
+		out["take"] = true; out["why"] = "the Knock Out wins the game"
+	elif bool(ko_threats.get("cpu_active_guaranteed_ko", false)):
+		out["take"] = true; out["why"] = "our Active is Knocked Out next turn anyway"
+	elif we_take > they_take:
+		out["take"] = true; out["why"] = "Prize exchange %d for %d" % [we_take, they_take]
+	elif we_take == they_take and cpu_left < player_left:
+		out["take"] = true; out["why"] = "ahead on Prizes, even trade"
+	elif we_take == they_take and not other_ko and int(foe.current_hp) >= SELF_KO_BIG_TARGET_HP:
+		out["take"] = true; out["why"] = "big Defending Pokémon only this attack reaches"
+	else:
+		out["why"] = "no reason to trade our Active (%d for %d, Prizes %d v %d)" % [we_take, they_take, cpu_left, player_left]
+	return out
+
+## Does another payable attack (not attacks[skip]) surely Knock Out the Defending Pokémon without a recoil that
+## could KO our own Active? (self_ko_verdict's "only this attack reaches it" test.)
+func _cpu_other_attack_kos(attacks: Array, skip: int, player_hp: int, cpu_types: Array) -> bool:
+	var me = main.opponent_active_pokemon
+	var foe = main.player_active_pokemon
+	for j in range(attacks.size()):
+		if j == skip:
+			continue
+		var a: Dictionary = attacks[j]
+		if get_unmet_energy_count(a, me) > 0 or main.is_attack_disabled(me, a.get("name", "")) \
+				or main.attack_effects.attack_unusable_reason(a, me) != "":
+			continue
+		var r: Dictionary = main.attack_effects.estimate_attack_damage_range(a, me, foe)
+		if int(main.calculate_final_damage(r["min"], cpu_types, foe, me)["damage"]) < player_hp:
+			continue
+		var recoil := 0
+		for e in main.attack_effects.parse_card_text_effects(a.get("text", ""), me.metadata.get("name", "")):
+			if e.get("type", "") == "self_damage":
+				recoil += int(e.get("damage", 0))
+		if recoil < int(me.current_hp):
+			return true
+	return false
+
 # Scores the value of parsed attack effects for CPU attack selection
 # True if the defender's own abilities/body text grants outright poison immunity
 # (e.g. "can't be Poisoned"). Used by the ISSUE #11 guaranteed-poison damage credit.
@@ -3178,7 +3297,7 @@ func score_parsed_effects(effects: Array, defender: card_object) -> float:
 				score += 50.0 * flip_mult
 
 		if effect["type"] == "self_damage":
-			score -= effect.get("damage", 0) * 0.5
+			score -= effect.get("damage", 0) * 0.5 * flip_mult   # 2026-11-21: a coin-flip recoil is half as likely
 
 		if effect["type"] == "energy_discard_self":
 			var count = effect.get("count", 1)
@@ -3327,10 +3446,15 @@ func score_parsed_effects(effects: Array, defender: card_object) -> float:
 ###################################################### OPPONENT GENERAL FUNCTIONALITY FUNCTIONS ######################################################
 
 # Load all the opponent's data
+## CPU vs CPU (2026-11-21): set by mirror_next_action - score the attacks, store the pick in dry_run_attack, use nothing.
+var attack_dry_run := false
+var dry_run_attack := -1
+
 func cpu_phase_attack(cpu_eval: Dictionary) -> void:
+	dry_run_attack = -1
 	if main.opponent_active_pokemon == null or main.player_active_pokemon == null:
 		return
-	if GameState.autotest != null: GameState.autotest.cpu_attack_phase(main)   # AUTOTEST: which attacks it could use
+	if GameState.autotest != null and not attack_dry_run: GameState.autotest.cpu_attack_phase(main)   # AUTOTEST: which attacks it could use
 	# ISSUE #455: set again only if this turn deliberately skips its attack. Reset HERE, not at turn start: the
 	# autotester judges a turn at the start of the NEXT one, and a turn-start reset wiped the reason first, so every
 	# deliberate skip was reported as SKIPPED ATTACK (Tusk Toss, Eerie Howl, Sleep Inducer in the 2026-11-06 batch).
@@ -3511,15 +3635,25 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		# ---- SELF DAMAGE VS GUARANTEED KO (items 8-9) ----
 		var has_self_damage = false
 		var self_damage_amount = 0
+		var self_damage_chance := 1.0   # 2026-11-21: 0.5 when a coin decides the recoil (Thunder Punch, Thundertackle)
 		var has_energy_discard = false
 		var discard_count = 0
 		for effect in parsed_effects:
 			if effect["type"] == "self_damage":
 				has_self_damage = true
 				self_damage_amount = effect.get("damage", 0)
+				if String(effect.get("flip", "none")) != "none":
+					self_damage_chance = 0.5
 			if effect["type"] == "energy_discard_self":
 				has_energy_discard = true
 				discard_count = effect.get("count", 1)
+		# 2026-11-21 SELF-KO RULES: may this attack knock out our own Active, and is that trade worth it?
+		var self_ko := {"self_ko": false}
+		if has_self_damage:
+			self_ko = self_ko_verdict(parsed_effects, effective_min_damage >= player_hp,
+				_cpu_other_attack_kos(attacks, i, player_hp, cpu_types), ko_threats, _cpu_known_coins)
+			if bool(self_ko["self_ko"]):
+				print("SELF-KO RULES ACTIVE (2026-11-21): ", attack.get("name", ""), " -> ", "TAKE" if bool(self_ko["take"]) else "AVOID", " (", self_ko["why"], ")")
 		
 		# If this attack guarantees KO but has drawbacks, and another attack ALSO guarantees KO without drawbacks
 		# prefer the one without drawbacks (item 8, 9)
@@ -3527,16 +3661,17 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 			if has_energy_discard:
 				score -= 50.0  # Penalise discard on guaranteed KO (prefer no-drawback KO)
 			if has_self_damage:
-				score -= 20.0  # Penalise self-damage on guaranteed KO (less penalty than discard)
+				score -= 20.0 * self_damage_chance  # Penalise self-damage on guaranteed KO (less penalty than discard)
 		
 		# ---- ZAPDOS-STYLE: Both attacks have drawbacks (item 10) ----
 		# Self-damage is less bad than energy discard
 		if has_self_damage and not has_energy_discard:
 			# Check if self-damage would KO us
-			if main.opponent_active_pokemon.current_hp - self_damage_amount <= 0:
-				score -= 300.0  # Strongly avoid suicide
+			if bool(self_ko["self_ko"]):
+				if not bool(self_ko["take"]):
+					score -= 300.0 * (1.0 if bool(self_ko["certain"]) or "lose the game" in String(self_ko["why"]) else self_damage_chance)
 			else:
-				score -= self_damage_amount * 0.3  # Light penalty
+				score -= self_damage_amount * 0.3 * self_damage_chance  # Light penalty
 		
 		if has_energy_discard:
 			if discard_count == -1:
@@ -4869,8 +5004,9 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 
 		# ISSUE #333: a sure Knock Out (minimum damage after W/R covers their HP) -- unless the attack is
 		# flagged as doing nothing here, or its recoil would knock out our own Active too.
+		# 2026-11-21: a recoil that could KO our Active only stops it being a sure KO when self_ko_verdict says so.
 		var sure_ko: bool = effective_min_damage >= player_hp and score > -9000.0 \
-			and not (has_self_damage and int(self_damage_amount) >= main.opponent_active_pokemon.current_hp)
+			and not (bool(self_ko["self_ko"]) and not bool(self_ko["take"]))
 		# ISSUE #455: an attack whose ONLY effect is the CPU choosing a Benched Pokemon to switch in
 		# (Lure) and that does no damage is a wasted turn when no Benched Pokemon is a better
 		# Defending Pokemon than the current one. Flagged so that, chosen or not, it is never used.
@@ -4937,6 +5073,9 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	if not _scripted_attack and _cpu_attack_decks_out(attacks[best_attack_index]):
 		print("AUDIT 2026-11-16 FIX ACTIVE: CPU skips ", attacks[best_attack_index].get("name", ""), " - it would draw its deck empty")
 		cpu_skip_reason = "deck_out_draw"
+		return
+	if attack_dry_run:
+		dry_run_attack = best_attack_index
 		return
 	# Execute the chosen attack
 	var chosen_attack = attacks[best_attack_index]
@@ -7913,6 +8052,127 @@ func _shadow_evaluate() -> Dictionary:
 	out["attacks"] = atks
 	return out
 
+# ── CPU vs CPU (2026-11-21) ─────────────────────────────────────────────────────────────────────────────
+# A SECOND CPU_AI instance (the autotester's --bot=cpu) plays the PLAYER's side: each step the two sides' match data
+# is swapped, the real CPU decision functions pick the next action for "its" side, and the sides are swapped back.
+# The bot then performs that action through the normal game controls. Its own instance, so the real CPU's per-turn
+# memory (Oak count, search plan, stall streak...) is never touched. Prompts the action opens are still answered by
+# the bot, steered to the target chosen here (`target`).
+## TWEAKABLE: the most Trainer cards the mirror plays in one turn (a guard against a loop of failing plays).
+const MIRROR_MAX_TRAINERS := 10
+
+## The next thing to do: {"kind": "trainer"|"evolve"|"bench"|"energy"|"retreat"|"attack"|"end", "card", "target", "index"}.
+## `tried`: card uids already attempted this turn (skipped). `trainers_played`: count this turn.
+func mirror_next_action(tried: Dictionary, retreated: bool, trainers_played: int, playable: Dictionary, can_retreat_now: bool) -> Dictionary:
+	if main.player_active_pokemon == null or main.opponent_active_pokemon == null:
+		return {"kind": "end"}
+	_shadow_swap()
+	main.cpu_ai.invalidate_cpu_evaluation()
+	var out: Dictionary = {}
+	out = await _mirror_decide(tried, retreated, trainers_played, playable, can_retreat_now)
+	_shadow_swap()
+	attack_dry_run = false
+	main.cpu_ai.invalidate_cpu_evaluation()
+	return out
+
+
+## `playable` (instance ids of the Trainers the rules let the player play now) and `can_retreat_now` are worked out by the
+## bot BEFORE the swap - those checks read the player_* side.
+func _mirror_decide(tried: Dictionary, retreated: bool, trainers_played: int, playable: Dictionary, can_retreat_now: bool) -> Dictionary:
+	var me = main.opponent_active_pokemon   # (the player's Active while swapped)
+	var foe = main.player_active_pokemon
+	var cpu_eval: Dictionary = get_cpu_evaluation()
+	var energy_done: bool = main.opponent_energy_played_this_turn
+	# Trainers: "early" until the Energy is down, then "late" (Oak and friends wait for the attach, ISSUE #398).
+	if trainers_played < MIRROR_MAX_TRAINERS:
+		cpu_trainer_phase = "late" if energy_done else "early"
+		var best_t = null
+		var best_ts := CPU_TRAINER_PLAY_THRESHOLD
+		for c in main.opponent_hand:
+			if tried.has(c.get_instance_id()) or not playable.has(c.get_instance_id()):
+				continue
+			var s := cpu_score_trainer_for_play(c)
+			if s > best_ts:
+				best_ts = s
+				best_t = c
+		if best_t != null:
+			return {"kind": "trainer", "card": best_t, "why": "score %d" % int(best_ts)}
+	# Evolution: the CPU's best pair (kept below -200, CPU v2).
+	if not main.powers_and_bodies.is_prehistoric_power_active():
+		var best_e := {}
+		for c in main.opponent_hand:
+			if tried.has(c.get_instance_id()):
+				continue
+			for tgt in main.get_valid_evolution_targets(c, true):
+				var r: Dictionary = evaluate_evolution_pair(c, tgt)
+				if best_e.is_empty() or float(r.get("score", 0)) > float(best_e["score"]):
+					best_e = {"card": c, "target": tgt, "score": float(r.get("score", 0))}
+		if not best_e.is_empty() and float(best_e["score"]) >= -200.0:
+			return {"kind": "evolve", "card": best_e["card"], "target": best_e["target"], "why": "score %d" % int(best_e["score"])}
+	# Bench: the CPU's bench thresholds (cpu_phase_bench_play).
+	if main.opponent_bench.size() < main.get_max_bench_size():
+		var th := {0: -999, 1: int(CpuWeights.g("bench.threshold_1", 100.0)), 2: int(CpuWeights.g("bench.threshold_2", 200.0)),
+			3: int(CpuWeights.g("bench.threshold_3", 350.0)), 4: int(CpuWeights.g("bench.threshold_4", 500.0))}
+		var need: int = int(th.get(main.opponent_bench.size(), 9999))
+		if not _cpu_active_can_attack() and not main.opponent_hand.any(func(c): return c.metadata.get("supertype", "") == "Energy"):
+			need = mini(need, int(CpuWeights.g("bench.stranded_threshold", 150.0)))
+		var best_b = null
+		var best_bs := -INF
+		for c in main.opponent_hand:
+			if tried.has(c.get_instance_id()) or not main.is_basic_pokemon(c):
+				continue
+			var bs: float = float(evaluate_opponents_start_setup_pokemon_choices(c, main.opponent_hand).get("total_score", 0)) + 2.0 * cpu_counter_bonus(c)
+			if bs > best_bs:
+				best_bs = bs
+				best_b = c
+		if best_b != null and best_bs >= need:
+			return {"kind": "bench", "card": best_b, "why": "score %d >= %d" % [int(best_bs), need]}
+	# Energy: the CPU's best (Pokémon, Energy) pair, same filters as cpu_phase_energy_attachment.
+	if not energy_done:
+		var pairs: Array = []
+		for p in get_all_cpu_field_pokemon():
+			var pd: Dictionary = cpu_eval["pokemon_data"].get(p.get_instance_id(), {})
+			for e in main.opponent_hand:
+				if e.metadata.get("supertype", "").to_lower() != "energy" or tried.has(e.get_instance_id()):
+					continue
+				if main.powers_and_bodies.check_ex14_cursed_glare_blocks_energy(e, p) or _cpu_attach_refused(e, p) != "":
+					continue
+				if CpuWeights.on("rule.energy_tryon") and _cpu_energy_dead_target(p, e):
+					continue
+				if _cpu_one_turn_energy_wasted(p, e):
+					continue
+				pairs.append({"pokemon": p, "energy_card": e, "score": score_energy_pair(p, e, cpu_eval, pd)})
+		if not pairs.is_empty():
+			pairs.sort_custom(func(a, b): return a["score"] > b["score"])
+			var best_p: Dictionary = resolve_energy_tiebreak(pairs, cpu_eval)
+			return {"kind": "energy", "card": best_p["energy_card"], "target": best_p["pokemon"], "why": "score %d" % int(best_p["score"])}
+	# Retreat: the rules (+ the lookahead's clear overrides), as in cpu_phase_retreat_first_pass.
+	if not retreated and not main.opponent_bench.is_empty() and not (me.special_condition in ["Paralyzed", "Asleep"]) \
+			and can_retreat_now and me.attached_energies.size() >= main.get_retreat_cost(me):
+		var would: bool = evaluate_retreat_reasons(cpu_eval) and is_retreat_cost_worthwhile(cpu_eval)
+		var to = null
+		if CpuWeights.on("rule.lookahead"):
+			var la: Dictionary = _la().retreat_choice()
+			var delta: float = float(la.get("delta", 0.0))
+			if would and delta < -CpuWeights.g("look.retreat_stay_margin", 60.0):
+				would = false
+			elif not would and delta > CpuWeights.g("look.retreat_go_margin", 120.0) and la.get("best") != null:
+				would = true
+				to = la["best"]
+		if would:
+			if to == null:
+				to = pick_best_bench_replacement(main.opponent_bench, foe, cpu_eval)
+			if to != null:
+				return {"kind": "retreat", "target": to, "why": "retreat rules"}
+	# Attack: the real attack scorer, dry run.
+	attack_dry_run = true
+	await cpu_phase_attack(cpu_eval)
+	attack_dry_run = false
+	if dry_run_attack >= 0:
+		return {"kind": "attack", "index": dry_run_attack}
+	return {"kind": "end", "why": cpu_skip_reason}
+
+
 # KEEP VALUE — how much the CPU wants to ADD this card to hand / keep it / fetch it from deck or discard.
 # Used for deck search, recover-to-hand, "take a card", and keep-vs-discard framing. Higher = better.
 func cpu_rank_keep_value(card: card_object) -> float:
@@ -9309,6 +9569,16 @@ func cpu_score_trainer_for_play(card: card_object) -> float:
 	var s := cpu_score_trainer_card(card)
 	if s <= CPU_TRAINER_PLAY_THRESHOLD:
 		return s
+	# 2026-11-21 COIN FORESIGHT (an opponent ticked "Coin foresight"): a Trainer that does nothing on tails (Poké Ball,
+	# Energy Removal 2, Super Scoop Up...) is held when it knows the next coin is tails.
+	if CpuWeights.cheating_coins():
+		var rules = card.metadata.get("rules", [])
+		var t: String = (" ".join(rules) if rules is Array else str(rules)).to_lower()
+		if "flip a coin. if heads" in t and not "if tails" in t and not "flip 2" in t and not "until you get tails" in t:
+			var next: Array = main.peek_coins(1)
+			if not next.is_empty() and not bool(next[0]):
+				print("COIN FORESIGHT: CPU holds ", card.metadata.get("name", ""), " - it knows the coin lands tails")
+				return -50.0
 	# ISSUE #413: cards that go ON a Pokemon for this turn's attack / the opponent's next one (PlusPower, Defender,
 	# Technical Machines) are scored against the board as it is NOW - played before evolving / attaching / retreating
 	# they backed a Pokemon that then changed (PlusPower on an Active that then evolved and couldn't attack).

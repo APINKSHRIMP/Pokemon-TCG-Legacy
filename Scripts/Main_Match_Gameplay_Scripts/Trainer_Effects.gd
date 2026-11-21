@@ -1497,7 +1497,18 @@ func _chaos_gym_offer_steal(card: card_object, stealer_is_opp: bool) -> void:
 	if uid_l in ["base1-92", "base1-79"]:
 		if not await gym1_no_removal_gym_pay_tax(card, stealer_is_opp):
 			return
+	# 2026-11-21: the player steals on the CPU's turn, under the full-screen opponent_blocker - and the Trainer's
+	# own pickers (Energy Removal's "CHOOSE ENERGY TO REMOVE", Pokédex's reorder, Super Energy Removal's "DISCARD
+	# YOUR ENERGY"...) were written for the player's own turn and never lower it, so nothing could be clicked.
+	# Lowered for the whole resolution instead of in each Trainer. Board actions stay shut: _player_can_act_now()
+	# refuses while opponents_turn_active.
+	var restore_blocker: bool = (not stealer_is_opp) and main.opponent_blocker.visible
+	if restore_blocker:
+		main.opponent_blocker.visible = false
+		print("CHAOS GYM FIX ACTIVE (2026-11-21): opponent_blocker lowered while the player resolves the stolen ", card.metadata.get("name", ""))
 	await resolve_standard_trainer(card, stealer_is_opp)
+	if restore_blocker and is_instance_valid(main) and main.opponents_turn_active and not main.game_is_over:
+		main.opponent_blocker.visible = true
 
 # Displays the trainer card animation overlay
 ## Returns true when the player took the card back on "You played X!" (allow_cancel only): the
@@ -3697,6 +3708,7 @@ func effect_mr_fuji(is_opponent: bool) -> void:
 		pre.current_location = "deck"
 		deck.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(chosen, is_opponent, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	chosen.attached_pre_evolutions.clear()
 	
 	# Shuffle all attached cards into deck
@@ -5368,6 +5380,7 @@ func gym1_effect_minion_of_team_rocket(is_opponent: bool) -> void:
 		pre.current_location = "hand"
 		opp_hand.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "hand", not (is_opponent), -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(target, not is_opponent, "hand")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	target.attached_pre_evolutions.clear()
 	for ac in target.attached_cards:
 		ac.current_location = "hand"
@@ -5847,6 +5860,7 @@ func gym1_narrow_gym_force_return_to_hand(side_is_opponent: bool) -> void:
 
 	chosen.attached_energies.clear()
 	chosen.attached_cards.clear()
+	main.card_ops.release_special_forms(chosen, chosen.is_owner_opp(main), "hand")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	chosen.attached_pre_evolutions.clear()
 	chosen.current_hp = chosen.get_max_hp()
 	main.clear_all_statuses(chosen, side_is_opponent)
@@ -6992,6 +7006,7 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 
 	chosen.attached_energies.clear()
 	chosen.attached_cards.clear()
+	main.card_ops.release_special_forms(chosen, chosen.is_owner_opp(main), "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	chosen.attached_pre_evolutions.clear()
 	chosen.current_hp = chosen.get_max_hp()
 	main.clear_all_statuses(chosen, is_opponent)

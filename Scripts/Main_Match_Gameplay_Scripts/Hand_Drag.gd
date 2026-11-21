@@ -537,6 +537,9 @@ func _drop_target_rect(press: Dictionary, pos: Vector2) -> Rect2:
 	var card: card_object = press["card"]
 	# A Basic over a bench slot: frame the slot it will actually land in.
 	if press["kind"] == "hand" and String(main.get_card_action(card).get("action", "")) == "SET_POKEMON":
+		var baby := _baby_target(card, pos)   # 2026-11-21: a Basic over the Baby it evolves from
+		if baby != null:
+			return pokemon_rect(baby)
 		var slot := bench_slot_at(pos)
 		if slot < 0 or main.player_bench.size() >= main.get_max_bench_size():
 			return Rect2()
@@ -622,6 +625,15 @@ func trainer_drop_ok(card: card_object, mon: card_object) -> bool:
 	return true
 
 
+## 2026-11-21 BABY POKÉMON: the Baby under `pos` that this Basic may evolve right now (Pikachu over Pichu), else null.
+func _baby_target(card: card_object, pos: Vector2) -> card_object:
+	var mon := pokemon_at(pos)
+	if mon == null or not ("Baby" in mon.metadata.get("subtypes", [])):
+		return null
+	if main.powers_and_bodies.is_prehistoric_power_active():
+		return null
+	return mon if mon in main.get_valid_evolution_targets(card, false) else null
+
 func _energy_drop_ok(energy: card_object, target: card_object) -> bool:
 	if main.player_energy_played_this_turn:
 		return false
@@ -693,6 +705,12 @@ func _resolve_drop(press: Dictionary, pos: Vector2) -> void:
 				return
 			_land_and(press, func(): return await main.drag_evolve(card, target))
 		"SET_POKEMON", "PLAY_TRAINER":
+			# 2026-11-21 BABY POKÉMON: a Basic dropped on the Baby it evolves from (Pikachu on Pichu) evolves it.
+			var baby := _baby_target(card, pos) if action == "SET_POKEMON" else null
+			if baby != null:
+				print("BABY EVOLUTION ACTIVE (2026-11-21): ", card.metadata.get("name", ""), " dropped on ", baby.metadata.get("name", ""))
+				_land_and(press, func(): return await main.drag_evolve(card, baby))
+				return
 			# A Basic on a bench slot goes to that slot; anywhere else above the line, to the end.
 			var slot := bench_slot_at(pos) if action == "SET_POKEMON" else -1
 			# ISSUE #421: a Trainer dropped on a Pokemon it can be played onto counts wherever that is.

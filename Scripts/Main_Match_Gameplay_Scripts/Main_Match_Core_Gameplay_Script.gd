@@ -11379,6 +11379,14 @@ func can_evolve_from(evolving_pokemon: card_object, base_pokemon: card_object) -
 	for alt in evolving_pokemon.metadata.get("evolvesFromAlso", []):
 		if str(alt) == base_name:
 			return true
+	# 2026-11-21 BABY POKÉMON (Neo rule): a Baby evolves into the Basic Pokémon its card names ("evolvesTo": Pichu ->
+	# Pikachu, Tyrogue -> Hitmonlee / Hitmonchan / Hitmontop). That Basic can still be put on the Bench as normal.
+	if "Baby" in base_pokemon.metadata.get("subtypes", []) and not ("Baby" in evolving_pokemon.metadata.get("subtypes", [])) \
+			and evolving_pokemon.metadata.get("supertype", "") == "Pokémon" and is_basic_pokemon(evolving_pokemon):
+		var evo_name: String = evolving_pokemon.metadata.get("name", "")
+		for t in base_pokemon.metadata.get("evolvesTo", []):
+			if str(t) == evo_name:
+				return true
 	return false
 
 # Function to check if a card is a basic energy card (not special energy like Double Colorless)
@@ -12318,6 +12326,31 @@ func handle_action_normal_card() -> void:
 		if _should_bail(): return
 		if chose_energy:
 			hide_selection_mode_display_main()
+			return
+
+	# 2026-11-21 BABY POKÉMON: a Basic that one of our Babies evolves into (Pikachu, with Pichu in play) may evolve
+	# it or go on the Bench - ask which. (Dragging it onto the Baby evolves it straight away: Hand_Drag.)
+	if not match_just_started_basic_pokemon_required and not bench_setup_phase_active \
+			and is_basic_pokemon(selected_card_for_action) and not powers_and_bodies.is_prehistoric_power_active() \
+			and not get_valid_evolution_targets(selected_card_for_action, false).is_empty():
+		var baby_labels: Array = ["EVOLVE YOUR BABY POKÉMON"]
+		if player_bench.size() < get_max_bench_size():
+			baby_labels.append("PLACE ON BENCH")
+		baby_labels.append("CANCEL")
+		var baby_pick: int = await pick_option(str(selected_card_for_action.metadata.get("name", "")).to_upper() \
+				+ ": EVOLVE YOUR BABY POKÉMON, OR PLAY IT AS A BASIC?", baby_labels, baby_labels.size() - 1)
+		if _should_bail(): return
+		print("BABY EVOLUTION ACTIVE (2026-11-21): player chose ", baby_labels[baby_pick])
+		if baby_pick == baby_labels.size() - 1:
+			clear_current_action_selection()
+			return
+		if baby_pick == 0:
+			var baby_block: String = tutorial.gate("play", {"card": selected_card_for_action, "action": "EVOLVE"})
+			if baby_block != "":
+				await tutorial.show_block(baby_block)
+				clear_current_action_selection()
+				return
+			await start_evolution()
 			return
 
 	# Get the action type

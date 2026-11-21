@@ -88,10 +88,10 @@ func _answer_prompts() -> bool:
 	if main.msgbox_container.visible:
 		main.message_acknowledged.emit()
 		return true
-	# 2. A coin is mid-flip — nothing to answer, just wait.
-	if main.coin_container.visible:
-		return false
-	# 2a. AUDIT 2026-11-17: an option pick (yes / no, "how many", a condition...) in the action panel rows.
+	# 2. AUDIT 2026-11-17: an option pick (yes / no, "how many", a condition...) in the action panel rows.
+	# 2026-11-21: answered BEFORE the coin check - Sabrina's ESP asks "re-flip this coin?" with the tails coin
+	# still on screen (a person can click the rows: the action panel sits above the coin overlay). The bot
+	# used to wait for the coin forever (221 SOFT-LOCKs in the overnight sim).
 	if main.option_pick_active():
 		var labels: Array = main.option_pick_labels
 		if not _count_attempt("option:" + str(main.option_pick_caption) + str(labels)):
@@ -99,9 +99,14 @@ func _answer_prompts() -> bool:
 		var oi: int = rng.randi() % labels.size()
 		if _smart() and main.option_pick_back_index == 1 and labels.size() == 2:
 			oi = 0   # smart: "may" effects are almost always worth taking
+		if cpu_option != "" and cpu_option in labels:
+			oi = labels.find(cpu_option)   # CPU vs CPU: the answer the mirror CPU chose for this action
 		_log("option '%s' on '%s'" % [labels[oi], str(main.option_pick_caption).left(60)])
 		main.special_attack_selected.emit(oi)
 		return true
+	# 2a. A coin is mid-flip — nothing to answer, just wait.
+	if main.coin_container.visible:
+		return false
 	# 2b. A copy attack (Metronome...) choosing from its rows in the action panel.
 	if main.copy_pick_active and not main.copy_pick_pool.is_empty():
 		var i: int = rng.randi() % main.copy_pick_pool.size()
@@ -341,6 +346,12 @@ func _board_idle() -> bool:
 		return false
 	if m.get("_anim_in_flight"):
 		return false
+	# 2026-11-21: a person can do nothing while a full-screen blocker is up (mouse is stopped by it, Board_Nav and
+	# Hand_Drag both refuse) - perform_attack raises opponent_blocker the moment an attack starts. The bot's driver
+	# used to act in the gap before the attack ended the turn: Teleport Blast was attacked with twice and a retreat
+	# opened under the blocker (INPUT BLOCKED "RETREAT - SELECT ENERGY TO DISCARD").
+	if m.opponent_blocker.visible or m.animation_blocker.visible:
+		return false
 	return m._player_can_act_now()
 
 
@@ -352,7 +363,16 @@ func _run_driver_step() -> void:
 		_powers_this_turn = 0
 		_retreated_this_turn = false
 		_smart_trainers = 0
+		_cpu_tried = {}
+		_cpu_trainers = 0
+		cpu_target = null
+		cpu_option = ""
 	_actions_this_turn += 1
+	if _cpu_bot():
+		_driver_busy = true
+		await _cpu_step()   # cpu_target / cpu_option stay set: the prompts that action opens come after it returns
+		_driver_busy = false
+		return
 	if _smart():
 		_driver_busy = true
 		await _smart_step()
@@ -649,6 +669,8 @@ func _smart_single_pick(pool: Array):
 	var cards: Array = pool.filter(func(c): return c is Object and "metadata" in c)
 	if cards.is_empty():
 		return null
+	if cpu_target != null and cpu_target in cards:
+		return cpu_target   # CPU vs CPU: the target the mirror CPU chose (Energy / evolution / retreat replacement)
 	var h: String = (str(m.header_label.text) + " " + str(m.hint_label.text)).to_upper()
 	var negative: bool = "DISCARD" in h or "RETURN" in h or "SHUFFLE" in h or "REMOVE" in h and "YOUR" in h
 	var foe = m.opponent_active_pokemon
@@ -833,6 +855,76 @@ func _has_power_option() -> bool:
 		if not m.powers_and_bodies.usable_powers_for(p).is_empty():
 			return true
 	return m.current_stadium_card != null and _powers_this_turn < 2
+
+
+# ───────────────────────────── --bot=cpu (2026-11-21): CPU vs CPU ─────────────────────────────
+# The player's side is played by a second CPU_AI ("MirrorCPU"): each step it names the next action with the real CPU
+# decision functions (CPU_AI.mirror_next_action) and this bot carries it out through the normal controls. Pokémon
+# Powers still go through the smart bot's power menu (the CPU's power phase acts by itself and has no dry run).
+var _mirror_ai = null
+var _cpu_tried := {}
+var _cpu_trainers := 0
+var cpu_target = null      # the card the current action's prompt should get (read by _smart_single_pick)
+var cpu_option := ""       # the option row the current action's prompt should get
+
+func _cpu_bot() -> bool:
+	return runner != null and bool(runner.get("opt_bot_cpu"))
+
+
+func _mirror():
+	if _mirror_ai == null or not is_instance_valid(_mirror_ai):
+		_mirror_ai = load("res://Scripts/Main_Match_Gameplay_Scripts/CPU_AI.gd").new()
+		_mirror_ai.name = "MirrorCPU"
+		main.add_child(_mirror_ai)
+		_mirror_ai.main = main
+	return _mirror_ai
+
+
+func _cpu_step() -> void:
+	var m = main
+	if _actions_this_turn > MAX_ACTIONS_PER_TURN:
+		_end_turn()
+		return
+	if _powers_this_turn < 3 and _has_power_option():
+		_log("CPU-BOT: power menu")
+		await _use_power()
+		return
+	var playable := {}
+	for c in m.player_hand:
+		if m.get_card_action(c).get("action", "") == "PLAY_TRAINER" and m.trainer_effects.validate_trainer_can_be_played(c, false) == "":
+			playable[c.get_instance_id()] = true
+	var can_rt: bool = not _retreated_this_turn and not m.player_retreated_this_turn and not m.player_bench.is_empty() \
+		and bool(m.can_retreat(false).get("can_retreat", false)) and not m.match_effects.retreat_blocked(false)
+	var act: Dictionary = await _mirror().mirror_next_action(_cpu_tried, not can_rt, _cpu_trainers, playable, can_rt)
+	if m._should_bail() or not is_instance_valid(m):
+		return
+	var card = act.get("card")
+	cpu_target = act.get("target")
+	cpu_option = ""
+	var kind := String(act.get("kind", "end"))
+	_log("CPU-BOT: %s %s%s (%s)" % [kind, _name(card) if card != null else "", (" -> " + _name(cpu_target)) if cpu_target != null else "", str(act.get("why", ""))])
+	match kind:
+		"trainer":
+			_cpu_trainers += 1
+			_cpu_tried[card.get_instance_id()] = true
+			await _play_hand_card(card)
+		"evolve":
+			_cpu_tried[card.get_instance_id()] = true
+			await m.drag_evolve(card, cpu_target)   # straight onto the chosen Pokémon (also a Basic onto its Baby)
+		"bench":
+			_cpu_tried[card.get_instance_id()] = true
+			cpu_option = "PLACE ON BENCH"   # a Basic that could also evolve a Baby is asked which
+			await _play_hand_card(card)
+		"energy":
+			_cpu_tried[card.get_instance_id()] = true
+			await m.drag_attach_energy(card, cpu_target)
+		"retreat":
+			_retreated_this_turn = true
+			_retreat()
+		"attack":
+			await _attack(int(act.get("index", 0)))
+		_:
+			_end_turn()
 
 
 func _play_hand_card(card) -> void:

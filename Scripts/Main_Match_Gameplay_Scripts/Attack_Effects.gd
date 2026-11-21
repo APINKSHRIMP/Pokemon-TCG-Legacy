@@ -395,7 +395,21 @@ func _register_base_attacks() -> void:
 		else: await execute_oddish_sprout(a, opp)
 		await _attack_finish(false, 0, atk, a.metadata.get("types",["Colorless"]), opp)
 	# Dark Alakazam Teleport Blast: damage first, then self switch (both already parse via text, explicit dispatch for clarity)
-	_attack_dispatch["teleport blast"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); var types=a.metadata.get("types",["Colorless"]); var r=main.calculate_final_damage(b,types,d,a); if not main.check_defender_invincible(d,!opp): var fd=main.apply_defender_no_damage_shield(d,r["damage"],!opp); await main.display_and_apply_attack_damage(a,d,fd,r["modifiers"],opp,b); if main._should_bail(): return; await apply_self_switch(a,opp,"you may switch" in atk.get("text","").to_lower()); await _attack_finish(true, b, atk, types, opp)
+	# 2026-11-21: was ONE line - `if not invincible: ...; if main._should_bail(): return; await apply_self_switch(...);
+	# await _attack_finish(...)`. In GDScript everything after an inline `if x:` on the same line is that if's body,
+	# so the switch and the turn end only ran when bailing: the attack dealt its damage and the turn never ended
+	# (the player was left under the attack blocker). Split into real lines.
+	_attack_dispatch["teleport blast"] = func(atk, a, d, opp):
+		var b = parse_attack_base_damage(atk)
+		var types = a.metadata.get("types", ["Colorless"])
+		var r = main.calculate_final_damage(b, types, d, a)
+		if not main.check_defender_invincible(d, !opp):
+			var fd = main.apply_defender_no_damage_shield(d, r["damage"], !opp)
+			await main.display_and_apply_attack_damage(a, d, fd, r["modifiers"], opp, b)
+			if main._should_bail(): return
+		await apply_self_switch(a, opp, "you may switch" in atk.get("text", "").to_lower())
+		if main._should_bail(): return
+		await _attack_finish(true, b, atk, types, opp)
 
 ######################################################################################################################################################
 ################################################# UNIFIED ATTACK DISPATCH ###########################################################################
@@ -4373,6 +4387,7 @@ func execute_fling(attacker: card_object, defender: card_object, is_opponent: bo
 	for pre in target_active.attached_pre_evolutions:
 		pre.current_location = "deck"
 		target_deck.append(pre)
+	main.card_ops.release_special_forms(target_active, not is_opponent, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	target_active.attached_pre_evolutions.clear()
 	
 	# Shuffle attached trainer cards back into deck
@@ -4948,6 +4963,7 @@ func execute_vanish(attacker: card_object, is_opponent: bool) -> void:
 		pre.current_location = "discard"
 		discard.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(attacker, is_opponent, "discard")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	attacker.attached_pre_evolutions.clear()
 	
 	for ac in attacker.attached_cards:
@@ -5307,6 +5323,7 @@ func gym1_shuffle_into_deck(pokemon: card_object, is_pokemon_opponent: bool) -> 
 		pre.current_location = "deck"
 		deck.append(pre)
 		main.card_ops.fly_card(pre, "attached", "deck", is_pokemon_opponent, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(pokemon, is_pokemon_opponent, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	pokemon.attached_pre_evolutions.clear()
 	for ac in pokemon.attached_cards:
 		ac.current_location = "deck"
@@ -5413,6 +5430,7 @@ func execute_phoenix_flame(attacker: card_object, defender: card_object, is_oppo
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: KO'd mid-attack (Final Beam, Fire Wall...) - never move a discarded card back into play
 	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
 		await main.show_message("HEADS! BLAINE'S MOLTRES STAYS IN PLAY!")
@@ -6023,6 +6041,7 @@ func gym1_return_pokemon_to_hand(pokemon: card_object, is_pokemon_opponent: bool
 		pre.current_hp = pre.get_max_hp()   # OLD ISSUE 375: a card back in the hand is undamaged
 		hand.append(pre)
 		main.card_ops.fly_card(pre, "attached", "hand", is_pokemon_opponent, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(pokemon, is_pokemon_opponent, "hand")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	pokemon.attached_pre_evolutions.clear()
 	for ac in pokemon.attached_cards:
 		ac.current_location = "hand"
@@ -7068,6 +7087,7 @@ func execute_obscuring_gas(attacker: card_object, defender: card_object, is_oppo
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: KO'd mid-attack (Final Beam, Fire Wall...) - never move a discarded card back into play
 	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
 		await main.show_message("HEADS! " + attacker.metadata.get("name", "").to_upper() + " IS SHUFFLED INTO THE DECK!")
@@ -7914,6 +7934,7 @@ func execute_star_boomerang(attacker: card_object, defender: card_object, is_opp
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: KO'd mid-attack (Final Beam, Fire Wall...) - never move a discarded card back into play
 	var coin = await main.flip_coin(false, is_opponent)
 	if coin:
 		await main.show_message("HEADS! " + attacker.metadata.get("name", "").to_upper() + " RETURNS TO YOUR HAND!")
@@ -7936,6 +7957,7 @@ func execute_fade_out(attacker: card_object, defender: card_object, is_opponent:
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: KO'd mid-attack (Final Beam, Fire Wall...) - never move a discarded card back into play
 	var hand = main.opponent_hand if is_opponent else main.player_hand
 	var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	# Discard pre-evolutions and other attached cards
@@ -7943,6 +7965,7 @@ func execute_fade_out(attacker: card_object, defender: card_object, is_opponent:
 		pre.current_location = "discard"
 		discard_pile.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "discard", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(attacker, is_opponent, "discard")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	attacker.attached_pre_evolutions.clear()
 	for ac in attacker.attached_cards:
 		ac.current_location = "discard"
@@ -9121,6 +9144,7 @@ func execute_rapid_spin(attacker: card_object, defender: card_object, is_opponen
 		var effect = {"type": "force_switch", "target": "defender", "chooser": "defender", "flip": "none"}
 		await apply_force_switch(effect, is_opponent)
 		if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: KO'd mid-attack (Final Beam, Fire Wall...) - never move a discarded card back into play
 	# Attacker switches their active (they choose)
 	var own_bench = main.opponent_bench if is_opponent else main.player_bench
 	if own_bench.size() > 0:
@@ -10821,6 +10845,7 @@ func execute_neo2_collect_fire(attacker: card_object, defender: card_object, is_
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: a counter-attack (Fire Wall, Crosscounter) KO'd the attacker - never attach to a discarded card
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var fire_e: card_object = null
 	for c in discard:
@@ -11918,6 +11943,7 @@ func execute_neo3_dark_flame(attacker: card_object, defender: card_object, is_op
 		if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: a counter-attack (Fire Wall, Crosscounter) KO'd the attacker - never attach to a discarded card
 	# Check if Darkness energy is in discard; attach 1 to Houndoom
 	var own_discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var darkness_in_discard: Array = []
@@ -14654,6 +14680,7 @@ func execute_neo4_return_home(attacker: card_object, is_opponent: bool) -> void:
 		await main.card_ops.fly_card(c, "attached", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	target.attached_energies.clear()
 	target.attached_cards.clear()
+	main.card_ops.release_special_forms(target, is_opponent, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	target.attached_pre_evolutions.clear()
 	var _fr1: Dictionary = main.card_ops.capture_rect(target, "play", is_opponent)   # AUDIT 2026-11-17: flight
 	own_bench.erase(target)
@@ -20846,6 +20873,7 @@ func execute_ex3_backspin(attacker: card_object, defender: card_object, is_oppon
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: KO'd mid-attack (Final Beam, Fire Wall...) - never move a discarded card back into play
 	var own_bench = main.opponent_bench if is_opponent else main.player_bench
 	if attacker.attached_energies.is_empty() or own_bench.is_empty():
 		return
@@ -20873,6 +20901,7 @@ func execute_ex3_quick_touch(attacker: card_object, defender: card_object, is_op
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: KO'd mid-attack (Final Beam, Fire Wall...) - never move a discarded card back into play
 	var own_bench = main.opponent_bench if is_opponent else main.player_bench
 	if own_bench.is_empty():
 		return
@@ -21058,6 +21087,7 @@ func execute_ex3_energy_stream(attacker: card_object, defender: card_object, is_
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: a counter-attack (Fire Wall, Crosscounter) KO'd the attacker - never attach to a discarded card
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
 	if not coin:
@@ -21097,6 +21127,7 @@ func execute_ex3_melting_mountain(attacker: card_object, defender: card_object, 
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: a counter-attack (Fire Wall, Crosscounter) KO'd the attacker - never attach to a discarded card
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	if deck.is_empty():
 		return
@@ -21240,6 +21271,7 @@ func execute_ex3_collect_fire(attacker: card_object, defender: card_object, is_o
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: a counter-attack (Fire Wall, Crosscounter) KO'd the attacker - never attach to a discarded card
 	var coin = await main.flip_coin(false, is_opponent)
 	if main._should_bail(): return
 	if not coin:
@@ -23914,6 +23946,7 @@ func execute_ex6_energy_stream(attacker: card_object, defender: card_object, is_
 		if main._should_bail(): return
 		await main.check_all_knockouts()
 		if main._should_bail(): return
+		if not _ko_alive(attacker): return   # 2026-11-21: a counter-attack (Fire Wall, Crosscounter) KO'd the attacker - never attach to a discarded card
 	var discard = main.opponent_discard_pile if is_opponent else main.player_discard_pile
 	var pool = discard.filter(func(c): return c.metadata.get("supertype","") == "Energy" and "Basic" in c.metadata.get("subtypes", []))
 	if pool.is_empty():
@@ -25505,6 +25538,7 @@ func execute_ex7_rotating_claws(attacker: card_object, defender: card_object, is
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: a counter-attack (Fire Wall, Crosscounter) KO'd the attacker - never attach to a discarded card
 	if attacker.attached_energies.is_empty():
 		return
 	var do_it = is_opponent
@@ -26702,8 +26736,9 @@ func _register_ex9_attacks() -> void:
 	_attack_dispatch["metal crush"] = func(atk, a, d, opp):
 		var b=parse_attack_base_damage(atk); var more=extract_number_before(atk.get("text","").to_lower(),"more damage")
 		var dmg = b + ((more if more>0 else 20) if _ex9_named_in_play("Registeel ex") else 0)
-		await gym1_hit_active(a, d, opp, dmg); if main._should_bail(): return; await main.check_all_knockouts()
-		await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)
+		await gym1_hit_active(a, d, opp, dmg)
+		if main._should_bail(): return
+		await _attack_finish(true, dmg, atk, a.metadata.get("types",["Colorless"]), opp)   # (it checks Knock Outs itself)
 	# Iceberg Crush (ex9-98 Regice ex): base; if Regirock ex in play, flip → discard 1 Energy from Defender.
 	_attack_dispatch["iceberg crush"] = func(atk, a, d, opp): var b=parse_attack_base_damage(atk); await execute_ex9_iceberg_crush(a, d, opp, b); await _attack_finish(true, b, atk, a.metadata.get("types",["Colorless"]), opp)
 	# Block Signal (ex9-100 Registeel ex): base; if Regice ex in play, flip → Defender is Confused.
@@ -28085,6 +28120,7 @@ func execute_ex10_hit_then_self_switch(attacker: card_object, defender: card_obj
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: KO'd mid-attack (Final Beam, Fire Wall...) - never move a discarded card back into play
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	if not bench.is_empty():
 		await apply_self_switch(attacker, is_opponent)
@@ -28506,6 +28542,7 @@ func _ex10_return_pokemon_to_hand(pokemon: card_object, owner_is_opp: bool) -> v
 	for pre in pokemon.attached_pre_evolutions:
 		pre.current_location = "hand"; pre.current_hp = int(pre.metadata.get("hp","0")); hand.append(pre)
 		main.card_ops.fly_card(pre, "attached", "hand", owner_is_opp, -1, rh_rect)   # AUDIT 2026-11-17: flight
+	main.card_ops.release_special_forms(pokemon, owner_is_opp, "hand")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	pokemon.attached_pre_evolutions.clear()
 	# Reset runtime state and move the Pokemon to hand.
 	main.clear_all_statuses(pokemon, owner_is_opp)
@@ -29259,6 +29296,7 @@ func execute_ex11_critical_collection(attacker: card_object, defender: card_obje
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: a counter-attack (Fire Wall, Crosscounter) KO'd the attacker - never attach to a discarded card
 	var opp_prizes = main.player_prize_cards if is_opponent else main.opponent_prize_cards
 	var taken = max(0, 6 - opp_prizes.size())
 	if taken <= 0:
@@ -30288,6 +30326,7 @@ func execute_ex13_gyarados_spiral(attacker: card_object, defender: card_object, 
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: a counter-attack (Fire Wall, Crosscounter) KO'd the attacker - never attach to a discarded card
 	var heads = 0
 	while true:
 		var coin = await main.flip_coin(true, is_opponent)
@@ -30420,6 +30459,7 @@ func execute_ex13_teleportation_burst(attacker: card_object, defender: card_obje
 	if main._should_bail(): return
 	await main.check_all_knockouts()
 	if main._should_bail(): return
+	if not _ko_alive(attacker): return   # 2026-11-21: KO'd mid-attack (Final Beam, Fire Wall...) - never move a discarded card back into play
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	if bench.is_empty(): return
 	await apply_self_switch(attacker, is_opponent)
@@ -33970,6 +34010,9 @@ func _any_matchable_subset(pool: Array, types: Array, k: int, start: int = 0, cu
 
 
 func pick_own_energies(a: card_object, pool: Array, n: int, opp: bool, title: String) -> Array:
+	# 2026-11-21: callers build `pool` BEFORE the damage step, and the damage can take Energy off the attacker
+	# (Koga's Muk's Energy Drain). Only what is still attached can be chosen.
+	pool = pool.filter(func(e): return e in a.attached_energies)
 	n = mini(n, pool.size())
 	if n <= 0:
 		return []

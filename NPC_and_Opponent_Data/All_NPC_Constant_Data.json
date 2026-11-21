@@ -1114,7 +1114,8 @@
       "music": "Calm Battle 2 (PMD Crystal_Cave)",
       "cash_reward": "90",
       "deck": "Strange Plants",
-      "message_colour": "green"
+      "message_colour": "green",
+      "stars": 2
     },
     "Backpacker Patrick": {
       "prize_cards": 4,
@@ -1123,7 +1124,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "110",
       "deck": "Land N Sea",
-      "message_colour": "dark_green"
+      "message_colour": "dark_green",
+      "stars": 3
     },
     "Bad Dude Paul": {
       "coin_reward": "Muk Purple",
@@ -1133,7 +1135,8 @@
       "costume_reward": "ROUGHNECK",
       "sprite": "Roughneck",
       "cash_reward": "130",
-      "message_colour": "grey"
+      "message_colour": "grey",
+      "stars": 2
     },
     "Bad Dude Wayne": {
       "coin_reward": "Weezing Purple",
@@ -1143,7 +1146,8 @@
       "prize_cards": 6,
       "sprite": "Roughneck",
       "cash_reward": "135",
-      "message_colour": "grey"
+      "message_colour": "grey",
+      "stars": 3
     },
     "Battlegirl Sofia": {
       "prize_cards": 6,
@@ -1152,7 +1156,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Brickbreaker",
-      "message_colour": "orange"
+      "message_colour": "orange",
+      "stars": 2
     },
     "Beach Kid Evie": {
       "prize_cards": 2,
@@ -1161,7 +1166,8 @@
       "music": "Jolly_battle 2 (Pinball Catchem Evolution in Red Field)",
       "cash_reward": "80",
       "deck": "Pika And Friends",
-      "message_colour": "light_pink"
+      "message_colour": "light_pink",
+      "stars": 1
     },
     "Beach Kid Timothy": {
       "prize_cards": 2,
@@ -1170,7 +1176,8 @@
       "music": "Jolly_battle (Pinball Hi Score Screen)",
       "cash_reward": "80",
       "deck": "I Love Sand And Sea",
-      "message_colour": "light_blue"
+      "message_colour": "light_blue",
+      "stars": 1
     },
     "Birdspotter Gregg": {
       "prize_cards": 6,
@@ -1179,7 +1186,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Big Ol Birbs",
-      "message_colour": "orange"
+      "message_colour": "orange",
+      "stars": 3
     },
     "Birdspotter Tamsin": {
       "prize_cards": 4,
@@ -1188,7 +1196,8 @@
       "music": "Easy_battle (PMD beach cave)",
       "cash_reward": "90",
       "deck": "Lil Birbs",
-      "message_colour": "orange"
+      "message_colour": "orange",
+      "stars": 1
     },
     "Bug Catcher Alex": {
       "coin_reward": "Caterpie Green",
@@ -1198,7 +1207,8 @@
       "costume_reward": "BUGCATCHER",
       "sprite": "BugCatcher",
       "cash_reward": "95",
-      "message_colour": "dark_green"
+      "message_colour": "dark_green",
+      "stars": 1
     },
     "Bug Catcher Frankie": {
       "coin_reward": "Pinsir Brown",
@@ -1208,7 +1218,8 @@
       "costume_reward": "BUGCATCHER2",
       "sprite": "BugCatcher2",
       "cash_reward": "90",
-      "message_colour": "dark_green"
+      "message_colour": "dark_green",
+      "stars": 2
     },
     "Card Elder Hamish": {
       "stars": 6,
@@ -1256,7 +1267,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Hailstorm",
-      "message_colour": "aqua"
+      "message_colour": "aqua",
+      "stars": 5
     },
     "Card Expert Nathan": {
       "prize_cards": 6,
@@ -1265,7 +1277,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Energy Burn",
-      "message_colour": "dark_red"
+      "message_colour": "dark_red",
+      "stars": 3
     },
     "Card Expert Ruby": {
       "prize_cards": 6,
@@ -1274,7 +1287,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Burnt Up",
-      "message_colour": "dark_red"
+      "message_colour": "dark_red",
+      "stars": 5
     },
     "Clown Glenn": {
       "prize_cards": 6,
@@ -1283,7 +1297,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Strange Damage Counters",
-      "message_colour": "lilac"
+      "message_colour": "lilac",
+      "stars": 4
     },
     "Clown Hubert": {
       "prize_cards": 4,
@@ -1292,7 +1307,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "110",
       "deck": "Scary Phobias",
-      "message_colour": "light_red"
+      "message_colour": "light_red",
+      "stars": 3
     },
     "Doctor Mortimor": {
       "prize_cards": 6,
@@ -1301,7 +1317,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Self Affliction",
-      "message_colour": "white"
+      "message_colour": "white",
+      "stars": 3
     },
     "Engineer Allan": {
       "prize_cards": 3,
@@ -1321,7 +1338,8 @@
       "costume_reward": "WORKER",
       "sprite": "Worker",
       "cash_reward": "135",
-      "message_colour": "yellow"
+      "message_colour": "yellow",
+      "stars": 4
     },
     "Ex Gym Leader Blaine": {
       "coin_reward": "Energy Fire Red",
@@ -1332,7 +1350,8 @@
       "prize_cards": 6,
       "sprite": "Ex_Gym_Leader_Blaine",
       "cash_reward": "180",
-      "message_colour": "dark_red"
+      "message_colour": "dark_red",
+      "stars": 4
     },
     "Ex Gym Leader Brock": {
       "coin_reward": "Energy Fighting Brown",
@@ -1343,7 +1362,8 @@
       "prize_cards": 6,
       "sprite": "Ex_Gym_Leader_Brock",
       "cash_reward": "180",
-      "message_colour": "orange"
+      "message_colour": "orange",
+      "stars": 4
     },
     "Ex Gym Leader Erika": {
       "coin_reward": "Energy Grass Green",
@@ -1354,7 +1374,8 @@
       "prize_cards": 6,
       "sprite": "Ex_Gym_Leader_Erika",
       "cash_reward": "180",
-      "message_colour": "green"
+      "message_colour": "green",
+      "stars": 4
     },
     "Ex Gym Leader Giovanni": {
       "coin_reward": "Energy Darkness Black",
@@ -1365,7 +1386,8 @@
       "prize_cards": 6,
       "sprite": "Ex_Gym_Leader_Giovanni",
       "cash_reward": "180",
-      "message_colour": "black"
+      "message_colour": "black",
+      "stars": 4
     },
     "Ex Gym Leader Koga": {
       "coin_reward": "Energy Colorless Silver",
@@ -1376,7 +1398,8 @@
       "prize_cards": 6,
       "sprite": "Ex_Gym_Leader_Koga",
       "cash_reward": "180",
-      "message_colour": "dark_green"
+      "message_colour": "dark_green",
+      "stars": 3
     },
     "Ex Gym Leader Lt. Surge": {
       "coin_reward": "Energy Lightning Gold",
@@ -1387,7 +1410,8 @@
       "prize_cards": 6,
       "sprite": "Ex_Gym_Leader_Lt_Surge",
       "cash_reward": "180",
-      "message_colour": "yellow"
+      "message_colour": "yellow",
+      "stars": 4
     },
     "Ex Gym Leader Misty": {
       "coin_reward": "Energy Water Blue",
@@ -1398,7 +1422,8 @@
       "prize_cards": 6,
       "sprite": "Ex_Gym_Leader_Misty",
       "cash_reward": "180",
-      "message_colour": "light_blue"
+      "message_colour": "light_blue",
+      "stars": 4
     },
     "Ex Gym Leader Sabrina": {
       "coin_reward": "Energy Psychic Purple",
@@ -1409,7 +1434,8 @@
       "prize_cards": 6,
       "sprite": "Ex_Gym_Leader_Sabrina",
       "cash_reward": "180",
-      "message_colour": "purple"
+      "message_colour": "purple",
+      "stars": 4
     },
     "Firebreather Darryl": {
       "prize_cards": 4,
@@ -1418,7 +1444,8 @@
       "music": "Medium_Battle 3 (PMDX Thunderwave Cave)",
       "cash_reward": "110",
       "deck": "Hot Air",
-      "message_colour": "dark_red"
+      "message_colour": "dark_red",
+      "stars": 2
     },
     "Firebreather Kenneth": {
       "prize_cards": 4,
@@ -1427,7 +1454,8 @@
       "music": "Medium Battle (PMD Mt. Bristle)",
       "cash_reward": "110",
       "deck": "Quadrapedal Firestarters",
-      "message_colour": "dark_red"
+      "message_colour": "dark_red",
+      "stars": 2
     },
     "Fisherman Dave": {
       "prize_cards": 4,
@@ -1437,7 +1465,8 @@
       "cash_reward": "65",
       "deck": "Fishy Fish",
       "message_colour": "dark_blue",
-      "cpu_retreat_rate": 0
+      "cpu_retreat_rate": 0,
+      "stars": 1
     },
     "Fisherman Gary": {
       "prize_cards": 6,
@@ -1446,7 +1475,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Big Catch",
-      "message_colour": "dark_blue"
+      "message_colour": "dark_blue",
+      "stars": 3
     },
     "Fisherman John": {
       "prize_cards": 4,
@@ -1456,7 +1486,7 @@
       "cash_reward": "90",
       "deck": "Seavolutions",
       "message_colour": "dark_blue",
-      "stars": 2
+      "stars": 1
     },
     "Forest Ranger Tucker": {
       "prize_cards": 6,
@@ -1465,7 +1495,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Poisonous Stingers",
-      "message_colour": "dark_green"
+      "message_colour": "dark_green",
+      "stars": 4
     },
     "Fossil Expert Jonathan": {
       "prize_cards": 6,
@@ -1474,7 +1505,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Earth Sea Sky",
-      "message_colour": "orange"
+      "message_colour": "orange",
+      "stars": 5
     },
     "Gambler Mick": {
       "coin_reward": "Farfetchd Silver",
@@ -1494,7 +1526,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "110",
       "deck": "Risky Flips",
-      "message_colour": "light_red"
+      "message_colour": "light_red",
+      "stars": 4
     },
     "Garden Manager Louis": {
       "prize_cards": 6,
@@ -1503,7 +1536,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "65",
       "deck": "Solar Power",
-      "message_colour": "green"
+      "message_colour": "green",
+      "stars": 3
     },
     "Gardener Callum": {
       "prize_cards": 2,
@@ -1513,7 +1547,7 @@
       "cash_reward": "65",
       "deck": "Pollen Power",
       "message_colour": "green",
-      "stars": 2
+      "stars": 1
     },
     "Gentleman Benedict": {
       "prize_cards": 6,
@@ -1522,7 +1556,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Colorless Crusher",
-      "message_colour": "grey"
+      "message_colour": "grey",
+      "stars": 5
     },
     "Ghost Whisperer Vera": {
       "prize_cards": 6,
@@ -1531,7 +1566,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "200",
       "deck": "Terrible Nightmares",
-      "message_colour": "purple"
+      "message_colour": "purple",
+      "stars": 5
     },
     "Guitarist Howard": {
       "prize_cards": 4,
@@ -1540,7 +1576,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "125",
       "deck": "Rock N Shock",
-      "message_colour": "yellow"
+      "message_colour": "yellow",
+      "stars": 3
     },
     "Guitarist Jonesy": {
       "prize_cards": 4,
@@ -1549,7 +1586,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "125",
       "deck": "Heavy Metal",
-      "message_colour": "grey"
+      "message_colour": "grey",
+      "stars": 3
     },
     "Gym Challenge Blaine": {
       "stars": 7,
@@ -1654,7 +1692,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "90",
       "deck": "Solid Ground",
-      "message_colour": "orange"
+      "message_colour": "orange",
+      "stars": 3
     },
     "Hiker Matthew": {
       "prize_cards": 4,
@@ -1663,7 +1702,8 @@
       "music": "Medium_Battle 3 (PMDX Thunderwave Cave)",
       "cash_reward": "110",
       "deck": "Rocks N Stones",
-      "message_colour": "orange"
+      "message_colour": "orange",
+      "stars": 2
     },
     "Hiker Walter": {
       "prize_cards": 6,
@@ -1672,7 +1712,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Solid Workers",
-      "message_colour": "orange"
+      "message_colour": "orange",
+      "stars": 5
     },
     "Jogger Daniel": {
       "prize_cards": 4,
@@ -1681,7 +1722,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "110",
       "deck": "Nido Nido Meow",
-      "message_colour": "aqua"
+      "message_colour": "aqua",
+      "stars": 2
     },
     "Lady Fiona": {
       "prize_cards": 4,
@@ -1690,7 +1732,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "110",
       "deck": "Foul Toxins",
-      "message_colour": "purple"
+      "message_colour": "purple",
+      "stars": 4
     },
     "Light Engineer Chase": {
       "coin_reward": "Electrode Silver",
@@ -1700,7 +1743,8 @@
       "prize_cards": 6,
       "sprite": "Worker2",
       "cash_reward": "110",
-      "message_colour": "yellow"
+      "message_colour": "yellow",
+      "stars": 5
     },
     "Mad Scientist Leonard": {
       "coin_reward": "Golduck Blue",
@@ -1710,7 +1754,8 @@
       "costume_reward": "Scientist_M,Scientist_F",
       "sprite": "Scientist_M2",
       "cash_reward": "135",
-      "message_colour": "white"
+      "message_colour": "white",
+      "stars": 2
     },
     "Mewtwo": {
       "stars": 8,
@@ -1730,7 +1775,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Forest Guardians",
-      "message_colour": "green"
+      "message_colour": "green",
+      "stars": 5
     },
     "Ninjaboy Sasuke": {
       "prize_cards": 4,
@@ -1739,7 +1785,8 @@
       "music": "Medium_battle 2 (PMD Amp_Plains)",
       "cash_reward": "110",
       "deck": "Ssssssnakes",
-      "message_colour": "purple"
+      "message_colour": "purple",
+      "stars": 3
     },
     "Old Traveller Cliff": {
       "coin_reward": "Cubone Brown",
@@ -1749,7 +1796,8 @@
       "costume_reward": "gentleman3",
       "sprite": "Gentleman3",
       "cash_reward": "110",
-      "message_colour": "grey"
+      "message_colour": "grey",
+      "stars": 5
     },
     "Old Traveller Harold": {
       "coin_reward": "Kingler Blue",
@@ -1759,7 +1807,8 @@
       "costume_reward": "gentleman2",
       "sprite": "Gentleman2",
       "cash_reward": "110",
-      "message_colour": "grey"
+      "message_colour": "grey",
+      "stars": 4
     },
     "Painter Jericho": {
       "coin_reward": "Eevee Silver",
@@ -1770,10 +1819,11 @@
       "sprite": "Artist_M",
       "cash_reward": "70",
       "message_colour": "lilac",
-      "cpu_retreat_rate": 0
+      "cpu_retreat_rate": 0,
+      "stars": 1
     },
     "Pikachu Fan Cami": {
-      "stars": 5,
+      "stars": 3,
       "coin_reward": "Pikachu Gold 4",
       "card_reward": "basep-26",
       "music": "REPLACEMUSIC",
@@ -1784,7 +1834,7 @@
       "message_colour": "yellow"
     },
     "Pikachu Fan Juniper": {
-      "stars": 5,
+      "stars": 3,
       "coin_reward": "Pikachu Gold 5",
       "card_reward": "basep-27",
       "music": "REPLACEMUSIC",
@@ -1795,7 +1845,7 @@
       "message_colour": "yellow"
     },
     "Pikachu Fan Leaf": {
-      "stars": 5,
+      "stars": 3,
       "coin_reward": "Pikachu Gold 7",
       "card_reward": "basep-1",
       "music": "REPLACEMUSIC",
@@ -1806,7 +1856,7 @@
       "message_colour": "yellow"
     },
     "Pikachu Fan Marina": {
-      "stars": 5,
+      "stars": 3,
       "coin_reward": "Pikachu Gold 2",
       "card_reward": "basep-28",
       "music": "REPLACEMUSIC",
@@ -1817,7 +1867,7 @@
       "message_colour": "yellow"
     },
     "Pikachu Fan Raye": {
-      "stars": 5,
+      "stars": 3,
       "coin_reward": "Pikachu Gold 6",
       "card_reward": "basep-4",
       "music": "REPLACEMUSIC",
@@ -1828,7 +1878,7 @@
       "message_colour": "yellow"
     },
     "Pikachu Fan Skye": {
-      "stars": 5,
+      "stars": 3,
       "coin_reward": "Pikachu Gold 3",
       "card_reward": "basep-25",
       "music": "REPLACEMUSIC",
@@ -1847,7 +1897,8 @@
       "costume_reward": "PokeKid",
       "sprite": "PokeFan_F",
       "cash_reward": "65",
-      "message_colour": "yellow"
+      "message_colour": "yellow",
+      "stars": 2
     },
     "Police Constable Floyd": {
       "prize_cards": 6,
@@ -1856,7 +1907,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "200",
       "deck": "Energy Beams",
-      "message_colour": "dark_blue"
+      "message_colour": "dark_blue",
+      "stars": 5
     },
     "Police Sergeant Douglas": {
       "prize_cards": 6,
@@ -1865,7 +1917,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "200",
       "deck": "Peace Keepers",
-      "message_colour": "dark_blue"
+      "message_colour": "dark_blue",
+      "stars": 5
     },
     "Psychic Brienne": {
       "coin_reward": "Mewtwo Purple",
@@ -1875,7 +1928,8 @@
       "prize_cards": 6,
       "sprite": "Psychic_F",
       "cash_reward": "135",
-      "message_colour": "lilac"
+      "message_colour": "lilac",
+      "stars": 2
     },
     "Psychic Eli": {
       "coin_reward": "Hypno Gold",
@@ -1885,7 +1939,8 @@
       "costume_reward": "Psychic_F, Psychic_F2, Psychic_M, Psychic_M2",
       "sprite": "Psychic_M2",
       "cash_reward": "110",
-      "message_colour": "purple"
+      "message_colour": "purple",
+      "stars": 5
     },
     "Psychic Nova": {
       "prize_cards": 4,
@@ -1894,7 +1949,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "110",
       "deck": "Telekinesis",
-      "message_colour": "lilac"
+      "message_colour": "lilac",
+      "stars": 4
     },
     "Rocket Boss Giovanni": {
       "coin_reward": "Zz Mewtwo Purple 3",
@@ -1904,7 +1960,8 @@
       "prize_cards": 6,
       "sprite": "TeamRocketBoss",
       "cash_reward": "225",
-      "message_colour": "black"
+      "message_colour": "black",
+      "stars": 5
     },
     "Rocket Exec Archer": {
       "prize_cards": 6,
@@ -1913,7 +1970,8 @@
       "music": "Dark_battle_2 (PTCG2 Colorless Altar A Dark Dwelling)",
       "cash_reward": "180",
       "deck": "Jet Shell",
-      "message_colour": "black"
+      "message_colour": "black",
+      "stars": 5
     },
     "Rocket Exec Ariana": {
       "coin_reward": "Eevee Gold",
@@ -1923,7 +1981,8 @@
       "prize_cards": 6,
       "sprite": "TeamRocketAriana",
       "cash_reward": "180",
-      "message_colour": "black"
+      "message_colour": "black",
+      "stars": 4
     },
     "Rocket Exec Petrel": {
       "prize_cards": 6,
@@ -1932,7 +1991,8 @@
       "music": "Worrying_Battle (PTCG2 GRs Fire Fighting Forts)",
       "cash_reward": "180",
       "deck": "Relentless Poison",
-      "message_colour": "black"
+      "message_colour": "black",
+      "stars": 4
     },
     "Rocket Exec Proton": {
       "prize_cards": 6,
@@ -1941,7 +2001,8 @@
       "music": "Dark_battle (PTCG2 Duel Vs Team GR)",
       "cash_reward": "180",
       "deck": "Under The Shadow Of Wings",
-      "message_colour": "black"
+      "message_colour": "black",
+      "stars": 4
     },
     "Rocket Grunt Damien": {
       "prize_cards": 4,
@@ -1950,7 +2011,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "110",
       "deck": "Rocket Underlings",
-      "message_colour": "black"
+      "message_colour": "black",
+      "stars": 3
     },
     "Rocket Grunt Margot": {
       "coin_reward": "Golbat Gold",
@@ -1960,7 +2022,8 @@
       "costume_reward": "TeamRocket_F, TeamRocket_M",
       "sprite": "TeamRocket_F",
       "cash_reward": "180",
-      "message_colour": "black"
+      "message_colour": "black",
+      "stars": 4
     },
     "Rocket Grunt Penny": {
       "prize_cards": 4,
@@ -1969,7 +2032,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "110",
       "deck": "Rocket Blast Off",
-      "message_colour": "black"
+      "message_colour": "black",
+      "stars": 3
     },
     "Sailor Bob": {
       "prize_cards": 6,
@@ -1978,7 +2042,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Hoist The Anchor",
-      "message_colour": "dark_blue"
+      "message_colour": "dark_blue",
+      "stars": 2
     },
     "Schoolboy Adam": {
       "prize_cards": 2,
@@ -1988,7 +2053,8 @@
       "cash_reward": "55",
       "deck": "Status Infliction",
       "message_colour": "light_blue",
-      "cpu_retreat_rate": 0
+      "cpu_retreat_rate": 0,
+      "stars": 1
     },
     "Shady Character Bernard": {
       "prize_cards": 6,
@@ -1997,7 +2063,8 @@
       "music": "Medium_battle 2 (PMD Amp_Plains)",
       "cash_reward": "180",
       "deck": "Neverending Flames",
-      "message_colour": "grey"
+      "message_colour": "grey",
+      "stars": 5
     },
     "Shady Character Owen": {
       "coin_reward": "Jolteon Silver",
@@ -2007,7 +2074,8 @@
       "costume_reward": "roughneck2",
       "sprite": "Roughneck2",
       "cash_reward": "155",
-      "message_colour": "yellow"
+      "message_colour": "yellow",
+      "stars": 5
     },
     "Swimmer Bibi": {
       "prize_cards": 6,
@@ -2016,7 +2084,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Dark Rainstorm",
-      "message_colour": "light_blue"
+      "message_colour": "light_blue",
+      "stars": 5
     },
     "Swimmer Jordan": {
       "prize_cards": 4,
@@ -2025,7 +2094,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "105",
       "deck": "Whirlgong",
-      "message_colour": "light_blue"
+      "message_colour": "light_blue",
+      "stars": 2
     },
     "Swimmer Melissa": {
       "prize_cards": 6,
@@ -2034,7 +2104,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "135",
       "deck": "Poligong's Wrath",
-      "message_colour": "light_blue"
+      "message_colour": "light_blue",
+      "stars": 3
     },
     "Swimmer Todd": {
       "prize_cards": 4,
@@ -2043,7 +2114,8 @@
       "music": "Calm Battle 2 (PMD Crystal_Cave)",
       "cash_reward": "100",
       "deck": "I See Sea",
-      "message_colour": "dark_blue"
+      "message_colour": "dark_blue",
+      "stars": 2
     },
     "Tourist Alissa": {
       "prize_cards": 6,
@@ -2052,7 +2124,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "180",
       "deck": "Girl Power",
-      "message_colour": "dark_pink"
+      "message_colour": "dark_pink",
+      "stars": 3
     },
     "Tourist Edmund": {
       "prize_cards": 6,
@@ -2061,7 +2134,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "180",
       "deck": "Elegance",
-      "message_colour": "lilac"
+      "message_colour": "lilac",
+      "stars": 3
     },
     "Veteran Sylvester": {
       "coin_reward": "Slowpoke Purple",
@@ -2071,7 +2145,8 @@
       "costume_reward": "Veteran_F, VeteranM_2",
       "sprite": "Veteran_M2",
       "cash_reward": "110",
-      "message_colour": "grey"
+      "message_colour": "grey",
+      "stars": 5
     },
     "Young Sage Kai": {
       "prize_cards": 4,
@@ -2080,7 +2155,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "110",
       "deck": "Thunder Ball",
-      "message_colour": "purple"
+      "message_colour": "purple",
+      "stars": 4
     },
     "Young Twin Anna": {
       "prize_cards": 2,
@@ -2089,7 +2165,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "70",
       "deck": "Pretty Plants N Butterfly",
-      "message_colour": "light_pink"
+      "message_colour": "light_pink",
+      "stars": 1
     },
     "Young Twin Nella": {
       "prize_cards": 2,
@@ -2098,7 +2175,8 @@
       "music": "REPLACEMUSIC",
       "cash_reward": "70",
       "deck": "Scary Plants N Bees",
-      "message_colour": "light_pink"
+      "message_colour": "light_pink",
+      "stars": 2
     },
     "Youngster Cooper": {
       "prize_cards": 4,
@@ -2107,7 +2185,8 @@
       "music": "Fun_battle (PMDX Makuhita Dojo)",
       "cash_reward": "150",
       "deck": "Solid Dynamite",
-      "message_colour": "light_blue"
+      "message_colour": "light_blue",
+      "stars": 3
     },
     "Youngster Joey": {
       "coin_reward": "Rattata Silver",
@@ -2128,7 +2207,8 @@
       "music": "Laid Back Battle (Pinball Blue Field)",
       "cash_reward": "150",
       "deck": "Creepy Crawlies",
-      "message_colour": "light_blue"
+      "message_colour": "light_blue",
+      "stars": 2
     },
     "Gym Challenge Fan Archie": {
       "sprite": "Teenager_F",
@@ -2137,7 +2217,8 @@
       "music": "normal_battle (PTCG)",
       "prize_cards": 2,
       "cash_reward": "150",
-      "coin_reward": "Chansey Silver"
+      "coin_reward": "Chansey Silver",
+      "stars": 2
     },
     "Gym Challenger Rory": {
       "sprite": "Teenager_M",
@@ -2146,7 +2227,8 @@
       "music": "Laid Back Battle (Pinball Blue Field)",
       "prize_cards": 2,
       "cash_reward": "150",
-      "coin_reward": "Jigglypuff Pink 2"
+      "coin_reward": "Jigglypuff Pink 2",
+      "stars": 2
     },
     "Spectator Pete": {
       "sprite": "Neckbeard",
@@ -2156,7 +2238,8 @@
       "prize_cards": 4,
       "cash_reward": "150",
       "coin_reward": "Entei Red",
-      "costume_reward": "NECKBEARD"
+      "costume_reward": "NECKBEARD",
+      "stars": 3
     },
     "Olly": {
       "sprite": "1Olly_White",
@@ -2165,7 +2248,8 @@
       "music": "Nice_battle (PTCG2 - GRs Grass Water Forts)",
       "prize_cards": 4,
       "cash_reward": "50",
-      "coin_reward": "Eevee Silver 2"
+      "coin_reward": "Eevee Silver 2",
+      "stars": 1
     },
     "Janitor Christian": {
       "sprite": "Bakushin_Janitor",
@@ -2174,7 +2258,8 @@
       "music": "Simple_battle (PTCG2 Mr Ishiharas Villa)",
       "prize_cards": 4,
       "cash_reward": "105",
-      "coin_reward": "Slowpoke Pink"
+      "coin_reward": "Slowpoke Pink",
+      "stars": 1
     },
     "Alexander 3": {
       "friendly_name": "Alexander",
@@ -2184,7 +2269,8 @@
       "music": "fast_battle (PTCG Ronalds Theme)",
       "prize_cards": 3,
       "cash_reward": "100",
-      "pack_reward": "base1_a"
+      "pack_reward": "base1_a",
+      "stars": 2
     },
     "Ellie 3": {
       "friendly_name": "Ellie",
@@ -2195,7 +2281,8 @@
       "prize_cards": 4,
       "cash_reward": "100",
       "pack_reward": "base1_a",
-      "cpu_retreat_rate": 0.5
+      "cpu_retreat_rate": 0.5,
+      "stars": 1
     },
     "Olly 2": {
       "friendly_name": "Olly",
@@ -2206,7 +2293,8 @@
       "prize_cards": 4,
       "cash_reward": "100",
       "pack_reward": "base1_c",
-      "cpu_retreat_rate": 0
+      "cpu_retreat_rate": 0,
+      "stars": 2
     },
     "Ellie 4": {
       "sprite": "1Ellie_Dress",
@@ -2218,7 +2306,7 @@
       "coin_reward": "Eevee Pink",
       "card_reward": "base2-51, base2-51",
       "pack_reward": "base1_a",
-      "stars": 2
+      "stars": 3
     },
     "Alexander 4": {
       "sprite": "1Alexander",
@@ -2240,7 +2328,7 @@
       "prize_cards": 6,
       "cash_reward": "250",
       "coin_reward": "Primal Groudon Red",
-      "stars": 4
+      "stars": 5
     },
     "Team Magma Maxie": {
       "sprite": "TeamMagmaMaxie",

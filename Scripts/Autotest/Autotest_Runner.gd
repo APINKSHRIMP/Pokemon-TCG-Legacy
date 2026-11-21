@@ -200,7 +200,9 @@ func _ready() -> void:
 	if not opt_watch:
 		GameState.card_match_animation_speed = GameState.SKIP_MULTIPLIER
 		GameState.text_letter_delay = 0.0
-	run_dir = OUT_DIR + "runs/" + Time.get_datetime_string_from_system().replace(":", "-") + "/"
+	# 2026-11-21: parallel runs never share scratch files (the overnight sim's 14 workers all read and wrote one
+	# player.json / opponent.json and played each other's decks). --worker=<id> keeps every process apart.
+	run_dir = OUT_DIR + "runs/" + Time.get_datetime_string_from_system().replace(":", "-") + ("" if opt_worker == "0" else "_w" + opt_worker) + "/"
 	if opt_tune:
 		run_dir = OUT_DIR + "tuner/work/w" + opt_worker + "/"
 		var wm := {}
@@ -295,7 +297,10 @@ func _parse_args() -> void:
 				if bp is Dictionary:
 					opt_branch_plan = bp
 			"real": opt_real = true
-			"bot": opt_bot_smart = (v == "smart")
+			"bot":
+				opt_bot_smart = v in ["smart", "cpu"]
+				opt_bot_cpu = v == "cpu"   # 2026-11-21: CPU vs CPU
+			"jobs": opt_jobs_path = v
 			"stress": opt_stress = true
 			"tutorial": opt_tutorial = v
 			"opponent": opt_opponent = v
@@ -336,6 +341,13 @@ func _parse_args() -> void:
 
 
 func _run_all() -> void:
+	if opt_jobs_path != "":
+		await _run_jobs()
+		_append_line(opt_result_path, JSON.stringify({"done": true}))
+		OS.remove_logger(_logger)
+		GameState.autotest = null
+		get_tree().quit()
+		return
 	for i in opt_matches:
 		await _play_match(i)
 	if opt_tune:
@@ -354,9 +366,76 @@ func _run_all() -> void:
 
 # ───────────────────────────── one match ─────────────────────────────
 
+# ───────────────────────────── --jobs (2026-11-21): fixed match-ups, best-of-N series ─────────────────────────────
+# A JSON array of {"tag", "cpu", "bot_deck", "bot": "cpu"|"smart"|"random", "series": 3, "seed",
+# "rules": "entry"|"plain", "prizes": 6, "alternate": bool}. "cpu" is an opponent label (rules "entry": their deck,
+# Prizes and match rules) or a deck name (rules "plain"). "bot": "cpu" = CPU vs CPU - a second CPU_AI plays the bot's
+# side (CPU_AI.mirror_next_action). A series stops once one side has won a majority. "alternate": the two decks swap
+# sides every other game (CPU vs CPU fairness). Needs --tune (one result line per game, with "job" and "game").
+var opt_jobs_path := ""
+var opt_bot_cpu := false
+var job: Dictionary = {}
+var job_game := 0
+
+func _run_jobs() -> void:
+	var jobs = JSON.parse_string(FileAccess.get_file_as_string(opt_jobs_path))
+	if not (jobs is Array):
+		print("AUTOTEST: --jobs file unreadable: ", opt_jobs_path)
+		return
+	var k := 0
+	for jb in jobs:
+		job = jb
+		var games: int = maxi(1, int(jb.get("series", 1)))
+		var need: int = games / 2 + 1
+		var wins := {"a": 0, "b": 0}   # a = the job's "cpu" deck, b = its "bot_deck" (whichever side they sit on)
+		var bot_kind := String(jb.get("bot", "smart"))
+		opt_bot_cpu = bot_kind == "cpu"
+		opt_bot_smart = bot_kind in ["smart", "cpu"]
+		for g in games:
+			job_game = g
+			await _play_match(k)
+			k += 1
+			var swapped: bool = bool(jb.get("alternate", false)) and g % 2 == 1
+			if match_result == "loss":      # the CPU side won
+				wins["b" if swapped else "a"] += 1
+			elif match_result == "win":
+				wins["a" if swapped else "b"] += 1
+			if wins["a"] >= need or wins["b"] >= need:
+				break
+	job = {}
+
+
+func _entry_by_label(label: String) -> Dictionary:
+	for e in real_entries:
+		if String(e["label"]) == label:
+			return e
+	return {}
+
+
+## The decks and opponent data for the current --jobs game (sides swapped on odd games when "alternate").
+func _job_decks() -> Dictionary:
+	var a := String(job.get("cpu", ""))
+	var b := String(job.get("bot_deck", ""))
+	if bool(job.get("alternate", false)) and job_game % 2 == 1:
+		var t := a; a = b; b = t
+	var out := {}
+	var entry: Dictionary = _entry_by_label(a) if String(job.get("rules", "plain")) == "entry" else {}
+	if not entry.is_empty():
+		out["o_deck"] = _read_deck_file(AssetLookup.deck_path(entry["deck"]))
+		out["cpu_deck"] = String(entry["deck"])
+		out["opp_data"] = real_opponent_data_for(entry)
+	else:
+		out["o_deck"] = _read_deck_file(AssetLookup.deck_path(a))
+		out["cpu_deck"] = a
+		out["opp_data"] = {"name": a, "deck": a, "prize_cards": int(job.get("prizes", 6)), "match_effects": [], "restrictions": {}}
+	out["p_deck"] = _read_deck_file(AssetLookup.deck_path(b))
+	out["bot_deck"] = b
+	return out
+
+
 func _play_match(i: int) -> void:
 	match_index = i
-	match_seed = opt_seed + i
+	match_seed = (int(job.get("seed", 0)) + job_game) if not job.is_empty() else opt_seed + i
 	seed(match_seed)
 	CpuWeights.seed_explore(match_seed * 7919 + 13)
 	CpuWeights.cheat_cards = opt_cheat_cards   # CPU v2: --cheat-cards=1 = foresight (off by default, like the game)
@@ -396,6 +475,13 @@ func _play_match(i: int) -> void:
 		p_deck = replay_record["player_deck"]
 		o_deck = replay_record["opponent_deck"]
 		opp_data = replay_record.get("opponent_data", {})
+	elif not job.is_empty():
+		var jd := _job_decks()
+		p_deck = jd["p_deck"]
+		o_deck = jd["o_deck"]
+		opp_data = jd["opp_data"]
+		cur_cpu_deck = jd["cpu_deck"]
+		cur_bot_deck = jd["bot_deck"]
 	else:
 		var era_rng := RandomNumberGenerator.new()
 		era_rng.seed = match_seed * 31337 + 1
@@ -450,8 +536,11 @@ func _play_match(i: int) -> void:
 	current_opponent_label = String(opp_data.get("name", "TEST OPPONENT"))
 	current_match_effects = opp_data.get("match_effects", [])
 	GameState.autotest_opponent_data = opp_data
-	var p_path := (run_dir if opt_tune else OUT_DIR + "decks/") + "player.json"
-	var o_path := (run_dir if opt_tune else OUT_DIR + "decks/") + "opponent.json"
+	# 2026-11-21: a real opponent ticked "Coin foresight" in the placement tool foresees its coins here too.
+	if opt_tune and opt_cheat_coins <= 0.0 and float(opp_data.get("cpu_cheat_coins", 0.0)) > 0.0:
+		CpuWeights.cheat_coins = clampf(float(opp_data["cpu_cheat_coins"]), 0.0, 1.0)
+	var p_path := run_dir + "player.json"
+	var o_path := run_dir + "opponent.json"
 	_write_json(p_path, p_deck)
 	_write_json(o_path, o_deck)
 
@@ -519,6 +608,8 @@ func _play_match(i: int) -> void:
 			"ex": _ex_finish(m),
 			"league": _league_record(m),
 			"bot_deck": cur_bot_deck, "cpu_deck": cur_cpu_deck,
+			"job": job.get("tag", ""), "game": job_game if not job.is_empty() else -1,
+			"bot_kind": "cpu" if opt_bot_cpu else ("smart" if opt_bot_smart else "random"),
 			"cpu_decisions": _cpu_decision_notes(),
 			"dp": CpuWeights.branch_counter, "branch": CpuWeights.branch_record,
 			"plan_ms": snappedf(CpuWeights.plan_ms_total, 0.1), "plan_calls": CpuWeights.plan_calls}
@@ -676,7 +767,10 @@ func cpu_attack_phase(m) -> void:
 	var mon = m.opponent_active_pokemon
 	if mon == null or m.turn_number <= 1 or mon.special_condition in ["Paralyzed", "Asleep"]:
 		return
-	for a in m.get_attacks_for_card(mon):
+	var all_attacks: Array = m.get_attacks_for_card(mon)
+	var ko_threats: Dictionary = {}
+	for ai in range(all_attacks.size()):
+		var a: Dictionary = all_attacks[ai]
 		var an: String = a.get("name", "")
 		if m.is_attack_disabled(mon, an) or not m.check_attack_requirements(a, mon) or m.attack_effects.attack_unusable_reason(a, mon) != "":
 			continue
@@ -691,7 +785,23 @@ func cpu_attack_phase(m) -> void:
 				var o_iw: bool = "isn't affected by weakness" in at_txt
 				var o_ir: bool = o_iw or "isn't affected by resistance" in at_txt
 				mn = int(m.calculate_final_damage(mn, mon.get_effective_types(), foe, mon, false, o_iw, o_ir).get("damage", mn))
+			var fx: Array = m.attack_effects.parse_card_text_effects(a.get("text", ""), mon.metadata.get("name", ""))
+			# 2026-11-21: a sure Poison on a Pokémon with 10 HP left is a Knock Out at Pokémon Checkup - the CPU counts
+			# it (ISSUE #11 credit), so the oracle does too (Gloom's Poisonpowder on a 10 HP Magikarp).
+			for e in fx:
+				if e.get("type", "") == "status" and e.get("target", "") == "defender" and e.get("status", "") == "Poisoned" \
+						and e.get("flip", "none") == "none" and not foe.is_poisoned and not m.cpu_ai._defender_prevents_poison(foe):
+					mn += 10
+					break
 			if mn >= foe.current_hp:
+				# 2026-11-21: a Knock Out whose recoil could also KO the CPU's Active is only "missed" when the CPU's
+				# self-KO rules say it should have been taken (Double-edge at 20 HP with no reason to trade is fine).
+				if ko_threats.is_empty():
+					ko_threats = m.cpu_ai.evaluate_ko_threats()
+				var v: Dictionary = m.cpu_ai.self_ko_verdict(fx, true,
+					m.cpu_ai._cpu_other_attack_kos(all_attacks, ai, foe.current_hp, mon.get_effective_types()), ko_threats)
+				if bool(v.get("self_ko", false)) and not bool(v.get("take", false)):
+					continue
 				_cpu_ko_attacks.append(an)
 
 
@@ -905,7 +1015,8 @@ func _walk_entries(o, parent_key: String) -> void:
 			var label := String(o.get("name", parent_key))
 			if label == "": label = String(o["deck"])
 			real_entries.append({"label": label, "deck": o["deck"], "sprite": o.get("sprite", ""),
-				"prize_cards": int(o.get("prize_cards", 6)), "match_effects": o.get("match_effects", [])})
+				"prize_cards": int(o.get("prize_cards", 6)), "match_effects": o.get("match_effects", []),
+				"cpu_retreat_rate": float(o.get("cpu_retreat_rate", 1.0)), "cpu_cheat_coins": float(o.get("cpu_cheat_coins", 0.0))})
 		for k in o:
 			_walk_entries(o[k], String(k) if not (o[k] is Array) else parent_key)
 	elif o is Array:
@@ -921,7 +1032,8 @@ func _read_deck_file(path: String) -> Array:
 ## The opponent data the match should load (Main.load_opponent_data_by_name reads it). Empty = the plain test opponent.
 func real_opponent_data_for(entry: Dictionary) -> Dictionary:
 	return {"name": entry["label"], "deck": entry["deck"], "sprite": entry["sprite"], "music": "",
-		"prize_cards": entry["prize_cards"], "coin_reward": "", "sleeve": "", "match_effects": entry["match_effects"], "restrictions": {}}
+		"prize_cards": entry["prize_cards"], "coin_reward": "", "sleeve": "", "match_effects": entry["match_effects"], "restrictions": {},
+		"cpu_retreat_rate": entry.get("cpu_retreat_rate", 1.0), "cpu_cheat_coins": entry.get("cpu_cheat_coins", 0.0)}
 
 
 # ───────────────────────────── stress decks (--stress) ─────────────────────────────
@@ -995,6 +1107,9 @@ func attack_begin(attack: Dictionary, attacker, defender, is_opponent: bool) -> 
 		return
 	oracle_pending = {"kind": kind, "attack": attack, "attacker": attacker, "defender": defender, "is_opp": is_opponent,
 		"hp_before": defender.current_hp, "clean": _oracle_clean(attacker, defender),
+		# 2026-11-21: Conversion 1 / 2 change the Weakness / Resistance TYPE (temporary_weakness/resistance). Snapshotted
+		# here because a Knocked Out defender has them cleared before attack_end runs.
+		"tw": String(defender.temporary_weakness), "tr": String(defender.temporary_resistance),
 		"hand_before": (m.opponent_hand if is_opponent else m.player_hand).size(),
 		"deck_before": (m.opponent_deck if is_opponent else m.player_deck).size(), "text": text}
 
@@ -1009,6 +1124,9 @@ func _oracle_clean(attacker, defender) -> bool:
 		return false
 	# Side-wide next-turn buffs (Dragon Dance +30/+40) live on main, not on the Pokémon.
 	if int(m.player_dragon_dance_active) > 0 or int(m.opponent_dragon_dance_active) > 0:
+		return false
+	# 2026-11-21: Misty (+20 for a Misty's attacker) and Bay Dance are side-wide too (CPU vs CPU found the Misty one).
+	if m.player_misty_boost_active or m.opponent_misty_boost_active or m.player_ex8_bay_dance_active or m.opponent_ex8_bay_dance_active:
 		return false
 	for p in [attacker, defender]:
 		if not p.attached_cards.is_empty() or not p.active_effects.is_empty() or p.is_invincible \
@@ -1048,11 +1166,13 @@ func attack_end() -> void:
 			var types: Array = att.get_effective_types()
 			var exp := base
 			for w in dfd.metadata.get("weaknesses", []):
-				if w.get("type", "") in types:
+				var wt: String = String(o.get("tw", "")) if String(o.get("tw", "")) != "" else String(w.get("type", ""))
+				if wt in types:
 					var v := String(w.get("value", "×2"))
 					exp = exp * 2 if ("×" in v or "x" in v) else exp + int(v.replace("+", ""))
 			for r in dfd.metadata.get("resistances", []):
-				if r.get("type", "") in types:
+				var rt: String = String(o.get("tr", "")) if String(o.get("tr", "")) != "" else String(r.get("type", ""))
+				if rt in types:
 					exp = maxi(0, exp + int(String(r.get("value", "-30"))))
 			oracle_stats["damage"][0] += 1
 			var dealt: int = (o["hp_before"] - dfd.current_hp) if in_play else o["hp_before"]

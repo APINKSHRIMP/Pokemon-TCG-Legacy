@@ -384,14 +384,21 @@ func _process(_delta: float) -> void:
 			set_process(false)
 			return
 		_prewarm_current = _prewarm_queue.pop_front()
-		if ResourceLoader.load_threaded_request(str(_prewarm_current[2])) != OK:
+		# 2026-11-21: headless runs load on the main thread (SceneCache.threads_ok - the dummy renderer's texture
+		# owner isn't thread-safe), one file per frame.
+		if SceneCache.threads_ok() and ResourceLoader.load_threaded_request(str(_prewarm_current[2])) != OK:
 			_prewarm_current = []
-		return
+		if SceneCache.threads_ok():
+			return
 	var path := str(_prewarm_current[2])
-	var st := ResourceLoader.load_threaded_get_status(path)
-	if st == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-		return
-	var res: Resource = ResourceLoader.load_threaded_get(path) if st == ResourceLoader.THREAD_LOAD_LOADED else null
+	var res: Resource = null
+	if SceneCache.threads_ok():
+		var st := ResourceLoader.load_threaded_get_status(path)
+		if st == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			return
+		res = ResourceLoader.load_threaded_get(path) if st == ResourceLoader.THREAD_LOAD_LOADED else null
+	else:
+		res = load(path)
 	var kind := str(_prewarm_current[0])
 	var key := str(_prewarm_current[1])
 	_prewarm_current = []
