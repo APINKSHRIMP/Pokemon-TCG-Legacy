@@ -1,5 +1,7 @@
 extends Control
 
+const DifficultyStars := preload("res://Scripts/Global_Scripts/Difficulty_Stars.gd")
+
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 const SPRITE_FOLDER      := "res://Image_Assets/Character_Sprites/In_Battle_Sprites"
@@ -679,6 +681,16 @@ func _populate_stats() -> void:
 		["Decks built",  str(_count_decks())],
 		["Fish caught",  str(GameState.get_fish_caught())],
 	]
+	# LEAGUE RANK (once registered): the player's rank as stars (gold 1-5, then the secret orange / red), with the
+	# lifetime League Points beneath. Third entry = rank, fourth = the small line.
+	if GameState.league_active():
+		var lxp: int = GameState.league_xp()
+		var lrank: int = League.rank_for_xp(lxp)
+		var next_xp: int = League.next_rank_xp(lxp)
+		var lsub := "%s LP" % _thousands(lxp)
+		if next_xp > 0:
+			lsub += "  /  %s" % _thousands(next_xp)
+		boxes.append(["League Rank", "", lrank, lsub])
 
 	_build_meter_panel(meters)
 	_build_stat_boxes(boxes)
@@ -748,12 +760,62 @@ func _build_stat_boxes(boxes: Array) -> void:
 		caption.size = Vector2(w - PANEL_PAD * 2.0, 30.0)
 		stats_control.add_child(caption)
 
+		if boxes[i].size() >= 3:
+			# the League Rank box: stars instead of a number, the LP line under them
+			var stars := RankStars.new()
+			stars.rank = int(boxes[i][2])
+			stars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			stars.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD + 40.0)
+			stars.size = Vector2(w - PANEL_PAD * 2.0, 52.0)
+			stats_control.add_child(stars)
+			var sub := Label.new()
+			UIKit.set_label(sub, "small_label", String(boxes[i][3]), "field_mute", _stat_font("small_label"))
+			sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			sub.position = Vector2(x + PANEL_PAD, BOX_Y + BOX_H - PANEL_PAD - 30.0)
+			sub.size = Vector2(w - PANEL_PAD * 2.0, 26.0)
+			stats_control.add_child(sub)
+			continue
 		var value := Label.new()
 		UIKit.set_label(value, "title", String(boxes[i][1]), "field_fg", BOX_VALUE_FONT)
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		value.position = Vector2(x + PANEL_PAD, BOX_Y + PANEL_PAD + 34.0)
 		value.size = Vector2(w - PANEL_PAD * 2.0, float(BOX_VALUE_FONT) + 12.0)
 		stats_control.add_child(value)
+
+
+## 12345 -> "12,345"
+func _thousands(n: int) -> String:
+	var t := str(n)
+	var out := ""
+	for k in range(t.length()):
+		if k > 0 and (t.length() - k) % 3 == 0:
+			out += ","
+		out += t[k]
+	return out
+
+
+## The player's League Rank as a row of stars: gold for ranks 1-5, then the secret orange (6) and red (7), the
+## ones above the rank drawn dim (up to the normal five), like the opponents' rank stars.
+class RankStars extends Control:
+	const DifficultyStars := preload("res://Scripts/Global_Scripts/Difficulty_Stars.gd")
+	var rank := 1
+
+	func _draw() -> void:
+		var shown: int = maxi(DifficultyStars.NORMAL_STARS, rank)
+		var gap := 6.0
+		var d: float = minf(44.0, (size.x - gap * float(shown - 1)) / float(shown))
+		var total: float = d * float(shown) + gap * float(shown - 1)
+		var x0: float = (size.x - total) * 0.5
+		for n in range(shown):
+			var centre := Vector2(x0 + float(n) * (d + gap) + d * 0.5, size.y * 0.5)
+			var colour: Color = DifficultyStars.EMPTY
+			if n < rank:
+				colour = DifficultyStars.colour_for(n + 1)
+			var pts: PackedVector2Array = DifficultyStars.star_points(centre, d * 0.5)
+			draw_colored_polygon(pts, colour)
+			var outline := pts.duplicate()
+			outline.append(pts[0])
+			draw_polyline(outline, DifficultyStars.OUTLINE, 2.0, true)
 
 
 ## The three sets closest to being finished.

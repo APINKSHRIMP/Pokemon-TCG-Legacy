@@ -2110,6 +2110,67 @@ func record_medal_match(won: bool, info: Dictionary) -> void:
 	save_progress()
 
 # ============================================================
+# LEAGUE POINTS (see League.gd / League_Config.json)
+# ============================================================
+# One wallet per league id, in progress["leagues"][id]: lp = SPENDABLE League Points, xp = lifetime LP earned
+# (drives the League Rank; spending never lowers it), rank_claimed = the highest rank whose Town Hall reward has
+# been handed over. Only the "base" league exists for now.
+
+const LEAGUE_ID := "base"
+
+## The league is live (points paid, shown, spent) once the player has registered - the TCG Tracker item.
+func league_active() -> bool:
+	return has_item("Map")   # MapManager.TRACKER_ITEM
+
+func _league_wallet(league_id: String = LEAGUE_ID) -> Dictionary:
+	var all: Dictionary = progress.get("leagues", {})
+	if not all.has(league_id):
+		all[league_id] = {"lp": 0, "xp": 0, "rank_claimed": 1}
+	progress["leagues"] = all
+	return all[league_id]
+
+func league_lp(league_id: String = LEAGUE_ID) -> int:
+	return int(_league_wallet(league_id).get("lp", 0))
+
+func league_xp(league_id: String = LEAGUE_ID) -> int:
+	return int(_league_wallet(league_id).get("xp", 0))
+
+func league_rank(league_id: String = LEAGUE_ID) -> int:
+	return League.rank_for_xp(league_xp(league_id))
+
+## Adds earned LP (spendable AND toward the rank). Returns the rank the player was before, so a caller can tell
+## whether this ranked them up.
+func league_add(amount: int, league_id: String = LEAGUE_ID) -> int:
+	var before := league_rank(league_id)
+	if amount > 0:
+		var w := _league_wallet(league_id)
+		w["lp"] = int(w.get("lp", 0)) + amount
+		w["xp"] = int(w.get("xp", 0)) + amount
+		save_progress()
+	return before
+
+## Spends LP (a shop). False if the player can't afford it.
+func league_spend(amount: int, league_id: String = LEAGUE_ID) -> bool:
+	var w := _league_wallet(league_id)
+	if int(w.get("lp", 0)) < amount:
+		return false
+	w["lp"] = int(w["lp"]) - amount
+	save_progress()
+	return true
+
+## Highest rank whose Town Hall reward has been claimed (rank-up rewards are claimed by returning to the Town Hall).
+func league_rank_claimed(league_id: String = LEAGUE_ID) -> int:
+	return int(_league_wallet(league_id).get("rank_claimed", 1))
+
+func league_set_rank_claimed(rank: int, league_id: String = LEAGUE_ID) -> void:
+	_league_wallet(league_id)["rank_claimed"] = rank
+	save_progress()
+
+## Raw MatchStats of every game WON in the current match / best-of series; the outro turns them into bonus rows
+## (League.compute_final) and clears them. Lost games are never added.
+var league_game_stats: Array = []
+
+# ============================================================
 # FISH COINS
 # ============================================================
 # The fishing currency. Earned by landing fish (FishingData.fish_coin_reward), spent

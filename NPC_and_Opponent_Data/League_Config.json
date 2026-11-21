@@ -1,0 +1,37 @@
+{
+  "_comment": "LEAGUE POINTS (LP) and League Rank. Every number here is tweakable; nothing in code. Player rank = highest rank whose xp threshold has been reached (xp = lifetime LP earned; SPENDING never lowers it). Opponents have a League Rank 1-8 (stars; 6 Elders, 7 gym leaders, 8 Mewtwo). Base LP is paid on the FIRST win over an opponent only, by that opponent's rank; every bonus pays on every win. Bonuses: groups mean only the highest tier met pays.",
+  "league_id": "base",
+  "league_name": "Base League",
+  "rank_xp": [0, 200, 600, 1500, 2500, 4000, 6000],
+  "base_lp_by_opponent_rank": [5, 10, 20, 40, 75, 100, 150, 200],
+  "rank_rewards": {
+    "_comment": "rank -> what the Town Hall hands over the first time the player returns at that rank: {\"kind\": \"coin|sleeve|costume\", \"id\": \"<asset name>\", \"label\": \"text\"}. Fill in as you decide them.",
+    "2": {},
+    "3": {},
+    "4": {},
+    "5": {},
+    "6": {},
+    "7": {}
+  },
+  "bonuses": {
+    "big_damage": {"label": "Big Damage!", "tiers": [[100, 5], [150, 10], [200, 15], [250, 25], [300, 50]]},
+    "only_one": {"label": "Only One", "lp": 5},
+    "comeback": {"label": "Comeback", "behind": 3, "lp": 10},
+    "crazy_comeback": {"label": "Crazy Comeback", "behind": 5, "lp": 25},
+    "last_resort": {"label": "Last Resort", "hp_at_most": 10, "lp": 20},
+    "multi_prize": {"tiers": [[2, "Double Knockout", 5], [3, "Triple Knockout", 20], [4, "Quadruple Knockout", 50], [5, "Quintuple Knockout", 100], [6, "Board Wipe!", 200]]},
+    "healer": {"tiers": [[100, "Healer", 5], [200, "Super Healer", 10], [500, "Mega Healer", 25], [1000, "Crazy Healer", 50]]},
+    "type_specialist": {"label": "Type Specialist", "lp": 5},
+    "deck_out": {"label": "Deck Out", "lp": 10},
+    "flawless": {"label": "Flawless Victory", "lp_per_prize": 1},
+    "speedrun": {"label": "Speedrun", "turn_at_most": 6, "lp": 5},
+    "marathon": {"label": "Marathon", "turn_over": 49, "lp": 20},
+    "sniper": {"label": "Sniper", "lp_each": 2},
+    "evolution": {"label": "Evolution Master", "tiers": [[5, 5], [10, 10], [15, 15], [20, 20], [25, 25]]},
+    "poison_master": {"label": "Poison Master", "lp_each": 5},
+    "burn_master": {"label": "Burn Master", "lp_each": 5},
+    "confusion_master": {"label": "Why are you hitting yourself?", "lp_each": 5},
+    "inflictor": {"every": 5, "lp_per_step": 5, "statuses": {"Confused": "Confusion Inflictor", "Paralyzed": "Paralysis Inflictor", "Asleep": "Sleep Inflictor", "Poisoned": "Poison Inflictor"}},
+    "coin_luck": {"min_flips": 10, "ratio": 0.75, "lp": 20, "double_at_ratio": 1.0, "lucky_label": "Lucky Heads", "unlucky_label": "Unlucky Tails"}
+  }
+}

@@ -1,14 +1,14 @@
 extends RefCounted
 
-## Opponent difficulty: 1-7 stars, plus three secret ones: orange 8 for the Card Elders,
-## red 9 for the gym leaders and purple 10 for Mewtwo alone. Preloaded, not a class_name.
+## Opponent LEAGUE RANK (shown as stars): 1-5, plus three secret ones: orange 6 for the Card Elders,
+## red 7 for the gym leaders and purple 8 for Mewtwo alone. Preloaded, not a class_name.
 ##
 ## Where a rating comes from, first match wins:
-##   1. `stars` on the opponent in All_NPC_Constant_Data.json (1-10) -- set by hand with the
-##      star picker in the F placement tool's side panel. The only way to get an 8, 9 or 10.
+##   1. `stars` on the opponent in All_NPC_Constant_Data.json (1-8) -- set by hand with the
+##      star picker in the F placement tool's side panel. The only way to get a 6, 7 or 8.
 ##   2. The last benchmark DECK TEST in Opponent_Ratings.json -- the opponent's real CPU
 ##      with their deck against the autotester's smart bot playing every starter deck.
-##      Its CPU win rate is turned into 1-7 by WIN_RATE_STARS.
+##      Its CPU win rate is turned into 1-5 by WIN_RATE_STARS.
 ##   3. A starting ESTIMATE in Opponent_Ratings.json ("vs": "estimate"), from the day they
 ##      first appear plus how strong their deck looks (written 2026-11-11; a benchmark
 ##      deck test replaces it).
@@ -21,12 +21,12 @@ extends RefCounted
 const RATINGS_PATH := "res://NPC_and_Opponent_Data/Opponent_Ratings.json"
 const CONSTANTS_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
 ## The highest rating an auto test can give, and the highest anything can.
-const MAX_AUTO := 7
-const MAX_STARS := 10
+const MAX_AUTO := 5
+const MAX_STARS := 8
 
 ## TWEAKABLE: the CPU's win rate against the benchmark at or above which an opponent gets
 ## that many stars (index 0 = 1 star). Below the first value is still 1 star.
-const WIN_RATE_STARS := [0.0, 0.15, 0.30, 0.45, 0.60, 0.72, 0.85]
+const WIN_RATE_STARS := [0.0, 0.20, 0.40, 0.60, 0.80]
 
 static var _cache: Dictionary = {}
 static var _cache_loaded: bool = false

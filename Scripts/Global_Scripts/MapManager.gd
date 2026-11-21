@@ -332,6 +332,7 @@ const REGISTRAR_THANKS := "Thank you so much, your registration is complete and 
 const REGISTRAR_ELDER_DAYS     := "The Card Elder Challenge doesn't start for another %d days."
 const REGISTRAR_ELDER_TOMORROW := "The Card Elder Challenge doesn't start until tomorrow."
 const REGISTRAR_ELDER_UNDERWAY := "The Card Elder Challenge is already underway, simply speak with any of the Card Elders to begin the challenge!"
+const REGISTRAR_LEAGUE := "Now you're officially registered, every official league match will reward you with League Points that you can redeem at participating shops."
 const REGISTRAR_LOGIN  := "You'll be automatically logged into your TCG Tracker App, just open the app up with [M]/[Back] and you'll be able to see all the other registrants around your area. Do come back if you need anything else!"
 const REGISTRAR_RECEIVED := "You received the TCG Tracker App"
 ## Already registered: these boxes, no question.
@@ -2305,6 +2306,14 @@ func _on_player_npc_interact(npc: Node):
 		if TownHallTrioCutscene.is_pending():
 			_run_npc_steps([{"text": TownHallTrioCutscene.DESK_QUEUE_LINE}], 0)
 			return
+		# A rank-up reward waiting (League.pending_rank_rewards): hand it over before anything else.
+		if GameState.has_item(TRACKER_ITEM):
+			var pending_rewards: Array = League.pending_rank_rewards()
+			if not pending_rewards.is_empty():
+				npc.mark_as_met()
+				_claim_league_rank_rewards(pending_rewards)
+				return
+			GameState.league_set_rank_claimed(GameState.league_rank())   # ranks with no reward set count as claimed
 		var registrar_seen: bool = npc.has_been_met()
 		npc.mark_as_met()
 		npc.refresh_bubble()
@@ -2545,6 +2554,26 @@ func _handle_costume_gated_npc(npc: Node) -> void:
 # ============================================================
 # GIFT GIVING
 # ============================================================
+
+## LEAGUE: the Town Hall receptionist hands over the reward for each rank the player has reached since they last
+## looked (League_Config.json rank_rewards), one gift after another.
+func _claim_league_rank_rewards(pending: Array) -> void:
+	var item: Dictionary = pending[0]
+	var kind := String(item["kind"])
+	var id := String(item["id"])
+	match kind:
+		"coin": GameState.add_coin_to_collection(id)
+		"costume": GameState.add_costume_to_collection(id)
+		"sleeve": GameState.add_sleeve_to_collection(id)
+	var rest: Array = pending.slice(1)
+	GameState.league_set_rank_claimed(int(item["rank"]) if not rest.is_empty() else GameState.league_rank())
+	_prepare_gift_display(kind, id)
+	var text := "Congratulations, you've reached League Rank %d! Here's something for all your hard work." % int(item["rank"])
+	if rest.is_empty():
+		_show_message_with_ok(text)
+	else:
+		show_message_then(text, func() -> void: _claim_league_rank_rewards(rest))
+
 
 func _give_gift(npc: Node):
 	match npc.gift_type:
@@ -3395,8 +3424,9 @@ func _handle_registration() -> void:
 	GameState.add_item_to_collection(TRACKER_ITEM)   # and so does this
 	var elder_line := _card_elder_start_line()
 	show_message_then(REGISTRAR_THANKS, func():
-		show_message_then(elder_line, func():
-			show_message_then(REGISTRAR_LOGIN, _reveal_tracker_app)))
+		show_message_then(REGISTRAR_LEAGUE, func():
+			show_message_then(elder_line, func():
+				show_message_then(REGISTRAR_LOGIN, _reveal_tracker_app))))
 
 
 ## True while the receptionist is selling TCG club membership: tracker already owned, Gym

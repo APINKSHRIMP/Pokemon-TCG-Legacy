@@ -1211,7 +1211,7 @@
       "message_colour": "dark_green"
     },
     "Card Elder Hamish": {
-      "stars": 8,
+      "stars": 6,
       "card_reward": "basep-23",
       "coin_reward": "Hitmonchan Silver",
       "music": "Hard Battle 3 (PMDX Mt Blaze Peak)",
@@ -1224,7 +1224,7 @@
       "pack_reward": "base1_b"
     },
     "Card Elder Rayne": {
-      "stars": 8,
+      "stars": 6,
       "card_reward": "basep-22",
       "coin_reward": "Blastoise Blue",
       "music": "Medium Battle (PMD Mt Freeze)",
@@ -1237,7 +1237,7 @@
       "pack_reward": "base1_c"
     },
     "Card Elder Waverly": {
-      "stars": 8,
+      "stars": 6,
       "card_reward": "basep-21",
       "coin_reward": "Wigglytuff Pink",
       "music": "Easy Battle 2 (PMDEoS Foggy Forest)",
@@ -1552,7 +1552,7 @@
       "message_colour": "grey"
     },
     "Gym Challenge Blaine": {
-      "stars": 9,
+      "stars": 7,
       "coin_reward": "Energy Fire Red 2",
       "card_reward": "Gym1-1",
       "pack_reward": "gym2_c",
@@ -1564,7 +1564,7 @@
       "message_colour": "dark_red"
     },
     "Gym Challenge Brock": {
-      "stars": 9,
+      "stars": 7,
       "coin_reward": "Energy Fighting Brown 2",
       "card_reward": "Gym1-1",
       "pack_reward": "gym1_a",
@@ -1576,7 +1576,7 @@
       "message_colour": "orange"
     },
     "Gym Challenge Erika": {
-      "stars": 9,
+      "stars": 7,
       "coin_reward": "Energy Grass Green 2",
       "card_reward": "Gym1-1",
       "pack_reward": "gym1_d",
@@ -1588,7 +1588,7 @@
       "message_colour": "green"
     },
     "Gym Challenge Giovanni": {
-      "stars": 9,
+      "stars": 7,
       "coin_reward": "Energy Darkness Black 2",
       "card_reward": "Gym1-1",
       "pack_reward": "gym2_d",
@@ -1600,7 +1600,7 @@
       "message_colour": "black"
     },
     "Gym Challenge Koga": {
-      "stars": 9,
+      "stars": 7,
       "coin_reward": "Energy Colorless Silver 2",
       "card_reward": "Gym1-1",
       "pack_reward": "gym2_a",
@@ -1612,7 +1612,7 @@
       "message_colour": "dark_green"
     },
     "Gym Challenge Lt. Surge": {
-      "stars": 9,
+      "stars": 7,
       "coin_reward": "Energy Lightning Gold 2",
       "card_reward": "Gym1-1",
       "pack_reward": "gym1_c",
@@ -1624,7 +1624,7 @@
       "message_colour": "yellow"
     },
     "Gym Challenge Misty": {
-      "stars": 9,
+      "stars": 7,
       "coin_reward": "Energy Water Blue 2",
       "card_reward": "Gym1-1",
       "pack_reward": "gym1_b",
@@ -1636,7 +1636,7 @@
       "message_colour": "light_blue"
     },
     "Gym Challenge Sabrina": {
-      "stars": 9,
+      "stars": 7,
       "coin_reward": "Energy Psychic Purple 2",
       "card_reward": "Gym1-1",
       "pack_reward": "gym2_b",
@@ -1713,7 +1713,7 @@
       "message_colour": "white"
     },
     "Mewtwo": {
-      "stars": 10,
+      "stars": 8,
       "coin_reward": "Zz Mewtwo Purple",
       "card_reward": "basep-99",
       "music": "Eerie Battle (HGSS Radio Unown)",
@@ -1773,7 +1773,7 @@
       "cpu_retreat_rate": 0
     },
     "Pikachu Fan Cami": {
-      "stars": 7,
+      "stars": 5,
       "coin_reward": "Pikachu Gold 4",
       "card_reward": "basep-26",
       "music": "REPLACEMUSIC",
@@ -1784,7 +1784,7 @@
       "message_colour": "yellow"
     },
     "Pikachu Fan Juniper": {
-      "stars": 7,
+      "stars": 5,
       "coin_reward": "Pikachu Gold 5",
       "card_reward": "basep-27",
       "music": "REPLACEMUSIC",
@@ -1795,7 +1795,7 @@
       "message_colour": "yellow"
     },
     "Pikachu Fan Leaf": {
-      "stars": 7,
+      "stars": 5,
       "coin_reward": "Pikachu Gold 7",
       "card_reward": "basep-1",
       "music": "REPLACEMUSIC",
@@ -1806,7 +1806,7 @@
       "message_colour": "yellow"
     },
     "Pikachu Fan Marina": {
-      "stars": 7,
+      "stars": 5,
       "coin_reward": "Pikachu Gold 2",
       "card_reward": "basep-28",
       "music": "REPLACEMUSIC",
@@ -1817,7 +1817,7 @@
       "message_colour": "yellow"
     },
     "Pikachu Fan Raye": {
-      "stars": 7,
+      "stars": 5,
       "coin_reward": "Pikachu Gold 6",
       "card_reward": "basep-4",
       "music": "REPLACEMUSIC",
@@ -1828,7 +1828,7 @@
       "message_colour": "yellow"
     },
     "Pikachu Fan Skye": {
-      "stars": 7,
+      "stars": 5,
       "coin_reward": "Pikachu Gold 3",
       "card_reward": "basep-25",
       "music": "REPLACEMUSIC",

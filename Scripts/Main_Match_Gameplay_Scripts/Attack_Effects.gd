@@ -1683,6 +1683,8 @@ func handle_attack_confusion(attacker: card_object, is_opponent: bool) -> bool:
 	# ISSUE #85 / ISSUE #61: PlusPower (+10 each) then Defender (-20 each) on confusion self-damage.
 	self_damage = main.apply_self_damage_modifiers(attacker, self_damage)
 	attacker.current_hp = max(0, attacker.current_hp - self_damage)
+	if attacker.current_hp <= 0:
+		main.league_stats.mark_status_ko(attacker, "confusion")   # LEAGUE: "Why are you hitting yourself?"
 	await main.show_message("THE ATTACK FAILED! " + attacker.metadata["name"].to_upper() + " HURT ITSELF FOR " + str(self_damage) + " DAMAGE!")
 	if main._should_bail(): return true   # OLD ISSUE 375: a bail STOPS the attack (was: let it run on a finished game)
 	var attacker_label_pos = Vector2(1030, 300) if is_opponent else Vector2(530, 300)

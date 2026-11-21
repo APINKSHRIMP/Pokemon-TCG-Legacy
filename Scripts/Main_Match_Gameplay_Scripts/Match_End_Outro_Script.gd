@@ -23,6 +23,7 @@ const BATTLE_SPRITE_DIR := "res://Image_Assets/Character_Sprites/In_Battle_Sprit
 
 # Icon textures for rewards
 var pokedollar_icon_tex = preload("res://Image_Assets/Icons/Reward_Icons/pokedollar_icon.png")
+var league_icon_tex     = preload("res://Image_Assets/Icons/Reward_Icons/league_points_icon.png")
 var coin_icon_tex       = preload("res://Image_Assets/Icons/Reward_Icons/coin_icon.png")
 var costume_icon_tex    = preload("res://Image_Assets/Icons/Reward_Icons/costume_icon.png")
 var card_icon_tex       = preload("res://Image_Assets/Icons/Reward_Icons/card_icon.png")
@@ -35,6 +36,26 @@ var frame: BattleFrame = null
 var reward_rows: Array = []
 var _header_anim: Control = null    # the REWARDS caption's movement wrapper
 var _header_label: Label = null
+
+# ── LEAGUE POINTS section (above REWARDS) ──
+# "League Points Earned [icon] total", then the base line (first win only) and each bonus fly in one by one
+# with the total counting up after each; the normal rewards follow. Built in build_league_rows().
+const LEAGUE_SECTION_GAP : float = 22.0    # between the league lines and the REWARDS caption
+const LEAGUE_HEADER_GAP  : float = 8.0     # air between the header and the first line
+const LEAGUE_TOTAL_W     : float = 70.0    # room for the running total (it is left-aligned against the icon)
+const LEAGUE_ROW_TIME    : float = 0.38
+const LEAGUE_COUNT_TIME  : float = 0.22    # the total ticking up after each line lands
+const LEAGUE_ROW_PAUSE   : float = 0.10
+const LEAGUE_HEADER_DELAY: float = 0.50
+const LEAGUE_FIRST_ROW_DELAY : float = 0.55
+var _league_rows: Array = []                # reward-row dicts (+ "lp")
+var _league_total: int = 0
+var _league_shown_total: int = 0
+var _league_header_anim: Control = null
+var _league_header_label: Label = null
+var _league_total_label: Label = null
+var _league_rank_before: int = 1
+var _league_rank_after: int = 1
 
 # Screen dimensions (matching the 1920x1080 project)
 const SCREEN_W: float        = 1920.0
@@ -199,6 +220,7 @@ func _ready() -> void:
 
 	# Build reward rows (win only), passing is_first_win to avoid recomputing it
 	if battle_won:
+		build_league_rows(is_first_win)   # LEAGUE POINTS: granted here, flown in above the rewards
 		build_rewards(is_first_win)
 
 	# ISSUE #35: Options "Play Match Intro / Outro Animation?" = skip animations.
@@ -335,6 +357,17 @@ func _await_tween_or_skip(tw: Tween) -> void:
 ## of the fly-in and a click-to-skip come through here, so neither can leave a
 ## reward line half-faded.
 func _snap_rewards_to_final() -> void:
+	if _league_header_anim != null:
+		_league_header_anim.position = Vector2.ZERO
+		_league_header_anim.modulate.a = 1.0
+		_set_league_total(_league_total)
+	for lrow in _league_rows:
+		if not lrow.has("icon_node"):
+			continue
+		lrow["icon_node"].position.x = lrow["icon_final_x"]
+		lrow["value_node"].position.x = lrow["value_final_x"]
+		lrow["icon_node"].modulate.a = 1.0
+		lrow["value_node"].modulate.a = 1.0
 	if _header_anim != null:
 		_header_anim.position = Vector2.ZERO
 		_header_anim.modulate.a = 1.0
@@ -409,14 +442,53 @@ func _build_frame() -> void:
 	# the outcome read before the word does.
 	frame.desaturate(frame.opponent if battle_won else frame.player)
 
-	frame.badge_slot.add_child(frame.make_badge(
-			"WIN" if battle_won else "LOSS", kind, OUTCOME_FONT_SIZE))
+	# 2026-11-20: no wheel. A bold gradient WIN! / LOSS! heads the screen, the stats row sits right under it and the
+	# rewards block starts under that - the wheel's space (the whole middle of the screen) is the rewards' now.
+	_build_result_header(kind)
+	frame.top_slot.position = Vector2(0.0, STATS_Y)
+	frame.top_slot.size = Vector2(frame.top_slot.size.x, STATS_H)
+	frame.below_badge.position.y = STATS_Y + STATS_H + REWARDS_GAP
 	_build_stats_row()
 
 	# On a loss the slot below the badge stays EMPTY. No missed rewards, no greyed
 	# prize money, no "what you could have won" - that punishes twice for one loss.
 	if battle_won:
 		_build_rewards_block()
+
+
+## TWEAKABLE: the WIN! / LOSS! header, the stats row under it and where the rewards start (design px at 1920x1080).
+const HEADER_FONT : int   = 104
+const HEADER_Y    : float = 26.0
+const STATS_Y     : float = 158.0
+const STATS_H     : float = 70.0
+const REWARDS_GAP : float = 30.0
+var _result_header_anim: Control = null
+
+
+## The big gradient outcome word at the top of the screen. Dropped in with the other elements.
+func _build_result_header(kind: String) -> void:
+	var ui := UITheme
+	var font: Font = ui.font("title")
+	var text := "WIN!" if battle_won else "LOSS!"
+	var text_w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, HEADER_FONT).x
+	_result_header_anim = Control.new()
+	_result_header_anim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(_result_header_anim)
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.add_theme_font_override("font", font)
+	lbl.add_theme_font_size_override("font_size", HEADER_FONT)
+	var label_h: float = float(HEADER_FONT) * 1.25
+	lbl.size = Vector2(text_w, label_h)
+	lbl.position = Vector2((UIKit.screen_w() - text_w) * 0.5, HEADER_Y)
+	frame._apply_text_gradient(lbl, kind, text_w)
+	_result_header_anim.add_child(lbl)
+	var gs := GameState
+	frame.drop_in(_result_header_anim, gs.transition_time(BattleFrame.SLOT_DELAY * 0.6),
+			gs.transition_time(BattleFrame.P1_TIME), BattleFrame.BLOCK_DROP_PX)
 
 
 # Prizes taken, turns and the head-to-head record. Identical fields in an
@@ -456,6 +528,39 @@ func _sprite_for(data: Dictionary) -> Texture2D:
 # ============================================================
 # REWARD BUILDING (win only)
 # ============================================================
+
+## LEAGUE POINTS for this win: base LP (first win over this opponent only, by THEIR League Rank) plus every bonus
+## the won game(s) earned (League.compute_final). Granted now; the rows are shown by _build_rewards_block.
+func build_league_rows(is_first_win: bool) -> void:
+	_league_rows.clear()
+	_league_total = 0
+	var stats: Array = GameState.league_game_stats.duplicate()
+	GameState.league_game_stats.clear()
+	if not GameState.league_active() or GameState.test_match_mode:
+		return
+	if is_first_win:
+		var opp_rank: int = League.opponent_rank(GameState.current_opponent_name)
+		var base: int = League.base_lp_for_rank(opp_rank)
+		_league_rows.append(_league_row("+%d  Rank %d win" % [base, opp_rank], base))
+		_league_total += base
+	for b in League.compute_final(stats):
+		_league_rows.append(_league_row("+%d  %s" % [int(b["lp"]), String(b["label"])], int(b["lp"])))
+		_league_total += int(b["lp"])
+	_league_rank_before = GameState.league_add(_league_total)
+	_league_rank_after = GameState.league_rank()
+	if _league_total > 0 and _league_rank_after > _league_rank_before:
+		var up := _league_row("League Rank %d!" % _league_rank_after, 0)
+		up["note"] = "(Rank up!)"
+		_league_rows.append(up)
+	if _league_rows.is_empty():
+		_league_total = 0
+
+
+func _league_row(text: String, lp: int) -> Dictionary:
+	var row := _reward_row(text, league_icon_tex, "", REWARD_COIN_ICON_PX)
+	row["lp"] = lp
+	return row
+
 
 func build_rewards(is_first_win: bool) -> void:
 	# Nothing is BUILT here - this only decides what the player has won and grants it.
@@ -630,16 +735,62 @@ func _reward_row(text: String, icon: Texture2D, note: String = "",
 # because the fly-in animates each row's x and a container would fight it for the
 # same property on the same frame.
 func _build_rewards_block() -> void:
-	if reward_rows.is_empty():
+	if reward_rows.is_empty() and _league_rows.is_empty():
 		return
 
 	var pitch := REWARD_ROW_PITCH
+	var league_h: float = 0.0
+	if not _league_rows.is_empty():
+		league_h = REWARD_LABEL_H + LEAGUE_HEADER_GAP + float(_league_rows.size()) * pitch + LEAGUE_SECTION_GAP
 	var block := Control.new()
 	block.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	block.custom_minimum_size = Vector2(REWARD_BLOCK_W,
-			REWARD_LABEL_H + float(reward_rows.size()) * pitch)
+			league_h + REWARD_LABEL_H + float(reward_rows.size()) * pitch)
 	block.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	frame.below_badge.add_child(block)
+
+	# LEAGUE POINTS EARNED [icon] total - its own wrapper, like the REWARDS caption
+	if not _league_rows.is_empty():
+		_league_header_anim = Control.new()
+		_league_header_anim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		block.add_child(_league_header_anim)
+		# caption, icon and running total sit TOGETHER in one centred row (measured by the container, not guessed)
+		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 8)
+		row.position = Vector2.ZERO
+		row.size = Vector2(REWARD_BLOCK_W, REWARD_LABEL_H)
+		_league_header_anim.add_child(row)
+		_league_header_label = Label.new()
+		_league_header_label.text = "LEAGUE POINTS EARNED"
+		_league_header_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_league_header_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_league_header_label.add_theme_font_override("font", UITheme.font_at(UITheme.FONT_MONO_MEDIUM))
+		_league_header_label.add_theme_font_size_override("font_size", REWARD_LABEL_FONT)
+		_league_header_label.add_theme_constant_override("font_spacing_glyph", int(round(0.2 * float(REWARD_LABEL_FONT))))
+		_league_header_label.add_theme_color_override("font_color", UITheme.col("field_mute"))
+		row.add_child(_league_header_label)
+		var hicon := TextureRect.new()
+		hicon.texture = league_icon_tex
+		hicon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		hicon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		hicon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hicon.custom_minimum_size = Vector2(REWARD_ICON_PX, REWARD_ICON_PX)
+		row.add_child(hicon)
+		_league_total_label = Label.new()
+		_league_total_label.text = "0"
+		_league_total_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_league_total_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_league_total_label.add_theme_font_override("font", UITheme.font_card("name"))
+		_league_total_label.add_theme_font_size_override("font_size", REWARD_FONT_SIZE)
+		_league_total_label.add_theme_color_override("font_color", UITheme.col("field_fg"))
+		_league_total_label.custom_minimum_size = Vector2(LEAGUE_TOTAL_W, REWARD_LABEL_H)
+		row.add_child(_league_total_label)
+		_league_header_anim.modulate.a = 0.0
+		for i in _league_rows.size():
+			_place_reward_row(block, _league_rows[i], REWARD_LABEL_H + LEAGUE_HEADER_GAP + float(i) * pitch)
+		_league_shown_total = 0
 
 	# The REWARDS caption. Its own wrapper so it can drop in while the rows fly
 	# in sideways - centring on the label, movement on the wrapper.
@@ -656,12 +807,12 @@ func _build_rewards_block() -> void:
 	_header_label.add_theme_constant_override("font_spacing_glyph",
 			int(round(0.2 * float(REWARD_LABEL_FONT))))
 	_header_label.add_theme_color_override("font_color", UITheme.col("field_mute"))
-	_header_label.position = Vector2.ZERO
+	_header_label.position = Vector2(0.0, league_h)
 	_header_label.size = Vector2(REWARD_BLOCK_W, REWARD_LABEL_H)
 	_header_anim.add_child(_header_label)
 
 	for i in reward_rows.size():
-		_place_reward_row(block, reward_rows[i], REWARD_LABEL_H + float(i) * pitch)
+		_place_reward_row(block, reward_rows[i], league_h + REWARD_LABEL_H + float(i) * pitch)
 
 
 # Lays one row out and parks both halves off-screen ready for the fly-in. The
@@ -748,6 +899,11 @@ func animate_rewards() -> void:
 		_in_skippable_anim = false
 		return
 
+	# LEAGUE POINTS first: the header, the base line, then each bonus - the total counting up after each - and only
+	# THEN the usual rewards.
+	if not _league_rows.is_empty():
+		await _animate_league()
+
 	var gs := GameState
 	frame.drop_in(_header_anim, gs.transition_time(REWARD_LABEL_DELAY),
 			gs.transition_time(REWARD_LABEL_TIME), REWARD_DROP_PX)
@@ -780,6 +936,53 @@ func animate_rewards() -> void:
 	# Finished naturally or skipped - pin everything to its resting position.
 	_snap_rewards_to_final()
 	_in_skippable_anim = false
+
+
+## The league section's sequence (see the block above). A click / accept skips to the finished state.
+func _animate_league() -> void:
+	var gs := GameState
+	frame.drop_in(_league_header_anim, gs.transition_time(LEAGUE_HEADER_DELAY),
+			gs.transition_time(REWARD_LABEL_TIME), REWARD_DROP_PX)
+	await _league_wait(gs.transition_time(LEAGUE_FIRST_ROW_DELAY))
+	for row in _league_rows:
+		if _skip_anim:
+			return
+		var dur: float = gs.transition_time(LEAGUE_ROW_TIME)
+		var tween := create_tween()
+		tween.set_parallel(true)
+		tween.set_trans(Tween.TRANS_CUBIC)
+		tween.set_ease(Tween.EASE_OUT)
+		tween.tween_property(row["icon_node"], "position:x", row["icon_final_x"], dur)
+		tween.tween_property(row["value_node"], "position:x", row["value_final_x"], dur)
+		var fade_dur: float = maxf(dur * BattleFrame.DROP_FADE_SHARE, 0.01)
+		tween.tween_property(row["icon_node"], "modulate:a", 1.0, fade_dur)
+		tween.tween_property(row["value_node"], "modulate:a", 1.0, fade_dur)
+		await _league_wait(dur)
+		if _skip_anim:
+			return
+		# the total counts up by this line's points, quickly, then the next line
+		var from: int = _league_shown_total
+		var to: int = from + int(row.get("lp", 0))
+		if to != from:
+			var count := create_tween()
+			count.tween_method(func(v: float) -> void: _set_league_total(int(round(v))), float(from), float(to), gs.transition_time(LEAGUE_COUNT_TIME))
+			await _league_wait(gs.transition_time(LEAGUE_COUNT_TIME))
+			_set_league_total(to)
+		await _league_wait(gs.transition_time(LEAGUE_ROW_PAUSE))
+
+
+func _set_league_total(v: int) -> void:
+	_league_shown_total = v
+	if _league_total_label != null and is_instance_valid(_league_total_label):
+		_league_total_label.text = "%d" % v
+
+
+## A wait the click-to-skip can cut short (leaves _in_skippable_anim alone, unlike _await_timer_or_skip).
+func _league_wait(seconds: float) -> void:
+	var left := seconds
+	while left > 0.0 and not _skip_anim:
+		await get_tree().process_frame
+		left -= get_process_delta_time()
 
 
 # Waits `seconds`, returning early if the player clicks to skip. The fly-in runs

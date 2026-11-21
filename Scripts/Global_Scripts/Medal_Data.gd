@@ -30,7 +30,7 @@ const GRADE_NAMES := {
 ## Leader name prefix a deck's Pokemon must all share (Pokemon cards are named "Brock's Onix").
 const LEADER_PREFIX_SUFFIX := "'s "
 ## A type / leader deck needs at least this many DIFFERENT named Pokemon (the same number is in Medals.json's text).
-const MIN_NAMES := 4
+const MIN_NAMES := 6
 
 static var _defs: Array = []
 

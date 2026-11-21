@@ -100,6 +100,8 @@ var player_prize_cards = []
 var _medal_archetypes: Array = []     # "type:Fire" / "leader:Brock" keys the player's deck qualifies for
 var _medal_opp_start_prizes: int = 0  # the opponent's Prize cards as dealt (Flawless Victories needs the full 6)
 var _medal_player_start_prizes: int = 0   # ...and the player's
+## LEAGUE: what the player did this match (bonuses, League.compute_final). poll()ed every frame from _process.
+var league_stats: MatchStats = MatchStats.new()
 var _medal_deckout_win: bool = false  # the opponent could not draw
 var player_active_pokemon: card_object = null
 var player_discard_pile: Array = []
@@ -7725,6 +7727,8 @@ func game_end_logic(loser_is_player: bool, is_draw: bool = false) -> void:
 	# a best-of-3 and a forfeit. Test matches are ignored inside record_match_result().
 	GameState.record_match_result(GameState.battle_result == "win")
 	var medal_win: bool = GameState.battle_result == "win"
+	if medal_win and GameState.autotest == null and not GameState.test_match_mode:
+		GameState.league_game_stats.append(league_stats.to_dict(self))   # LEAGUE: only WON games of a series count
 	GameState.record_medal_match(medal_win, {
 		"archetypes": _medal_archetypes,
 		"flawless": medal_win and _medal_opp_start_prizes == 6 and _medal_player_start_prizes == 6 and opponent_prize_cards.size() == 6,
@@ -8006,6 +8010,8 @@ func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
 	# MATCH EFFECT: coin_flip_override — every flip forced to heads/tails (animation still plays)
 	var rule_override: String = match_effects.coin_override(flipper_is_opponent)
 	var result: bool = (rule_override == "heads") if rule_override != "" else (coin_future.pop_front() if not coin_future.is_empty() else (randi() % 2 == 0))
+	if not flipper_is_opponent and rule_override == "":
+		league_stats.note_flip(result)   # LEAGUE: lucky heads / unlucky tails
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_coin_flip_sound)
 
 	# Resolve which heads face to use for this flip
@@ -9823,6 +9829,8 @@ func display_and_apply_attack_damage(attacker: card_object, defender: card_objec
 	var transparency_blocked = await powers_and_bodies.check_transparency(defender)
 	if transparency_blocked:
 		return
+	if not is_opponent:
+		league_stats.note_attack_damage(final_damage)   # LEAGUE: Big Damage
 
 	# Check Mew's Neutral Shield (basep-47): blocks all effects from Evolved Pokemon
 	if attacker != null and powers_and_bodies.check_neutral_shield(defender, attacker):
@@ -10660,6 +10668,7 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	var had_destiny_bond = pokemon.has_destiny_bond
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_knockout_sound)
+	league_stats.note_knockout(pokemon, is_opponent, pokemon in bench)   # LEAGUE: Sniper / Poison Master / Burn Master
 	await show_message(ko_name.to_upper() + " WAS KNOCKED OUT!")
 	if card_fx != null: card_fx.end_ko(pokemon)   # ISSUE #360: lightens again as it goes to the discard
 
@@ -11117,6 +11126,8 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 		# MATCH EFFECT: poison_damage_multiplier — scale the poison tick
 		var poison_tick = match_effects.poison_tick_damage(pokemon.poison_damage, is_opponent)
 		pokemon.current_hp = max(0, pokemon.current_hp - poison_tick)
+		if pokemon.current_hp <= 0:
+			league_stats.mark_status_ko(pokemon, "poison")   # LEAGUE
 		var label = "TOXIC" if pokemon.poison_damage == 20 else "POISON"
 		if attack_vfx == null or not attack_vfx.sfx_on():
 			SoundManagerScript.play_sfx(SoundManagerScript.SFX_poison_sound)
@@ -11135,6 +11146,8 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 			var coin = await flip_coin(false, is_opponent)
 			if not coin:
 				pokemon.current_hp = max(0, pokemon.current_hp - burn_dmg)
+				if pokemon.current_hp <= 0:
+					league_stats.mark_status_ko(pokemon, "burn")   # LEAGUE
 				if card_fx != null: card_fx.status(pokemon, "Burned")   # ISSUE #345
 				await show_message(pokemon_name.to_upper() + " TAKES " + str(burn_dmg) + " BURN DAMAGE!")
 				float_label_over(pokemon, "-" + str(burn_dmg) + "HP", Color.RED, is_opponent)   # ISSUE #375
@@ -11145,6 +11158,8 @@ func process_status_between_turns(pokemon: card_object, is_opponent: bool) -> vo
 				print("BETWEEN TURNS: ", pokemon_name, " avoided burn damage (heads)")
 		elif burn_rules == "modern_era_burn_rules":
 			pokemon.current_hp = max(0, pokemon.current_hp - burn_dmg)
+			if pokemon.current_hp <= 0:
+				league_stats.mark_status_ko(pokemon, "burn")   # LEAGUE
 			if card_fx != null: card_fx.status(pokemon, "Burned")   # ISSUE #345
 			await show_message(pokemon_name.to_upper() + " TAKES " + str(burn_dmg) + " BURN DAMAGE!")
 			float_label_over(pokemon, "-" + str(burn_dmg) + "HP", Color.RED, is_opponent)   # ISSUE #375
@@ -11204,6 +11219,8 @@ func check_confused_retreat(pokemon: card_object, is_opponent: bool, phase: Stri
 			# ISSUE #85 / ISSUE #61: PlusPower +10 each, Defender -20 each on the failed-retreat penalty.
 			var retreat_self_dmg = apply_self_damage_modifiers(pokemon, 20)
 			pokemon.current_hp = max(0, pokemon.current_hp - retreat_self_dmg)
+			if pokemon.current_hp <= 0:
+				league_stats.mark_status_ko(pokemon, "confusion")   # LEAGUE: "Why are you hitting yourself?"
 			await show_message("RETREAT FAILED! " + pokemon_name.to_upper() + " HURT ITSELF FOR " + str(retreat_self_dmg) + " DAMAGE!")
 			var label_x = 1030 if is_opponent else 530
 			show_floating_label("-" + str(retreat_self_dmg) + "HP", Vector2(label_x, 300), Color.YELLOW, is_opponent)
@@ -13278,6 +13295,7 @@ func _process(_delta: float) -> void:
 	if animation_blocker.visible or _anim_in_flight:
 		_last_anim_busy_ms = Time.get_ticks_msec()
 	_watch_hp_changes()
+	league_stats.poll(self)
 	# DEV: hold Ctrl to see the opponent's hand + Prize cards. Polled (not an input event) so it works at any moment —
 	# the CPU's turn, message boxes, input blockers, card previews — and alt-tab can't strand it.
 	if DebugMode.is_enabled() and GameState.autotest == null:
@@ -13801,6 +13819,9 @@ func vfx_debugger_open() -> bool:
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	# LEAGUE: a fresh match (or the first game of a series) starts a fresh tally of won games
+	if not GameState.series_active or GameState.series_round_results.is_empty():
+		GameState.league_game_stats.clear()
 	# Chrome and board geometry first: everything below draws into the positions
 	# this sets, and the old scrolling background is freed here.
 	_build_board_layout()

@@ -95,6 +95,7 @@ var opt_worker := "0"              # --worker=<id>: keeps parallel jobs' scratch
 var opt_tutorial := ""
 var opt_opponent := ""             # --opponent=NAME: --real against this one opponent only
 var opt_vs := ""                   # --vs=benchmark|PATH: the bot's decks for --real
+var opt_bot_all := false           # --bot-decks=all: the bot plays a RANDOM deck from every opponent + starter deck (league bonus sims)
 var opt_per := 0                   # --per=N: N matches per real opponent
 var opt_rate := false              # --rate: record win rates in Opponent_Ratings.json
 var opt_progress_path := ""        # --progress=PATH: a progress file for the placement tool
@@ -299,6 +300,7 @@ func _parse_args() -> void:
 			"tutorial": opt_tutorial = v
 			"opponent": opt_opponent = v
 			"vs": opt_vs = v
+			"bot-decks": opt_bot_all = (v == "all")
 			"per": opt_per = int(v)
 			"rate": opt_rate = true
 			"progress": opt_progress_path = v
@@ -416,8 +418,13 @@ func _play_match(i: int) -> void:
 				entry_i = int(i / opt_per) % real_entries.size()
 			var entry: Dictionary = real_entries[entry_i]
 			o_deck = _read_deck_file(AssetLookup.deck_path(entry["deck"]))
+			cur_cpu_deck = String(entry["deck"])
 			opp_data = real_opponent_data_for(entry)
-			if opt_vs != "" and not player_deck_files.is_empty():
+			if opt_bot_all and not all_deck_files.is_empty():
+				var bot_file: String = all_deck_files[rng.randi() % all_deck_files.size()]
+				cur_bot_deck = bot_file.get_file().get_basename()
+				p_deck = _read_deck_file(bot_file)
+			elif opt_vs != "" and not player_deck_files.is_empty():
 				# Rating runs: every opposing deck in turn, so a short run is still a fair sample.
 				p_deck = _read_deck_file(player_deck_files[i % player_deck_files.size()])
 			else:
@@ -510,6 +517,9 @@ func _play_match(i: int) -> void:
 			"cpu_cards": _cpu_cards_used(m) if is_instance_valid(m) else [],
 			"bot_cards": _cpu_cards_used(m, false) if is_instance_valid(m) else [],
 			"ex": _ex_finish(m),
+			"league": _league_record(m),
+			"bot_deck": cur_bot_deck, "cpu_deck": cur_cpu_deck,
+			"cpu_decisions": _cpu_decision_notes(),
 			"dp": CpuWeights.branch_counter, "branch": CpuWeights.branch_record,
 			"plan_ms": snappedf(CpuWeights.plan_ms_total, 0.1), "plan_calls": CpuWeights.plan_calls}
 		_append_line(opt_result_path, JSON.stringify(tr))
@@ -1169,7 +1179,19 @@ func _timing_and_oracle_report() -> PackedStringArray:
 
 
 ## --opponent / --vs / --per, applied once the real opponents are loaded.
+var all_deck_files: Array = []
+var cur_bot_deck := ""   # tune records: the bot deck file / CPU deck of the match in progress (CPU audit by matchup)
+var cur_cpu_deck := ""
+
 func _apply_rating_options() -> void:
+	if opt_bot_all:
+		for dir_path in [STARTER_DECK_DIR, "res://NPC_and_Opponent_Data/Opponent_Deck_Data/"]:
+			var dd := DirAccess.open(dir_path)
+			if dd != null:
+				for f in dd.get_files():
+					if f.ends_with(".json"):
+						all_deck_files.append(dir_path + f)
+		all_deck_files.sort()
 	if opt_opponent != "":
 		var wanted := opt_opponent.strip_edges().to_lower()
 		real_entries = real_entries.filter(func(e): return String(e["label"]).strip_edges().to_lower() == wanted)
@@ -1222,6 +1244,27 @@ func _write_balance_report() -> void:
 
 
 ## Called by game_end_logic() instead of moving to the outro.
+## CPU audit: every problem the match raised with its detail (CPU DECISION: MISSED KO / SKIPPED ATTACK and the rest), capped.
+func _cpu_decision_notes() -> Array:
+	var out: Array = []
+	for p in match_problems:
+		if out.size() >= 6:
+			break
+		out.append({"kind": String(p["kind"]), "turn": p["turn"], "who": String(p.get("whose_turn", "?")),
+				"detail": String(p["detail"]).get_slice("\n", 0).left(200)})
+	return out
+
+
+## LEAGUE sims: what the bot (the player side) did this match and the bonuses a WIN would have paid.
+func _league_record(m: Node) -> Dictionary:
+	if not is_instance_valid(m) or not ("league_stats" in m):
+		return {}
+	var st: Dictionary = m.league_stats.to_dict(m)
+	var won: bool = match_result == "win"
+	var rows: Array = League.compute_final([st]) if won else []
+	return {"won": won, "stats": st, "bonuses": rows, "lp": League.total_lp(rows)}
+
+
 func on_match_over(_m: Node, result: String, is_draw: bool) -> void:
 	match_result = "draw" if is_draw else ("win" if result == "win" else "loss")
 	match_done = true

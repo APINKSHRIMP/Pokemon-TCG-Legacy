@@ -589,7 +589,7 @@
    25,
    50
   ],
-  "desc": "Win %d matches with a deck of only Grass type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "desc": "Win %d matches with a deck of only Grass type Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
   "emblem": "energy:grass"
  },
  {
@@ -604,7 +604,7 @@
    25,
    50
   ],
-  "desc": "Win %d matches with a deck of only Fire type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "desc": "Win %d matches with a deck of only Fire type Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
   "emblem": "energy:fire"
  },
  {
@@ -619,7 +619,7 @@
    25,
    50
   ],
-  "desc": "Win %d matches with a deck of only Water type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "desc": "Win %d matches with a deck of only Water type Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
   "emblem": "energy:water"
  },
  {
@@ -634,7 +634,7 @@
    25,
    50
   ],
-  "desc": "Win %d matches with a deck of only Lightning type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "desc": "Win %d matches with a deck of only Lightning type Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
   "emblem": "energy:lightning"
  },
  {
@@ -649,7 +649,7 @@
    25,
    50
   ],
-  "desc": "Win %d matches with a deck of only Psychic type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "desc": "Win %d matches with a deck of only Psychic type Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
   "emblem": "energy:psychic"
  },
  {
@@ -664,7 +664,7 @@
    25,
    50
   ],
-  "desc": "Win %d matches with a deck of only Fighting type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "desc": "Win %d matches with a deck of only Fighting type Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
   "emblem": "glyph:fist"
  },
  {
@@ -679,7 +679,7 @@
    25,
    50
   ],
-  "desc": "Win %d matches with a deck of only Darkness type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "desc": "Win %d matches with a deck of only Darkness type Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
   "emblem": "glyph:moon"
  },
  {
@@ -694,7 +694,7 @@
    25,
    50
   ],
-  "desc": "Win %d matches with a deck of only Metal type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "desc": "Win %d matches with a deck of only Metal type Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types (including Colorless Pokemon)\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
   "emblem": "energy:metal"
  },
  {
@@ -709,7 +709,7 @@
    25,
    50
   ],
-  "desc": "Win %d matches with a deck of only Colorless type Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
+  "desc": "Win %d matches with a deck of only Colorless type Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any other Pokemon types\n• Deck CAN contain any Energy cards\n• Pokemon attack requirements do not matter",
   "emblem": "energy:colorless"
  },
  {
@@ -724,7 +724,7 @@
    10,
    20
   ],
-  "desc": "Win %d matches with a deck of ONLY Brock's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Brock in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "desc": "Win %d matches with a deck of ONLY Brock's Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Brock in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
   "emblem": "badge:boulder"
  },
  {
@@ -739,7 +739,7 @@
    10,
    20
   ],
-  "desc": "Win %d matches with a deck of ONLY Misty's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Misty in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "desc": "Win %d matches with a deck of ONLY Misty's Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Misty in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
   "emblem": "badge:cascade"
  },
  {
@@ -754,7 +754,7 @@
    10,
    20
   ],
-  "desc": "Win %d matches with a deck of ONLY Lt. Surge's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Lt. Surge in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "desc": "Win %d matches with a deck of ONLY Lt. Surge's Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Lt. Surge in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
   "emblem": "badge:thunder"
  },
  {
@@ -769,7 +769,7 @@
    10,
    20
   ],
-  "desc": "Win %d matches with a deck of ONLY Erika's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Erika in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "desc": "Win %d matches with a deck of ONLY Erika's Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Erika in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
   "emblem": "badge:rainbow"
  },
  {
@@ -784,7 +784,7 @@
    10,
    20
   ],
-  "desc": "Win %d matches with a deck of ONLY Koga's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Koga in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "desc": "Win %d matches with a deck of ONLY Koga's Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Koga in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
   "emblem": "badge:soul"
  },
  {
@@ -799,7 +799,7 @@
    10,
    20
   ],
-  "desc": "Win %d matches with a deck of ONLY Sabrina's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Sabrina in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "desc": "Win %d matches with a deck of ONLY Sabrina's Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Sabrina in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
   "emblem": "badge:marsh"
  },
  {
@@ -814,7 +814,7 @@
    10,
    20
   ],
-  "desc": "Win %d matches with a deck of ONLY Blaine's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Blaine in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "desc": "Win %d matches with a deck of ONLY Blaine's Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Blaine in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
   "emblem": "badge:volcano"
  },
  {
@@ -829,7 +829,7 @@
    10,
    20
   ],
-  "desc": "Win %d matches with a deck of ONLY Giovanni's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Giovanni in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "desc": "Win %d matches with a deck of ONLY Giovanni's Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Giovanni in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
   "emblem": "badge:earth"
  },
  {
@@ -844,7 +844,7 @@
    10,
    20
   ],
-  "desc": "Win %d matches with a deck of ONLY Rocket's Pokemon\n• Deck MUST contain at least 4 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Rocket in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
+  "desc": "Win %d matches with a deck of ONLY Rocket's Pokemon\n• Deck MUST contain at least 6 different Pokemon (with different names)\n• Deck CANNOT contain any Pokemon without Rocket in its name\n• Pokemon and Energy types do not matter\n• Trainer card names do not matter",
   "emblem": "badge:letter_r"
  },
  {

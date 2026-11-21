@@ -112,6 +112,12 @@ const Q_ELLIE_4 := [
 ]
 const Q_ELLIE_5 := "If I can't beat him, I hope you at least win!!!!"
 const Q_ALEX_3  := "I asked if they had a different league for pro players like me but apparently not."
+## League Points (2026-11-20): Alexander brags, Ellie hopes for Rank 3 and is glad losing costs nothing.
+const Q_ALEX_LP := "I'm going to earn 1 million league points before the end of the week easy. And be League Rank 5."
+const Q_ELLIE_LP := [
+	"I hope I can make it to at least Rank 3.",
+	"I'm glad you don't drop any league points for losing, otherwise I'd probably end up with none!",
+]
 const Q_ALEX_4  := "Soooo......."
 const Q_ALEX_5  := "Seen any good films lately?..."
 const Q_ELLIE_6 := "Okay your turn, hope you remembered to bring your registration fee!"
@@ -318,6 +324,9 @@ func _queue_chat() -> void:
 	await _alex.glide_to(_g(Vector2(CENTRE_X, TALK_Y)), SCOOT_SPEED, "up", true)
 	_alex.face("down")
 	await say(_sp_alex, Q_ALEX_3)
+	await say(_sp_alex, Q_ALEX_LP)
+	await say(_sp_ellie, Q_ELLIE_LP[0])
+	await say(_sp_ellie, Q_ELLIE_LP[1])
 	close_box()
 
 	# Ellie looks at the player, a beat, at Alexander, then goes round him to the counter
@@ -453,6 +462,7 @@ func _gift(pay: bool) -> void:
 	GameState.add_time_points(REGISTERED_POINTS)
 	_set_stage(STAGE_ELLIE_NEXT)
 	await say(_sp_desk, MapManager.REGISTRAR_THANKS)
+	await say(_sp_desk, MapManager.REGISTRAR_LEAGUE)
 	await say(_sp_desk, MapManager._card_elder_start_line())
 	await say(_sp_desk, MapManager.REGISTRAR_LOGIN)
 	close_box()

@@ -1,13 +1,14 @@
 extends Control
 
 # ============================================================
-# DIFFICULTY STARS -- how hard an opponent is, on their Yes/No challenge box
+# LEAGUE RANK (the opponent's difficulty stars) -- shown on their Yes/No challenge box
 # ============================================================
 # A row of stars straddling the message box's top edge at its right-hand end, each one
-# a touch bigger than the last. 1-7 are gold, with the ones not earned drawn dim so the
-# scale can be read. The 8th (orange), 9th (red) and 10th (purple) are secret and a step
-# larger: they only appear on the opponents that have them -- the Card Elders, the gym
-# leaders, and Mewtwo alone.
+# a touch bigger than the last. 1-5 are gold, with the ones not earned drawn dim so the
+# scale can be read. The 6th (orange), 7th (red) and 8th (purple) are secret and a step
+# larger: they only appear on the opponents that have them -- the Card Elders (6), the gym
+# leaders (7), and Mewtwo alone (8). Rank is how far up the league an opponent has come: it
+# tracks difficulty closely but does not dictate it. (2026-11-20: was 1-7 + 8/9/10.)
 # A child of the message box, so it goes when the box goes. MapManager builds one per
 # challenge (_show_difficulty_stars); the rating is Opponent_Ratings.stars_for().
 # ============================================================
@@ -15,9 +16,9 @@ extends Control
 # TWEAKABLE
 ## Outer diameter of each star, 1st to 10th (screen px). The seven normal ones grow gently;
 ## the three secret ones are a step larger.
-const STAR_SIZES := [26.0, 27.0, 28.0, 29.0, 30.0, 31.0, 32.0, 38.0, 40.0, 42.0]
+const STAR_SIZES := [26.0, 28.0, 30.0, 32.0, 34.0, 40.0, 42.0, 44.0]
 ## How many stars are the normal (gold) scale; the rest are the secret colours.
-const NORMAL_STARS := 7
+const NORMAL_STARS := 5
 const GAP := 4.0
 ## Distance in from the box's right edge.
 const INSET_RIGHT := 28.0

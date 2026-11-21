@@ -65,7 +65,7 @@ LEADERS = [  # (name as it prefixes the Pokemon, display, badge) - in Kanto gym 
 ]
 
 
-MIN_NAMES = 4   # a type / leader deck needs at least this many DIFFERENT named Pokemon
+MIN_NAMES = 6   # a type / leader deck needs at least this many DIFFERENT named Pokemon
 
 
 def definitions():

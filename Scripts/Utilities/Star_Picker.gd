@@ -11,7 +11,7 @@ const DifficultyStars := preload("res://Scripts/Global_Scripts/Difficulty_Stars.
 const STAR_SIZE := 34.0
 const SECRET_STAR_SIZE := 38.0
 const GAP := 5.0
-## A thin divider between the normal 7 and the secret 3, so the split reads at a glance.
+## A thin divider between the normal 5 and the secret 3, so the split reads at a glance.
 const DIVIDER_GAP := 12.0
 
 signal picked(stars: int)
@@ -28,7 +28,7 @@ func _ready() -> void:
 	focus_mode = Control.FOCUS_NONE
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	custom_minimum_size = Vector2(_total_width(), SECRET_STAR_SIZE + 4.0)
-	tooltip_text = "Click a star to set the difficulty.\n1-7 = normal.  8 / 9 / 10 = secret (Elders / gym leaders / Mewtwo)."
+	tooltip_text = "Click a star to set the difficulty.\n1-5 = normal.  6 / 7 / 8 = secret (Elders / gym leaders / Mewtwo)."
 	mouse_exited.connect(func():
 		_hover = 0
 		queue_redraw())
