@@ -7727,12 +7727,15 @@ func game_end_logic(loser_is_player: bool, is_draw: bool = false) -> void:
 	# a best-of-3 and a forfeit. Test matches are ignored inside record_match_result().
 	GameState.record_match_result(GameState.battle_result == "win")
 	var medal_win: bool = GameState.battle_result == "win"
+	var game_stats: Dictionary = league_stats.to_dict(self)
 	if medal_win and GameState.autotest == null and not GameState.test_match_mode:
-		GameState.league_game_stats.append(league_stats.to_dict(self))   # LEAGUE: only WON games of a series count
+		GameState.league_game_stats.append(game_stats)   # LEAGUE: only WON games of a series count
 	GameState.record_medal_match(medal_win, {
 		"archetypes": _medal_archetypes,
-		"flawless": medal_win and _medal_opp_start_prizes == 6 and _medal_player_start_prizes == 6 and opponent_prize_cards.size() == 6,
+		# 2026-11-22: any match where BOTH players start with at least 4 Prize cards (was: exactly 6)
+		"flawless": medal_win and _medal_opp_start_prizes >= GameState.FLAWLESS_MIN_PRIZES and _medal_player_start_prizes >= GameState.FLAWLESS_MIN_PRIZES 				and opponent_prize_cards.size() == _medal_opp_start_prizes,
 		"deckout": medal_win and _medal_deckout_win,
+		"stats": game_stats,   # MATCH FEATS medals (bonus tiers reached, single-match bests, running totals)
 	})
 
 	# AUTOTEST: the runner takes the result and starts the next match itself — no outro, no scene change.
@@ -8003,14 +8006,16 @@ func choose_heads_or_tails() -> bool:
 	set_card_showcase_visible(false)
 	return called_heads
 
-func flip_coin(silent: bool = false, flipper_is_opponent: bool = false) -> bool:
+## `counts_as_luck` false = the opening "who goes first" toss: it still counts for Gambler (every flip) but not
+## for Lucky Heads / Unlucky Tails or the 25-heads / 25-tails medals.
+func flip_coin(silent: bool = false, flipper_is_opponent: bool = false, counts_as_luck: bool = true) -> bool:
 	irrevocable_steps += 1
 	trainer_undo_commit("coin")
 	GameState.bump_counter("coin_flips_total")   # MEDALS (every flip, heads or tails)
 	# MATCH EFFECT: coin_flip_override — every flip forced to heads/tails (animation still plays)
 	var rule_override: String = match_effects.coin_override(flipper_is_opponent)
 	var result: bool = (rule_override == "heads") if rule_override != "" else (coin_future.pop_front() if not coin_future.is_empty() else (randi() % 2 == 0))
-	if not flipper_is_opponent and rule_override == "":
+	if not flipper_is_opponent and rule_override == "" and counts_as_luck:
 		league_stats.note_flip(result)   # LEAGUE: lucky heads / unlucky tails
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_coin_flip_sound)
 
@@ -10612,9 +10617,26 @@ func apply_self_damage_modifiers(pokemon: card_object, damage: int) -> int:
 ############################################################# Knockout functions ##################################################################
 													
 # Checks a single Pokemon's HP and if zero or below, animates KO and discards it
+## AUTOTEST 2026-11-22: Pokemon whose Knock Out is being handled right now (instance id -> true). A pre-KO power that
+## runs check_all_knockouts itself (Gengar ex12-5 Shadow Curse) used to find the dying Pokemon still in play at 0 HP
+## and Knock it Out AGAIN inside its own Knock Out - Shadow Curse then fired again, ~11 times in a row, until every
+## Pokemon on the other side was gone. A nested call for the same Pokemon now leaves it to the outer one.
+var _ko_in_progress: Dictionary = {}
+
 func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	if pokemon == null or pokemon.current_hp > 0:
 		return false
+	var id: int = pokemon.get_instance_id()
+	if _ko_in_progress.has(id):
+		print("AUTOTEST 2026-11-22 FIX ACTIVE: %s is already being Knocked Out - nested Knock Out skipped" % pokemon.metadata.get("name", ""))
+		return false
+	_ko_in_progress[id] = true
+	var out: bool = await _handle_knockout(pokemon, is_opponent)
+	_ko_in_progress.erase(id)
+	return out
+
+
+func _handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	tutorial.note_knockout(pokemon, not is_opponent)
 
 	# GYM2 Giovanni's Machamp Fortitude — flip to survive with 10 HP
@@ -10668,7 +10690,7 @@ func check_and_handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 	var had_destiny_bond = pokemon.has_destiny_bond
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_knockout_sound)
-	league_stats.note_knockout(pokemon, is_opponent, pokemon in bench)   # LEAGUE: Sniper / Poison Master / Burn Master
+	league_stats.note_knockout(pokemon, is_opponent, pokemon in bench, turn_number)   # LEAGUE: Sniper / Multi Knockout / Poison / Burn / Confusion Master
 	await show_message(ko_name.to_upper() + " WAS KNOCKED OUT!")
 	if card_fx != null: card_fx.end_ko(pokemon)   # ISSUE #360: lightens again as it goes to the discard
 
@@ -12578,7 +12600,7 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 		# side the player did not call.
 		if tutorial.forces_opponent_first():
 			coin_future.push_front(not called_heads)
-		var who_starts = (await flip_coin()) == called_heads
+		var who_starts = (await flip_coin(false, false, false)) == called_heads   # opening toss: not luck (user 2026-11-22)
 
 		if who_starts:
 			await show_message("You are going first!")

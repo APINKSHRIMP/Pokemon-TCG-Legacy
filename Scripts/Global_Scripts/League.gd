@@ -57,6 +57,17 @@ static func next_rank_xp(xp: int) -> int:
 	return int(th[r]) if r < th.size() else -1
 
 
+## Ranks the player is told about (League_Config visible_ranks). Ranks above it are SECRET: earned the normal way,
+## but their LP target is never shown before they are reached.
+static func visible_ranks() -> int:
+	return int(config().get("visible_ranks", max_rank()))
+
+
+## Lifetime LP for the next rank the player may SEE, or -1 when the next one is secret (or there is none).
+static func next_visible_rank_xp(xp: int) -> int:
+	return next_rank_xp(xp) if rank_for_xp(xp) < visible_ranks() else -1
+
+
 ## 0..1 of the way from this rank's threshold to the next (1 at the top rank).
 static func rank_progress(xp: int) -> float:
 	var th := rank_xp()
@@ -97,23 +108,35 @@ static func pending_rank_rewards() -> Array:
 
 # ── Bonuses ───────────────────────────────────────────────────────────────────────────────────
 # `stats` (MatchStats.to_dict) for ONE won game:
-#   max_damage, bench_ever, max_behind, active_hp, bench_count_end, max_prizes_turn, healed, type_specialist,
-#   deck_out, flawless, opp_prizes_start, turn, sniper_kos, evo_baby, evo_stage1, evo_stage2, poison_kos, burn_kos, confusion_kos,
+#   max_damage, bench_ever, max_behind, active_hp, bench_count_end, ko_turns (opponent's Pokemon KO'd in each turn
+#   with a KO), healed, type_specialist, deck_out, empty_deck, flawless, opp_prizes_start, player_prizes_start, turn,
+#   sniper_kos, evo_baby, evo_stage1, evo_stage2, poison_kos, burn_kos, confusion_kos,
 #   inflicts {Confused, Paralyzed, Asleep, Poisoned}, flips_heads, flips_total
+# 2026-11-22 rebalance: every bonus has ONE naming scheme - tier 1 = its label, tier 2+ = League_Config
+# tier_prefixes + label (Super / Mega / Ultra / Crazy / Insane). Stackable bonuses take the tier from the count.
+
+## "Healer" (tier 1), "Super Healer" (tier 2) ... A tier past the last prefix keeps the last one.
+static func tier_label(label: String, tier: int) -> String:
+	var pre: Array = config().get("tier_prefixes", [""])
+	var p: String = "" if pre.is_empty() else String(pre[clampi(tier - 1, 0, pre.size() - 1)])
+	return label if p == "" else "%s %s" % [p, label]
+
 
 ## Bonuses for the game(s) just WON. `games` = the stats of every won game of the series (one for a single
-## match). Per-game bonuses (tiers, flags) are worked out per game and merged "x2"; the STACKABLE ones (snipes,
-## evolutions, status KOs, status inflictions) are added up across the games first. Lost games never appear.
-## Returns [{ "label", "lp", "count" }].
+## match). Each game is worked out on its own (game_bonuses); a row earned in more than one game - the SAME
+## name, so Super Double Knockout and Double Knockout stay apart - is shown once as "(x2)" and pays each time.
+## Lost games never appear. Returns [{ "id", "tier", "label", "lp", "count" }] (count = games it came from).
 static func compute_final(games: Array) -> Array:
-	var cfg: Dictionary = config().get("bonuses", {})
-	var merged: Dictionary = {}   # label -> {label, lp, count}
+	var merged: Dictionary = {}   # label -> row
 	var order: Array = []
 	for g in games:
-		for b in _per_game(g, cfg):
+		for b in game_bonuses(g):
 			var key: String = String(b["label"])
 			if not merged.has(key):
-				merged[key] = {"label": key, "lp": 0, "count": 0}
+				var row: Dictionary = (b as Dictionary).duplicate()
+				row["lp"] = 0
+				row["count"] = 0
+				merged[key] = row
 				order.append(key)
 			merged[key]["lp"] = int(merged[key]["lp"]) + int(b["lp"])
 			merged[key]["count"] = int(merged[key]["count"]) + 1
@@ -121,123 +144,117 @@ static func compute_final(games: Array) -> Array:
 	for key in order:
 		var e: Dictionary = merged[key]
 		if int(e["count"]) > 1:
-			e["label"] = "%s x%d" % [e["label"], int(e["count"])]
+			e["label"] = "%s (x%d)" % [e["label"], int(e["count"])]
 		out.append(e)
-	out.append_array(_stacked(games, cfg))
 	return out
 
 
-static func _per_game(s: Dictionary, cfg: Dictionary) -> Array:
+## Every bonus ONE won game earned: [{ "id", "tier", "label", "lp" }]. `id` is the League_Config key (an
+## inflictor is "<condition>_inflictor", a multi-KO kind its own id) and `tier` 1-based - the medals that stand
+## for a bonus (Medals.json "bonus:<id>:<tier>") read these, so they never disagree with the LP rows.
+static func game_bonuses(s: Dictionary) -> Array:
+	var cfg: Dictionary = config().get("bonuses", {})
 	var out: Array = []
-	# Big Damage: the highest tier met
-	var best_dmg := 0
-	var dmg_lp := 0
-	for t in (cfg.get("big_damage", {}) as Dictionary).get("tiers", []):
-		if int(s.get("max_damage", 0)) >= int(t[0]):
-			best_dmg = int(t[0])
-			dmg_lp = int(t[1])
-	if best_dmg > 0:
-		out.append({"label": "Big Damage! (%d)" % best_dmg, "lp": dmg_lp})
-	if not bool(s.get("bench_ever", true)):
-		out.append({"label": cfg["only_one"]["label"], "lp": int(cfg["only_one"]["lp"])})
-	# Comeback: the deeper one replaces the shallower
-	var behind := int(s.get("max_behind", 0))
-	if behind >= int(cfg["crazy_comeback"]["behind"]):
-		out.append({"label": cfg["crazy_comeback"]["label"], "lp": int(cfg["crazy_comeback"]["lp"])})
-	elif behind >= int(cfg["comeback"]["behind"]):
-		out.append({"label": cfg["comeback"]["label"], "lp": int(cfg["comeback"]["lp"])})
-	if int(s.get("active_hp", 999)) <= int(cfg["last_resort"]["hp_at_most"]) and int(s.get("bench_count_end", 1)) == 0:
-		out.append({"label": cfg["last_resort"]["label"], "lp": int(cfg["last_resort"]["lp"])})
-	# Prizes in one turn: the highest tier
-	var mp := int(s.get("max_prizes_turn", 0))
-	var mp_label := ""
-	var mp_lp := 0
-	for t in cfg["multi_prize"]["tiers"]:
-		if mp >= int(t[0]):
-			mp_label = String(t[1])
-			mp_lp = int(t[2])
-	if mp_label != "":
-		out.append({"label": mp_label, "lp": mp_lp})
-	# Healing: the highest tier
-	var hl_label := ""
-	var hl_lp := 0
-	for t in cfg["healer"]["tiers"]:
-		if int(s.get("healed", 0)) >= int(t[0]):
-			hl_label = String(t[1])
-			hl_lp = int(t[2])
-	if hl_label != "":
-		out.append({"label": hl_label, "lp": hl_lp})
-	if bool(s.get("type_specialist", false)):
-		out.append({"label": cfg["type_specialist"]["label"], "lp": int(cfg["type_specialist"]["lp"])})
-	if bool(s.get("deck_out", false)):
-		out.append({"label": cfg["deck_out"]["label"], "lp": int(cfg["deck_out"]["lp"])})
-	if bool(s.get("flawless", false)):
-		# +1 per Prize card the opponent started with (a 2-Prize flawless = +2, a 6-Prize one = +6)
-		out.append({"label": cfg["flawless"]["label"], "lp": int(s.get("opp_prizes_start", 6)) * int(cfg["flawless"]["lp_per_prize"])})
-	# Turn count (the match's GLOBAL turn counter, both players' turns: turn 6 = 3 each): exclusive, the longest tier wins
-	var turn := int(s.get("turn", 0))
-	if turn > 0 and turn <= int(cfg["speedrun"]["turn_at_most"]):
-		out.append({"label": cfg["speedrun"]["label"], "lp": int(cfg["speedrun"]["lp"])})
-	elif turn > int(cfg["marathon"]["turn_over"]):
-		out.append({"label": cfg["marathon"]["label"], "lp": int(cfg["marathon"]["lp"])})
-	# Coin luck: lucky heads OR unlucky tails (never both), double at a clean sweep either way
-	var cl: Dictionary = cfg["coin_luck"]
+	# TIERED: only the highest tier met pays
+	_tiered(out, cfg, "damage", float(s.get("max_damage", 0)))
+	_tiered(out, cfg, "healer", float(s.get("healed", 0)))
+	_tiered(out, cfg, "comeback", float(s.get("max_behind", 0)))
 	var flips := int(s.get("flips_total", 0))
-	if flips >= int(cl["min_flips"]):
-		var heads := int(s.get("flips_heads", 0))
-		var h_ratio := float(heads) / float(flips)
-		var t_ratio := 1.0 - h_ratio
-		var amount := int(cl["lp"])
-		if h_ratio >= float(cl["ratio"]):
-			out.append({"label": cl["lucky_label"], "lp": amount * (2 if h_ratio >= float(cl["double_at_ratio"]) else 1)})
-		elif t_ratio >= float(cl["ratio"]):
-			out.append({"label": cl["unlucky_label"], "lp": amount * (2 if t_ratio >= float(cl["double_at_ratio"]) else 1)})
+	if flips > 0:
+		var h_ratio := float(s.get("flips_heads", 0)) / float(flips)
+		if not _tiered(out, cfg, "lucky_heads", h_ratio, flips):
+			_tiered(out, cfg, "unlucky_tails", 1.0 - h_ratio, flips)
+	_tiered(out, cfg, "evolution", float(evolutions(s)))
+	var inf: Dictionary = cfg.get("inflictor", {})
+	var inflicts: Dictionary = s.get("inflicts", {})
+	for st in (inf.get("statuses", {}) as Dictionary).keys():
+		var label: String = String(inf["statuses"][st])
+		_tiered_rows(out, label.to_lower().replace(" ", "_"), label, inf.get("tiers", []), float(inflicts.get(st, 0)))
+	# STACKABLE: LP per count, the count picks the name
+	var mk: Dictionary = cfg.get("multi_ko", {})
+	var kinds: Array = mk.get("kinds", [])
+	var per_kind: Dictionary = {}   # kind index -> turns
+	for k in s.get("ko_turns", []):
+		var best := -1
+		for i in range(kinds.size()):
+			if int(k) >= int(kinds[i]["kos"]):
+				best = i
+		if best >= 0:
+			per_kind[best] = int(per_kind.get(best, 0)) + 1
+	for i in range(kinds.size()):
+		if per_kind.has(i):
+			var kd: Dictionary = kinds[i]
+			_stack(out, String(kd["id"]), String(kd["label"]), int(kd["lp"]), int(per_kind[i]))
+	for pair in [["sniper", "sniper_kos"], ["poison_master", "poison_kos"], ["burn_master", "burn_kos"], ["confusion_master", "confusion_kos"]]:
+		var c: Dictionary = cfg.get(pair[0], {})
+		if not c.is_empty():
+			_stack(out, String(pair[0]), String(c["label"]), int(c["lp_each"]), int(s.get(pair[1], 0)))
+	# ONE-OFFS
+	if not bool(s.get("bench_ever", true)):
+		_flat(out, cfg, "only_one")
+	if int(s.get("active_hp", 999)) <= int(cfg.get("last_resort", {}).get("hp_at_most", -1)) and int(s.get("bench_count_end", 1)) == 0:
+		_flat(out, cfg, "last_resort")
+	if bool(s.get("type_specialist", false)):
+		_flat(out, cfg, "type_specialist")
+	if bool(s.get("deck_out", false)):
+		_flat(out, cfg, "deck_out")
+	if bool(s.get("empty_deck", false)):
+		_flat(out, cfg, "empty_deck")
+	if bool(s.get("flawless", false)) and cfg.has("flawless"):
+		# +1 per Prize card the opponent started with (a 2-Prize flawless = +2, a 6-Prize one = +6)
+		out.append({"id": "flawless", "tier": 1, "label": String(cfg["flawless"]["label"]),
+				"lp": int(s.get("opp_prizes_start", 6)) * int(cfg["flawless"]["lp_per_prize"])})
+	# Turn count (the match's GLOBAL turn counter, both players' turns: turn 6 = 3 each): never both
+	var turn := int(s.get("turn", 0))
+	if turn > 0 and cfg.has("speedrun") and turn <= int(cfg["speedrun"]["turn_at_most"]):
+		_flat(out, cfg, "speedrun")
+	elif cfg.has("marathon") and turn > int(cfg["marathon"]["turn_over"]):
+		_flat(out, cfg, "marathon")
 	return out
 
 
-static func _stacked(games: Array, cfg: Dictionary) -> Array:
-	var total := {"sniper_kos": 0, "evo_baby": 0, "evo_stage1": 0, "evo_stage2": 0, "poison_kos": 0, "burn_kos": 0, "confusion_kos": 0}
-	var inflicts := {}
-	for g in games:
-		for k in total.keys():
-			total[k] = int(total[k]) + int(g.get(k, 0))
-		for st in (g.get("inflicts", {}) as Dictionary).keys():
-			inflicts[st] = int(inflicts.get(st, 0)) + int((g["inflicts"] as Dictionary)[st])
-	var out: Array = []
-	var n := int(total["sniper_kos"])
-	if n > 0:
-		out.append({"label": _times(cfg["sniper"]["label"], n), "lp": n * int(cfg["sniper"]["lp_each"]), "count": n})
-	var ev: Dictionary = cfg["evolution"]
-	# Evolution Master: every evolution counts the same; the HIGHEST milestone reached pays (5 -> +5, 10 -> +10, ...)
-	var evo_n := int(total["evo_baby"]) + int(total["evo_stage1"]) + int(total["evo_stage2"])
-	var evo_tier := 0
-	var evo_lp := 0
-	for t in ev.get("tiers", []):
-		if evo_n >= int(t[0]):
-			evo_tier = int(t[0])
-			evo_lp = int(t[1])
-	if evo_tier > 0:
-		out.append({"label": "%s (%d)" % [ev["label"], evo_tier], "lp": evo_lp, "count": evo_n})
-	n = int(total["poison_kos"])
-	if n > 0:
-		out.append({"label": _times(cfg["poison_master"]["label"], n), "lp": n * int(cfg["poison_master"]["lp_each"]), "count": n})
-	n = int(total["burn_kos"])
-	if n > 0:
-		out.append({"label": _times(cfg["burn_master"]["label"], n), "lp": n * int(cfg["burn_master"]["lp_each"]), "count": n})
-	n = int(total["confusion_kos"])
-	if n > 0:
-		out.append({"label": _times(cfg["confusion_master"]["label"], n), "lp": n * int(cfg["confusion_master"]["lp_each"]), "count": n})
-	var inf: Dictionary = cfg["inflictor"]
-	for st in (inf["statuses"] as Dictionary).keys():
-		var times := int(inflicts.get(st, 0))
-		var steps := int(times / int(inf["every"]))
-		if steps > 0:
-			out.append({"label": _times(inf["statuses"][st], steps * int(inf["every"])), "lp": steps * int(inf["lp_per_step"]), "count": times})
-	return out
+## Evolutions the player made in one game (Baby -> Basic counts).
+static func evolutions(s: Dictionary) -> int:
+	return int(s.get("evo_baby", 0)) + int(s.get("evo_stage1", 0)) + int(s.get("evo_stage2", 0))
 
 
-static func _times(label: String, n: int) -> String:
-	return label if n <= 1 else "%s x%d" % [label, n]
+## The Multi Knockout medal's points for one game: +1 for every Pokemon past the first Knocked Out in one turn
+## (a Double Knockout +1, a Triple +2 ...).
+static func multi_ko_points(s: Dictionary) -> int:
+	var n := 0
+	for k in s.get("ko_turns", []):
+		n += maxi(0, int(k) - 1)
+	return n
+
+
+## Appends the highest tier of bonus `key` that `value` meets; false when none does (or too few flips).
+static func _tiered(out: Array, cfg: Dictionary, key: String, value: float, flips: int = -1) -> bool:
+	var c: Dictionary = cfg.get(key, {})
+	if c.is_empty() or (c.has("min_flips") and flips < int(c["min_flips"])):
+		return false
+	return _tiered_rows(out, key, String(c.get("label", key)), c.get("tiers", []), value)
+
+
+static func _tiered_rows(out: Array, id: String, label: String, tiers: Array, value: float) -> bool:
+	var best := -1
+	for i in range(tiers.size()):
+		if value >= float(tiers[i][0]):
+			best = i
+	if best < 0:
+		return false
+	out.append({"id": id, "tier": best + 1, "label": tier_label(label, best + 1), "lp": int(tiers[best][1])})
+	return true
+
+
+static func _stack(out: Array, id: String, label: String, lp_each: int, n: int) -> void:
+	if n > 0:
+		out.append({"id": id, "tier": n, "label": tier_label(label, n), "lp": n * lp_each})
+
+
+static func _flat(out: Array, cfg: Dictionary, key: String) -> void:
+	var c: Dictionary = cfg.get(key, {})
+	if not c.is_empty():
+		out.append({"id": key, "tier": 1, "label": String(c["label"]), "lp": int(c["lp"])})
 
 
 static func total_lp(rows: Array) -> int:

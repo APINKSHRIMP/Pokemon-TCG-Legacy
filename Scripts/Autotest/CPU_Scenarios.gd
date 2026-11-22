@@ -487,7 +487,17 @@ func _verdict(attack_name: String, attack_kos: bool, other_ko: bool, doomed: boo
 		if a.get("name", "") == attack_name:
 			atk = a
 	var fx: Array = m.attack_effects.parse_card_text_effects(atk.get("text", ""), me.metadata.get("name", ""))
-	return ai.self_ko_verdict(fx, attack_kos, other_ko, {"cpu_active_guaranteed_ko": doomed})
+	# Damage vs HP inputs, worked out the way cpu_phase_attack does (no fixed "big target" HP any more).
+	var foe_p = m.player_active_pokemon
+	var dr: Dictionary = m.attack_effects.estimate_attack_damage_range(atk, me, foe_p)
+	var dmg: int = int(m.calculate_final_damage(dr["min"], me.get_effective_types(), foe_p, me)["damage"])
+	var atks: Array = m.get_attacks_for_card(me)
+	var idx := -1
+	for j in range(atks.size()):
+		if atks[j].get("name", "") == attack_name:
+			idx = j
+	var other: int = ai._cpu_best_other_damage(atks, idx, me.get_effective_types())
+	return ai.self_ko_verdict(fx, attack_kos, other_ko, {"cpu_active_guaranteed_ko": doomed}, [], dmg, other)
 
 func _prizes(side: String, n: int) -> void:
 	m.set(side + "prize_cards", cards(range(n).map(func(_x): return "base1-97")))
@@ -570,6 +580,30 @@ func sc_selfko_doubleedge_big_target() -> void:
 	foe(mon("base1-3", [], 40))   # an 80 HP Chansey only Double-edge reaches
 	var v := _verdict("Double-edge", true, false)
 	check("Double-edge on a big 80 HP target nothing else reaches -> take", bool(v["take"]), str(v))
+
+func sc_selfko_selfdestruct_tanky_target() -> void:
+	cpu_active(mon("base1-9", ["base1-100", "base1-100", "base1-100", "base1-100"]))   # Magneton 60 HP, Thunder Wave 30
+	cpu_bench(mon("base1-3"))
+	foe_bench_keep()
+	foe(mon("base1-3", [], 50))   # 70 HP Chansey: Thunder Wave needs 3 turns, Selfdestruct (80) KOs it now
+	var v := _verdict("Selfdestruct", true, false)
+	check("Selfdestruct on a 70 HP target our 30-damage attack needs 3 turns for -> take", bool(v["take"]), str(v))
+
+func sc_selfko_selfdestruct_two_turn_target() -> void:
+	cpu_active(mon("base1-9", ["base1-100", "base1-100", "base1-100", "base1-100"]))   # Magneton 60 HP
+	cpu_bench(mon("base1-3"))
+	foe_bench_keep()
+	foe(mon("base1-46", ["base1-98", "base1-98"]))   # Charmander 50 HP, Ember 30: needs 2 turns on us, Thunder Wave needs 2 on it
+	var v := _verdict("Selfdestruct", true, false)
+	check("Selfdestruct on a 50 HP target Thunder Wave KOs in 2 turns before it KOs us -> avoid", bool(v["self_ko"]) and not bool(v["take"]), str(v))
+
+func sc_selfko_overkill_rule() -> void:
+	cpu_active(mon("base1-9", ["base1-100", "base1-100", "base1-100", "base1-100"]))
+	foe(mon("base1-46", [], 20))   # 30 HP
+	var big: Dictionary = ai._self_ko_big_target(m.opponent_active_pokemon, m.player_active_pokemon, 80, 10)
+	check("an 80-damage self-KO on a 30 HP Pokemon (10-damage chip needs 3 turns) is overkill -> not big", not bool(big["big"]), str(big))
+	var big2: Dictionary = ai._self_ko_big_target(m.opponent_active_pokemon, m.player_active_pokemon, 40, 10)
+	check("a 40-damage self-KO on the same 30 HP Pokemon -> big (our 10-damage chip needs 3 turns)", bool(big2["big"]), str(big2))
 
 # ---- 2026-11-21 BABY POKÉMON EVOLUTION (Neo rule) ----
 func sc_baby_can_evolve_from() -> void:

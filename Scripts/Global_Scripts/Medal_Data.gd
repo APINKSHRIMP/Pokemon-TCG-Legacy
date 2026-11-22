@@ -12,7 +12,8 @@ extends RefCounted
 # Nearly everything is DERIVED from what the save already holds (cards owned, matches won, packs
 # opened, coins / sleeves / costumes, opponent records). The only new tracked values are the
 # counters GameState.bump_counter() keeps - cash_earned_total, coin_flips_total, prizes_taken_total,
-# archetype_wins (per all-one-type / all-one-leader deck) and the medal_shutout / medal_deckout flags.
+# archetype_wins (per all-one-type / all-one-leader deck), the flawless / deck-out win counts and the
+# MATCH FEATS records (bonus_best / match_best / match_totals, GameState.record_match_feats).
 #
 # TIERED medals are ONE slot whose grade rises: tier index 0 .. tiers.size()-1, the highest threshold
 # passed. A medal with a single tier ([1]) is simply earned or not.
@@ -187,7 +188,20 @@ static func value_of(def: Dictionary, ctx: Dictionary) -> int:
 		return 1 if int(s.get("total", 0)) > 0 and int(s.get("owned", 0)) >= int(s.get("total", 0)) else 0
 	if String(def.get("kind", "")) == "archetype":
 		return int((prog.get("archetype_wins", {}) as Dictionary).get(String(def["key"]), 0))
-	match String(def.get("stat", "")):
+	# MATCH FEATS (GameState.record_match_feats, WON games only):
+	#   "bonus:<id>:<tier>"  1 once that League bonus reached that tier in one game (bonus:healer:4 = Ultra Healer)
+	#   "best:<stat>"        the best single game (flips_heads / flips_tails)
+	#   "total:<stat>"       the running total (healed, multi_ko_points, evolutions, sniper_kos, poison_kos, ...)
+	var stat := String(def.get("stat", ""))
+	if stat.begins_with("bonus:"):
+		var parts := stat.split(":")
+		var reached := int((prog.get(GameState.BONUS_BEST_KEY, {}) as Dictionary).get(parts[1], 0))
+		return 1 if reached >= (int(parts[2]) if parts.size() > 2 else 1) else 0
+	if stat.begins_with("best:"):
+		return int((prog.get(GameState.MATCH_BEST_KEY, {}) as Dictionary).get(stat.substr(5), 0))
+	if stat.begins_with("total:"):
+		return int((prog.get(GameState.MATCH_TOTALS_KEY, {}) as Dictionary).get(stat.substr(6), 0))
+	match stat:
 		"cards_owned": return int(ctx.get("cards_owned", 0))
 		"cash_earned": return int(prog.get("cash_earned_total", 0))
 		"packs_opened": return int(prog.get("packs_opened_total", 0))

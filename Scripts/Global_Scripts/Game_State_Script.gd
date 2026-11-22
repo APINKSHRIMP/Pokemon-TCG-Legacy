@@ -2093,12 +2093,14 @@ func bump_counter(key: String, amount: int = 1) -> void:
 		return
 	progress[key] = int(progress.get(key, 0)) + amount
 
-## MEDALS: called once per finished match with what the match proved:
-## { "archetypes": ["type:Fire", "leader:Brock"], "flawless": bool, "deckout": bool }.
-## A win tallies each archetype the player's deck qualified for and the flawless / deck-out win counters.
+## MEDALS: called once per finished match (each game of a Best-of-3) with what the match proved:
+## { "archetypes": ["type:Fire", "leader:Brock"], "flawless": bool, "deckout": bool, "stats": MatchStats.to_dict }.
+## A win tallies each archetype the player's deck qualified for, the flawless / deck-out win counters and the
+## MATCH FEATS records (record_match_feats). A loss records nothing - a Board Wipe in a lost game earns no medal.
 func record_medal_match(won: bool, info: Dictionary) -> void:
 	if test_match_mode or autotest != null or not won:
 		return
+	record_match_feats(info.get("stats", {}))
 	var tallies: Dictionary = progress.get("archetype_wins", {})
 	for key in info.get("archetypes", []):
 		tallies[String(key)] = int(tallies.get(String(key), 0)) + 1
@@ -2108,6 +2110,42 @@ func record_medal_match(won: bool, info: Dictionary) -> void:
 	if bool(info.get("deckout", false)):
 		progress["deckout_wins_total"] = int(progress.get("deckout_wins_total", 0)) + 1
 	save_progress()
+
+## Flawless Victories medal: both players must start with at least this many Prize cards.
+const FLAWLESS_MIN_PRIZES := 4
+const BONUS_BEST_KEY := "bonus_best"     # progress: bonus id -> highest tier reached in any WON game
+const MATCH_BEST_KEY := "match_best"     # progress: stat -> best single WON game (flips_heads, flips_tails)
+const MATCH_TOTALS_KEY := "match_totals" # progress: stat -> running total over WON games
+
+## MATCH FEATS medals (Medals.json group "Match Feats", read by MedalData "bonus:" / "best:" / "total:" stats).
+## Every bonus League.game_bonuses() pays for this game - whether or not the league is live yet - keeps its
+## highest tier, plus the single-game coin bests and the running totals. Callers pass WON games only.
+## Does not save: record_medal_match's caller path saves.
+func record_match_feats(stats: Dictionary) -> void:
+	if stats.is_empty():
+		return
+	var best: Dictionary = progress.get(BONUS_BEST_KEY, {})
+	for b in League.game_bonuses(stats):
+		var id := String(b["id"])
+		best[id] = maxi(int(best.get(id, 0)), int(b["tier"]))
+	progress[BONUS_BEST_KEY] = best
+	var heads := int(stats.get("flips_heads", 0))
+	var tails := int(stats.get("flips_total", 0)) - heads
+	var mb: Dictionary = progress.get(MATCH_BEST_KEY, {})
+	mb["flips_heads"] = maxi(int(mb.get("flips_heads", 0)), heads)
+	mb["flips_tails"] = maxi(int(mb.get("flips_tails", 0)), tails)
+	progress[MATCH_BEST_KEY] = mb
+	var inflicted := 0
+	for v in (stats.get("inflicts", {}) as Dictionary).values():
+		inflicted += int(v)
+	var tot: Dictionary = progress.get(MATCH_TOTALS_KEY, {})
+	var add := {"healed": int(stats.get("healed", 0)), "multi_ko_points": League.multi_ko_points(stats),
+			"evolutions": League.evolutions(stats), "sniper_kos": int(stats.get("sniper_kos", 0)),
+			"poison_kos": int(stats.get("poison_kos", 0)), "burn_kos": int(stats.get("burn_kos", 0)),
+			"inflicts": inflicted}
+	for k in add.keys():
+		tot[k] = int(tot.get(k, 0)) + int(add[k])
+	progress[MATCH_TOTALS_KEY] = tot
 
 # ============================================================
 # LEAGUE POINTS (see League.gd / League_Config.json)

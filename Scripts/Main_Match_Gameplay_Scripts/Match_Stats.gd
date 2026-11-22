@@ -6,7 +6,7 @@ extends RefCounted
 # else that wants to know. Owned by the match script (`league_stats`); poll() runs every frame from its _process and
 # the hooks below are the only other touch points:
 #   note_attack_damage   display_and_apply_attack_damage      note_flip   flip_coin (the player's own flips)
-#   note_knockout        check_and_handle_knockout            mark_status_ko   process_status_between_turns
+#   note_knockout        check_and_handle_knockout (with the turn)            mark_status_ko   process_status_between_turns
 # Everything else is read off the board by polling (bench, Prize counts, healing, evolutions, status conditions), so
 # no effect script needs to know about it.
 # ============================================================
@@ -14,7 +14,7 @@ extends RefCounted
 var max_damage := 0
 var bench_ever := false
 var max_behind := 0
-var max_prizes_turn := 0
+var ko_turns: Dictionary = {}       # turn_number -> opponent's Pokemon Knocked Out in it (Multi Knockout bonuses)
 var healed := 0
 var evo_baby := 0
 var evo_stage1 := 0
@@ -31,8 +31,6 @@ var _damage_seen: Dictionary = {}     # the player's Pokemon: instance id -> dam
 var _instances_seen: Dictionary = {}  # the player's Pokemon ever seen (an unseen one WITH pre-evolutions just evolved)
 var _opp_status: Dictionary = {}      # the opponent's Pokemon: instance id -> {"cond", "poison"}
 var _status_ko: Dictionary = {}       # instance id -> "poison" / "burn"
-var _turn_seen := -1
-var _turn_start_prizes := 0
 
 
 # ── Polling ───────────────────────────────────────────────────────────────────────────────────
@@ -42,13 +40,9 @@ func poll(m: Node) -> void:
 		return
 	if m.player_bench.size() > 0:
 		bench_ever = true
-	# Prize cards: taken in one turn, and how far behind the player has been
+	# Prize cards: how far behind the player has been
 	var p: int = m.player_prize_cards.size()
 	var o: int = m.opponent_prize_cards.size()
-	if m.turn_number != _turn_seen:
-		_turn_seen = m.turn_number
-		_turn_start_prizes = p
-	max_prizes_turn = maxi(max_prizes_turn, _turn_start_prizes - p)
 	var sp: int = m._medal_player_start_prizes
 	var so: int = m._medal_opp_start_prizes
 	if sp > 0 and so > 0:
@@ -117,10 +111,12 @@ func note_flip(heads: bool) -> void:
 		flips_heads += 1
 
 
-## A Pokemon was just Knocked Out. `was_bench`: it was on the bench (a snipe).
-func note_knockout(pokemon: Object, is_opponent: bool, was_bench: bool) -> void:
+## A Pokemon was just Knocked Out. `was_bench`: it was on the bench (a snipe). `turn`: the match's turn_number
+## (KOs in the same turn make a Double / Triple ... Knockout - counted in Pokemon, not Prize cards).
+func note_knockout(pokemon: Object, is_opponent: bool, was_bench: bool, turn: int) -> void:
 	if not is_opponent:
 		return
+	ko_turns[turn] = int(ko_turns.get(turn, 0)) + 1
 	if was_bench:
 		sniper_kos += 1
 	var id: int = pokemon.get_instance_id()
@@ -150,10 +146,12 @@ func to_dict(m: Node) -> Dictionary:
 		"max_behind": max_behind,
 		"active_hp": active.current_hp if active != null else 999,
 		"bench_count_end": m.player_bench.size(),
-		"max_prizes_turn": max_prizes_turn,
+		"ko_turns": ko_turns.values().filter(func(k): return int(k) >= 2),
 		"healed": healed,
 		"type_specialist": type_specialist,
 		"deck_out": m._medal_deckout_win,
+		"empty_deck": m.player_deck.is_empty(),   # won with no cards left in the player's own deck
+		"player_prizes_start": m._medal_player_start_prizes,
 		"flawless": m._medal_opp_start_prizes > 0 and m.opponent_prize_cards.size() == m._medal_opp_start_prizes,
 		"opp_prizes_start": m._medal_opp_start_prizes,
 		"turn": m.turn_number,

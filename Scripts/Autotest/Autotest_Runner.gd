@@ -146,6 +146,12 @@ var _last_checked_turn := -1
 
 var all_problems: Array = []
 var results := {"win": 0, "loss": 0, "draw": 0, "aborted": 0}
+## MATCH FEATS check (2026-11-22): every bot WIN's stats go through League.game_bonuses (LP rows tallied here) and
+## GameState.record_match_feats (in memory - the autotester never saves), so summary.txt shows which bonuses and
+## Match Feats medals real matches produce, plus FEATS sanity problems.
+var feat_rows: Dictionary = {}     # bonus label -> times
+var feat_lp: Array = []            # bonus LP per bot win
+var feat_max := {"lp": 0, "match": 0, "rows": ""}
 
 var _logger: _Capture = null
 var _bot_tail: Array = []
@@ -585,6 +591,7 @@ func _play_match(i: int) -> void:
 	var turns: int = current_main.turn_number if is_instance_valid(current_main) else -1
 	if results.has(match_result):
 		results[match_result] += 1
+	_feats_after_match(i + 1)
 	var rec := {"match": i + 1, "seed": match_seed, "result": match_result, "turns": turns,
 		"player_deck": p_deck, "opponent_deck": o_deck, "problems": match_problems.size(),
 		"events": match_events, "opponent": current_opponent_label, "opponent_data": GameState.autotest_opponent_data}
@@ -798,8 +805,8 @@ func cpu_attack_phase(m) -> void:
 				# self-KO rules say it should have been taken (Double-edge at 20 HP with no reason to trade is fine).
 				if ko_threats.is_empty():
 					ko_threats = m.cpu_ai.evaluate_ko_threats()
-				var v: Dictionary = m.cpu_ai.self_ko_verdict(fx, true,
-					m.cpu_ai._cpu_other_attack_kos(all_attacks, ai, foe.current_hp, mon.get_effective_types()), ko_threats)
+				var o_other: int = m.cpu_ai._cpu_best_other_damage(all_attacks, ai, mon.get_effective_types())
+				var v: Dictionary = m.cpu_ai.self_ko_verdict(fx, true, o_other >= foe.current_hp, ko_threats, [], mn, o_other)
 				if bool(v.get("self_ko", false)) and not bool(v.get("take", false)):
 					continue
 				_cpu_ko_attacks.append(an)
@@ -1949,6 +1956,59 @@ func _cname(c) -> String:
 	return "%s (%s)" % [c.metadata.get("name", "?"), c.uid]
 
 
+## MATCH FEATS: bonuses + medal records for a bot win, and sanity checks on the raw stats.
+func _feats_after_match(match_no: int) -> void:
+	var m = current_main
+	if not is_instance_valid(m) or not ("league_stats" in m):
+		return
+	var st: Dictionary = m.league_stats.to_dict(m)
+	# Sanity: a Multi Knockout turn can never knock out more Pokemon than the opponent ever had in play, and the
+	# Knock Outs counted in KO turns can't exceed the Prize cards + Pokemon the player took (one per KO at least).
+	var ko_sum := 0
+	for k in st.get("ko_turns", []):
+		ko_sum += int(k)
+		if int(k) < 2 or int(k) > 8:
+			_problem("FEATS", "ko_turns holds %d (only 2..8 make sense): %s" % [int(k), str(st.get("ko_turns"))], "feats_ko")
+	var prizes_taken: int = int(m._medal_player_start_prizes) - m.player_prize_cards.size()
+	if ko_sum > prizes_taken + 6:
+		_problem("FEATS", "KO turns add up to %d Knock Outs but only %d Prize cards were taken" % [ko_sum, prizes_taken], "feats_sum")
+	if match_result != "win":
+		return
+	var rows: Array = League.game_bonuses(st)
+	var lp := League.total_lp(rows)
+	feat_lp.append(lp)
+	var labels: Array = []
+	for r in rows:
+		feat_rows[String(r["label"])] = int(feat_rows.get(String(r["label"]), 0)) + 1
+		labels.append("%s %d" % [r["label"], int(r["lp"])])
+	if lp > int(feat_max["lp"]):
+		feat_max = {"lp": lp, "match": match_no, "rows": ", ".join(labels)}
+	GameState.record_match_feats(st)
+
+
+func _feats_report() -> PackedStringArray:
+	var s := PackedStringArray()
+	s.append("LEAGUE BONUSES on bot wins (%d wins):" % feat_lp.size())
+	if not feat_lp.is_empty():
+		var tot := 0
+		for v in feat_lp:
+			tot += int(v)
+		s.append("  average %.1f bonus LP a win, best %d (match %d: %s)" % [float(tot) / feat_lp.size(), int(feat_max["lp"]), int(feat_max["match"]), feat_max["rows"]])
+	var keys: Array = feat_rows.keys()
+	keys.sort_custom(func(a, b): return int(feat_rows[a]) > int(feat_rows[b]))
+	for k in keys:
+		s.append("  %4dx  %s" % [int(feat_rows[k]), k])
+	s.append("MATCH FEATS medals from those wins (in memory, this run only):")
+	var ctx := MedalData.make_context()
+	for d in MedalData.all():
+		if String(d.get("group", "")) != "Match Feats" or not String(d.get("stat", "")).contains(":"):
+			continue
+		var t := MedalData.earned_tier(d, ctx)
+		s.append("  %-30s value %-6d %s" % [String(d["name"]), MedalData.value_of(d, ctx), ("not earned" if t < 0 else MedalData.grade_name(d, t))])
+	s.append("")
+	return s
+
+
 func _write_summary() -> void:
 	if replay_record.is_empty():
 		_write_cpu_usage_report()
@@ -1957,6 +2017,7 @@ func _write_summary() -> void:
 	s.append("Matches: %d   bot wins %d / CPU wins %d / draws %d / aborted %d   (base seed %d)" % [opt_matches,
 		results["win"], results["loss"], results["draw"], results["aborted"], opt_seed])
 	s.append("")
+	s.append_array(_feats_report())
 	# Problems grouped.
 	var groups: Dictionary = {}
 	for p in all_problems:

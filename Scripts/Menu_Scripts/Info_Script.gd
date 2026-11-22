@@ -686,7 +686,7 @@ func _populate_stats() -> void:
 	if GameState.league_active():
 		var lxp: int = GameState.league_xp()
 		var lrank: int = League.rank_for_xp(lxp)
-		var next_xp: int = League.next_rank_xp(lxp)
+		var next_xp: int = League.next_visible_rank_xp(lxp)   # 2026-11-21: ranks 6-7 are secret - no "/ target" from rank 5 up
 		var lsub := "%s LP" % _thousands(lxp)
 		if next_xp > 0:
 			lsub += "  /  %s" % _thousands(next_xp)

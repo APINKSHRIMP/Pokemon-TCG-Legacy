@@ -3121,9 +3121,12 @@ func resolve_energy_tiebreak(scored_pairs: Array, cpu_eval: Dictionary) -> Dicti
 
 	return tied[0]
 
-## SELF-KO RULES (2026-11-21, the user's soft rules). TWEAKABLE: a "big" Defending Pokémon - one only a heavy hit
-## like Selfdestruct reaches - has at least this much HP left.
-const SELF_KO_BIG_TARGET_HP := 60
+## SELF-KO RULES (2026-11-21, the user's soft rules). An even-trade self-KO is worth it only against a Defending
+## Pokémon that is hard to Knock Out any other way - judged by OUR damage against ITS HP, and its damage against ours
+## (no fixed HP number). TWEAKABLE:
+const SELF_KO_MIN_HIT_SHARE := 0.5   # its HP is at least this share of the attack's damage (no 100-damage Selfdestruct on a 20 HP Basic)
+const SELF_KO_TANKY_TURNS := 3       # our other attacks would need this many turns or more to Knock it Out...
+                                     # ...or more turns than it needs to Knock Out our Active (it wins that race)
 
 ## Can this attack's recoil Knock Out the CPU's own Active, and if so should it still be used? Shared by
 ## cpu_phase_attack and the autotester's MISSED KO oracle so both judge a self-KO the same way.
@@ -3134,8 +3137,10 @@ const SELF_KO_BIG_TARGET_HP := 60
 ##   - a CERTAIN self-KO is taken only when it wins the game, our Active is doomed next turn anyway, the Prize
 ##     exchange is in our favour, we're ahead and it's an even trade, or the target is a big one nothing else reaches.
 ## attack_kos = the attack's own minimum damage Knocks Out the Defending Pokémon. other_ko = another attack without
-## a self-KO also Knocks it Out.
-func self_ko_verdict(parsed_effects: Array, attack_kos: bool, other_ko: bool, ko_threats: Dictionary, known_coins: Array = []) -> Dictionary:
+## a self-KO also Knocks it Out. attack_damage = this attack's damage to the Defending Pokémon (after W/R);
+## best_other = the most damage another payable attack without a self-KO does (_cpu_best_other_damage).
+func self_ko_verdict(parsed_effects: Array, attack_kos: bool, other_ko: bool, ko_threats: Dictionary, known_coins: Array = [],
+		attack_damage: int = 0, best_other: int = 0) -> Dictionary:
 	var me = main.opponent_active_pokemon
 	var foe = main.player_active_pokemon
 	if me == null or foe == null:
@@ -3211,17 +3216,53 @@ func self_ko_verdict(parsed_effects: Array, attack_kos: bool, other_ko: bool, ko
 		out["take"] = true; out["why"] = "Prize exchange %d for %d" % [we_take, they_take]
 	elif we_take == they_take and cpu_left < player_left:
 		out["take"] = true; out["why"] = "ahead on Prizes, even trade"
-	elif we_take == they_take and not other_ko and int(foe.current_hp) >= SELF_KO_BIG_TARGET_HP:
-		out["take"] = true; out["why"] = "big Defending Pokémon only this attack reaches"
+	elif we_take == they_take and other_ko:
+		out["why"] = "another attack Knocks it Out without the self-KO"
+	elif we_take == they_take:
+		var big := _self_ko_big_target(me, foe, attack_damage, best_other)
+		out["take"] = bool(big["big"])
+		out["why"] = String(big["why"])
 	else:
 		out["why"] = "no reason to trade our Active (%d for %d, Prizes %d v %d)" % [we_take, they_take, cpu_left, player_left]
 	return out
 
-## Does another payable attack (not attacks[skip]) surely Knock Out the Defending Pokémon without a recoil that
-## could KO our own Active? (self_ko_verdict's "only this attack reaches it" test.)
-func _cpu_other_attack_kos(attacks: Array, skip: int, player_hp: int, cpu_types: Array) -> bool:
+## Is the Defending Pokémon "big" enough to trade our Active for, even-up? Compares the damage both sides can do with
+## the HP both sides have left (SELF_KO_MIN_HIT_SHARE / SELF_KO_TANKY_TURNS above).
+func _self_ko_big_target(me, foe, attack_damage: int, best_other: int) -> Dictionary:
+	var hp: int = int(foe.current_hp)
+	if attack_damage > 0 and hp < attack_damage * SELF_KO_MIN_HIT_SHARE:
+		return {"big": false, "why": "overkill: a %d-damage hit for %d HP" % [attack_damage, hp]}
+	var our_turns: int = 99 if best_other <= 0 else ceili(float(hp) / best_other)
+	var foe_dmg: int = _cpu_foe_best_damage(foe, me)
+	var their_turns: int = 99 if foe_dmg <= 0 else ceili(float(me.current_hp) / foe_dmg)
+	if our_turns >= SELF_KO_TANKY_TURNS:
+		if our_turns >= 99:
+			return {"big": true, "why": "none of our other attacks can damage its %d HP" % hp}
+		return {"big": true, "why": "our other attacks need %d turns for its %d HP" % [our_turns, hp]}
+	# We hit first: it gets our_turns - 1 attacks in before our last one lands.
+	if our_turns > their_turns:
+		return {"big": true, "why": "it wins the slower race (%d turns for us, %d for it)" % [our_turns, their_turns]}
+	return {"big": false, "why": "our other attacks Knock it Out in %d turns, before it Knocks Out our Active (%s)" % [our_turns, "never" if their_turns >= 99 else str(their_turns)]}
+
+## The most damage the player's Active can do to the CPU's Active next turn (payable now, or 1 Energy away when it
+## already has Energy - the same reach evaluate_ko_threats uses), after Weakness / Resistance.
+func _cpu_foe_best_damage(foe, me) -> int:
+	var best := 0
+	var ftypes: Array = foe.get_effective_types()
+	for a in foe.metadata.get("attacks", []):
+		var unmet := get_unmet_energy_count(a, foe)
+		if unmet > 1 or (unmet == 1 and foe.attached_energies.is_empty()):
+			continue
+		var r: Dictionary = main.attack_effects.estimate_attack_damage_range(a, foe, me)
+		best = maxi(best, int(main.calculate_final_damage(r["min"], ftypes, me, foe)["damage"]))
+	return best
+
+## The most damage another payable attack (not attacks[skip]) does to the Defending Pokémon without a recoil that
+## could Knock Out our own Active, after Weakness / Resistance.
+func _cpu_best_other_damage(attacks: Array, skip: int, cpu_types: Array) -> int:
 	var me = main.opponent_active_pokemon
 	var foe = main.player_active_pokemon
+	var best := 0
 	for j in range(attacks.size()):
 		if j == skip:
 			continue
@@ -3229,16 +3270,20 @@ func _cpu_other_attack_kos(attacks: Array, skip: int, player_hp: int, cpu_types:
 		if get_unmet_energy_count(a, me) > 0 or main.is_attack_disabled(me, a.get("name", "")) \
 				or main.attack_effects.attack_unusable_reason(a, me) != "":
 			continue
-		var r: Dictionary = main.attack_effects.estimate_attack_damage_range(a, me, foe)
-		if int(main.calculate_final_damage(r["min"], cpu_types, foe, me)["damage"]) < player_hp:
-			continue
 		var recoil := 0
 		for e in main.attack_effects.parse_card_text_effects(a.get("text", ""), me.metadata.get("name", "")):
 			if e.get("type", "") == "self_damage":
 				recoil += int(e.get("damage", 0))
-		if recoil < int(me.current_hp):
-			return true
-	return false
+		if recoil >= int(me.current_hp):
+			continue
+		var r: Dictionary = main.attack_effects.estimate_attack_damage_range(a, me, foe)
+		best = maxi(best, int(main.calculate_final_damage(r["min"], cpu_types, foe, me)["damage"]))
+	return best
+
+## Does another payable attack (not attacks[skip]) surely Knock Out the Defending Pokémon without a recoil that
+## could KO our own Active? (self_ko_verdict's "only this attack reaches it" test.)
+func _cpu_other_attack_kos(attacks: Array, skip: int, player_hp: int, cpu_types: Array) -> bool:
+	return _cpu_best_other_damage(attacks, skip, cpu_types) >= player_hp
 
 # Scores the value of parsed attack effects for CPU attack selection
 # True if the defender's own abilities/body text grants outright poison immunity
@@ -3650,8 +3695,9 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 		# 2026-11-21 SELF-KO RULES: may this attack knock out our own Active, and is that trade worth it?
 		var self_ko := {"self_ko": false}
 		if has_self_damage:
+			var sk_other: int = _cpu_best_other_damage(attacks, i, cpu_types)
 			self_ko = self_ko_verdict(parsed_effects, effective_min_damage >= player_hp,
-				_cpu_other_attack_kos(attacks, i, player_hp, cpu_types), ko_threats, _cpu_known_coins)
+				sk_other >= player_hp, ko_threats, _cpu_known_coins, effective_min_damage, sk_other)
 			if bool(self_ko["self_ko"]):
 				print("SELF-KO RULES ACTIVE (2026-11-21): ", attack.get("name", ""), " -> ", "TAKE" if bool(self_ko["take"]) else "AVOID", " (", self_ko["why"], ")")
 		

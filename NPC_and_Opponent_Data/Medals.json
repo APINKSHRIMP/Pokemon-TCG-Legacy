@@ -435,69 +435,6 @@
   "emblem": "glyph:trophy"
  },
  {
-  "id": "flips",
-  "name": "Gambler",
-  "group": "Milestones",
-  "kind": "stat",
-  "stat": "coin_flips",
-  "tiers": [
-   25,
-   100,
-   200,
-   500,
-   1000
-  ],
-  "desc": "Flip %d coins in matches.",
-  "emblem": "glyph:flips"
- },
- {
-  "id": "prizes",
-  "name": "Prize Hunter",
-  "group": "Milestones",
-  "kind": "stat",
-  "stat": "prizes_taken",
-  "tiers": [
-   50,
-   200,
-   500,
-   1000
-  ],
-  "desc": "Take %d Prize cards.",
-  "emblem": "glyph:prizes"
- },
- {
-  "id": "flawless",
-  "name": "Flawless Victories",
-  "group": "Milestones",
-  "kind": "stat",
-  "stat": "flawless_wins",
-  "tiers": [
-   5,
-   20,
-   50,
-   100,
-   250
-  ],
-  "desc": "Win %d matches without your opponent taking a single Prize card.\n• Only counts in matches where both players start with 6 Prize cards",
-  "emblem": "glyph:crown"
- },
- {
-  "id": "deckout",
-  "name": "Deck Out Wins",
-  "group": "Milestones",
-  "kind": "stat",
-  "stat": "deckout_wins",
-  "tiers": [
-   5,
-   20,
-   50,
-   100,
-   250
-  ],
-  "desc": "Win %d matches because your opponent ran out of cards to draw.",
-  "emblem": "glyph:deckout"
- },
- {
   "id": "coins",
   "name": "Coin Collector",
   "group": "Milestones",
@@ -576,6 +513,337 @@
   ],
   "desc": "Catch %d different species of fish.",
   "emblem": "glyph:fish_school"
+ },
+ {
+  "id": "prizes",
+  "name": "Prize Hunter",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "prizes_taken",
+  "tiers": [
+   50,
+   200,
+   500,
+   1000
+  ],
+  "desc": "Take %d Prize cards.",
+  "emblem": "glyph:prizes"
+ },
+ {
+  "id": "flips",
+  "name": "Gambler",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "coin_flips",
+  "tiers": [
+   25,
+   100,
+   200,
+   500,
+   1000
+  ],
+  "desc": "Flip %d coins in matches.",
+  "emblem": "glyph:flips"
+ },
+ {
+  "id": "flawless",
+  "name": "Flawless Victories",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "flawless_wins",
+  "tiers": [
+   10,
+   25,
+   100,
+   200,
+   400
+  ],
+  "desc": "Win %d matches without your opponent taking a single Prize card.\n• Only counts in matches where both players start with at least 4 Prize cards",
+  "emblem": "glyph:crown"
+ },
+ {
+  "id": "deckout",
+  "name": "Deck Out Wins",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "deckout_wins",
+  "tiers": [
+   5,
+   20,
+   50,
+   100,
+   250
+  ],
+  "desc": "Win %d matches because your opponent ran out of cards to draw.",
+  "emblem": "glyph:deckout"
+ },
+ {
+  "id": "multi_ko",
+  "name": "Multi Knockout",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "total:multi_ko_points",
+  "tiers": [
+   10,
+   50,
+   100,
+   250,
+   500
+  ],
+  "desc": "Score %d Multi Knockout points.\n• +1 for every extra Pokemon you Knock Out in a single turn (a Double Knockout is +1, a Triple Knockout +2)\n• Only counts in matches you win",
+  "emblem": "glyph:multi_ko"
+ },
+ {
+  "id": "sniper",
+  "name": "Sniper",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "total:sniper_kos",
+  "tiers": [
+   10,
+   50,
+   100,
+   250,
+   500
+  ],
+  "desc": "Knock Out %d Benched Pokemon.\n• Only counts in matches you win",
+  "emblem": "glyph:crosshair"
+ },
+ {
+  "id": "healer",
+  "name": "Healer",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "total:healed",
+  "tiers": [
+   250,
+   1000,
+   2000,
+   4000,
+   10000
+  ],
+  "desc": "Heal %d damage in total.\n• Only counts in matches you win",
+  "emblem": "glyph:healer"
+ },
+ {
+  "id": "evolution",
+  "name": "Evolution Master",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "total:evolutions",
+  "tiers": [
+   20,
+   100,
+   250,
+   1000,
+   2500
+  ],
+  "desc": "Evolve your Pokemon %d times.\n• Only counts in matches you win",
+  "emblem": "glyph:evolution"
+ },
+ {
+  "id": "poison_master",
+  "name": "Poison Master",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "total:poison_kos",
+  "tiers": [
+   5,
+   20,
+   50,
+   100,
+   250
+  ],
+  "desc": "Knock Out %d Pokemon with Poison.\n• Only counts in matches you win",
+  "emblem": "glyph:poison"
+ },
+ {
+  "id": "burn_master",
+  "name": "Burn Master",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "total:burn_kos",
+  "tiers": [
+   5,
+   20,
+   50,
+   100,
+   250
+  ],
+  "desc": "Knock Out %d Pokemon with a Burn.\n• Only counts in matches you win",
+  "emblem": "glyph:burn"
+ },
+ {
+  "id": "inflictor",
+  "name": "Inflictor",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "total:inflicts",
+  "tiers": [
+   25,
+   100,
+   250,
+   500,
+   1000
+  ],
+  "desc": "Give your opponent's Pokemon %d Special Conditions.\n• Asleep, Confused, Paralyzed and Poisoned all count\n• Only counts in matches you win",
+  "emblem": "glyph:inflictor"
+ },
+ {
+  "id": "board_wipe",
+  "name": "Board Wipe",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "bonus:board_wipe:1",
+  "tiers": [
+   1
+  ],
+  "desc": "Knock Out 6 of your opponent's Pokemon in a single turn and win the match.",
+  "emblem": "glyph:board_wipe",
+  "metal": "platinum"
+ },
+ {
+  "id": "crazy_damage",
+  "name": "Crazy Damage",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "bonus:damage:5",
+  "tiers": [
+   1
+  ],
+  "desc": "Do 500 or more damage with a single attack and win the match.",
+  "emblem": "glyph:burst",
+  "metal": "platinum"
+ },
+ {
+  "id": "ultra_healer",
+  "name": "Ultra Healer",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "bonus:healer:4",
+  "tiers": [
+   1
+  ],
+  "desc": "Heal 1,000 or more damage in a single match and win it.",
+  "emblem": "glyph:heart_plus",
+  "metal": "platinum"
+ },
+ {
+  "id": "super_comeback",
+  "name": "Super Comeback",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "bonus:comeback:2",
+  "tiers": [
+   1
+  ],
+  "desc": "Win a match after falling 5 Prize cards behind your opponent.",
+  "emblem": "glyph:comeback",
+  "metal": "platinum"
+ },
+ {
+  "id": "only_one",
+  "name": "Only One",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "bonus:only_one:1",
+  "tiers": [
+   1
+  ],
+  "desc": "Win a match with only one Pokemon ever played.\n• Never put a Pokemon on your Bench (evolving it is fine)",
+  "emblem": "glyph:one",
+  "metal": "platinum"
+ },
+ {
+  "id": "last_resort",
+  "name": "Last Resort",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "bonus:last_resort:1",
+  "tiers": [
+   1
+  ],
+  "desc": "Win a match with your Active Pokemon on 10 HP or less and nothing on your Bench.",
+  "emblem": "glyph:last_resort",
+  "metal": "platinum"
+ },
+ {
+  "id": "empty_deck",
+  "name": "Empty Deck",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "bonus:empty_deck:1",
+  "tiers": [
+   1
+  ],
+  "desc": "Win a match with no cards left in your deck.",
+  "emblem": "glyph:empty_deck",
+  "metal": "platinum"
+ },
+ {
+  "id": "speedrun",
+  "name": "Speedrun",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "bonus:speedrun:1",
+  "tiers": [
+   1
+  ],
+  "desc": "Win a match within 6 turns (3 each).",
+  "emblem": "glyph:bolt",
+  "metal": "platinum"
+ },
+ {
+  "id": "marathon",
+  "name": "Marathon",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "bonus:marathon:1",
+  "tiers": [
+   1
+  ],
+  "desc": "Win a match that lasts more than 49 turns.\n• Both players' turns count",
+  "emblem": "glyph:hourglass",
+  "metal": "platinum"
+ },
+ {
+  "id": "hitting_yourself",
+  "name": "Why are you hitting yourself?",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "bonus:confusion_master:1",
+  "tiers": [
+   1
+  ],
+  "desc": "Win a match in which one of your opponent's Pokemon Knocks itself Out with Confusion.",
+  "emblem": "glyph:dizzy",
+  "metal": "platinum"
+ },
+ {
+  "id": "no_way",
+  "name": "There's no way...",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "best:flips_heads",
+  "tiers": [
+   25
+  ],
+  "desc": "Flip 25 heads in a single match.\n• Only counts in matches you win",
+  "emblem": "glyph:coin_h",
+  "metal": "platinum"
+ },
+ {
+  "id": "rigged",
+  "name": "This game is rigged...",
+  "group": "Match Feats",
+  "kind": "stat",
+  "stat": "best:flips_tails",
+  "tiers": [
+   25
+  ],
+  "desc": "Flip 25 tails in a single match.\n• Only counts in matches you win",
+  "emblem": "glyph:coin_t",
+  "metal": "platinum"
  },
  {
   "id": "type_grass",
@@ -888,7 +1156,7 @@
  },
  {
   "id": "super_lucky",
-  "name": "Super Lucky!",
+  "name": "It's real!",
   "group": "Feats",
   "kind": "stat",
   "stat": "god_packs",
