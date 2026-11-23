@@ -1,0 +1,62 @@
+{
+  "_comment": "The user's own star rating for each deck (2026-11-23). Read by the opponent form (N/M in the F placement tool): picking one of these decks sets Difficulty to its stars while Difficulty is still Automatic, and an entry with allowed_set_ids also ticks those sets in DECK RULES while no sets are ticked. Also read by Scripts/Utilities/league_rank_check.py to count decks with no opponent yet. 'for' = who the deck is meant for, where decided.",
+  "decks": {
+    "Basic Starter Deck": {"stars": 1, "group": "Starter decks"},
+    "Fire Shock Starter Deck": {"stars": 1, "group": "Starter decks"},
+    "Water Fight Starter Deck": {"stars": 1, "group": "Starter decks"},
+    "Grass Psy Starter Deck": {"stars": 1, "group": "Starter decks"},
+
+    "Conversion 1": {"stars": 1, "group": "Alexander's progression", "for": "Alexander"},
+    "Conversion 2": {"stars": 2, "group": "Alexander's progression", "for": "Alexander"},
+    "Conversion 3": {"stars": 3, "group": "Alexander's progression", "for": "Alexander"},
+    "Conversion 4": {"stars": 4, "group": "Alexander's progression", "for": "Alexander"},
+
+    "Cuties": {"stars": 1, "group": "Ellie's progression", "for": "Ellie"},
+    "Cuties Twoties": {"stars": 2, "group": "Ellie's progression", "for": "Ellie"},
+    "Dark Cuties": {"stars": 3, "group": "Ellie's progression", "for": "Ellie"},
+
+    "Gigashock": {"stars": 1, "group": "Early game"},
+    "Sleepy Time": {"stars": 1, "group": "Early game"},
+
+    "Big Fish Small Fish": {"stars": 2, "group": "Starter mid"},
+    "Wildfires": {"stars": 2, "group": "Starter mid"},
+    "Transform": {"stars": 2, "group": "Starter mid"},
+    "Boyfriend and Girlfriend": {"stars": 2, "group": "Starter mid"},
+    "Bait and Switch": {"stars": 2, "group": "Starter mid"},
+    "Promotional Flight": {"stars": 2, "group": "Starter mid"},
+
+    "Hay Maker Lite": {"stars": 3, "group": "Mid (post day 5)"},
+    "Fancy Footwork": {"stars": 3, "group": "Mid (post day 5)"},
+    "Outstall the Wall": {"stars": 3, "group": "Mid (post day 5)"},
+    "Jungle Migraine": {"stars": 3, "group": "Mid (post day 5)"},
+
+    "Dragotoise": {"stars": 3, "group": "Verdant mid"},
+    "Lot Of Char": {"stars": 3, "group": "Verdant mid"},
+    "Confusing Petals": {"stars": 3, "group": "Verdant mid"},
+    "Calm and Fury": {"stars": 3, "group": "Verdant mid"},
+    "Rapid Photosynthesis": {"stars": 3, "group": "Verdant mid"},
+    "Neuron Connection": {"stars": 3, "group": "Verdant mid"},
+    "Energy Recoupling": {"stars": 3, "group": "Verdant mid"},
+    "Energy Energy Energy": {"stars": 3, "group": "Verdant mid"},
+    "Weedsprayer": {"stars": 3, "group": "Verdant mid"},
+    "Just all Flips": {"stars": 3, "group": "Verdant mid"},
+
+    "Tentacle Retreat": {"stars": 4, "group": "Better"},
+    "Make the Ground Shake": {"stars": 4, "group": "Better"},
+    "Erika's Kind Strength": {"stars": 4, "group": "Better"},
+    "OTK": {"stars": 4, "group": "Better"},
+    "Trapped": {"stars": 4, "group": "Better"},
+
+    "Guaranteed Infliction": {"stars": 3, "group": "Gym only", "allowed_set_ids": ["gym1", "gym2"]},
+    "Some Birds Some Stones": {"stars": 3, "group": "Gym only", "allowed_set_ids": ["gym1", "gym2"]},
+    "Cerulean Coin Flips": {"stars": 3, "group": "Gym only", "allowed_set_ids": ["gym1", "gym2"]},
+    "Psilocybin": {"stars": 3, "group": "Gym only", "allowed_set_ids": ["gym1", "gym2"], "for": "Spectator Pete"},
+    "Night Spirits": {"stars": 3, "group": "Gym only", "allowed_set_ids": ["gym1", "gym2"]},
+    "Brock Collection": {"stars": 3, "group": "Gym only", "allowed_set_ids": ["gym1", "gym2"]},
+    "All or nothing": {"stars": 3, "group": "Gym only", "allowed_set_ids": ["gym1", "gym2"]},
+    "ESP Foresight": {"stars": 3, "group": "Gym only", "allowed_set_ids": ["gym1", "gym2"]},
+
+    "Dragon Rage": {"stars": 5, "group": "Post Gym Challenge rematches", "for": "Misty (rematch)"},
+    "Incinerator": {"stars": 5, "group": "Post Gym Challenge rematches", "for": "Blaine (rematch)"}
+  }
+}

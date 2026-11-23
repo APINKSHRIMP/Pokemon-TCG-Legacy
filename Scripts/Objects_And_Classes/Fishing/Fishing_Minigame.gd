@@ -1339,8 +1339,9 @@ func _set_surge(direction: float) -> void:
 	_surge_speed = randf_range(FIGHT_SURGE_SPEED_MIN, FIGHT_SURGE_SPEED_MAX)
 
 
-## DEBUG ONLY: floats the rolled species' name over the silhouette the moment it spawns,
-## so there is no guessing which fish is being fought. Never built outside debug mode.
+## DEBUG ONLY: floats the rolled species' name over the silhouette, so there is no
+## guessing which fish is being fought. Never built outside debug mode, and only SHOWN
+## while the run button (Shift / pad L1) is held -- see _tick_name_tag().
 func _show_name_tag() -> void:
 	if not DebugMode.is_enabled() or _fish_species == "":
 		return
@@ -1361,7 +1362,8 @@ func _show_name_tag() -> void:
 func _tick_name_tag() -> void:
 	if _name_tag == null or not is_instance_valid(_name_tag):
 		return
-	var on := _fish != null and is_instance_valid(_fish) and _fish.visible
+	# Hidden unless the run button is held: a peek, not a permanent spoiler.
+	var on := _fish != null and is_instance_valid(_fish) and _fish.visible and UIInput.is_run_held()
 	_name_tag.visible = on
 	if on:
 		_name_tag.global_position = _fish.global_position + Vector2(0.0, -NAME_TAG_OFFSET)

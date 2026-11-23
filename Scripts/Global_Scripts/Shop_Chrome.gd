@@ -61,6 +61,11 @@ static func _font_path() -> String:
 	return UITheme.FONT_UI_BOLD
 const CASH_ICON   := "res://Image_Assets/Icons/Reward_Icons/pokedollar_icon.png"
 const FISH_COIN_ICON := "res://Image_Assets/Icons/Reward_Icons/FishCoin.png"
+## The SECOND currency's icon (the chip left of the cash one, and the lower price pill).
+## Fish Coins by default; a League Points shop sets League.ICON_PATH for its lifetime and
+## puts it back on exit (Cosmetic_Shop_Script). Every "fish" name below means "the second
+## currency, whichever it is".
+static var token_icon: String = FISH_COIN_ICON
 
 const SCREEN_W : float = 1920.0
 
@@ -210,7 +215,7 @@ static func add_wallet_chip(parent: Node, cash: int, icon_path: String = CASH_IC
 ## chip) and kept there as the cash figure grows and shrinks. Update it with
 ## set_wallet_cash() like any wallet chip.
 static func add_fish_coin_chip(parent: Node, fish_coins: int, wallet: Control) -> Control:
-	var chip := add_wallet_chip(parent, fish_coins, FISH_COIN_ICON, "")
+	var chip := add_wallet_chip(parent, fish_coins, token_icon, "")
 	if wallet != null and is_instance_valid(wallet):
 		chip.set_meta("follows", wallet)
 		wallet.set_meta("follower", chip)
@@ -395,6 +400,19 @@ static func add_price_pill(layer: Control, anchor: Rect2, state: int,
 			main_text = "$" + str(price)
 
 	# ── Main pill. Right edge overhangs the cell; bottom edge dips just below it.
+	if fish_price > 0 and state != OWNED and price <= 0:
+		# Second currency ONLY (a League Points shop: no cash price), so one icon pill, no
+		# "$0 +" above it. Struck-out sale prices are not drawn for this case.
+		var only_st : int    = fish_state if fish_state >= 0 else state
+		var only_tx : String = str(fish_price)
+		var only_ih : float  = h * PILL_ICON_RATIO
+		var only_gp : float  = h * PILL_ICON_GAP_RATIO
+		var only_w  : float  = _fish_icon_width(only_ih) + only_gp + _text_width(only_tx, font_size) + pad * 2.0
+		var only_x  : float  = cell_origin.x + cell_size.x + only_w * PILL_OVERHANG_X - only_w
+		var only_y  : float  = cell_origin.y + cell_size.y + h * PILL_OVERHANG_Y - h
+		_add_icon_pill_row(holder, Vector2(only_x, only_y), Vector2(only_w, h),
+				_state_col(only_st), only_tx, font_size, only_ih, only_gp)
+		return _holder_top(holder)
 	if fish_price > 0 and state != OWNED:
 		var fish_st   : int    = fish_state if fish_state >= 0 else state
 		var fish_text : String = str(fish_price)
@@ -536,7 +554,7 @@ static func _add_icon_pill_row(holder: Control, pos: Vector2, size: Vector2, col
 	var x : float = pos.x + (size.x - content) * 0.5
 	if icon_w > 0.0:
 		var icon := TextureRect.new()
-		icon.texture        = load(FISH_COIN_ICON)
+		icon.texture        = load(token_icon)
 		icon.expand_mode    = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode   = TextureRect.STRETCH_SCALE
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -572,7 +590,7 @@ static func _add_dual_pill_row(holder: Control, pos: Vector2, size: Vector2, col
 	var icon_w := _fish_icon_width(icon_h)
 	if icon_w > 0.0:
 		var icon := TextureRect.new()
-		icon.texture        = load(FISH_COIN_ICON)
+		icon.texture        = load(token_icon)
 		icon.expand_mode    = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode   = TextureRect.STRETCH_SCALE
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -589,9 +607,9 @@ static func _add_dual_pill_row(holder: Control, pos: Vector2, size: Vector2, col
 
 
 static func _fish_icon_width(icon_h: float) -> float:
-	if not ResourceLoader.exists(FISH_COIN_ICON):
+	if not ResourceLoader.exists(token_icon):
 		return 0.0
-	var tex: Texture2D = load(FISH_COIN_ICON)
+	var tex: Texture2D = load(token_icon)
 	if tex == null or tex.get_height() <= 0:
 		return 0.0
 	return icon_h * tex.get_width() / float(tex.get_height())

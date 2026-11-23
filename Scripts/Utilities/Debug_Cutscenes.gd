@@ -117,10 +117,25 @@ static func entries() -> Array:
 			["FISH intro — Olly behind the counter", "fish_intro_olly"],
 			["FISH intro — Alexander behind the counter", "fish_intro_alexander"],
 		]],
+		["FISH — MILESTONE CALLS (fish sent to FISH)", _fish_call_entries()],
 		["WINDMILL", [
 			["Mewtwo — \"MEW\" and vanish (just beaten)", "mewtwo_vanish"],
 		]],
 	]
+
+
+## One button per FISH milestone call in Phone_Calls.json, per keeper who has one. Built from
+## FishShopCalls.milestones() so a new Interior_<N> or call shows up here on its own.
+static func _fish_call_entries() -> Array:
+	var out: Array = []
+	for n in FishShopCalls.milestones():
+		for keeper in ["olly", "alexander"]:
+			if PhoneCall.load_call_data(FishShopCalls.CALL_ID % [n, keeper]).is_empty():
+				continue
+			var item: String = FishShopCalls.ITEM_UNLOCKS.get(n, "")
+			var extra := (" (unlocks %s)" % FishingRods.label(item)) if item != "" else ""
+			out.append(["%d fish — %s rings%s" % [n, keeper.capitalize(), extra], "fish_call_%d_%s" % [n, keeper]])
+	return out
 
 
 static func launch(id: String) -> void:
@@ -246,8 +261,7 @@ static func launch(id: String) -> void:
 
 		# ---- FISH ----
 		"fish_intro_olly", "fish_intro_alexander":
-			# Day 1's rota: Olly mornings/afternoons, Alexander evenings/nights.
-			_post_intro(fam, 1, "Morning" if id == "fish_intro_olly" else "Evening")
+			_fish_shop_shift(fam, "olly" if id == "fish_intro_olly" else "alexander")
 			_go(FISH_SHOP, "Celeste_Harbour")
 
 		# ---- Windmill ----
@@ -262,8 +276,11 @@ static func launch(id: String) -> void:
 			SceneCache.change_scene(WINDMILL)
 			return
 		_:
-			push_error("DebugCutscenes: no launcher for '%s'" % id)
-			return
+			if id.begins_with("fish_call_"):
+				_fish_milestone_call(fam, id)
+			else:
+				push_error("DebugCutscenes: no launcher for '%s'" % id)
+				return
 	print("DEBUG CUTSCENE: ", id)
 
 
@@ -344,6 +361,30 @@ static func _cafe_back_from(battle_stage: String, opponent: String, results: Dic
 	SceneCache.change_scene(HARBOUR)
 
 
+## "fish_call_<N>_<keeper>": exactly N fish sent, every milestone below N already rung (its
+## item on the shelf), N itself due -- then the harbour loads and it rings, as after a catch.
+## The keeper is picked by the clock (see _fish_shop_shift).
+## NOTE: this rewrites the save's fish-sent total, like the DEL menu's own "fish sent" box.
+static func _fish_milestone_call(familiarity: String, id: String) -> void:
+	var parts := id.trim_prefix("fish_call_").split("_")
+	var n := int(parts[0])
+	_fish_shop_shift(familiarity, parts[1])
+	GameState.progress[GameState.FISH_SHOP_INTRO_FLAG] = true
+	FishShopCalls.debug_set_sent(n - 1)   # below N rung + revealed, N and up reset
+	var rung: Array = FishShopCalls.milestones().filter(func(m): return int(m) < n)
+	GameState.debug_set_fish_sent(n, null, rung)
+	_go(HARBOUR, "Fish_Shop", func(_map): MapManager.ring_fish_shop_calls())
+
+
+## A plain post-story day with `keeper` ("olly" / "alexander") behind the FISH counter.
+## Characters/Fish_Shop.json: Olly has Morning + Afternoon and Alexander Evening + Night from
+## day 2 on -- but day 1 is Olly ALL day, and day 3 morning is registration, so FISH_DAY is 4.
+const FISH_DAY := 4
+static func _fish_shop_shift(familiarity: String, keeper: String) -> void:
+	_post_intro(familiarity, FISH_DAY, "Morning" if keeper == "olly" else "Evening")
+	GameState.progress[CafeBreakfastCutscene.STAGE_KEY] = CafeBreakfastCutscene.STAGE_DONE
+
+
 static func _set_beaten(opponent: String, beaten: bool) -> void:
 	var list: Array = GameState.progress["opponents_beaten"]
 	if beaten and not list.has(opponent):
@@ -356,11 +397,21 @@ static func _set_beaten(opponent: String, beaten: bool) -> void:
 # GOING THERE
 # ============================================================
 
-## Load `scene` as though arriving through its door from `from_map` ("" = default spawn).
-static func _go(scene: String, from_map: String = "") -> void:
+## Load `scene` as though arriving through its door from `from_map` ("" = default spawn),
+## then call `after(scene_root)` once it is up (optional).
+static func _go(scene: String, from_map: String = "", after: Callable = Callable()) -> void:
 	GameState.entering_from = from_map
 	GameState.save_progress()
+	var tree := Engine.get_main_loop() as SceneTree
+	var old := tree.current_scene
 	SceneCache.change_scene(scene)
+	if not after.is_valid():
+		return
+	while tree.current_scene == old or tree.current_scene == null:
+		await tree.process_frame
+	await tree.create_timer(AUTO_START_DELAY).timeout
+	if is_instance_valid(tree.current_scene):
+		after.call(tree.current_scene)
 
 
 ## Load `scene` with the player at `pos` facing `facing`, then call `after(scene_root)`.

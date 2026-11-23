@@ -3110,32 +3110,32 @@ func effect_pokemon_flute(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		return
 	
+	var chosen = null
 	if is_opponent:
-		# CPU never plays this (scored -100)
-		return
+		# AUDIT 2026-11-23: the CPU plays Flute as bait for Gust of Wind (CPU_AI._cpu_score_pokemon_flute)
+		chosen = main.cpu_ai.cpu_flute_pick(basics_in_discard)
 	else:
-		var chosen = await main.card_ops.prompt_select_card(basics_in_discard, "POKEMON FLUTE", "Choose a Basic Pokemon to place on opponent's bench", "PLACE", false, true)
+		chosen = await main.card_ops.prompt_select_card(basics_in_discard, "POKEMON FLUTE", "Choose a Basic Pokemon to place on opponent's bench", "PLACE", false, true)
 		if main._should_bail(): return
-		
-		if chosen != null:
-			target_discard.erase(chosen)
-			chosen.current_location = "bench"
-			chosen.current_hp = chosen.get_max_hp()
-			chosen.placed_on_field_this_turn = true
-			target_bench.append(chosen)
-			# Animate from discard to bench
-			var discard_node = main.opponent_discard_icon if target_is_opponent else main.player_discard_icon
-			var bench_node = main.opponent_bench_container if target_is_opponent else main.player_bench_container
-			var card_texture = main.get_card_texture(chosen)
-			# FLIGHTS: land on the empty bench slot it is taking (the bench isn't redrawn yet)
-			var pf_land: Dictionary = main.bench_slot_rect(target_is_opponent, target_bench.size() - 1)
-			await main.animate_card_a_to_b(discard_node, bench_node, 0.3, card_texture, main.PILE_SIZE,
-				pf_land["size"], pf_land["position"], false, discard_node.global_position)
-			if main._should_bail(): return
-			main.update_discard_pile_display(target_is_opponent)
-			main.display_pokemon(target_is_opponent)
-			await main.show_message(chosen.metadata.get("name", "") + " was placed on opponent's bench!")
-			if main._should_bail(): return
+	if chosen != null:
+		target_discard.erase(chosen)
+		chosen.current_location = "bench"
+		chosen.current_hp = chosen.get_max_hp()
+		chosen.placed_on_field_this_turn = true
+		target_bench.append(chosen)
+		# Animate from discard to bench
+		var discard_node = main.opponent_discard_icon if target_is_opponent else main.player_discard_icon
+		var bench_node = main.opponent_bench_container if target_is_opponent else main.player_bench_container
+		var card_texture = main.get_card_texture(chosen)
+		# FLIGHTS: land on the empty bench slot it is taking (the bench isn't redrawn yet)
+		var pf_land: Dictionary = main.bench_slot_rect(target_is_opponent, target_bench.size() - 1)
+		await main.animate_card_a_to_b(discard_node, bench_node, 0.3, card_texture, main.PILE_SIZE,
+			pf_land["size"], pf_land["position"], false, discard_node.global_position)
+		if main._should_bail(): return
+		main.update_discard_pile_display(target_is_opponent)
+		main.display_pokemon(target_is_opponent)
+		await main.show_message(chosen.metadata.get("name", "") + (" was placed on your bench!" if is_opponent else " was placed on opponent's bench!"))
+		if main._should_bail(): return
 
 # base1-87 — Pokedex: Look at top 5 cards and rearrange
 func effect_pokedex(is_opponent: bool) -> void:

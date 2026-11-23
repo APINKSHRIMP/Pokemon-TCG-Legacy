@@ -69,6 +69,9 @@ const FOOTER_HEIGHT := 48
 # -----------------------------------------------------------------------------
 
 const DECK_DIR := "res://NPC_and_Opponent_Data/Opponent_Deck_Data/"
+## The "Deck rules" + "Match effects" sections (restrictions / match_effects). Preloaded, no
+## class_name, so a fresh checkout never trips the editor's class cache.
+const RulesEditor := preload("res://Scripts/Utilities/Opponent_Rules_Editor.gd")
 const CONSTANTS_PATH := "res://NPC_and_Opponent_Data/All_NPC_Constant_Data.json"
 const COIN_SHOP_PATH := "res://NPC_and_Opponent_Data/coin_shop_inventory.json"
 const COSMETIC_SHOP_PATH := "res://NPC_and_Opponent_Data/cosmetic_shop_inventory.json"
@@ -95,21 +98,27 @@ const CONSTANT_FIELDS_NPC := ["friendly_name", "sprite", "message_colour",
 		"gift_type", "gift_value"]
 const CONSTANT_FIELDS_OPP := ["sprite", "message_colour", "deck", "music",
 		"prize_cards", "cash_reward", "coin_reward", "card_reward", "pack_reward",
-		"costume_reward", "match_format", "stars"]
+		"costume_reward", "match_format", "stars", "restrictions", "match_effects"]
 
 ## Optional fields that can legitimately be emptied. An empty box writes nothing
 ## rather than an empty string, so without this list clearing a reward in edit mode
 ## would look like it worked and leave the old value in the file.
 const CLEARABLE_FIELDS_NPC := ["gift_type", "gift_value", "fishing"]
 const CLEARABLE_FIELDS_OPP := ["coin_reward", "card_reward", "pack_reward",
-		"costume_reward", "match_format", "sleeve_reward", "fishing", "stars"]
+		"costume_reward", "match_format", "sleeve_reward", "fishing", "stars",
+		"restrictions", "match_effects"]
 
 ## The Difficulty dropdown. Index 0 = auto (the deck test decides, Opponent_Ratings.gd);
-## 1-7 set it by hand; 8, 9 and 10 are the secret orange, red and purple stars.
-## (The placement tool's side panel has a clickable star picker for the same value.)
+## 1-5 set it by hand; 6, 7 and 8 are the secret orange, red and purple stars
+## (Opponent_Ratings.MAX_STARS). The placement tool's side panel has a clickable star
+## picker for the same value.
 const STAR_CHOICES := ["Automatic (from the deck test)", "1 star", "2 stars", "3 stars", "4 stars",
-		"5 stars", "6 stars", "7 stars", "8 - secret orange (Card Elders)",
-		"9 - secret red (gym leaders)", "10 - secret purple (Mewtwo only)"]
+		"5 stars", "6 - secret orange (Card Elders)", "7 - secret red (gym leaders)",
+		"8 - secret purple (Mewtwo only)"]
+
+## The user's star rating per deck (+ any set rule that comes with it). Picking one of
+## these decks fills Difficulty and the allowed sets while those are still untouched.
+const DECK_RATINGS_PATH := "res://NPC_and_Opponent_Data/Deck_Ratings.json"
 
 var _map_data: String = ""
 var _mode: int = Mode.NEW
@@ -529,6 +538,10 @@ func _build_form() -> void:
 	_build_identity(left)
 	if _is_opponent():
 		_build_opponent_battle(left)
+		var rules = RulesEditor.new()
+		rules.changed.connect(_revalidate)
+		left.add_child(rules)
+		_w["rules"] = rules
 		_build_opponent_rewards(right)
 	else:
 		_build_npc_gift(left)
@@ -686,6 +699,29 @@ func _build_identity(col: VBoxContainer) -> void:
 	_add_row(col, "Fishing", fishing)
 
 
+## Deck_Ratings.json: fill Difficulty while it is still Automatic, and tick the deck's
+## allowed sets while no set is ticked. Never overwrites anything already chosen.
+func _apply_deck_rating(deck_name: String) -> void:
+	if not FileAccess.file_exists(DECK_RATINGS_PATH):
+		return
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(DECK_RATINGS_PATH))
+	if not (parsed is Dictionary) or not (parsed.get("decks") is Dictionary):
+		return
+	var rating = parsed["decks"].get(deck_name)
+	if not (rating is Dictionary):
+		return
+	var stars := int(rating.get("stars", 0))
+	if stars > 0 and _w.has("stars") and _w["stars"].selected == 0:
+		_w["stars"].select(clampi(stars, 0, STAR_CHOICES.size() - 1))
+	var sets = rating.get("allowed_set_ids", [])
+	if sets is Array and not sets.is_empty() and _w.has("rules"):
+		var rules: Dictionary = _w["rules"].restrictions()
+		var ticked = rules.get("allowed_set_ids", [])
+		if not (ticked is Array) or ticked.is_empty():
+			rules["allowed_set_ids"] = sets.duplicate()
+			_w["rules"].load_from(rules, _w["rules"].match_effects())
+
+
 func _build_opponent_battle(col: VBoxContainer) -> void:
 	_add_heading(col, "The battle")
 
@@ -705,6 +741,7 @@ func _build_opponent_battle(col: VBoxContainer) -> void:
 	deck_pick.item_selected.connect(func(idx: int):
 		if idx > 0:
 			deck_edit.text = deck_pick.get_item_text(idx)
+			_apply_deck_rating(deck_edit.text)
 			_revalidate())
 	deck_row.add_child(deck_pick)
 	_add_row(col, "Deck", deck_row)
@@ -860,6 +897,10 @@ func _clamp_widths(node: Node) -> void:
 			# zero, which is harmless for a widget told to expand but collapses a
 			# check box in a GridContainer down to its tick. Their captions are kept
 			# short enough to fit instead.
+			pass
+		elif child is Label and child.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			# A wrapping label already fits its width; clip_text would collapse it to
+			# zero height (the rules section's hints and preview vanished that way).
 			pass
 		elif child is Button or child is Label:
 			child.clip_text = true
@@ -1310,6 +1351,7 @@ func _load_values_into_form() -> void:
 		_w["card_reward"].text = str(body.get("card_reward", ""))
 		_w["pack_reward"].text = str(body.get("pack_reward", ""))
 		_set_asset(_w["costume_reward"], str(body.get("costume_reward", "")))
+		_w["rules"].load_from(body.get("restrictions", {}), body.get("match_effects", []))
 		_w["first_win"].text = str(says.get("first_win", ""))
 		_w["rematch_win"].text = str(says.get("rematch_win", ""))
 		_w["loss"].text = str(says.get("loss", ""))
@@ -1493,6 +1535,13 @@ func _collect_values() -> Dictionary:
 			v["stars"] = _w["stars"].selected
 		if _w["sleeve_reward"].button_pressed:
 			v["sleeve_reward"] = _asset_value("sleeve")
+		# Only written when something is set; emptying both clears them (CLEARABLE_FIELDS_OPP).
+		var restrictions: Dictionary = _w["rules"].restrictions()
+		if not restrictions.is_empty():
+			v["restrictions"] = restrictions
+		var effects: Array = _w["rules"].match_effects()
+		if not effects.is_empty():
+			v["match_effects"] = effects
 	else:
 		v["friendly_name"] = _typed_name()
 		if _gift_type != "none":

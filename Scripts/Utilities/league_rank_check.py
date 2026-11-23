@@ -21,20 +21,17 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DATA = os.path.join(ROOT, "NPC_and_Opponent_Data")
 
-# The user's 36 new decks (2026-11-20 list), each becoming one new opponent, with the star band agreed then
-# (starter-mid 2, mid 3, dark 4, gym-inclusive split 4 then 5, gym-only 5, post-gym 5). Any name that already
-# exists in the roster is skipped, so this list shrinks to nothing on its own as the opponents go in.
+# The user's planned new decks (2026-11-20 list), each becoming one new opponent. Their STARS come from
+# NPC_and_Opponent_Data/Deck_Ratings.json (the user's own ratings, 2026-11-23). Any deck already on a live
+# opponent is skipped, so this list shrinks to nothing on its own as the opponents go in.
 PLANNED = (
-    [(2, n) for n in ("Conversion 4", "Big Fish Small Fish", "Wildfires", "Transform", "Boyfriend and Girlfriend",
-                      "Bait and Switch", "Promotional Flight")]
-    + [(3, n) for n in ("Hay Maker Lite", "Fancy Footwork", "Outstall the wall", "Jungle Migraine")]
-    + [(4, n) for n in ("Dragotoise", "Lot Of Char", "Confusing Petals", "Calm and Fury")]
-    + [(4, n) for n in ("Tentacle Retreat", "Make the Ground Shake", "Rapid Photosynthesis", "Neuron Connection",
-                        "Erika's Kind Strength", "Energy Recoupling")]
-    + [(5, n) for n in ("Energy Energy Energy", "Weedsprayer", "Just all Flips", "OTK", "Trapped")]
-    + [(5, n) for n in ("Guaranteed Infliction", "Some Birds Some Stones", "Cerulean Coin Flips", "Psilocybin",
-                        "Night Spirits", "Brock Collection", "All or nothing", "ESP Foresight")]
-    + [(5, n) for n in ("Incinerator", "Dragon Rage")]
+    "Conversion 4", "Big Fish Small Fish", "Wildfires", "Transform", "Boyfriend and Girlfriend", "Bait and Switch",
+    "Promotional Flight", "Hay Maker Lite", "Fancy Footwork", "Outstall the Wall", "Jungle Migraine",
+    "Dragotoise", "Lot Of Char", "Confusing Petals", "Calm and Fury", "Tentacle Retreat", "Make the Ground Shake",
+    "Rapid Photosynthesis", "Neuron Connection", "Erika's Kind Strength", "Energy Recoupling",
+    "Energy Energy Energy", "Weedsprayer", "Just all Flips", "OTK", "Trapped",
+    "Guaranteed Infliction", "Some Birds Some Stones", "Cerulean Coin Flips", "Psilocybin", "Night Spirits",
+    "Brock Collection", "All or nothing", "ESP Foresight", "Incinerator", "Dragon Rage",
 )
 
 
@@ -65,7 +62,8 @@ def main():
         games = 2 if e.get("match_format") == "best_of_3" else 1
         roster.append((stars, name, games))
     used_decks = {e.get("deck") for e in opps.values()}
-    planned = [(s, "(planned) " + n, 1) for s, n in PLANNED if n not in used_decks]
+    ratings = load("Deck_Ratings.json")["decks"]
+    planned = [(int(ratings.get(n, {}).get("stars", 3)), "(planned) " + n, 1) for n in PLANNED if n not in used_decks]
     if planned and "--no-planned" not in sys.argv:
         print("%d live opponents + %d planned new decks (--no-planned to leave them out)" % (len(roster), len(planned)))
         roster += planned

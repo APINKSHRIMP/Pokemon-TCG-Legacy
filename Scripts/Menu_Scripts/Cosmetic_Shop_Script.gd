@@ -44,6 +44,16 @@ extends Control
 # and a row whose item a keeper has not yet announced (FishShopDialogue.UNLOCKS) is
 # hidden until they have.
 #
+# LEAGUE POINTS SHOPS. A block with "league_points": true charges each row's "lp_cost" in
+# League Points (GameState.league_spend -- spending never lowers League Rank) and shows the
+# LP wallet chip left of the cash one, with the LP icon on the price pills. In such a block
+# a row's cash "cost" defaults to 0 (LP only); give it a "cost" to charge cash as well.
+# It uses the same second-currency slot as Fish Coins, so a block is one or the other.
+#
+# PACKS. Kind "pack" sells a booster: "name" is the pack ART basename in Image_Assets/Packs
+# ("base1_a", "gym2_c" -- the set id is everything before the last underscore). A pack is
+# never OWNED; buying one opens it on the spot through PackOpeningManager, like the Card Mart.
+#
 # There is deliberately NO sold-out gate. A seller's shelf is finite and never restocks,
 # so once the player owns the lot the shop simply opens with everything stamped OWNED
 # rather than being replaced by a "come back later" line that would never come true.
@@ -64,6 +74,8 @@ const KIND_SLEEVE  := "sleeve"
 const KIND_COSTUME := "costume"
 const KIND_COIN    := "coin"
 const KIND_ITEM    := "item"
+const KIND_PACK    := "pack"
+const PACK_FOLDER  := "res://Image_Assets/Packs"
 
 ## TWEAKABLE — art this small in either direction is treated as a stand-in rather than a
 ## picture, and the cell shows the row's name instead. The placeholder rod art is 1x1.
@@ -138,6 +150,9 @@ var player_cash     : int = 0
 ## Shop). Its rows then carry a "fish_cost" on top of their cash "cost", and BOTH must be
 ## covered to buy.
 var uses_fish_coins : bool = false
+## League Points: a block with "league_points": true. Shares the Fish Coin slot below
+## (player_fish_coins / fish_cost / fish_coin_chip all mean "the second currency").
+var uses_league_points : bool = false
 var player_fish_coins : int = 0
 var _owned_items    : Dictionary = {}
 ## Every page of the block (one page when it has none), and which one is showing.
@@ -193,7 +208,8 @@ func _ready() -> void:
 
 	_build_chrome()
 	wallet_chip = ShopChrome.add_wallet_chip(self, player_cash)
-	if uses_fish_coins:
+	ShopChrome.token_icon = League.ICON_PATH if uses_league_points else ShopChrome.FISH_COIN_ICON
+	if uses_fish_coins or uses_league_points:
 		fish_coin_chip = ShopChrome.add_fish_coin_chip(self, player_fish_coins, wallet_chip)
 	pill_layer  = ShopChrome.add_pill_layer(self)
 
@@ -318,6 +334,7 @@ func _load_inventory() -> void:
 	shop_title   = block.get("title", _default_title(shop_kind))
 	shop_columns = int(block.get("columns", 0))
 	uses_fish_coins = bool(block.get("fish_coins", false))
+	uses_league_points = bool(block.get("league_points", false)) and not uses_fish_coins
 	_pages = []
 	if block.get("pages") is Array:
 		for page in block["pages"]:
@@ -353,6 +370,7 @@ func _default_title(kind: String) -> String:
 		KIND_COSTUME: return "Costume Shop"
 		KIND_COIN:    return "Coin Shop"
 		KIND_ITEM:    return "Shop"
+		KIND_PACK:    return "Pack Shop"
 	return "Sleeve Shop"
 
 
@@ -364,7 +382,7 @@ func _item_kind(entry: Dictionary) -> String:
 
 func _load_player_data() -> void:
 	player_cash = GameState.get_cash()
-	player_fish_coins = GameState.get_fish_coins()
+	player_fish_coins = GameState.league_lp() if uses_league_points else GameState.get_fish_coins()
 	# Costume filenames are stored lower-cased and with the .png suffix; sleeves are stored
 	# as bare basenames. _is_owned() does the per-kind lookup, so nothing is cached here for
 	# costumes — GameState is already the single source of truth for both.
@@ -381,6 +399,7 @@ func _is_owned(item_name: String, kind: String) -> bool:
 		KIND_COSTUME: return GameState.has_costume(item_name)
 		KIND_COIN:    return GameState.has_coin(item_name)
 		KIND_ITEM:    return GameState.has_item(item_name)
+		KIND_PACK:    return false   # consumable: always on sale
 	return _owned_items.has(item_name)
 
 
@@ -435,6 +454,7 @@ func _load_flat_texture(item_name: String, kind: String) -> Texture2D:
 	match kind:
 		KIND_COIN: folder = COIN_FOLDER
 		KIND_ITEM: folder = ITEM_FOLDER
+		KIND_PACK: folder = PACK_FOLDER
 	var path := folder + "/" + item_name + ".png"
 	if ResourceLoader.exists(path):
 		var tex := load(path) as Texture2D
@@ -487,8 +507,12 @@ func _build_item_grid() -> void:
 
 	for entry in inventory:
 		var item_name : String = String(entry.get("name", ""))
-		var cost      : int    = int(entry.get("cost", DEFAULT_ITEM_COST))
-		var fish_cost : int    = int(entry.get("fish_cost", 0)) if uses_fish_coins else 0
+		var cost      : int    = int(entry.get("cost", 0 if uses_league_points else DEFAULT_ITEM_COST))
+		var fish_cost : int    = 0
+		if uses_fish_coins:
+			fish_cost = int(entry.get("fish_cost", 0))
+		elif uses_league_points:
+			fish_cost = int(entry.get("lp_cost", 0))
 		var is_rod    : bool   = bool(entry.get("rod", false))
 		var kind      : String = _item_kind(entry)
 		# A rod is priced with the best owned rod's discount; the full price is kept
@@ -790,7 +814,14 @@ func _on_buy_pressed() -> void:
 	GameState.add_cash(-cost)
 	if fish_cost > 0:
 		player_fish_coins -= fish_cost
-		GameState.add_fish_coins(-fish_cost)
+		if uses_league_points:
+			GameState.league_spend(fish_cost)
+		else:
+			GameState.add_fish_coins(-fish_cost)
+	if kind == KIND_PACK:
+		SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
+		_open_bought_pack(item_name)
+		return
 	# Each kind banks into its own collection; GameState is the only place that knows how
 	# each one is stored (costumes lower-cased with .png, coins with .png, the rest bare).
 	match kind:
@@ -807,6 +838,27 @@ func _on_buy_pressed() -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 
 	_show_purchase_display(item_name, kind, String(selected_cell.get_meta("item_label", item_name)))
+
+
+## A bought pack opens straight away (PackOpeningManager, as the Card Mart does), then the
+## shelf comes back with the wallets and pills updated. The pack cell stays on sale.
+func _open_bought_pack(art: String) -> void:
+	_in_purchase_seq    = true
+	buy_btn.disabled    = true
+	cancel_btn.disabled = true
+	if selected_cell != null and is_instance_valid(selected_cell):
+		_deselect_item(selected_cell)
+	selected_cell = null
+	PackOpeningManager.open_packs([art])
+	await PackOpeningManager.all_packs_opened
+	if not is_inside_tree():
+		return
+	ShopChrome.set_wallet_cash(wallet_chip, player_cash)
+	ShopChrome.set_wallet_cash(fish_coin_chip, player_fish_coins)
+	_refresh_pills()
+	cancel_btn.disabled = false
+	_in_purchase_seq    = false
+	_update_buy_button()
 
 
 ## The reveal. Same overlay furniture as the Coin Shop's, but the item fades up from black
@@ -957,6 +1009,11 @@ func _on_cancel_pressed() -> void:
 	var target : String = GameState.menu_return_scene_path if GameState.has_menu_return_state \
 		else GYM_PLAZA
 	SceneCache.change_scene(target)
+
+
+## The second-currency icon is a ShopChrome static: put the Fish Coin back for the next shop.
+func _exit_tree() -> void:
+	ShopChrome.token_icon = ShopChrome.FISH_COIN_ICON
 
 
 func _input(event: InputEvent) -> void:

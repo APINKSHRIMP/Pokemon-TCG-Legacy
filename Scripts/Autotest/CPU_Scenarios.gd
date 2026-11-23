@@ -635,3 +635,52 @@ func sc_energy_never_discarded_twice() -> void:
 	m.card_ops.discard_energy_from_pokemon(e, true, false, false)   # a stale list discards the same card again
 	var n: int = m.opponent_discard_pile.count(e)
 	check("An Energy discarded twice lands in the discard pile once", n == 1 and p.attached_energies.size() == 2, "in pile %d, attached %d" % [n, p.attached_energies.size()])
+
+# ---- 2026-11-23 deck test: Pokémon Flute bait + Sabrina's Gaze on a dead hand ----
+func _flute_board() -> void:
+	cpu_active(mon("base1-20", ["base1-100", "base1-100"]))      # Electabuzz, Thunderpunch 30+ ready
+	foe(mon("base1-8"))                                           # Machamp 100 HP: no KO on the Active
+	var ab := c("base1-43")                                       # Abra 30 HP in the player's discard
+	ab.current_location = "discard"
+	m.player_discard_pile = [ab]
+	m.player_bench = [mon("base1-58")]
+	deck([])
+
+func sc_flute_bait_with_gust() -> void:
+	_flute_board()
+	hand(["base1-86", "base1-93"])
+	var s: float = ai.cpu_score_trainer_for_play(find(m.opponent_hand, "Pokémon Flute"))
+	var pick = ai.cpu_flute_pick(m.player_discard_pile)
+	check("Flute + Gust in hand, discarded Abra KO-able -> Flute played as bait", s > ai.CPU_TRAINER_PLAY_THRESHOLD and nm(pick) == "Abra", "score %d, pick %s" % [s, nm(pick)])
+
+func sc_flute_held_without_gust() -> void:
+	_flute_board()
+	hand(["base1-86"])
+	var s: float = ai.cpu_score_trainer_for_play(find(m.opponent_hand, "Pokémon Flute"))
+	check("Flute with no Gust in hand -> held", s <= ai.CPU_TRAINER_PLAY_THRESHOLD, "score %d" % s)
+
+func sc_flute_held_when_active_is_ko() -> void:
+	_flute_board()
+	foe(mon("base1-63"))                                          # Squirtle: Electabuzz already KOs it
+	hand(["base1-86", "base1-93"])
+	var s: float = ai.cpu_score_trainer_for_play(find(m.opponent_hand, "Pokémon Flute"))
+	check("Flute when the Active is already a sure KO -> held", s <= ai.CPU_TRAINER_PLAY_THRESHOLD, "score %d" % s)
+
+func sc_gaze_on_dead_hand() -> void:
+	cpu_active(mon("base1-46", ["base1-98"]))
+	for i in 5:
+		cpu_bench(mon("base1-46"))
+	foe(mon("base1-8"))
+	hand(["gym1-125", "base1-97", "base1-97", "base1-99", "base1-58"])   # spare Energy + a Basic with no room
+	deck(["base1-99"], "base1-99", 30)
+	m.opponent_energy_played_this_turn = true
+	var s: float = ai.cpu_score_trainer_for_play(find(m.opponent_hand, "Sabrina's Gaze"))
+	check("Sabrina's Gaze on a dead hand (Energy used, bench full) -> played", s > ai.CPU_TRAINER_PLAY_THRESHOLD, "score %d" % s)
+
+func sc_gaze_held_on_live_hand() -> void:
+	cpu_active(mon("base1-46", ["base1-98"]))
+	foe(mon("base1-8"))
+	hand(["gym1-125", "base1-58", "base1-63", "base1-98"])               # two Basics to bench + an attach
+	deck(["base1-99"], "base1-99", 30)
+	var s: float = ai.cpu_score_trainer_for_play(find(m.opponent_hand, "Sabrina's Gaze"))
+	check("Sabrina's Gaze on a hand that can all be played -> held", s <= ai.CPU_TRAINER_PLAY_THRESHOLD, "score %d" % s)

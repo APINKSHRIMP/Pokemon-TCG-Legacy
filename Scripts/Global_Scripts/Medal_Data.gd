@@ -21,6 +21,7 @@ extends RefCounted
 const JSON_PATH := "res://NPC_and_Opponent_Data/Medals.json"
 const ART_DIR := "res://Image_Assets/Medals/"
 const SEEN_KEY := "medals_seen"          # progress: medal id -> highest tier index already announced
+const DEBUG_ALL_KEY := "medals_debug_all"  # progress: true = CHT.All_Medals is on (every medal at its top grade)
 const OWNED_SUFFIX := "_player_owned_cards.json"
 const GRADE_NAMES := {
 	1: ["Earned"],
@@ -242,6 +243,8 @@ static func thresholds(def: Dictionary, ctx: Dictionary) -> Array:
 
 ## Highest tier index passed, or -1 when still locked.
 static func earned_tier(def: Dictionary, ctx: Dictionary) -> int:
+	if bool(GameState.progress.get(DEBUG_ALL_KEY, false)):
+		return tier_count(def) - 1   # CHT.All_Medals: every medal at its top grade
 	var v := value_of(def, ctx)
 	var best := -1
 	var th := thresholds(def, ctx)
@@ -326,6 +329,33 @@ static func take_new_awards() -> Array:
 		GameState.progress[SEEN_KEY] = seen
 		GameState.save_progress()
 	return [] if first_check else fresh
+
+
+## CHT.All_Medals: every medal at its top grade on this save. All of them are marked as already announced
+## except ONE picked at random, so the map plays a single reveal instead of one per medal.
+static func debug_grant_all() -> void:
+	var defs := all()
+	if defs.is_empty():
+		return
+	var seen := {}
+	for def in defs:
+		seen[String(def["id"])] = tier_count(def) - 1
+	var shown: Dictionary = defs[randi() % defs.size()]
+	seen[String(shown["id"])] = tier_count(shown) - 2   # one below the top: its top grade is the one revealed
+	GameState.progress[DEBUG_ALL_KEY] = true
+	GameState.progress[SEEN_KEY] = seen
+	GameState.save_progress()
+
+
+## CHT.Real_Medals: undoes CHT.All_Medals - back to the medals this save really earned, with no notices.
+static func debug_clear_all() -> void:
+	GameState.progress.erase(DEBUG_ALL_KEY)
+	var seen := {}
+	var ctx := make_context()
+	for def in all():
+		seen[String(def["id"])] = earned_tier(def, ctx)
+	GameState.progress[SEEN_KEY] = seen
+	GameState.save_progress()
 
 
 # ── Deck classification (match start) ─────────────────────────────────────────────────────────

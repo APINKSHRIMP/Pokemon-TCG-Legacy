@@ -21,6 +21,9 @@ const _CHEAT_LABELS := {
 	"CHT.All_Sleeves":      "All sleeves cheat activated",
 	# ISSUE #156: every basic-Energy printing the deck builder's style picker can offer.
 	"CHT.All_Energy_Styles": "All energy styles cheat activated",
+	# Every medal at its top grade; the map reveals just one of them (MedalData.debug_grant_all).
+	"CHT.All_Medals":       "All medals cheat activated",
+	"CHT.Real_Medals":      "Medals back to what this save really earned",
 	# ISSUE #298: the old "Fairer retreat" Options button, now a cheat - and its undo.
 	"CHT_Retreat.Confused":  "Fairer confusion retreat rules enabled",
 	"CHT_Vanilla.Confusion": "Confusion rules set to vanilla",
@@ -97,6 +100,10 @@ static func _apply(code: String) -> void:
 			# include_defaults = true: the sleeve grid shows the "1_Default*" backs, so "all" owns them.
 			var sleeves := GameState.get_sleeve_universe(true).keys()
 			var new_sleeves := GameState.add_sleeves_to_collection(sleeves)
+		"CHT.All_Medals":
+			MedalData.debug_grant_all()
+		"CHT.Real_Medals":
+			MedalData.debug_clear_all()
 		"CHT_Retreat.Confused":
 			GameState.set_confusion_rule("fairer_confusion_rules")
 		"CHT_Vanilla.Confusion":

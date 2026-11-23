@@ -22,7 +22,7 @@ class_name DeckValidationHelper
 #   "basic_pokemon_only":   true,         # Stage 1 / Stage 2 forbidden
 #   "max_hp":               60,           # Pokémon HP cap
 #
-#   "allowed_set_ids":              ["base1","base2"],     # card id prefix must match one of these sets
+#   "allowed_set_ids":              ["base1","base2"],     # card id prefix must match one of these sets (basic Energy exempt)
 #   "delta_species_only":           true,                   # Pokémon must have " δ" in their name
 #   "no_ex_cards":                  true,                   # any card whose subtypes include "ex" is invalid
 #   "allowed_pokemon_name_prefixes":["Dark "],              # Pokémon name must start with one of these
@@ -151,7 +151,7 @@ static func validate(deck_path: String, restrictions: Dictionary) -> Dictionary:
 	if not allowed_energy_types.is_empty():
 		rule_lines.append("Only %s Energy cards allowed." % _join_types_pretty(allowed_energy_types))
 	if not allowed_set_ids.is_empty():
-		rule_lines.append("Only cards from these sets allowed: %s." % ", ".join(allowed_set_ids))
+		rule_lines.append("Only cards from these sets allowed: %s (basic Energy from any set is fine)." % ", ".join(allowed_set_ids))
 	if delta_species_only:
 		rule_lines.append("Only Delta Species Pokémon (δ) allowed.")
 	if no_ex_cards:
@@ -262,8 +262,11 @@ static func _card_violates(meta: Dictionary,
 		types = meta["types"]
 	var card_name := String(meta.get("name", ""))
 
-	# Set membership applies to ALL card types (Pokémon, Trainer, Energy).
-	if not allowed_set_ids.is_empty():
+	# Set membership applies to Pokémon, Trainers and Special Energy. Basic Energy is the
+	# same card in every set, so a "Gym sets only" rule still takes Base Set Fire Energy
+	# (the gym-only opponent decks run it themselves).
+	var is_basic_energy := super_type == "energy" and "Basic" in subtypes
+	if not allowed_set_ids.is_empty() and not is_basic_energy:
 		var set_prefix := _card_set_id(card_id)
 		if set_prefix == "" or set_prefix not in allowed_set_ids:
 			return true

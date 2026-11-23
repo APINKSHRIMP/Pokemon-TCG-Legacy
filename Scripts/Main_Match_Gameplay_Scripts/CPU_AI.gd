@@ -5653,7 +5653,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"base1-83": return _cpu_score_maintenance()
 		"base1-84": return _cpu_score_pluspower()
 		"base1-85": return _cpu_score_pokemon_center()
-		"base1-86": return -100.0 # Pokemon Flute: CPU never plays
+		"base1-86": return _cpu_score_pokemon_flute()  # AUDIT 2026-11-23: the bait half of Flute + Gust
 		"base1-87": return 60.0 # Pokedex
 		"base1-89": return _cpu_score_revive()
 		"base1-90": return _cpu_score_super_potion()
@@ -5700,7 +5700,7 @@ func _cpu_score_trainer_card_inner(card: card_object) -> float:
 		"gym1-121": return _cpu_score_gym1_blaines_gamble()
 		"gym1-122": return _cpu_score_gym1_energy_flow()
 		"gym1-123": return _cpu_score_gym1_mistys_duel()
-		"gym1-125": return _cpu_score_gym1_sabrinas_gaze()
+		"gym1-125": return _cpu_score_gym1_sabrinas_gaze(card)
 		"gym1-126": return _cpu_score_gym1_trash_exchange()
 		# ============================ GYM1 (GYM HEROES) STADIUM SCORING ============================
 		"gym1-103": return _cpu_score_gym1_no_removal_gym()
@@ -7197,6 +7197,92 @@ func _cpu_score_gust_of_wind_base() -> float:
 				return 60.0
 	return 0.0
 
+
+## AUDIT 2026-11-23 (the "Bait and Switch" deck, 4 Flutes + 4 Gusts): Pokémon Flute was hard-coded never to be
+## played (0 of 560 chances). A person plays it as bait: put one of the player's Basics from their discard onto
+## their Bench, Gust of Wind it up, knock it out for a Prize. Only when the whole combo is on THIS turn (a playable
+## Gust in hand, an attack ready that KOs the bait) and the player's Active isn't already a sure Knock Out.
+func _cpu_score_pokemon_flute() -> float:
+	if main.player_bench.size() >= main.get_max_bench_size() or not _cpu_active_can_attack():
+		return -100.0
+	if main.player_active_pokemon != null and _cpu_can_ko_now(main.player_active_pokemon):
+		return -100.0   # just knock out the Active - the bait gives nothing more
+	var gust_ready := false
+	for c in main.opponent_hand:
+		if c.uid.to_lower() == "base1-93" and main.trainer_effects.validate_trainer_can_be_played(c, true) == "":
+			gust_ready = true
+			break
+	if not gust_ready:
+		return -100.0
+	var basics: Array = main.player_discard_pile.filter(func(c): return main.is_basic_pokemon(c))
+	if cpu_flute_pick(basics, true) == null:
+		return -100.0
+	return FLUTE_BAIT_SCORE
+
+
+## Which of the player's discarded Basics the CPU's Flute puts on their Bench: the lowest-HP one its Active
+## can knock out this turn, counting up to FLUTE_MAX_PLUSPOWER PlusPowers from hand (+10 each, after Weakness).
+## `ko_only` = null when none can be; otherwise falls back to the lowest HP.
+func cpu_flute_pick(basics: Array, ko_only: bool = false) -> card_object:
+	var best: card_object = null
+	var best_ko := false
+	var plus: int = mini(FLUTE_MAX_PLUSPOWER, main.opponent_hand.filter(func(h): return h.uid.to_lower() == "base1-84").size())
+	for c in basics:
+		var saved_hp: int = c.current_hp
+		c.current_hp = maxi(1, c.get_max_hp() - 10 * plus)   # it comes back undamaged; PlusPowers make up the rest
+		var ko := _cpu_can_ko_now(c)
+		var hp: int = c.get_max_hp()
+		c.current_hp = saved_hp
+		if ko_only and not ko:
+			continue
+		if best == null or (ko and not best_ko) or (ko == best_ko and hp < best.get_max_hp()):
+			best = c
+			best_ko = ko
+	return best
+
+
+## AUDIT 2026-11-23: Sabrina's Gaze shuffles both hands away and redraws the SAME number, so it never refills a
+## small hand - the old "play it on a 1-2 card hand" rule meant it was almost never played (2 of 468 chances).
+## A person plays it to swap a hand of dead cards for fresh ones: most of the rest of the hand does nothing
+## now (spare Energy past the one attach, Basics with no Bench room, evolutions with nothing in play to go on,
+## Trainers not worth playing), and nothing in it matters this turn.
+func _cpu_score_gym1_sabrinas_gaze(card: card_object) -> float:
+	var others: Array = main.opponent_hand.filter(func(c): return c != card)
+	if others.size() < GAZE_MIN_HAND:
+		return -50.0
+	var dead := 0
+	var dead_names: Array = []
+	var energy_counted: bool = bool(main.opponent_energy_played_this_turn)
+	var room: int = main.get_max_bench_size() - main.opponent_bench.size()
+	var in_play: Array = []
+	for p in get_all_cpu_field_pokemon():
+		in_play.append(String(p.metadata.get("name", "")))
+	for c in others:
+		if bool(cpu_card_need(c, others).get("urgent", false)):
+			return -60.0                     # it changes this turn's attack or survival - keep it
+		var st: String = c.metadata.get("supertype", "")
+		var alive := false
+		if st == "Energy":
+			alive = not energy_counted       # only one attach a turn - the rest wait anyway
+			energy_counted = true
+		elif st == "Pokémon":
+			if main.is_basic_pokemon(c):
+				alive = room > 0
+				room -= 1
+			else:                            # goes on now, or next turn onto something already in play
+				alive = not main.get_valid_evolution_targets(c, true).is_empty() 						or String(c.metadata.get("evolvesFrom", "")) in in_play
+		elif main.trainer_effects.is_trainer_card(c):
+			alive = c.uid != card.uid and cpu_score_trainer_card(c) > CPU_TRAINER_PLAY_THRESHOLD
+		if not alive:
+			dead += 1
+			dead_names.append(c.metadata.get("name", ""))
+	var share := float(dead) / float(others.size())
+	if cpu_hand_is_stuck(card):
+		share = maxf(share, 0.8)
+	if share < GAZE_DEAD_SHARE:
+		return -50.0
+	print("CPU: Sabrina's Gaze - %d of %d cards in hand are dead: %s" % [dead, others.size(), ", ".join(dead_names)])
+	return clampf(35.0 + 40.0 * share, 40.0, 75.0)
 
 ## Can the CPU's Active Knock Out `target` this turn with an attack it can already pay for
 ## (as if `target` were the Defending Pokémon; minimum damage, PlusPowers attached counted)?
@@ -9236,6 +9322,14 @@ func _cpu_has_evolution_base(evo: card_object) -> bool:
 #   * After a late draw the CPU develops again (evolve, bench, attach) instead of passing with a fresh hand.
 
 const CPU_TRAINER_PLAY_THRESHOLD_BASE := 29.9
+## TWEAKABLE (AUDIT 2026-11-23): Pokémon Flute's score when the Flute + Gust + Knock Out bait is on this turn.
+const FLUTE_BAIT_SCORE := 80.0
+## TWEAKABLE: most PlusPowers from hand the Flute bait may count on to make the Knock Out.
+const FLUTE_MAX_PLUSPOWER := 2
+## TWEAKABLE: Sabrina's Gaze - fewest OTHER cards in hand worth swapping, and the share of them that must be dead
+## (can't be used now or next turn) to make it worth playing.
+const GAZE_MIN_HAND := 3
+const GAZE_DEAD_SHARE := 0.6
 var CPU_TRAINER_PLAY_THRESHOLD: float:
 	get: return CpuWeights.g("trainer.play_threshold", CPU_TRAINER_PLAY_THRESHOLD_BASE)
 # The trainer phase the orchestrator is running: "early" (before evolutions/bench), "mid" (after them, before the
@@ -10369,12 +10463,6 @@ func _cpu_score_gym1_mistys_duel() -> float:
 	if main.opponent_hand.size() >= 7:
 		return 35.0
 	return 10.0
-
-func _cpu_score_gym1_sabrinas_gaze() -> float:
-	# Refill both hands to their previous size. Only useful when our hand is very small.
-	if main.opponent_hand.size() <= 2:
-		return 50.0
-	return -50.0
 
 func _cpu_score_gym1_trash_exchange() -> float:
 	# Shuffle discard into deck and discard top X. Net deck recovery if discard has good cards.

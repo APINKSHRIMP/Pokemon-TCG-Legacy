@@ -51,6 +51,8 @@ const CHEAT_NAMES := {
 	"CHT.All_Costumes": ["Unlock every costume", ""],
 	"CHT.All_Sleeves": ["Unlock every sleeve", ""],
 	"CHT.All_Energy_Styles": ["Unlock every Energy style", ""],
+	"CHT.All_Medals": ["Earn every medal", "Top grade on all of them. One medal's reveal plays after you close this menu."],
+	"CHT.Real_Medals": ["Medals: back to the real ones", "Undoes Earn every medal, with no notices"],
 	"CHT_Retreat.Confused": ["Confusion: fairer retreat rule", "Retreating while Confused always works"],
 	"CHT_Vanilla.Confusion": ["Confusion: original rule", "Undoes the fairer retreat rule"],
 }

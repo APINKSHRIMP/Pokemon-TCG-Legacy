@@ -2233,13 +2233,16 @@
     "Spectator Pete": {
       "sprite": "Neckbeard",
       "message_colour": "dark_red",
-      "deck": "Incinerator",
+      "deck": "Psilocybin",
       "music": "Medium_Battle 3 (PMDX Thunderwave Cave)",
       "prize_cards": 4,
       "cash_reward": "150",
       "coin_reward": "Entei Red",
       "costume_reward": "NECKBEARD",
-      "stars": 3
+      "stars": 3,
+      "restrictions": {
+        "allowed_set_ids": ["gym1", "gym2"]
+      }
     },
     "Olly": {
       "sprite": "1Olly_White",
@@ -2270,7 +2273,7 @@
       "prize_cards": 3,
       "cash_reward": "100",
       "pack_reward": "base1_a",
-      "stars": 2
+      "stars": 1
     },
     "Ellie 3": {
       "friendly_name": "Ellie",
@@ -2294,7 +2297,7 @@
       "cash_reward": "100",
       "pack_reward": "base1_c",
       "cpu_retreat_rate": 0,
-      "stars": 2
+      "stars": 1
     },
     "Ellie 4": {
       "sprite": "1Ellie_Dress",
@@ -2306,7 +2309,7 @@
       "coin_reward": "Eevee Pink",
       "card_reward": "base2-51, base2-51",
       "pack_reward": "base1_a",
-      "stars": 3
+      "stars": 1
     },
     "Alexander 4": {
       "sprite": "1Alexander",
@@ -2318,7 +2321,7 @@
       "coin_reward": "Porygon Pink",
       "card_reward": "base1-39, base1-39",
       "pack_reward": "base2_c",
-      "stars": 2
+      "stars": 1
     },
     "Team Magma Archie": {
       "sprite": "TeamMagmaMaxie",

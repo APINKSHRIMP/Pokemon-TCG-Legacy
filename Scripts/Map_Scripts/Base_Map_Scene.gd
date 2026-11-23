@@ -600,7 +600,7 @@ const MEDAL_NOTICE_DELAY_S := 0.6
 var _medal_notice_up: bool = false
 
 func _medal_screen_busy() -> bool:
-	if MatchTransition.is_returning() or MapManager.cutscene_active or _medal_notice_up:
+	if MatchTransition.is_returning() or MapManager.cutscene_active or _medal_notice_up or MapManager.is_debug_menu_open():
 		return true
 	var panel = MapManager.message_panel
 	return panel != null and is_instance_valid(panel) and panel.visible
