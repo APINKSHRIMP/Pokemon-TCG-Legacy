@@ -2458,12 +2458,12 @@ func effect_pokemon_breeder(is_opponent: bool) -> void:
 					main.evolution_card_awaiting_target = s2
 					main.selected_card_for_action = pokemon
 					await main.perform_evolution(true, true)   # ISSUE #406: on-evolve Powers run once it has landed (below)
-					await main.show_message("Opponent used Pokemon Breeder to evolve " + pokemon.metadata.get("name", "") + " into " + s2.metadata.get("name", "") + "!")
-					if main._should_bail(): return
+					# MATCH CRIES: replace on the board first (cry + sparkle), the message opens with them
 					main.display_pokemon(true)
 					main.display_active_pokemon_energies(true)
 					main.refresh_hand_display(true)
-					await main.play_evolution_effect(s2)
+					main.play_evolution_effect(s2)   # not awaited: the sparkle runs under the message
+					await main.show_message("Opponent used Pokemon Breeder to evolve " + pokemon.metadata.get("name", "") + " into " + s2.metadata.get("name", "") + "!")
 					if main._should_bail(): return
 					main.evolution_card_awaiting_target = null
 					main.selected_card_for_action = null
@@ -4045,6 +4045,7 @@ func effect_challenge(is_opponent: bool) -> void:
 		main.player_deck.filter(func(c): return main.is_basic_pokemon(c)), 0, max_b - main.player_bench.size(),
 		"CHALLENGE!", "Choose any number of Basic Pokemon for your Bench", "BENCH")
 	if main._should_bail(): return
+	main.card_ops.begin_bench_batch()   # MATCH CRIES: one at a time, each cries, one message per side at the end
 	for pick in player_picks:
 		if main.player_bench.size() >= max_b:
 			break
@@ -4064,13 +4065,20 @@ func effect_challenge(is_opponent: bool) -> void:
 		cpu_pick.current_hp = cpu_pick.get_max_hp()
 		main.card_ops.place_on_bench(cpu_pick, true)
 		cpu_added += 1
+	main.update_deck_icon(false)
+	main.update_deck_icon(true)
+	var ch_placed: Array = await main.card_ops.end_bench_batch()
+	if main._should_bail(): return
 	main.player_deck.shuffle()
 	main.opponent_deck.shuffle()
 	main.update_deck_icon(false)
 	main.update_deck_icon(true)
 	main.display_pokemon(false)
 	main.display_pokemon(true)
-	await main.show_message("CHALLENGE! YOU BENCHED " + str(player_added) + ", THE OPPONENT BENCHED " + str(cpu_added) + "!")
+	if ch_placed.is_empty():
+		await main.show_message("CHALLENGE! NO POKEMON WERE BENCHED!")
+	else:
+		await main.card_ops.show_bench_added(ch_placed)
 
 # Digger: Recursive coin flip damage
 func effect_digger(is_opponent: bool) -> void:
@@ -5168,17 +5176,18 @@ func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 			await main.show_message("OPPONENT LOOKED AT YOUR HAND — NOTHING WAS BENCHED")
 			if main._should_bail(): return
 			return
+		# MATCH CRIES: flown in one at a time, each cries, one message for all
+		main.card_ops.begin_bench_batch()
 		for c in picks:
 			var _fr1: Dictionary = main.card_ops.capture_rect(c, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 			opp_hand.erase(c)
 			c.current_hp = c.get_max_hp()
-			c.current_location = "bench"
-			c.placed_on_field_this_turn = true
-			opp_bench.append(c)
-			await main.card_ops.fly_card(c, "hand", "play", not (is_opponent), -1, _fr1)   # AUDIT 2026-11-17: flight
+			main.card_ops.place_on_bench(c, not (is_opponent), _fr1)
+		var ep_placed1: Array = await main.card_ops.end_bench_batch()
+		if main._should_bail(): return
 		main.refresh_hand_display(false)
 		main.display_pokemon(false)
-		await main.show_message("ERIKA'S PERFUME — OPPONENT PUT " + str(picks.size()) + " OF YOUR BASIC(S) ON YOUR BENCH!")
+		await main.card_ops.show_bench_added(ep_placed1)
 		if main._should_bail(): return
 		for c in picks:
 			await gym2_minefield_gym_trigger(c, false)
@@ -5202,19 +5211,21 @@ func gym1_effect_erikas_perfume(is_opponent: bool) -> void:
 	if main._should_bail(): return
 
 	# Move the picks from opp's hand to opp's bench
+	# MATCH CRIES: flown in one at a time, each cries, one message for all
+	main.card_ops.begin_bench_batch()
 	for c in to_bench:
 		var _fr2: Dictionary = main.card_ops.capture_rect(c, "hand", not (is_opponent))   # AUDIT 2026-11-17: flight
 		opp_hand.erase(c)
 		c.current_hp = c.get_max_hp()
-		c.current_location = "bench"
-		c.placed_on_field_this_turn = true
-		opp_bench.append(c)
-		await main.card_ops.fly_card(c, "hand", "play", not (is_opponent), -1, _fr2)   # AUDIT 2026-11-17: flight
+		main.card_ops.place_on_bench(c, not (is_opponent), _fr2)
+	var ep_placed2: Array = await main.card_ops.end_bench_batch()
+	if main._should_bail(): return
 
 	main.refresh_hand_display(opp_is_player)
 	main.display_pokemon(opp_is_player)
-	await main.show_message("ERIKA'S PERFUME — " + str(to_bench.size()) + " BASIC(S) BENCHED!")
-	if main._should_bail(): return
+	if not ep_placed2.is_empty():
+		await main.card_ops.show_bench_added(ep_placed2)
+		if main._should_bail(): return
 
 	# GYM2-119 Rocket's Minefield Gym — coin flip per pokemon benched from hand
 	for c in to_bench:
@@ -9713,20 +9724,22 @@ func effect_ecard2_pokemon_fan_club(is_opponent: bool) -> void:
 		return
 	var deck = main.opponent_deck if is_opponent else main.player_deck
 	var want = min(2, space)
-	var filter_fn = func(c): return "Basic" in c.metadata.get("subtypes",[]) or "Baby" in c.metadata.get("subtypes",[])
+	# 2026-11-23: Pokemon only - basic Energy is "Basic" too, and the autotester saw Grass Energy benched.
+	var filter_fn = func(c): return c.metadata.get("supertype","") == "Pokémon" and ("Basic" in c.metadata.get("subtypes",[]) or "Baby" in c.metadata.get("subtypes",[]))
 	var found = await main.card_ops.search_deck_to_hand(is_opponent, filter_fn, "POKEMON FAN CLUB: CHOOSE UP TO " + str(want) + " BASIC/BABY POKEMON", want)
 	if main._should_bail(): return
-	var fc_jobs: Array = main.card_ops.lift_cards(found, "hand", is_opponent)   # AUDIT 2026-11-17: flight
+	# MATCH CRIES: flown from the hand one at a time, each cries, one message for all
+	main.card_ops.begin_bench_batch()
 	for p in found:
 		var hand = main.opponent_hand if is_opponent else main.player_hand
+		var fc_rect: Dictionary = main.card_ops.capture_rect(p, "hand", is_opponent)
 		hand.erase(p)
-		p.current_location = "bench"
-		bench.append(p)
+		main.card_ops.place_on_bench(p, is_opponent, fc_rect)
+	var fc_placed: Array = await main.card_ops.end_bench_batch()
+	if main._should_bail(): return
 	main.refresh_hand_display(is_opponent)
 	main.display_pokemon(is_opponent)
-	await main.card_ops.fly_lifted(fc_jobs, "play", is_opponent)   # AUDIT 2026-11-17: flight
-	if main._should_bail(): return
-	await main.show_message("POKEMON FAN CLUB! ADDED " + str(found.size()) + " POKEMON TO BENCH!")
+	await main.card_ops.show_bench_added(fc_placed)
 	if main._should_bail(): return
 	print("TRAINER: Pokemon Fan Club — benched ", found.size())
 

@@ -1129,22 +1129,124 @@ func reveal_pending_secret_plans() -> void:
 
 # Place a pokemon card on the given side's bench.
 # Returns false (without placing) if the bench is already at max capacity.
-func place_on_bench(pokemon: card_object, is_opponent: bool) -> bool:
+## `hand_rect`: a card already taken out of the hand array measured beforehand (capture_rect(card, "hand", side)
+## BEFORE hand.erase) - a hand card can only be measured while it is still in the hand.
+func place_on_bench(pokemon: card_object, is_opponent: bool, hand_rect: Dictionary = {}) -> bool:
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	if bench.size() >= main.get_max_bench_size():
 		return false
 	# AUDIT 2026-11-17: it flies from where it was (deck, hand, discard, prizes) to its Bench slot - every effect that
 	# benches a Pokemon goes through here, and none of them were animated.
 	var from_zone: String = _zone_from_location(pokemon.current_location)
-	var from_rect: Dictionary = capture_rect(pokemon, from_zone, is_opponent) if from_zone == "hand" else {}
+	var from_rect: Dictionary = hand_rect
+	if from_rect.is_empty() and from_zone == "hand":
+		from_rect = capture_rect(pokemon, from_zone, is_opponent)
 	pokemon.current_location = "bench"
 	pokemon.placed_on_field_this_turn = true
 	bench.append(pokemon)
+	if _bench_batch_depth > 0:
+		# MATCH CRIES: inside a bench batch - in the arrays now (the effect's own Bench-room checks stay right),
+		# shown, flown and heard one at a time by end_bench_batch().
+		_bench_batch.append({"card": pokemon, "side": is_opponent, "from_zone": from_zone, "from_rect": from_rect})
+		return true
+	if from_zone == "":
+		main.display_pokemon(is_opponent)   # nothing to fly: it appears now, and cry_watch cries now
+		main.powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil: a new bench Pokémon may gain/lose δ
+		return true
+	# MATCH CRIES: the board redraw would cry at take-off - hold the watcher, cry on landing instead.
+	main.cry_watch_hold += 1
 	main.display_pokemon(is_opponent)
+	main.cry_watch_hold -= 1
 	main.powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil: a new bench Pokémon may gain/lose δ
-	if from_zone != "":
-		fly_card(pokemon, from_zone, "play", is_opponent, -1, from_rect)
+	_fly_to_bench_and_cry(pokemon, from_zone, is_opponent, from_rect)   # not awaited: callers stay synchronous
 	return true
+
+
+## MATCH CRIES: number of Pokemon still in the air on their way to a Bench. show_message() waits for this to reach
+## 0, so "X WAS PLACED ON THE BENCH!" opens as the card lands, with its cry - not mid-flight.
+var bench_landings_pending := 0
+
+func _fly_to_bench_and_cry(pokemon: card_object, from_zone: String, is_opponent: bool, from_rect: Dictionary) -> void:
+	bench_landings_pending += 1
+	await fly_card(pokemon, from_zone, "play", is_opponent, -1, from_rect)
+	bench_landings_pending = maxi(0, bench_landings_pending - 1)
+	if not main._should_bail():
+		SoundManagerScript.play_card_cry(pokemon)   # cuts an older cry: it lands NOW
+
+
+# ── MATCH CRIES: bench batches (2026-11-23) ─────────────────────────────────────────────────
+# Effects that put SEVERAL Pokemon onto a Bench at once (Call for Family, Challenge!, Pokemon Fan Club...):
+#     main.card_ops.begin_bench_batch()
+#     ... the effect's own loop, calling place_on_bench() as before ...
+#     var placed: Array = await main.card_ops.end_bench_batch()
+#     await main.card_ops.show_bench_added(placed)
+# end_bench_batch() brings them on ONE AT A TIME: the card flies in, lands, its cry plays and is waited out,
+# then the next card flies. ONE message afterwards names them all ("ODDISH, BELLSPROUT AND SWINUB WERE ADDED
+# TO THE BENCH!") instead of one message per card. Batches may nest; the outermost end plays them.
+var _bench_batch: Array = []
+var _bench_batch_depth := 0
+
+func begin_bench_batch() -> void:
+	_bench_batch_depth += 1
+	main.cry_watch_hold += 1
+
+
+func end_bench_batch() -> Array:
+	_bench_batch_depth = maxi(0, _bench_batch_depth - 1)
+	if _bench_batch_depth > 0:
+		main.cry_watch_hold = maxi(0, main.cry_watch_hold - 1)
+		return []
+	var jobs: Array = _bench_batch.duplicate()
+	_bench_batch.clear()
+	var placed: Array = []
+	# Take them off the board again (they were appended last, in order), then bring them on one by one.
+	var sides: Dictionary = {}
+	for j in jobs:
+		var bench: Array = main.opponent_bench if j["side"] else main.player_bench
+		bench.erase(j["card"])
+		sides[j["side"]] = true
+	for s in sides:
+		main.display_pokemon(s)
+	for i in range(jobs.size()):
+		var j: Dictionary = jobs[i]
+		var card: card_object = j["card"]
+		var side: bool = j["side"]
+		var bench: Array = main.opponent_bench if side else main.player_bench
+		bench.append(card)
+		placed.append(card)
+		if main._should_bail():
+			continue   # match ending: just put the rest back, no show
+		main.display_pokemon(side)
+		main.powers_and_bodies.refresh_holon_veil()   # EX15 Holon Veil: a new bench Pokémon may gain/lose δ
+		if j["from_zone"] != "":
+			await fly_card(card, j["from_zone"], "play", side, -1, j["from_rect"])
+		if not main._should_bail():
+			await main.play_cry_and_wait(card)
+	main.cry_watch_hold = maxi(0, main.cry_watch_hold - 1)
+	main.cry_watch()   # re-read the board quietly (everything just placed has already cried)
+	return placed
+
+
+## One message for everything a bench batch placed, per side: "A WAS ADDED TO THE BENCH!" /
+## "A, B AND C WERE ADDED TO THE BENCH!" (the opponent's side says THE OPPONENT'S BENCH when both sides got some).
+func show_bench_added(placed: Array) -> void:
+	var by_side := {false: [], true: []}
+	for c in placed:
+		if c is card_object:
+			by_side[c.is_owner_opp(main)].append(c.metadata.get("name", "").to_upper())
+	var both: bool = not by_side[false].is_empty() and not by_side[true].is_empty()
+	for side in [false, true]:
+		var names: Array = by_side[side]
+		if names.is_empty():
+			continue
+		var listed: String = names[0]
+		if names.size() > 1:
+			listed = ", ".join(PackedStringArray(names.slice(0, names.size() - 1))) + " AND " + names[-1]
+		var where: String = "THE BENCH"
+		if both:
+			where = "THE OPPONENT'S BENCH" if side else "YOUR BENCH"
+		await main.show_message(listed + (" WERE" if names.size() > 1 else " WAS") + " ADDED TO " + where + "!")
+		if main._should_bail(): return
 
 
 func _zone_from_location(loc: String) -> String:

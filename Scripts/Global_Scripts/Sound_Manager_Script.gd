@@ -369,12 +369,23 @@ const CRY_DIR := "res://Audio/Cries/"
 
 var _cry_player: AudioStreamPlayer = null
 
+# A species' cry file: .ogg, or .mp3 for the few cries that only exist as MP3 (Pikachu's source file was
+# an MP3 named .ogg, which Godot refuses to import). "" when it has none.
+const CRY_EXTS := [".ogg", ".mp3"]
+
+func _cry_path(species: String) -> String:
+	for ext in CRY_EXTS:
+		if ResourceLoader.exists(CRY_DIR + species + ext):
+			return CRY_DIR + species + ext
+	return ""
+
+
 # How long this species' cry runs for, in seconds, or 0 when it has not got one. For
 # lining something up with the end of a cry -- the fishing minigame's catch jingle waits
 # on it.
 func cry_length(species: String) -> float:
-	var path := CRY_DIR + species + ".ogg"
-	if not ResourceLoader.exists(path):
+	var path := _cry_path(species)
+	if path == "":
 		return 0.0
 	var stream = load(path)
 	return stream.get_length() if stream != null else 0.0
@@ -394,8 +405,8 @@ func play_cry(species: String) -> bool:
 	# is_instance_valid as well as null: the match outro frees every AudioStreamPlayer child.
 	if _cry_player != null and is_instance_valid(_cry_player) and _cry_player.playing:
 		return false
-	var path := CRY_DIR + species + ".ogg"
-	if not ResourceLoader.exists(path):
+	var path := _cry_path(species)
+	if path == "":
 		return false
 	var stream = load(path)
 	if stream == null:
@@ -412,6 +423,99 @@ func play_cry(species: String) -> bool:
 	_cry_player.stream = stream
 	_cry_player.play()
 	return true
+
+
+# --- MATCH CRIES (2026-11-23) ---
+# A card's cry in battle, found by National Pokédex number (card metadata "nationalPokedexNumbers").
+# Its own player, so the overworld's drop-while-playing rule never touches it. Two ways to play:
+#   play_card_cry(card, pitch)          - cuts whatever is sounding and clears the queue (attack, Knock Out);
+#   play_card_cry(card, pitch, true)    - QUEUED: waits for the cry before it to finish (several Pokemon
+#                                         coming into play at once each get heard, one after another).
+# Same Cries bus and level as the overworld, so the Options "Cries" slider controls both.
+# TWEAKABLE -- pitch/speed of a Knocked Out cry. pitch_scale changes both at once: 0.75 = 25% lower and slower.
+const KO_CRY_PITCH := 0.75
+# TWEAKABLE -- pitch/speed of an attacking Pokemon's cry: 1.25 = 25% higher and faster.
+const ATTACK_CRY_PITCH := 1.25
+
+var _match_cry_player: AudioStreamPlayer = null
+var _cry_by_dex: Dictionary = {}   # dex (int) -> res:// path; built on first use
+var _cry_queue: Array = []         # [{stream, pitch}] waiting for the current cry to finish
+## Seconds the last cry started by play_card_cry() runs for (stream length / pitch), for waiting it out.
+var last_cry_length: float = 0.0
+
+func _build_cry_index() -> void:
+	_cry_by_dex.clear()
+	var listing: PackedStringArray = ResourceLoader.list_directory(CRY_DIR)
+	for f in listing:
+		if not (f.ends_with(".ogg") or f.ends_with(".mp3")):
+			continue
+		var us := f.find("_")
+		if us <= 0 or not f.substr(0, us).is_valid_int():
+			continue
+		var dex := f.substr(0, us).to_int()
+		# The plain species file wins over a form (025_Pikachu over 025_Pikachu_Female): shortest name.
+		# Species with only forms on disk (Nidoran Female / Male) still get one.
+		if not _cry_by_dex.has(dex) or f.length() < String(_cry_by_dex[dex]).get_file().length():
+			_cry_by_dex[dex] = CRY_DIR + f
+	print("MATCH CRIES: indexed ", _cry_by_dex.size(), " species")
+
+## The dex number of a card in play, or 0 for anything without one (Trainers played as Pokémon).
+## A transformed Ditto cries as what it became; `as_original` (its Knock Out) cries as Ditto again.
+func card_dex(card, as_original: bool = false) -> int:
+	if card == null or not ("metadata" in card):
+		return 0
+	var md: Dictionary = card.metadata
+	if as_original and "is_ditto_transformed" in card and card.is_ditto_transformed and not card.ditto_original_metadata.is_empty():
+		md = card.ditto_original_metadata
+	var nums = md.get("nationalPokedexNumbers", [])
+	if nums is Array and not nums.is_empty():
+		return int(nums[0])
+	return 0
+
+## Plays `card`'s cry in a match. `pitch` < 1 for the Knocked Out cry, > 1 for an attack. `queued` waits
+## behind a cry still sounding instead of cutting it. Returns true if it started (or was queued).
+func play_card_cry(card, pitch: float = 1.0, queued: bool = false, as_original: bool = false) -> bool:
+	var dex := card_dex(card, as_original)
+	if dex <= 0:
+		return false
+	if _cry_by_dex.is_empty():
+		_build_cry_index()
+	var path: String = _cry_by_dex.get(dex, "")
+	if path == "":
+		return false
+	var stream = load(path)
+	if stream == null:
+		return false
+	if "loop" in stream and stream.loop:
+		stream = stream.duplicate()
+		stream.loop = false
+	_ensure_buses()
+	# is_instance_valid as well as null: the match outro frees every AudioStreamPlayer child.
+	if _match_cry_player == null or not is_instance_valid(_match_cry_player):
+		_match_cry_player = AudioStreamPlayer.new()
+		_match_cry_player.bus = CRIES_BUS
+		_match_cry_player.volume_db = linear_to_db(CRY_LEVEL)
+		_match_cry_player.finished.connect(_on_match_cry_finished)
+		add_child(_match_cry_player)
+	if queued and _match_cry_player.playing:
+		_cry_queue.append({"stream": stream, "pitch": pitch})
+		return true
+	_cry_queue.clear()
+	_start_match_cry(stream, pitch)
+	return true
+
+func _start_match_cry(stream: AudioStream, pitch: float) -> void:
+	_match_cry_player.stop()
+	_match_cry_player.stream = stream
+	_match_cry_player.pitch_scale = pitch
+	last_cry_length = stream.get_length() / maxf(pitch, 0.01)
+	_match_cry_player.play()
+
+func _on_match_cry_finished() -> void:
+	if _cry_queue.is_empty():
+		return
+	var next: Dictionary = _cry_queue.pop_front()
+	_start_match_cry(next["stream"], next["pitch"])
 
 
 # Cuts a cry that is still sounding. Used when the overworld pauses under the main menu,

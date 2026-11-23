@@ -5137,6 +5137,8 @@ func cpu_phase_attack(cpu_eval: Dictionary) -> void:
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	if main.card_fx != null: main.card_fx.attack_declared(main.opponent_active_pokemon)   # ISSUE #348
 	main.tutorial.on_cpu_attack_declared(main.opponent_active_pokemon, chosen_name)   # tutorial: grow the attack box
+	main.cry_watch()   # MATCH CRIES: settle any board change first, so its cry can't cut the attack cry
+	SoundManagerScript.play_card_cry(main.opponent_active_pokemon, SoundManagerScript.ATTACK_CRY_PITCH)   # MATCH CRIES: the attacker calls out
 	await main.show_message("Opponent's " + main.opponent_active_pokemon.metadata["name"].to_upper() + " used " + chosen_name.to_upper() + "!")
 	main.tutorial.on_cpu_attack_start()   # ...and shrink it before the animation
 	if main._should_bail(): return
@@ -5413,8 +5415,8 @@ func cpu_phase_bench_play() -> void:
 
 		print("CPU played " + best_card.metadata["name"] + " to bench (Score: " + str(int(best_score)) + ", Threshold: " + str(score_threshold) + ")")
 
-		await main.show_message("Opponent placed " + best_card.metadata["name"].to_upper() + " on the bench!")
-		if main._should_bail(): return
+		# MATCH CRIES (2026-11-23): the card flies FIRST; as it lands the board redraws (its cry plays - cry_watch)
+		# and the message opens with it. The message used to come before the flight, so the cry did too.
 		var card_texture = main.get_card_texture(best_card)
 		# ISSUE #20: land on the actual next bench slot
 		var bench_loc = main.get_pokemon_screen_location(best_card)
@@ -5426,6 +5428,8 @@ func cpu_phase_bench_play() -> void:
 		if main._should_bail(): return
 		main.display_pokemon(true)
 		main.refresh_hand_display(true)
+		await main.show_message("Opponent placed " + best_card.metadata["name"].to_upper() + " on the bench!")
+		if main._should_bail(): return
 
 		# GYM2-119 Rocket's Minefield Gym — coin flip per benched Basic from hand; tails = 20 damage
 		await main.trainer_effects.gym2_minefield_gym_trigger(best_card, true)
@@ -5561,9 +5565,9 @@ func cpu_phase_evolution() -> void:
 		await main.perform_evolution(true, true)
 		if main._should_bail(): return
 
-		await main.show_message("Opponent evolved " + best["target"].metadata["name"].to_upper() + " into " + best["evo_card"].metadata["name"].to_upper() + "!")
-		if main._should_bail(): return
-	
+		# MATCH CRIES (2026-11-23): the card flies FIRST; as it replaces the pre-form the board redraws (its cry plays -
+		# cry_watch), the evolve sparkle starts and the message opens, all together. The message used to come before
+		# the flight, so the cry did too.
 		var evo_target_node = main.opponent_active_container if best["evo_card"].current_location == "active" else main.opponent_bench_container
 		var evo_scale = main.card_scales[8] if best["evo_card"].current_location == "active" else main.card_scales[11]
 		var evo_texture = main.get_card_texture(best["evo_card"])
@@ -5585,8 +5589,9 @@ func cpu_phase_evolution() -> void:
 
 		await get_tree().process_frame
 		if main._should_bail(): return
-	
-		await main.play_evolution_effect(best["evo_card"])
+
+		main.play_evolution_effect(best["evo_card"])   # not awaited: the sparkle runs under the message
+		await main.show_message("Opponent evolved " + best["target"].metadata["name"].to_upper() + " into " + best["evo_card"].metadata["name"].to_upper() + "!")
 		if main._should_bail(): return
 
 		# Clean up globals

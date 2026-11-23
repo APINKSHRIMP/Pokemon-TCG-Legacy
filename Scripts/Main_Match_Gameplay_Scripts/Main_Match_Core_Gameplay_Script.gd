@@ -3405,6 +3405,7 @@ func display_pokemon(is_opponent: bool) -> void:
 		if before_p != after_p or before_o != after_o:
 			print("ISSUE #440 FIX ACTIVE: Ditto re-synced on board redraw")
 		_sync_clairvoyance_hand()   # AUDIT 2026-11-16
+	cry_watch()   # MATCH CRIES: a Pokemon that just came into play / evolved / became Active calls out
 	var active_pokemon = opponent_active_pokemon if is_opponent else player_active_pokemon
 	var bench_pokemon_array = opponent_bench if is_opponent else player_bench
 	var active_container = opponent_active_container if is_opponent else player_active_container
@@ -4665,8 +4666,88 @@ func fix_plurals(text: String) -> String:
 # Displays the message box with given text and pauses execution until the player clicks
 ## `log_it` false keeps a line out of the Caps Lock match log. `log_kind` tags the entry
 ## for the log's styling: "tutorial" for the tutorial's help messages.
+# ============================================================
+# MATCH CRIES (2026-11-23)
+# ============================================================
+# Rather than a cry call at each of the ~50 places that bench, evolve, switch or promote a Pokemon,
+# the board itself is watched: cry_watch() runs from display_pokemon() and show_message() (every
+# effect goes through one or the other) and compares each side's Active + Bench with the last look.
+#   - a NEW Active (retreat, switch, Gust of Wind, promotion after a KO, evolution of the Active) cries;
+#   - otherwise the first Bench Pokemon not in play last time (benched from hand/deck/discard, or
+#     evolved on the Bench - the evolution is a new card on top) cries;
+#   - one that was in play last time (Active sent to the Bench by a switch) does not;
+#   - a devolve cries (the lower stage is a different card from the one that was there);
+#   - the SAME card with a different uid cries: Ditto transforming (reverting is silent; form-change Powers such as
+#     Castform / Deoxys swap in a new card, so they cry as a new card).
+# Several at once are QUEUED, each heard after the one before. Effects that bench several Pokemon go further:
+# Card_Ops.begin/end_bench_batch() flies them in one at a time, crying as each lands (cry_watch_hold keeps
+# this watcher quiet meanwhile - it only re-reads the board).
+# Silent until the opening setup is over: armed after the prizes are dealt (cry_watch_armed).
+# Attack and Knock Out cries are direct calls at their messages (perform_attack, CPU_AI, _handle_knockout).
+var cry_watch_armed := false
+var cry_watch_hold := 0   # > 0: re-read the board but do not cry (a bench batch is crying for itself)
+var _cry_seen := {}   # is_opponent (bool) -> {"active": instance id, "all": {id: uid}}
+
+func cry_watch() -> void:
+	if cpu_ai != null and cpu_ai.attack_dry_run:
+		return
+	for side in [false, true]:
+		_cry_watch_side(side)
+
+func _cry_watch_side(is_opp: bool) -> void:
+	var active = opponent_active_pokemon if is_opp else player_active_pokemon
+	var bench: Array = opponent_bench if is_opp else player_bench
+	var now := {"active": 0, "all": {}}
+	var cards: Array = []
+	if active is card_object:
+		cards.append(active)
+		now["active"] = active.get_instance_id()
+	for b in bench:
+		if b is card_object:
+			cards.append(b)
+	for c in cards:
+		now["all"][c.get_instance_id()] = c.uid
+	var prev: Dictionary = _cry_seen.get(is_opp, {})
+	_cry_seen[is_opp] = now
+	if not cry_watch_armed or cry_watch_hold > 0 or prev.is_empty():
+		return
+	var criers: Array = []
+	for c in cards:
+		var id: int = c.get_instance_id()
+		var is_new_active: bool = c == active and id != prev["active"]
+		var is_new: bool = not prev["all"].has(id)
+		# Ditto transforming INTO something cries as that Pokemon. Reverting is silent: it happens as Ditto leaves
+		# play (just after its Knock Out cry) or when it gets a Special Condition.
+		var changed: bool = not is_new and prev["all"][id] != c.uid and c.is_ditto_transformed
+		if is_new_active or is_new or changed:
+			criers.append(c)
+	for c in criers:
+		SoundManagerScript.play_card_cry(c, 1.0, true)
+
+## Plays `card`'s cry and waits for it to finish (a bench batch: the next card waits for this one's cry).
+func play_cry_and_wait(card: card_object, pitch: float = 1.0) -> void:
+	if not SoundManagerScript.play_card_cry(card, pitch):
+		return
+	if GameState.autotest != null:
+		return   # the autotester plays at full speed
+	await get_tree().create_timer(SoundManagerScript.last_cry_length).timeout
+
+## Re-reads both boards without crying, then starts crying from here on (end of the opening setup).
+func arm_cry_watch() -> void:
+	cry_watch_armed = false
+	cry_watch()
+	cry_watch_armed = true
+	print("MATCH CRIES: armed after the opening setup")
+
+
 func show_message(message_text: String, log_it: bool = true, log_kind: String = "") -> void:
-	trainer_undo_commit("message")
+	# MATCH CRIES: a Pokemon still flying to a Bench (Card_Ops.place_on_bench) lands - and cries - first, so the
+	# message opens as it appears. Capped, so a flight that never reports back can't hold a message forever.
+	if card_ops != null and card_ops.bench_landings_pending > 0:
+		var wait_until: int = Time.get_ticks_msec() + 2000
+		while card_ops.bench_landings_pending > 0 and Time.get_ticks_msec() < wait_until:
+			await get_tree().process_frame
+	cry_watch()   # MATCH CRIES: so a cry lines up with "X was placed on the Bench" even before the board redraws	trainer_undo_commit("message")
 	await settle_after_draw()   # ISSUE #346
 	message_text = fix_plurals(message_text)   # ISSUE #389
 	if log_it:
@@ -6675,6 +6756,7 @@ func start_bench_setup_phase() -> void:
 		
 	# Set the flag so we know we're in bench setup mode
 	bench_setup_phase_active = true
+	cry_watch_armed = false   # MATCH CRIES: silent through the setup (each best-of-3 game too)
 	action_button.text = "Select a Card"
 	action_button.disabled = true
 	action_button.theme = theme_disabled
@@ -10041,6 +10123,8 @@ func perform_attack(attack_index: int) -> void:
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_attack_sound)
 	if card_fx != null: card_fx.attack_declared(player_active_pokemon)   # ISSUE #348
+	cry_watch()   # MATCH CRIES: settle any board change first, so its cry can't cut the attack cry
+	SoundManagerScript.play_card_cry(player_active_pokemon, SoundManagerScript.ATTACK_CRY_PITCH)   # MATCH CRIES: the attacker calls out with "X USED Y"
 	await show_message((player_active_pokemon.metadata["name"] + " USED " + attack_name).to_upper())
 	await play_attack_intent(player_active_pokemon, opponent_active_pokemon, attack)   # ISSUE #348
 
@@ -10691,6 +10775,8 @@ func _handle_knockout(pokemon: card_object, is_opponent: bool) -> bool:
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_knockout_sound)
 	league_stats.note_knockout(pokemon, is_opponent, pokemon in bench, turn_number)   # LEAGUE: Sniper / Multi Knockout / Poison / Burn / Confusion Master
+	cry_watch()   # MATCH CRIES: settle any board change first, so its cry can't cut the Knock Out cry
+	SoundManagerScript.play_card_cry(pokemon, SoundManagerScript.KO_CRY_PITCH, false, true)   # MATCH CRIES: low, slow cry (a transformed Ditto cries as Ditto)
 	await show_message(ko_name.to_upper() + " WAS KNOCKED OUT!")
 	if card_fx != null: card_fx.end_ko(pokemon)   # ISSUE #360: lightens again as it goes to the discard
 
@@ -12591,6 +12677,7 @@ func cancel_button_pressed_hide_selection_mode() -> void:
 
 		# Both sides' prizes, announced, then dealt off the decks one at a time.
 		await _play_prize_draw()
+		arm_cry_watch()   # MATCH CRIES: the opening Active + Bench stay silent; everything after this cries
 
 		# The player calls the coin first. It changes nothing about the odds - it is
 		# the same 50/50 - but it feels like their call.

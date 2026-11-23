@@ -3312,6 +3312,7 @@ func trigger_summon_minions(dragonite: card_object, is_opponent: bool) -> void:
 			"SUMMON MINIONS", "Choose up to " + str(picks_remaining) + " Basic Pokémon for your Bench", "BENCH")
 		if main._should_bail(): return
 
+	main.card_ops.begin_bench_batch()   # MATCH CRIES: one at a time, each cries, one message for all
 	for i in range(picks_remaining):
 		var remaining_basics: Array = []
 		for card in deck:
@@ -3333,18 +3334,21 @@ func trigger_summon_minions(dragonite: card_object, is_opponent: bool) -> void:
 		
 		if pick != null:
 			deck.erase(pick)
-			pick.current_location = "bench"
-			pick.placed_on_field_this_turn = true
-			bench.append(pick)
-			await main.card_ops.fly_card(pick, "deck", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
-		
+			main.card_ops.place_on_bench(pick, is_opponent)
+
 		if bench.size() >= main.get_max_bench_size():
 			break
-	
+	main.update_deck_icon(is_opponent)
+	var sm_placed: Array = await main.card_ops.end_bench_batch()
+	if main._should_bail(): return
+
 	deck.shuffle()
 	main.display_pokemon(is_opponent)
 	main.update_deck_icon(is_opponent)
-	await main.show_message("SUMMONED POKÉMON TO BENCH!")
+	if sm_placed.is_empty():
+		await main.show_message("NO POKÉMON WERE SUMMONED!")
+	else:
+		await main.card_ops.show_bench_added(sm_placed)
 	if main._should_bail(): return
 	print("POWER: Summon Minions")
 

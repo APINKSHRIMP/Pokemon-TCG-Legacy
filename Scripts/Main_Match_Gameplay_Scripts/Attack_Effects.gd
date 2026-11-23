@@ -3652,14 +3652,18 @@ func execute_call_for_pokemon(attacker: card_object, is_opponent: bool, search_n
 		("Select up to " + str(take_n) + " Basic Pokemon to put on your bench") if take_n > 1 else "Select a Basic Pokemon to put on your bench",
 		"SELECT", true, cpu_rank, true)
 	if main._should_bail(): return
+	main.card_ops.begin_bench_batch()   # MATCH CRIES: one at a time, each cries, one message for all
 	for chosen in picks:
 		if chosen == null or bench.size() >= main.get_max_bench_size():
 			break
 		deck.erase(chosen)
 		chosen.current_hp = chosen.get_max_hp()
 		main.card_ops.place_on_bench(chosen, is_opponent)
-		await main.show_message(chosen.metadata.get("name", "").to_upper() + " WAS PLACED ON THE BENCH!")
-		if main._should_bail(): return
+	main.update_deck_icon(is_opponent)
+	var cfp_placed: Array = await main.card_ops.end_bench_batch()
+	if main._should_bail(): return
+	await main.card_ops.show_bench_added(cfp_placed)
+	if main._should_bail(): return
 
 	# Shuffle deck after search
 	deck.shuffle()
@@ -7834,36 +7838,28 @@ func execute_group_attack(attacker: card_object, defender: card_object, is_oppon
 	for c in deck:
 		if c.metadata.get("name", "") == "Koga's Zubat" and "Basic" in c.metadata.get("subtypes", []):
 			zubats.append(c)
-	var added = 0
-	if is_opponent:
-		for z in zubats:
-			if bench.size() >= main.get_max_bench_size():
-				break
-			deck.erase(z)
-			z.current_location = "bench"
-			z.current_hp = z.get_max_hp()
-			z.placed_on_field_this_turn = true
-			bench.append(z)
-			await main.card_ops.fly_card(z, "deck", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
-			added += 1
-	else:
-		var ga_picks: Array = await main.card_ops.prompt_select_cards(zubats, 0, main.get_max_bench_size() - bench.size(),
+	var ga_list: Array = zubats
+	if not is_opponent:
+		ga_list = await main.card_ops.prompt_select_cards(zubats, 0, main.get_max_bench_size() - bench.size(),
 			"GROUP ATTACK", "Choose any number of Koga's Zubat to put on your Bench", "BENCH")
 		if main._should_bail(): return
-		for sel in ga_picks:
-			if bench.size() >= main.get_max_bench_size():
-				break
-			deck.erase(sel)
-			sel.current_location = "bench"
-			sel.current_hp = sel.get_max_hp()
-			sel.placed_on_field_this_turn = true
-			bench.append(sel)
-			await main.card_ops.fly_card(sel, "deck", "play", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
-			added += 1
-	if added > 0:
+	# MATCH CRIES: flown in one at a time, each cries, one message for all
+	main.card_ops.begin_bench_batch()
+	for z in ga_list:
+		if bench.size() >= main.get_max_bench_size():
+			break
+		deck.erase(z)
+		z.current_hp = z.get_max_hp()
+		main.card_ops.place_on_bench(z, is_opponent)
+	main.update_deck_icon(is_opponent)
+	var ga_placed: Array = await main.card_ops.end_bench_batch()
+	if main._should_bail(): return
+	if not ga_placed.is_empty():
 		deck.shuffle()
 		main.display_pokemon(is_opponent)
 		main.update_deck_icon(is_opponent)
+		await main.card_ops.show_bench_added(ga_placed)
+		if main._should_bail(): return
 	var count = 0
 	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
 	if own_active != null and own_active.metadata.get("name", "") == "Koga's Zubat":
@@ -14031,6 +14027,7 @@ func _neo4_provoke_side(victim_is_opp: bool, chooser_is_opp: bool) -> void:
 		player_picks = await main.card_ops.prompt_select_cards(pool, 0, main.get_max_bench_size() - bench.size(),
 			"PROVOKE — " + who_s + " HAND", "Choose any number of Basic Pokémon to put onto " + who_s.to_lower() + " Bench", "BENCH")
 		if main._should_bail(): return
+	main.card_ops.begin_bench_batch()   # MATCH CRIES: one at a time, each cries, one message for all
 	while bench.size() < main.get_max_bench_size():
 		var basics: Array = hand.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and ("Basic" in c.metadata.get("subtypes",[]) or "Baby" in c.metadata.get("subtypes",[])))
 		if basics.is_empty():
@@ -14051,8 +14048,11 @@ func _neo4_provoke_side(victim_is_opp: bool, chooser_is_opp: bool) -> void:
 		hand.erase(pick)
 		pick.current_hp = int(pick.metadata.get("hp","10"))
 		main.card_ops.place_on_bench(pick, victim_is_opp)
-	main.display_pokemon(victim_is_opp)
 	main.refresh_hand_display(victim_is_opp)
+	var pv_placed: Array = await main.card_ops.end_bench_batch()
+	if main._should_bail(): return
+	main.display_pokemon(victim_is_opp)
+	await main.card_ops.show_bench_added(pv_placed)
 
 # BATTLE FRENZY (neo4-21 Dark Ursaring): flip for each Pokemon in play; heads = 20 to it (no W/R)
 func execute_neo4_battle_frenzy(attacker: card_object, is_opponent: bool) -> void:
@@ -19987,6 +19987,7 @@ func _ex2_search_basics_to_bench(is_opponent: bool, filter_fn: Callable, max_cou
 		player_picks = await main.card_ops.prompt_select_cards(valid0, 0, cap, header,
 			("Choose any number of Pokemon for your Bench" if max_count < 0 else "Choose up to " + str(cap) + " Pokemon for your Bench"), "BENCH")
 		if main._should_bail(): return
+	main.card_ops.begin_bench_batch()   # MATCH CRIES: one at a time, each cries, one message for all
 	while bench.size() < main.get_max_bench_size():
 		if max_count >= 0 and placed >= max_count:
 			break
@@ -20016,9 +20017,15 @@ func _ex2_search_basics_to_bench(is_opponent: bool, filter_fn: Callable, max_cou
 		chosen.current_hp = chosen.get_max_hp()
 		main.card_ops.place_on_bench(chosen, is_opponent)
 		placed += 1
+	main.update_deck_icon(is_opponent)
+	var sb_placed: Array = await main.card_ops.end_bench_batch()
+	if main._should_bail(): return
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
-	await main.show_message("PLACED " + str(placed) + " POKEMON ONTO THE BENCH!" if placed > 0 else "NO POKEMON PLACED!")
+	if sb_placed.is_empty():
+		await main.show_message("NO POKEMON PLACED!")
+	else:
+		await main.card_ops.show_bench_added(sb_placed)
 	if main._should_bail(): return
 
 # TEAM ASSEMBLY (Kabuto / Omanyte): put as many Basic Pokemon as you like onto your Bench.
@@ -31044,13 +31051,20 @@ func execute_ex14_even_game(attacker: card_object, is_opponent: bool) -> void:
 	else:
 		picks = await main.card_ops.prompt_select_cards(pool, 0, n, "EVEN GAME", "Choose up to " + str(n) + " Basic Pokémon to put onto your Bench", "BENCH", false, true)
 		if main._should_bail(): return
+	main.card_ops.begin_bench_batch()   # MATCH CRIES: one at a time, each cries, one message for all
 	for c in picks:
 		deck.erase(c)
 		main.card_ops.place_on_bench(c, is_opponent)
+	main.update_deck_icon(is_opponent)
+	var eg_placed: Array = await main.card_ops.end_bench_batch()
+	if main._should_bail(): return
 	deck.shuffle()
 	main.update_deck_icon(is_opponent)
 	main.display_pokemon(is_opponent)
-	await main.show_message("EVEN GAME! BENCHED " + str(picks.size()) + " POKEMON!")
+	if eg_placed.is_empty():
+		await main.show_message("EVEN GAME: NOTHING WAS BENCHED!")
+	else:
+		await main.card_ops.show_bench_added(eg_placed)
 
 # STADIUM PLAY (Luvdisc ex14-7): base damage; if you have a Stadium in play, remove 1 damage counter
 # from each of your Pokemon; if your opponent has a Stadium in play, do 10 to each of their Benched.
