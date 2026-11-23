@@ -3023,10 +3023,12 @@ func _card_matches_search(card_id: String, criteria: Dictionary) -> bool:
 	if not _matches_any_term(str(meta.get("artist", "")), criteria.get("illus_terms", [])):
 		return false
 
-	# ── Effect ── reserved; matches everything until CardSearchOverlay.EFFECT_FILTERS is populated
+	# ── Effects ── 2026-11-23. A whole-card property like rarity (no supertype lock). The picker's
+	# MATCH ANY/ALL and FOUND ON choices ride along in the criteria.
 	var wanted_effects : Array = criteria.get("effects", [])
 	if not wanted_effects.is_empty():
-		if not _card_matches_effect(card_id, wanted_effects):
+		if not _card_matches_effect(card_id, wanted_effects,
+				str(criteria.get("effect_mode", "any")), int(criteria.get("effect_scope", 7))):
 			return false
 
 	return true
@@ -3116,11 +3118,13 @@ func _card_matches_rarity(card_rarity: String, wanted: Array) -> bool:
 	return false
 
 
-## RESERVED: card-effect matching for the effect filter row. Returns true for now so a criteria
-## dictionary carrying effect keys can't silently filter everything out. Implement alongside
-## CardSearchOverlay.EFFECT_FILTERS — the keys here are the same "key" values from that table.
-func _card_matches_effect(_card_id: String, _wanted_effects: Array) -> bool:
-	return true
+## Card-effect matching for the search's EFFECTS row. The tags are generated per card by
+## Scripts/Utilities/card_effect_tags_build.py; see Card_Effect_Tags.gd for mode / scope.
+const _EffectTags = preload("res://Scripts/Global_Scripts/Card_Effect_Tags.gd")
+
+func _card_matches_effect(card_id: String, wanted_effects: Array, mode: String = "any",
+		scope: int = 7) -> bool:
+	return _EffectTags.matches(card_id, wanted_effects, mode, scope)
 
 
 ## ISSUE #226: the order the Pokemon energy types sort in when sort_mode is
@@ -3682,6 +3686,10 @@ func _input(event: InputEvent) -> void:
 			return
 		# Search screen open — same as pressing its CANCEL button
 		if _search_screen_open():
+			# The effect picker sits on top of the search screen: Escape closes just the picker.
+			if search_overlay.effects_picker_open():
+				search_overlay.close_effects_picker()
+				return
 			# ISSUE #306: through the overlay's own CANCEL, so a RESET is undone too.
 			search_overlay._on_cancel_pressed()
 			return

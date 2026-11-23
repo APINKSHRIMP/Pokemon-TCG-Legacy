@@ -341,6 +341,7 @@ const CLOSE_CARD_TIME    : float = 0.40  # card shrinks back home
 const CLOSE_GROUND_DELAY : float = 0.10
 const CLOSE_GROUND_TIME  : float = 0.40
 const MEDIUM_SPEED       : float = 1.375 # GameState ITEM_SPEED_PRESETS["medium"]
+const PREVIEW_SPEED_MULT : float = 2.0   # TWEAKABLE: base speed-up on top of the setting (2 = twice as fast)
 
 var _ground_nodes : Array = []
 var _source : TextureRect = null      # the card on screen the preview came out of
@@ -458,7 +459,7 @@ func show_card(card_uid: String) -> void:
 ## Seconds for `t` (authored at medium speed) at the player's animation speed.
 func _t(t: float) -> float:
 	var speed: float = float(GameState.item_animation_speed) if GameState.item_animation_speed > 0.0 else MEDIUM_SPEED
-	return t * MEDIUM_SPEED / speed
+	return t * MEDIUM_SPEED / speed / PREVIEW_SPEED_MULT
 
 
 ## The card art's rect on screen, in this panel's (canvas layer) coordinates.

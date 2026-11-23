@@ -191,10 +191,12 @@ const NAME_FONT := 22
 # with no fine detail to lose.
 const RARITY_ICON  := 32.0
 
-# Effect icon rows (reserved — see EFFECT_FILTERS)
-const EFFECT_ICON     := 49.0
-const EFFECT_LINE_GAP := 6.0
-const EFFECT_SINGLE_LINE_MAX := 12
+# EFFECTS row (2026-11-23). One button that opens the full-screen effect picker
+# (Card_Effect_Picker.gd), followed by a one-line summary of what is picked: an icon chip per effect
+# until the line is full, then "+N MORE". The ~60 categories themselves never sit on this screen.
+const EFFECT_BTN_W     := 236.0   # same as BTN_W, so it lines up with the button rows above
+const EFFECT_GLYPH     := 24      # icon size on a summary chip
+const EFFECT_SUMMARY_GAP := 24.0  # gap between the button and the first summary chip
 
 # Kenney text buttons. ISSUE #148: height and font -25%.
 # ISSUE #148 (retest): ONE width and ONE gap for all four button rows (card type / pokemon stage /
@@ -247,7 +249,6 @@ const ENERGY_ICON_PATH  := "res://Image_Assets/Icons/Energy_Icons/"
 const SET_ICON_PATH     := "res://Image_Assets/Icons/Set_Icons/"
 const SUBTYPE_ICON_PATH := "res://Image_Assets/Icons/Subtype_Icons/"
 const RARITY_ICON_PATH  := "res://Image_Assets/Icons/Rarity_Icons/"
-const EFFECT_ICON_PATH  := "res://Image_Assets/Icons/Effect_Icons/"
 
 # Pokemon types, in the order they appear on screen. The value is the icon file stem, so the
 # unselected art is "icon_<stem>.png" and the selected art is "color_icon_<stem>.png".
@@ -342,12 +343,15 @@ const RARITIES : Array = [
 	{"key": "holorare", "icon": "holorare", "tip": "Holo Rare"},
 ]
 
-# RESERVED: the card-effect filter row. Populate this and the row builds itself — icons, tooltips,
-# two-line flow and the reset/lock handling all come for free. Each entry is:
-#   {"key": "bench_damage", "icon": "bench_damage", "tip": "Deals damage to Bench Pokemon"}
-# with art at EFFECT_ICON_PATH + "icon_<icon>.png" / "color_icon_<icon>.png".
-# The matching side lives in Deck_Build_And_Card_View_Script._card_matches_effect().
-const EFFECT_FILTERS : Array = []
+# The card-EFFECT filter (2026-11-23). The categories are NOT listed here: they come from the
+# generated Card_Set_Data/Effect_Tags/Card_Effect_Tags.json (built by
+# Scripts/Utilities/card_effect_tags_build.py), read through Card_Effect_Tags.gd. Picking happens on
+# the full-screen Card_Effect_Picker; this screen shows one EFFECTS row. Matching lives in
+# Deck_Build_And_Card_View_Script._card_matches_effect().
+#
+# Effects are a whole-card property like RARITY, so they take no part in the supertype lock.
+const EffectTags = preload("res://Scripts/Global_Scripts/Card_Effect_Tags.gd")
+const EffectPicker = preload("res://Scripts/Menu_Scripts/Card_Effect_Picker.gd")
 
 # ISSUE #149: which line of the SET row each set sits on, one entry per line, in the order the
 # player asked for. Only sets the player has UNLOCKED are drawn, and a line whose sets are all
@@ -398,6 +402,8 @@ var _sel_pokemon_subs : Dictionary = {}
 var _sel_rarities     : Dictionary = {}
 var _sel_powers       : Dictionary = {}   # ISSUE #142
 var _sel_effects      : Dictionary = {}
+## MATCH any/all and the FOUND ON source mask, edited in place by the effect picker.
+var _effect_state     : Dictionary = {"mode": "any", "scope": EffectTags.SRC_ALL}
 var _sort_mode        : String     = "set"
 var _sort_chain       : Array      = ["set"]   # sort picks, newest first (see SORT_MODES)
 
@@ -411,7 +417,6 @@ var _set_icons     : Dictionary = {}
 var _sub_icons     : Dictionary = {}
 var _rarity_icons  : Dictionary = {}
 var _power_icons   : Dictionary = {}   # ISSUE #142
-var _effect_icons  : Dictionary = {}
 var _card_type_btn : Dictionary = {}
 var _stage_btn     : Dictionary = {}
 var _trainer_btn   : Dictionary = {}
@@ -419,6 +424,12 @@ var _sort_btn      : Dictionary = {}
 
 var _name_edit    : LineEdit = null
 var _illus_edit   : LineEdit = null   # ISSUE #145
+var _effect_btn     : Button  = null   # EFFECTS row: opens the picker
+var _effect_summary : Control = null   # EFFECTS row: the picked-effects chips
+var _effect_row_y   : float   = 0.0
+var _effect_picker  : Control = null   # the open Card_Effect_Picker, or null
+var _backdrop_rect  : ColorRect = null # the dim over the deck's animated background (kept while the picker is open)
+var _hidden_for_picker : Array = []    # overlay children hidden while the picker is up
 var _confirm_btn  : Button   = null
 
 var _theme_white : Theme = null
@@ -480,6 +491,7 @@ func _compute_layout() -> void:
 
 func _build_backdrop() -> void:
 	var backdrop := ColorRect.new()
+	_backdrop_rect = backdrop
 	backdrop.color = Color(0.0, 0.0, 0.0, BACKDROP_ALPHA)
 	backdrop.anchor_right  = 1.0
 	backdrop.anchor_bottom = 1.0
@@ -795,34 +807,158 @@ func _build_rarity_row(y: float) -> float:
 	return _flow_chips(RARITIES, y, "rarity", _rarity_icons) + ROW_GAP
 
 
-## RESERVED row — draws nothing while EFFECT_FILTERS is empty, and lays itself out exactly like the
-## SET row (two balanced lines of icons with hover tooltips) the moment entries are added.
+## EFFECTS row: one button that opens the effect picker, then a single line summarising the picks.
+## Like a gated option row, it is not drawn at all if no unlocked set has a single card effect.
 func _build_effect_row(y: float) -> float:
-	var shown := _visible_options(EFFECT_FILTERS)
-	if shown.is_empty():
+	if EffectTags.keys_present_in_sets(_unlocked).is_empty():
 		return y
+	_add_row_label("EFFECTS", y, BTN_H)
+	_effect_row_y = y
 
-	var lines := 1 if shown.size() <= EFFECT_SINGLE_LINE_MAX else 2
-	var per_line : int = int(ceil(float(shown.size()) / float(lines)))
-	var block_h := lines * EFFECT_ICON + (lines - 1) * EFFECT_LINE_GAP
-	var pitch := _row_pitch(per_line, EFFECT_ICON, MAX_ICON_GAP)
+	_effect_btn = _make_button("CHOOSE EFFECTS", CTRL_X, y, EFFECT_BTN_W, BTN_FONT)
+	_effect_btn.pressed.connect(open_effects_picker)
 
-	_add_row_label("EFFECT", y, block_h)
+	_effect_summary = Control.new()
+	_effect_summary.position = Vector2(CTRL_X + EFFECT_BTN_W + EFFECT_SUMMARY_GAP, y)
+	_effect_summary.size = Vector2(CTRL_W - EFFECT_BTN_W - EFFECT_SUMMARY_GAP, BTN_H)
+	_effect_summary.z_index = CONTENT_Z
+	_effect_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_effect_summary)
 
-	for i in range(shown.size()):
-		var entry : Dictionary = shown[i]
-		var key   : String     = entry["key"]
-		var line  : int        = i / per_line
-		var col   : int        = i % per_line
-		var pos := Vector2(
-			CTRL_X + col * pitch,
-			y + line * (EFFECT_ICON + EFFECT_LINE_GAP)
-		)
-		var icon := _make_icon(EFFECT_ICON_PATH, entry["icon"], EFFECT_ICON, pos, entry.get("tip", key))
-		icon.gui_input.connect(_on_icon_input.bind(icon, "effect", key))
-		_effect_icons[key] = icon
+	_refresh_effect_row()
+	return y + BTN_H + ROW_GAP
 
-	return y + block_h + ROW_GAP
+
+## Repaints the EFFECTS row from _sel_effects / _effect_state: the button's label and colour, and the
+## summary chips. Picks show in CATEGORY order (not click order) so the row reads the same each time.
+func _refresh_effect_row() -> void:
+	if _effect_btn == null:
+		return
+	var n := _sel_effects.size()
+	_effect_btn.text = "CHOOSE EFFECTS" if n == 0 else "EFFECTS (%d)" % n
+	_set_button_selected(_effect_btn, n > 0, _theme_green)
+
+	for c in _effect_summary.get_children():
+		c.queue_free()
+	if n == 0:
+		_summary_text_chip("ANY EFFECT", 0.0, false)
+		return
+
+	var keys : Array = []
+	for cat in EffectTags.categories():
+		if _sel_effects.has(String(cat["key"])):
+			keys.append(String(cat["key"]))
+
+	var x := 0.0
+	var room := _effect_summary.size.x
+	# MATCH ALL with more than one pick changes what the row MEANS, so it leads the line.
+	if String(_effect_state.get("mode", "any")) == "all" and n > 1:
+		x = _summary_text_chip("ALL OF", x, true) + CHIP_GAP_X
+	var scope_txt := _scope_text(int(_effect_state.get("scope", EffectTags.SRC_ALL)))
+	var tail_w := 0.0
+	if scope_txt != "":
+		tail_w = _chip_width(scope_txt) + CHIP_GAP_X
+	for i in range(keys.size()):
+		var cat2 := EffectTags.category(keys[i])
+		var label := String(cat2.get("label", keys[i]))
+		var w := _chip_width(label) + EFFECT_GLYPH + 6.0
+		var left := keys.size() - i - 1
+		var more_w := (_chip_width("+%d MORE" % left) + CHIP_GAP_X) if left > 0 else 0.0
+		if x + w + more_w + tail_w > room:
+			x = _summary_text_chip("+%d MORE" % (keys.size() - i), x, true) + CHIP_GAP_X
+			break
+		var chip := Button.new()
+		chip.text = label
+		chip.icon = EffectTags.icon(keys[i], EFFECT_GLYPH)
+		chip.position = Vector2(x, (BTN_H - CHIP_H) * 0.5)
+		chip.custom_minimum_size = Vector2(0, CHIP_H)
+		chip.size = Vector2(w, CHIP_H)
+		chip.focus_mode = Control.FOCUS_NONE     # the CHOOSE button is the row's one cursor stop
+		chip.tooltip_text = String(cat2.get("desc", label))
+		_apply_chip_style(chip, "selected")
+		chip.add_theme_constant_override("h_separation", 6)
+		chip.pressed.connect(open_effects_picker)
+		_effect_summary.add_child(chip)
+		x += w + CHIP_GAP_X
+	if scope_txt != "":
+		_summary_text_chip(scope_txt, x, true)
+
+
+## A plain read-only chip in the summary line. Returns its right edge.
+func _summary_text_chip(text: String, x: float, on: bool) -> float:
+	var chip := Button.new()
+	chip.text = text
+	chip.position = Vector2(x, (BTN_H - CHIP_H) * 0.5)
+	chip.custom_minimum_size = Vector2(0, CHIP_H)
+	chip.size = Vector2(_chip_width(text), CHIP_H)
+	chip.focus_mode = Control.FOCUS_NONE
+	_apply_chip_style(chip, "secondary")
+	if not on:
+		chip.modulate = Color(1, 1, 1, 0.55)
+	chip.pressed.connect(open_effects_picker)
+	_effect_summary.add_child(chip)
+	return x + chip.size.x
+
+
+## "" when every source is allowed, otherwise which parts of the card count.
+func _scope_text(scope: int) -> String:
+	if scope == EffectTags.SRC_ALL:
+		return ""
+	var parts : Array = []
+	if scope & EffectTags.SRC_ATTACK:
+		parts.append("ATTACKS")
+	if scope & EffectTags.SRC_POWER:
+		parts.append("POWERS")
+	if scope & EffectTags.SRC_CARD:
+		parts.append("TRAINERS")
+	return "ON " + " + ".join(parts)
+
+
+func effects_picker_open() -> bool:
+	return _effect_picker != null and is_instance_valid(_effect_picker)
+
+
+func open_effects_picker() -> void:
+	if effects_picker_open():
+		return
+	SoundManagerScript.play_sfx(SoundManagerScript.SFX_plus_select)
+	# The picker has no background of its own: it shows THIS screen's backdrop (the deck's animated
+	# stripes + gradient, dimmed) so going in and out is seamless and nothing is re-generated. The
+	# filter rows / header / footer are hidden underneath it instead.
+	_hidden_for_picker.clear()
+	for c in get_children():
+		if c is CanvasItem and c != _backdrop_rect and (c as CanvasItem).visible:
+			(c as CanvasItem).visible = false
+			_hidden_for_picker.append(c)
+	_effect_picker = EffectPicker.new()
+	add_child(_effect_picker)
+	_effect_picker.setup(self, _sel_effects, _effect_state, _unlocked)
+	_effect_picker.changed.connect(_on_effects_changed)
+	_effect_picker.closed.connect(close_effects_picker)
+	InputDevice.push_scope(_effect_picker)
+	if UIKit.nav_active():
+		_effect_picker.focus_first.call_deferred()
+
+
+func close_effects_picker() -> void:
+	if not effects_picker_open():
+		return
+	InputDevice.pop_scope(_effect_picker)
+	_effect_picker.queue_free()
+	_effect_picker = null
+	for c in _hidden_for_picker:
+		if is_instance_valid(c):
+			(c as CanvasItem).visible = true
+	_hidden_for_picker.clear()
+	_refresh_effect_row()
+	_refresh_confirm_button()
+	if UIKit.nav_active() and _effect_btn != null:
+		_effect_btn.grab_focus.call_deferred()
+
+
+func _on_effects_changed() -> void:
+	_refresh_effect_row()
+	_refresh_confirm_button()
 
 
 func _build_sort_row(y: float) -> float:
@@ -1278,9 +1414,11 @@ func _on_reset_pressed() -> void:
 	for key in _power_icons:
 		_sel_powers.erase(key)
 		_set_icon_selected(_power_icons[key], false)
-	for key in _effect_icons:
-		_sel_effects.erase(key)
-		_set_icon_selected(_effect_icons[key], false)
+	# Cleared IN PLACE: the effect picker edits this same Dictionary.
+	_sel_effects.clear()
+	_effect_state["mode"] = "any"
+	_effect_state["scope"] = EffectTags.SRC_ALL
+	_refresh_effect_row()
 
 	_sel_card_types.clear()
 	_manual_card_types.clear()
@@ -1362,6 +1500,7 @@ func _snapshot() -> Dictionary:
 		"rarity":   _sel_rarities.duplicate(),
 		"powers":   _sel_powers.duplicate(),
 		"effects":  _sel_effects.duplicate(),
+		"effect_state": _effect_state.duplicate(),
 		"sort":     _sort_mode,
 		"sort_chain": _sort_chain.duplicate(),
 	}
@@ -1384,14 +1523,16 @@ func _restore(snap: Dictionary) -> void:
 	_sel_rarities = snap["rarity"].duplicate()
 	_sel_powers = snap["powers"].duplicate()
 	_sel_effects = snap["effects"].duplicate()
+	_effect_state = (snap.get("effect_state", {"mode": "any", "scope": EffectTags.SRC_ALL}) as Dictionary).duplicate()
 	_sort_mode = snap["sort"]
 	_sort_chain = (snap.get("sort_chain", [_sort_mode]) as Array).duplicate()
 	for pair in [[_type_icons, _sel_types], [_set_icons, _sel_sets], [_sub_icons, _sel_pokemon_subs],
-			[_rarity_icons, _sel_rarities], [_power_icons, _sel_powers], [_effect_icons, _sel_effects]]:
+			[_rarity_icons, _sel_rarities], [_power_icons, _sel_powers]]:
 		var icons: Dictionary = pair[0]
 		var store: Dictionary = pair[1]
 		for key in icons:
 			_set_icon_selected(icons[key], store.has(key))
+	_refresh_effect_row()
 	_refresh_sort_buttons()
 	_apply_lock()
 	_refresh_confirm_button()
@@ -1407,7 +1548,6 @@ func _selection_store(category: String) -> Dictionary:
 		"pokemon_sub": return _sel_pokemon_subs
 		"rarity":      return _sel_rarities
 		"power":       return _sel_powers
-		"effect":      return _sel_effects
 	return {}
 
 
@@ -1589,6 +1729,8 @@ func build_criteria() -> Dictionary:
 		"rarities":     _sel_rarities.keys(),
 		"powers":       _sel_powers.keys(),
 		"effects":      _sel_effects.keys(),
+		"effect_mode":  String(_effect_state.get("mode", "any")),
+		"effect_scope": int(_effect_state.get("scope", EffectTags.SRC_ALL)),
 		"sort":         _sort_mode,
 		"sort_chain":   _sort_chain.duplicate(),
 	}
