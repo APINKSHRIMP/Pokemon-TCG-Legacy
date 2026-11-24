@@ -321,23 +321,15 @@ func _wrap_grid_in_scroll_container() -> void:
 # ─── Coin loading ─────────────────────────────────────────────────────────────
 
 func _load_coins() -> void:
-	var dir := DirAccess.open(COIN_FOLDER)
-	if dir == null:
-		push_error("CoinCase: cannot open folder " + COIN_FOLDER)
-		return
-
+	# EXPORT 2026-11-24: export-safe listing — an exported folder holds "X.png.import", not X.png,
+	# so the old "skip .import" loop listed nothing and the Coin Case was empty in a build.
 	# Collect all filenames first so we can sort them for a consistent order
 	var files : Array = []
-	dir.list_dir_begin()
-	var file_name := dir.get_next()
-	while file_name != "":
-		if not dir.current_is_dir() and not file_name.ends_with(".import"):
-			# Skip the back-of-coin image — it is only used as a placeholder
-			# for unowned coins and should never appear as its own grid entry
-			if file_name != COIN_BACK_IMAGE:
-				files.append(file_name)
-		file_name = dir.get_next()
-	dir.list_dir_end()
+	for f in GameState.list_asset_files(COIN_FOLDER):
+		# Skip the back-of-coin image — it is only used as a placeholder
+		# for unowned coins and should never appear as its own grid entry
+		if String(f) != COIN_BACK_IMAGE:
+			files.append(String(f))
 
 	files.sort()
 

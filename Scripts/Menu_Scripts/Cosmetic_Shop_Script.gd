@@ -455,8 +455,9 @@ func _load_flat_texture(item_name: String, kind: String) -> Texture2D:
 		KIND_COIN: folder = COIN_FOLDER
 		KIND_ITEM: folder = ITEM_FOLDER
 		KIND_PACK: folder = PACK_FOLDER
-	var path := folder + "/" + item_name + ".png"
-	if ResourceLoader.exists(path):
+	# EXPORT 2026-11-24: match the file's real case (the PCK is case-sensitive; rows are hand-typed).
+	var path := AssetLookup.resolve(folder, item_name, ".png")
+	if path != "" and ResourceLoader.exists(path):
 		var tex := load(path) as Texture2D
 		if tex != null:
 			return tex

@@ -242,8 +242,9 @@ func _fill_saved_slot(holder: Control, summary: Dictionary) -> void:
 	if sprite_name != "":
 		if not sprite_name.ends_with(".png"):
 			sprite_name += ".png"
-		var path := SPRITE_FOLDER + sprite_name
-		if ResourceLoader.exists(path):
+		# EXPORT 2026-11-24: case-insensitive resolve (the PCK is case-sensitive).
+		var path := GameState.costume_path(sprite_name)
+		if path != "" and ResourceLoader.exists(path):
 			# Fit the CHARACTER, not its padded canvas (same as the trainer card, #399).
 			var tex: Texture2D = UIKit.visible_sprite(load(path))
 			if tex != null:

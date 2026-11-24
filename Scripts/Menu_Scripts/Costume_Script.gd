@@ -288,19 +288,10 @@ func _wrap_grid_in_scroll_container() -> void:
 # ─── Character loading ───────────────────────────────────────────────────────
 
 func _load_characters() -> void:
-	var dir := DirAccess.open(SPRITE_FOLDER)
-	if dir == null:
-		push_error("TrainerCard: cannot open folder " + SPRITE_FOLDER)
-		return
-
+	# EXPORT 2026-11-24: export-safe listing (an exported folder holds only "X.png.import").
 	var files : Array = []
-	dir.list_dir_begin()
-	var file_name := dir.get_next()
-	while file_name != "":
-		if not dir.current_is_dir() and not file_name.ends_with(".import"):
-			files.append(file_name)
-		file_name = dir.get_next()
-	dir.list_dir_end()
+	for f in GameState.list_asset_files(SPRITE_FOLDER):
+		files.append(String(f))
 
 	files.sort()
 

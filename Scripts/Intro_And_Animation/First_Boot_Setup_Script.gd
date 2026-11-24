@@ -190,20 +190,13 @@ func _make_field(placeholder: String, max_len: int, w: float, y: float,
 # ─── Sprite loading ───────────────────────────────────────────────────────────
 
 func _load_sprites() -> void:
-	var dir := DirAccess.open(SPRITE_FOLDER)
-	if dir == null:
-		push_error("FirstBootSetup: cannot open sprite folder " + SPRITE_FOLDER)
-		return
-
+	# EXPORT 2026-11-24: an exported build holds only "X.png.import" here (no X.png), so the old
+	# "skip .import, keep .png" loop listed NOTHING and the first-boot sprite grid came up empty.
+	# list_asset_files() strips .import / .remap in both the editor and an export.
 	var files: Array = []
-	dir.list_dir_begin()
-	var fname := dir.get_next()
-	while fname != "":
-		if not dir.current_is_dir() and not fname.ends_with(".import"):
-			if fname.to_lower().begins_with("1") and fname.ends_with(".png"):
-				files.append(fname)
-		fname = dir.get_next()
-	dir.list_dir_end()
+	for fname in GameState.list_asset_files(SPRITE_FOLDER):
+		if String(fname).to_lower().begins_with("1") and String(fname).ends_with(".png"):
+			files.append(fname)
 
 	files.sort()
 
@@ -405,17 +398,13 @@ func _start_game() -> void:
 
 	# Batch-add all "1"-prefixed sprites to owned costumes (single save at end)
 	var costumes: Array = GameState.progress.get("costumes", [])
-	var dir := DirAccess.open(SPRITE_FOLDER)
-	if dir != null:
-		dir.list_dir_begin()
-		var fname := dir.get_next()
-		while fname != "":
-			if not dir.current_is_dir() and fname.to_lower().begins_with("1") and fname.ends_with(".png"):
-				var key := fname.to_lower()
-				if key not in costumes:
-					costumes.append(key)
-			fname = dir.get_next()
-		dir.list_dir_end()
+	# EXPORT 2026-11-24: export-safe listing (see _load_sprites).
+	for fname in GameState.list_asset_files(SPRITE_FOLDER):
+		var f := String(fname)
+		if f.to_lower().begins_with("1") and f.ends_with(".png"):
+			var key := f.to_lower()
+			if key not in costumes:
+				costumes.append(key)
 	GameState.progress["costumes"] = costumes
 
 	# Familiarity + Hard Mode, and the start day/time they imply (hidden from the

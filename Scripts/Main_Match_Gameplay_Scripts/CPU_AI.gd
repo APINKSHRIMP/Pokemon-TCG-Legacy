@@ -8140,6 +8140,19 @@ func _shadow_evaluate() -> Dictionary:
 		elif mx >= foe.current_hp:
 			sc += 200.0
 		var effs: Array = main.attack_effects.parse_card_text_effects(a.get("text", ""), me.metadata.get("name", ""))
+		# 2026-11-24: mirror cpu_phase_attack's drawback terms (overkill trim, Energy discard, recoil on a sure KO). Without
+		# them the shadow claimed the CPU would Flamethrower a target Slash already KOs; the real scorer never does
+		# (CPU_Scenarios sc_ko_*). Analyser-only - this function never picks a move.
+		if mn >= foe.current_hp:
+			sc -= (mn - foe.current_hp) * 0.5
+		for e in effs:
+			if e.get("type", "") == "energy_discard_self":
+				var n := int(e.get("count", 1))
+				sc -= 70.0 if n == -1 else n * 15.0
+				if mn >= foe.current_hp:
+					sc -= 50.0
+			elif e.get("type", "") == "self_damage" and mn >= foe.current_hp:
+				sc -= 20.0 * (0.5 if String(e.get("flip", "none")) != "none" else 1.0)
 		sc += _cpu_attack_context_adjust(effs, mn, ex, foe.current_hp, evaluate_ko_threats(), main.get_attacks_for_card(me), main.get_attacks_for_card(me).find(a), String(a.get("text", "")).to_lower())
 		if CpuWeights.on("rule.lookahead"):
 			sc += _la().attack_value(a, me, foe)

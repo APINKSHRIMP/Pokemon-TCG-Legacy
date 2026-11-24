@@ -518,8 +518,10 @@ func _sprite_for(data: Dictionary) -> Texture2D:
 	var key := str(data.get("sprite", ""))
 	if key == "":
 		return null
-	var path := BATTLE_SPRITE_DIR + key.to_lower() + ".png"
-	if not ResourceLoader.exists(path):
+	# EXPORT 2026-11-24: the PCK is case-sensitive and the portraits are capitalised on disk
+	# ("VeteranM.png"), so the old key.to_lower() path missed in an export. Resolve the real case.
+	var path := AssetLookup.resolve(BATTLE_SPRITE_DIR, key, ".png")
+	if path == "" or not ResourceLoader.exists(path):
 		print("Could not load battle sprite: ", path)
 		return null
 	return load(path)
@@ -1102,7 +1104,8 @@ func _play_gift_sequence() -> void:
 		_clear_gift()
 
 	for costume_key in _costume_rewards_for_anim:
-		var img: Texture2D = load("res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + costume_key + ".png")
+		# EXPORT 2026-11-24: costume keys are lower-cased; resolve the file's real case (case-sensitive PCK).
+		var img: Texture2D = GameState.costume_texture(costume_key)
 		_show_gift(img, "costume")
 		var rect = _gift_container.get_child(0) as TextureRect
 		await _play_costume_fadein_anim(rect)

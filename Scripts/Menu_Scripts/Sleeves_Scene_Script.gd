@@ -260,24 +260,13 @@ func _wrap_grid_in_scroll_container() -> void:
 func _load_sleeves() -> void:
 	# The small/ folder is the LISTING - the canonical set of sleeve names and what
 	# the count chip measures against - and, again (ISSUE #309), what each cell draws.
-	var dir := DirAccess.open(SLEEVE_SMALL_FOLDER)
-	if dir == null:
-		push_error("Sleeves: cannot open folder " + SLEEVE_SMALL_FOLDER)
-		return
-
+	# EXPORT 2026-11-24: export-safe listing (an exported folder holds only "X.png.import").
+	# ISSUE #131: the "1_Default*" card backs are listed too (the player is granted three real
+	# ones on a new save); they are still excluded from the trainer card's collection counter
+	# (Info_Script._sleeve_universe) -- freebies shouldn't count as collected.
 	var files : Array = []
-	dir.list_dir_begin()
-	var file_name := dir.get_next()
-	while file_name != "":
-		if not dir.current_is_dir() and not file_name.ends_with(".import"):
-			# ISSUE #131: the "1_Default*" card backs used to be filtered out here, because the
-			# only starter entry was the fake name "default" that matched no file. The player is
-			# now granted three real ones on a new save, so they have to be listed or they could
-			# never be equipped. They are still excluded from the trainer card's collection
-			# counter (Info_Script._sleeve_universe) -- freebies shouldn't count as collected.
-			files.append(file_name)
-		file_name = dir.get_next()
-	dir.list_dir_end()
+	for f in GameState.list_asset_files(SLEEVE_SMALL_FOLDER):
+		files.append(String(f))
 
 	files.sort()
 

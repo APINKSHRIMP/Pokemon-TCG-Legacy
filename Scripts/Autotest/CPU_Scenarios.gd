@@ -15,6 +15,7 @@ const HELPERS := {
 	"special_energy_effects": "res://Scripts/Main_Match_Gameplay_Scripts/Special_Energy_Effects.gd",
 	"card_ops": "res://Scripts/Main_Match_Gameplay_Scripts/Card_Ops.gd",
 	"match_effects": "res://Scripts/Main_Match_Gameplay_Scripts/Match_Effects.gd",
+	"tutorial": "res://Scripts/Main_Match_Gameplay_Scripts/Tutorial_Director.gd",   # 2026-11-24: read by cpu_phase_attack (dry_attack)
 }
 const CpuWeights = preload("res://Scripts/Main_Match_Gameplay_Scripts/CPU_Weights.gd")
 
@@ -684,3 +685,27 @@ func sc_gaze_held_on_live_hand() -> void:
 	deck(["base1-99"], "base1-99", 30)
 	var s: float = ai.cpu_score_trainer_for_play(find(m.opponent_hand, "Sabrina's Gaze"))
 	check("Sabrina's Gaze on a hand that can all be played -> held", s <= ai.CPU_TRAINER_PLAY_THRESHOLD, "score %d" % s)
+
+# ── 2026-11-24 match-log check: when a free attack already KOs, don't pay Energy for overkill ─────────────────────────
+## The real attack scorer, dry run: the name of the attack the CPU would use ("" = none).
+func dry_attack() -> String:
+	ai.attack_dry_run = true
+	ai.cpu_phase_attack(ai.build_cpu_evaluation())   # synchronous here: no Metronome on these boards
+	ai.attack_dry_run = false
+	if ai.dry_run_attack < 0:
+		return ""
+	return String(m.get_attacks_for_card(m.opponent_active_pokemon)[ai.dry_run_attack].get("name", ""))
+
+func sc_ko_slash_over_flamethrower() -> void:
+	cpu_active(mon("base1-24", ["base1-98", "base1-98", "base1-98"]))   # Charmeleon, 3 Fire
+	cpu_bench(mon("base1-46"))
+	foe(mon("base1-58", [], 10))                                         # Pikachu 30/40: Slash (30) already KOs
+	var a := dry_attack()
+	check("Both KO, Flamethrower discards -> Slash", a == "Slash", a)
+
+func sc_ko_fire_punch_over_flamethrower() -> void:
+	cpu_active(mon("base1-36", ["base1-98", "base1-98", "base1-98"]))   # Magmar, 3 Fire
+	cpu_bench(mon("base1-46"))
+	foe(mon("base1-58", [], 20))                                         # Pikachu 20/40: Fire Punch (30) already KOs
+	var a := dry_attack()
+	check("Both KO, Flamethrower discards -> Fire Punch", a == "Fire Punch", a)

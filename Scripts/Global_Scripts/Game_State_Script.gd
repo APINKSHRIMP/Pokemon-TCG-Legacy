@@ -1201,6 +1201,9 @@ func _ready():
 
 func _ensure_user_data_exists():
 	DirAccess.make_dir_recursive_absolute(slot_folder(current_slot))
+	# AUDIT 2026-11-24: put back anything a crash mid-save left unreadable BEFORE seeding, which would otherwise
+	# copy a fresh seed over a missing file (a blank collection).
+	recover_save_folder(slot_folder(current_slot))
 
 
 	# Copy Player_Game_Progress.json
@@ -1356,15 +1359,11 @@ func _delete_folder_recursive(folder: String) -> void:
 # ============================================================
 
 func load_progress():
-	if FileAccess.file_exists(PROGRESS_PATH):
-		var file = FileAccess.open(PROGRESS_PATH, FileAccess.READ)
-		var text = file.get_as_text()
-		file.close()
-		var parsed = JSON.parse_string(text)
-		if parsed != null:
-			progress = parsed
-		else:
-			progress = {"opponents_beaten": [], "cash": 0, "coins": [], "costumes": []}
+	# AUDIT 2026-11-24: an unreadable progress file used to be replaced by a near-empty one (and saved straight over
+	# it at the end of this function) - a crash mid-write cost the whole game. Now the last good copy is recovered.
+	var parsed = read_json_with_recovery(PROGRESS_PATH)
+	if parsed is Dictionary:
+		progress = parsed
 	else:
 		progress = {"opponents_beaten": [], "cash": 0, "coins": [], "costumes": []}
 		save_progress()
@@ -1444,9 +1443,80 @@ var medals_dirty: bool = true
 
 func save_progress():
 	medals_dirty = true
-	var file = FileAccess.open(PROGRESS_PATH, FileAccess.WRITE)
-	file.store_string(JSON.stringify(progress, "\t"))
-	file.close()
+	write_text_atomic(PROGRESS_PATH, JSON.stringify(progress, "\t"))
+
+
+## AUDIT 2026-11-24: SAFE SAVE. Writes `text` to `path` so a crash, power cut or full disk part-way through can
+## never leave a half-written file: the new text goes to "<path>.tmp" first and is only swapped in once it is
+## complete; the copy it replaces is kept as "<path>.bak" (one save old). read_json_with_recovery() reads them back.
+## Returns false (and leaves the old file untouched) when the write fails.
+func write_text_atomic(path: String, text: String) -> bool:
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f == null:
+		push_error("GameState: cannot write %s (%s)" % [tmp, error_string(FileAccess.get_open_error())])
+		return false
+	f.store_string(text)
+	f.close()
+	var bak := path + ".bak"
+	if FileAccess.file_exists(path):
+		if FileAccess.file_exists(bak):
+			DirAccess.remove_absolute(bak)
+		DirAccess.rename_absolute(path, bak)
+	var err := DirAccess.rename_absolute(tmp, path)
+	if err != OK:
+		push_error("GameState: cannot move %s into place (%s)" % [tmp, error_string(err)])
+		return false
+	return true
+
+
+## AUDIT 2026-11-24: every save file in `folder` (and its sub-folders) that has a ".tmp" / ".bak" beside it and is
+## itself missing or unreadable is restored from that copy (read_json_with_recovery). Only files with a backup
+## beside them are parsed.
+func recover_save_folder(folder: String) -> void:
+	var dir := DirAccess.open(folder)
+	if dir == null:
+		return
+	for sub in dir.get_directories():
+		recover_save_folder(folder.path_join(sub) + "/")
+	var mains: Dictionary = {}
+	for fname in dir.get_files():
+		if fname.ends_with(".json.bak") or fname.ends_with(".json.tmp"):
+			mains[fname.substr(0, fname.length() - 4)] = true
+	for main_name in mains:
+		read_json_with_recovery(folder.path_join(main_name))
+
+## AUDIT 2026-11-24: the parsed JSON at `path`, or - when that file is missing or unreadable - the newest good copy
+## write_text_atomic() left behind (".tmp" = a complete write that crashed before the swap, then ".bak" = the save
+## before). An unreadable file is set aside as "<path>.corrupt" rather than lost, and the recovered copy is put back
+## in its place. null when nothing usable exists.
+func read_json_with_recovery(path: String) -> Variant:
+	var main_exists := FileAccess.file_exists(path)
+	if main_exists:
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if parsed is Dictionary:
+			return parsed
+	for alt in [path + ".tmp", path + ".bak"]:
+		if not FileAccess.file_exists(alt):
+			continue
+		var text := FileAccess.get_file_as_string(alt)
+		var recovered = JSON.parse_string(text)
+		if recovered is Dictionary:
+			push_warning("GameState: %s was %s - recovered the save from %s" % [path, "unreadable" if main_exists else "missing", alt.get_file()])
+			if main_exists:
+				var corrupt := path + ".corrupt"
+				if FileAccess.file_exists(corrupt):
+					DirAccess.remove_absolute(corrupt)
+				DirAccess.rename_absolute(path, corrupt)
+			var w := FileAccess.open(path, FileAccess.WRITE)
+			if w != null:
+				w.store_string(text)
+				w.close()
+			return recovered
+	if main_exists:
+		push_error("GameState: %s is unreadable and no backup exists" % path)
+		DirAccess.copy_absolute(path, path + ".corrupt")
+	return null
 
 # ============================================================
 # NEW-GAME ANSWERS — familiarity + Hard Mode
@@ -1718,10 +1788,7 @@ func grant_starter_deck(deck_name: String) -> void:
 
 	var current := _read_current_data()
 	current["deck"] = deck_name
-	var write_file := FileAccess.open(PLAYER_CURRENT_DATA_PATH, FileAccess.WRITE)
-	if write_file != null:
-		write_file.store_string(JSON.stringify(current, "\t"))
-		write_file.close()
+	write_text_atomic(PLAYER_CURRENT_DATA_PATH, JSON.stringify(current, "\t"))   # AUDIT 2026-11-24: safe save
 
 
 # ============================================================
@@ -2641,6 +2708,23 @@ func get_coin_universe() -> Dictionary:
 			out[fname] = true
 	return out
 
+## EXPORT 2026-11-24: full path to a costume / battle portrait, matched WITHOUT regard to case.
+## Costume keys are stored lower-cased ("1ash.png") but the files are capitalised ("1Ash.png");
+## NTFS hides that in the editor, the exported PCK does not. Accepts the name with or without
+## ".png". Returns "" when no such file exists.
+func costume_path(costume_name: String) -> String:
+	var base := costume_name.strip_edges()
+	if base.to_lower().ends_with(".png"):
+		base = base.substr(0, base.length() - 4)
+	return AssetLookup.resolve(COSTUME_ASSET_FOLDER, base, ".png")
+
+## The costume / battle portrait texture (case-insensitive, see costume_path), or null.
+func costume_texture(costume_name: String) -> Texture2D:
+	var path := costume_path(costume_name)
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
+
 # progress["costumes"] holds lowercased filenames: "1ash.png"
 func get_costume_universe() -> Dictionary:
 	var out: Dictionary = {}
@@ -2709,12 +2793,7 @@ func _load_nature_guide() -> void:
 
 func save_nature_guide() -> void:
 	_load_nature_guide()
-	var file = FileAccess.open(NATURE_GUIDE_PATH, FileAccess.WRITE)
-	if file == null:
-		push_error("GameState: cannot write " + NATURE_GUIDE_PATH)
-		return
-	file.store_string(JSON.stringify(_nature_guide, "\t"))
-	file.close()
+	write_text_atomic(NATURE_GUIDE_PATH, JSON.stringify(_nature_guide, "\t"))   # AUDIT 2026-11-24: safe save
 
 
 ## species basename -> met count, for every species the player has met.
@@ -3013,9 +3092,7 @@ func give_cards(card_ids_csv: String) -> void:
 				data["owned_cards"].append({"card_id": card_id, "owned": 1})
 
 		data["set_unlocked"] = true
-		var write_file = FileAccess.open(json_path, FileAccess.WRITE)
-		write_file.store_string(JSON.stringify(data, "\t"))
-		write_file.close()
+		write_text_atomic(json_path, JSON.stringify(data, "\t"))   # AUDIT 2026-11-24: safe save (the collection)
 
 	print("GameState.give_cards: Gave ", ids.size(), " cards")
 
@@ -3084,12 +3161,9 @@ func remove_cards(counts: Dictionary) -> int:
 			entry["owned"] = have - take
 			removed_total += take
 
-		var write_file = FileAccess.open(json_path, FileAccess.WRITE)
-		if write_file == null:
+		if not write_text_atomic(json_path, JSON.stringify(data, "\t")):   # AUDIT 2026-11-24: safe save
 			push_error("GameState.remove_cards: Cannot write: " + json_path)
 			continue
-		write_file.store_string(JSON.stringify(data, "\t"))
-		write_file.close()
 
 	print("GameState.remove_cards: Removed ", removed_total, " cards across ",
 		by_set.size(), " set file(s)")

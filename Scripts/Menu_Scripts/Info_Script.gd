@@ -471,7 +471,8 @@ func _load_player_data() -> void:
 	if sprite_name != "":
 		if not sprite_name.ends_with(".png"):
 			sprite_name += ".png"
-		var tex := load(SPRITE_FOLDER + "/" + sprite_name) as Texture2D
+		# EXPORT 2026-11-24: case-insensitive resolve (the PCK is case-sensitive).
+		var tex := GameState.costume_texture(sprite_name)
 		# ISSUE #310: fit the CHARACTER, not its padded canvas (same as the intro, #380).
 		tex = UIKit.visible_sprite(tex)
 		if tex:

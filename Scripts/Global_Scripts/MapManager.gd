@@ -2624,7 +2624,8 @@ func _prepare_gift_display(gift_type: String, gift_value: String) -> void:
 			# Costumes are always single-value
 			_pending_gift_display = {
 				"text": "You received the " + _format_costume_name(gift_value) + " costume",
-				"image_paths": ["res://Image_Assets/Character_Sprites/In_Battle_Sprites/" + gift_value + ".png"],
+				# EXPORT 2026-11-24: resolve the file's real case (the PCK is case-sensitive).
+				"image_paths": [GameState.costume_path(gift_value)],
 				"kind": "costume",
 			}
 		"sleeve":

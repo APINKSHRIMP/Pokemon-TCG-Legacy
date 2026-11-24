@@ -276,8 +276,10 @@ func _sprite_for(data: Dictionary) -> Texture2D:
 	var key := str(data.get("sprite", ""))
 	if key == "":
 		return null
-	var path := BATTLE_SPRITE_DIR + key.to_lower() + ".png"
-	if not ResourceLoader.exists(path):
+	# EXPORT 2026-11-24: the PCK is case-sensitive and the portraits are capitalised on disk
+	# ("VeteranM.png"), so the old key.to_lower() path missed in an export. Resolve the real case.
+	var path := AssetLookup.resolve(BATTLE_SPRITE_DIR, key, ".png")
+	if path == "" or not ResourceLoader.exists(path):
 		return null
 	return load(path)
 

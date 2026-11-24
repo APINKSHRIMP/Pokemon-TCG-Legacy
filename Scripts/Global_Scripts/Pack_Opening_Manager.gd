@@ -882,12 +882,9 @@ func _save_cards_to_player(set_id: String, cards: Array) -> Dictionary:
 
 	data["set_unlocked"] = true
 	GameState.invalidate_set_unlocks()   # MEDALS + the one set-unlock check
-	var write_file := FileAccess.open(json_path, FileAccess.WRITE)
-	if write_file == null:
+	# AUDIT 2026-11-24: safe save - a crash mid-write must not lose the set's collection.
+	if not GameState.write_text_atomic(json_path, JSON.stringify(data, "\t")):
 		push_error("PackOpeningManager: cannot write " + json_path)
-		return new_card_ids
-	write_file.store_string(JSON.stringify(data, "\t"))
-	write_file.close()
 	return new_card_ids
 
 

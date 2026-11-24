@@ -40,6 +40,24 @@ old tilesets, the TEST deck, and Dark Raichu / Shining / ex-era rarities that no
 and the `CARD_SIZE_*` table in the core script. Sound_Manager's `BGM_*` names may be picked by name
 from data. Removing them would be cosmetic only.
 
+## Session 3 (24 Nov, daytime, with you)
+- **Your calls, answered:**
+  - Margot's coin art existed, but the file was misspelt `Goldbat Gold.png`. It's renamed to `Golbat Gold.png`.
+  - Koga's `Energy Colorless Silver 2` really has no art anywhere, PKMTCG included. It needs drawing.
+  - The Gym Challenge `gym1-1` card rewards are removed. Each leader now gives their own gym pack, and Giovanni gives 2.
+  - The 6 old tilesets are deleted. No PNGs needed moving: every Image_Sheets PNG is in use.
+  - Dark Raichu will be a gift, and no ex-era or Shining rarities come from packs yet.
+- **Export readiness:** see `Export_Readiness_Report.md`. Menus would have been empty and trainer portraits missing in an exported build (case-sensitive PCK, `.import` listings). Fixed and probe-verified. `export_presets.cfg` added.
+- **Area 8, save system: real bug fixed.**
+  - Before: a crash, power cut or full disk while saving left a half-written `Player_Game_Progress.json`. The next boot couldn't read it, replaced it with a near-empty save, and wrote that straight over the file, losing the whole game.
+  - Now: progress, owned cards (all 3 writers), current deck and the nature guide go through `GameState.write_text_atomic()`. It writes `.tmp` first, swaps it in, and keeps the previous copy as `.bak`.
+  - On slot load, `recover_save_folder()` restores any unreadable file from its `.tmp` / `.bak` before seeding, and keeps the bad copy as `.corrupt`.
+  - Verified with a scratch-folder probe covering a truncated file, a crash between the swaps, a healthy file and a no-backup case. Also verified with compile-all (217/0) and 30 autotester matches (0 problems).
+- **Your 267 logged matches (CPU look):** nothing glaring.
+  - The analyser's "CPU would Flamethrower a target Slash already KOs" was a false alarm. Its shadow scorer left out the discard penalty, and the real CPU picks Slash / Fire Punch.
+  - The shadow now mirrors the drawback terms. Two scenarios (`sc_ko_*`) were added, and all 59 scenarios pass.
+  - The "CPU would retreat where you stayed" cases are all weak or zero-Energy Actives, which is sensible.
+
 ## Needs your call
 _(things that need a design decision, so they were left alone)_
 
@@ -87,6 +105,9 @@ Mark each area `[x]` when finished. Add a line saying which session did it.
   deck-builder copy limits. Not read: the rest of the deck builder, coin case, options, save select.)*
 - [ ] 8. GameState / save system / Settings / medals / LP
   *(Session 2: cash, LP wallet, card give/remove, opponent beaten/record, time points, medal stats.)*
+  *(Session 3: slot load / new game / delete / seeding / intro checkpoint read; crash-safe saves added (see Session 3).
+  Still direct writes (low value, one small file each): Player_Current_Data from Coin Case / Costume / Info /
+  deck builder, deck files, Settings.json.)*
 - [x] 9. JSON data: card sets, opponent decks and opponents, NPC/time-of-day files, shops, schedules, medals, deck ratings
   *(Session 1: all 300 JSON files parse, no duplicate keys. Decks, rewards, ratings, match_effects
   types, story flags (every flag the game checks also gets set), medal bonus ids, file paths, the
