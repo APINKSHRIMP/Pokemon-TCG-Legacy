@@ -37,6 +37,9 @@ const MAX_BOUNCES := 3
 ## The player this close (world px) sends it running. 100 world px = 250 px on screen at
 ## the default 2.5x zoom.
 const SCARE_DISTANCE := 100.0
+## ...and only this close while the player SNEAKS (Ctrl held) -- inside the player's
+## talk radius (26), so a careful approach gets a Space in before it bolts.
+const SNEAK_SCARE_DISTANCE := 14.0
 ## The same for every species, and always faster than the player: the fastest normal
 ## player is 160 px/s x 1.6 (Fast walking option) x 2 (Shift) = 512 px/s.
 const FLEE_SPEED := 640.0
@@ -233,11 +236,14 @@ func _should_flee() -> bool:
 		return false
 	if "can_move" in player and not player.can_move:
 		return false
-	return global_position.distance_to(player.global_position) <= SCARE_DISTANCE
+	var scare := SNEAK_SCARE_DISTANCE if player.has_method("is_sneaking") and player.is_sneaking() \
+			else SCARE_DISTANCE
+	return global_position.distance_to(player.global_position) <= scare
 
 
 func _start_flee() -> void:
 	_state = State.FLEE
+	SoundManagerScript.play_cry(species, SoundManagerScript.SCARED_CRY_PITCH, true)
 	_flee_time = 0.0
 	_flee_dir = _flee_direction()
 	_run_distance = 0.0

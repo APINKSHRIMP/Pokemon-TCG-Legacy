@@ -33,6 +33,8 @@ const CRY_INTERVAL := 2.0
 const CRY_CHANCE := 5.0
 # -----------------------------------------------------------------------------
 
+## Every overworld Pokémon of every template (SUPER FOOD looks them up through it).
+const ALL_GROUP := "overworld_pokemon"
 const ROWS := {"down": 0, "left": 1, "right": 2, "up": 3}
 const DIRECTIONS := ["down", "left", "right", "up"]
 const DIR_VECTORS := {"up": Vector2.UP, "down": Vector2.DOWN, "left": Vector2.LEFT, "right": Vector2.RIGHT}
@@ -85,6 +87,7 @@ func configure(species_key: String, point: Dictionary = {}) -> void:
 
 
 func _ready() -> void:
+	add_to_group(ALL_GROUP)
 	collision_layer = 0
 	collision_mask = 0
 	sprite = Sprite2D.new()

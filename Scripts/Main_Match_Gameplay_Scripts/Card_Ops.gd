@@ -1136,6 +1136,11 @@ func place_on_bench(pokemon: card_object, is_opponent: bool, hand_rect: Dictiona
 	var from_rect: Dictionary = hand_rect
 	if from_rect.is_empty() and from_zone == "hand":
 		from_rect = capture_rect(pokemon, from_zone, is_opponent)
+	# AUDIT 2026-11-24: a Pokémon benched from the hand, deck or prizes is a fresh card (ISSUE #404 class): a card
+	# that left play still damaged (Mr. Fuji, Pilfer, Beating Wings before today) came back hurt, or Knocked Out at
+	# the next KO check. Not from the discard: Revive-style effects place damage on purpose.
+	if from_zone in ["hand", "deck", "prize"]:
+		main._fresh_from_hand(pokemon)
 	pokemon.current_location = "bench"
 	pokemon.placed_on_field_this_turn = true
 	bench.append(pokemon)

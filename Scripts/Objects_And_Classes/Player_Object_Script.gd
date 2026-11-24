@@ -16,6 +16,8 @@ const INTERACT_GROUPS := ["opponents", "npcs", "pokemon"]
 # debug mode is on (Debug_Mode.gd) — 10x is a testing convenience for crossing the map
 # quickly, not a play speed, so a release build gets the 2x the code has always described.
 @export var run_multiplier: float = 2.0
+## Walk speed while sneaking (Ctrl), as a fraction of the normal walk.
+const SNEAK_MULTIPLIER := 0.45
 @export var debug_run_multiplier: float = 2.0   # was 10.0 (2026-11-05: back to the normal run speed)
 
 var current_direction: String = "down"
@@ -197,6 +199,10 @@ func _physics_process(_delta):
 	is_running = is_running or (_touch_dir != Vector2.ZERO and _touch_run)
 	var active_run_multiplier: float = debug_run_multiplier if DebugMode.is_enabled() else run_multiplier
 	var speed_scale: float = active_run_multiplier if is_running else 1.0
+	# FOLLOWING POKÉMON: hold Ctrl to sneak -- slow, and skittish Pokémon let you get close
+	# (Pokemon_Skittish.SNEAK_SCARE_DISTANCE). Running wins if both are held.
+	if not is_running and is_sneaking():
+		speed_scale = SNEAK_MULTIPLIER
 	# ISSUE #35: the global overworld walking-speed multiplier scales both walk and run (Options: slow
 	# 0.8, standard 1.0, fast 1.2).
 	var walk_mult: float = GameState.overworld_walking_speed
@@ -344,6 +350,17 @@ func _unhandled_input(event):
 		if not can_move:
 			return
 
+		# DEBUG SUPER FOOD: standing on any Pokémon (flyers, bugs, burrowers... too) offers to
+		# make it your follower, ahead of whoever else is in talk range.
+		if FollowingPokemon.has_super_food():
+			var super_target := FollowingPokemon.super_food_target(self)
+			if super_target != null:
+				var vp_sf = get_viewport()
+				if vp_sf != null:
+					vp_sf.set_input_as_handled()
+				MapManager.offer_super_food(super_target)
+				return
+
 		if _active_candidate != null and is_instance_valid(_active_candidate):
 			if _active_candidate.is_in_group("opponents"):
 				interact_pressed.emit(_active_candidate)
@@ -433,6 +450,11 @@ func _apply_camera_room() -> void:
 func _zoom_floor() -> Vector2:
 	return DEBUG_WIDEST_ZOOM if DebugMode.is_enabled() else _widest_zoom
 
+## Ctrl held on the open map: creeping up on a skittish Pokémon (see the sneak note in
+## _physics_process). Ctrl+F / Ctrl+N stay the placement tool's.
+func is_sneaking() -> bool:
+	return can_move and Input.is_key_pressed(KEY_CTRL)
+
 func _is_interactable_body(body: Node) -> bool:
 	for group in INTERACT_GROUPS:
 		if body.is_in_group(group):
@@ -470,6 +492,9 @@ func _update_active_candidate():
 	var closest_dist_sq: float = INF
 	for n in _nearby_candidates:
 		var d_sq: float = global_position.distance_squared_to(n.global_position)
+		# Your own following Pokémon is always next to you: anyone else in range wins.
+		if n.is_in_group("follower"):
+			d_sq += 1.0e8
 		if d_sq < closest_dist_sq:
 			closest_dist_sq = d_sq
 			closest = n

@@ -177,6 +177,17 @@ func _build_world_column(col: VBoxContainer) -> void:
 	col.add_child(_button("Fill every tank", _fill_fish_tanks))
 	col.add_child(_note("Every milestone up to this number counts as reached. Leave and re-enter the Fish Shop to see it."))
 
+	_heading(col, "Following Pokémon")
+	var follow_row := _row(col)
+	_add_expanded(follow_row, _button("Give test foods", _give_test_foods))
+	_add_expanded(follow_row, _button("Send follower home", _debug_send_follower_home))
+	col.add_child(_button("Add SUPER FOOD (capture any Pokémon)", _give_super_food))
+	var home_row := _row(col)
+	_add_expanded(home_row, _button("Give one of each bed", _give_test_beds))
+	_add_expanded(home_row, _button("Empty the house", _empty_house))
+	col.add_child(_note("Beds (Pokemon_Beds.json) go into the house's bed spaces, spares after that. A follower with no bed blocks going to sleep."))
+	col.add_child(_note("3 of every food in Pokemon_Foods.json. Talk to a Pokémon that likes one (Ctrl to sneak up on a skittish one), or fish with it in the bag."))
+
 
 ## A caption, a number box and a button: Cash [ 4780 ] [ Set ]. Enter in the box works too.
 func _number_row(col: VBoxContainer, caption: String, placeholder: String, button_text: String,
@@ -288,6 +299,10 @@ func _show_cutscene_page(show: bool) -> void:
 
 func _build_cheat_column(col: VBoxContainer) -> void:
 	_heading(col, "Cheats")
+	var force := _button("FORCE ALL SPAWNS (this map)", _force_all_spawns)
+	force.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	force.tooltip_text = "Every spawn point and flyer table on this map at 100%, until the map reloads\n(a battle, a door, a day/time change)."
+	col.add_child(force)
 	col.add_child(_note("The same as typing the code as your trainer name. Hover a button to see its code."))
 	for code in CheatManager.codes():
 		var cheat_code := str(code)
@@ -339,6 +354,60 @@ func _set_fish_sent() -> void:
 	FishShopCalls.debug_set_sent(int(text))
 	_fish_sent_edit.release_focus()
 	_say("Fish sent to FISH set to %d. Re-enter FISH to see it." % GameState.fish_sent_total())
+
+
+func _give_test_foods() -> void:
+	FollowingPokemon.reload()
+	var names := FollowingPokemon.food_names()
+	for food_name in names:
+		GameState.add_food(str(food_name), 3)
+	_say("Gave 3 of each food: %s." % ", ".join(PackedStringArray(names)) if not names.is_empty()
+			else "No foods in Pokemon_Foods.json.", GOOD_COLOUR if not names.is_empty() else BAD_COLOUR)
+
+
+## The placement tool's FORCED preview, minus the tool: every point and every flyer table at
+## 100%, from the SAVED spawn file. Lasts until the map reloads -- the spawner is rebuilt
+## fresh (preview off) on every load, so nothing is saved.
+func _force_all_spawns() -> void:
+	var spawner := get_tree().get_first_node_in_group(OverworldPokemonSpawner.GROUP) as OverworldPokemonSpawner
+	if spawner == null:
+		_say("This map has no Pokémon spawner.", BAD_COLOUR)
+		return
+	spawner.set_preview(true)
+	_say("FORCE ALL SPAWNS on: every spawn point on this map is at 100% until the map reloads.")
+
+
+func _give_test_beds() -> void:
+	PokemonHome.reload()
+	var placed: Array = []
+	for bed_name in PokemonHome.bed_names():
+		if PokemonHome.add_bed(str(bed_name)):
+			placed.append(str(bed_name))
+	_say("Beds in the house: %s. (Spares: %s.) Re-enter the house to see Pokémon at home." % [
+			", ".join(PackedStringArray(placed)) if not placed.is_empty() else "none (it's full)",
+			str(GameState.get_spare_beds())])
+
+
+func _empty_house() -> void:
+	GameState.set_home_beds([])
+	GameState.progress["spare_beds"] = {}
+	GameState.save_progress()
+	_say("Every bed and Pokémon at home removed. Your follower (if any) is still following you.")
+
+
+func _give_super_food() -> void:
+	if not FollowingPokemon.has_super_food():
+		GameState.add_food(FollowingPokemon.SUPER_FOOD, 1)
+	_say("SUPER FOOD is in the bag. Stand on any Pokémon and press Space / click / A, or fish one up.")
+
+
+func _debug_send_follower_home() -> void:
+	if GameState.get_follower() == "":
+		_say("No Pokémon is following you.", BAD_COLOUR)
+		return
+	var gone := OverworldPokemonData.display_name(GameState.get_follower())
+	FollowingPokemon.send_home()
+	_say("%s went home." % gone)
 
 
 func _fill_fish_tanks() -> void:

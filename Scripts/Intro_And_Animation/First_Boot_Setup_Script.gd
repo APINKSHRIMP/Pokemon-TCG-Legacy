@@ -389,12 +389,9 @@ func _start_game() -> void:
 	data["sprite"]        = (_selected_cell.get_meta("sprite_name", "") as String).trim_suffix(".png")
 	data["date_of_birth"] = _dob_box.text
 
-	var write_file := FileAccess.open(data_path, FileAccess.WRITE)
-	if write_file == null:
+	if not GameState.write_text_atomic(data_path, JSON.stringify(data, "\t")):   # AUDIT 2026-11-24: safe save
 		push_error("FirstBootSetup: cannot write " + data_path)
 		return
-	write_file.store_string(JSON.stringify(data, "\t"))
-	write_file.close()
 
 	# Batch-add all "1"-prefixed sprites to owned costumes (single save at end)
 	var costumes: Array = GameState.progress.get("costumes", [])

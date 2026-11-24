@@ -502,12 +502,9 @@ func _on_save_pressed() -> void:
 
 	data["sleeve"] = new_sleeve_name
 
-	var write_file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.WRITE)
-	if write_file == null:
+	if not GameState.write_text_atomic(PLAYER_DATA_PATH, JSON.stringify(data, "\t")):   # AUDIT 2026-11-24: safe save
 		push_error("Sleeves: cannot write " + PLAYER_DATA_PATH)
 		return
-	write_file.store_string(JSON.stringify(data, "\t"))
-	write_file.close()
 
 	saved_sleeve_name = new_sleeve_name
 	save_btn.disabled = true

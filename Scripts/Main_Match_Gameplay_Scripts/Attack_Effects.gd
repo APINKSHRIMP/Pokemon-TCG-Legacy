@@ -9683,11 +9683,14 @@ func execute_neo1_pilfer(attacker: card_object, is_opponent: bool) -> void:
 		var _fr2: Dictionary = main.card_ops.capture_rect(pre, "attached", is_opponent)   # AUDIT 2026-11-17: flight
 		attacker.attached_pre_evolutions.erase(pre)
 		pre.current_location = "deck"
+		main.card_ops.reset_returned_pokemon(pre, is_opponent)   # AUDIT 2026-11-24: leaves play as a fresh card
 		deck.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "deck", is_opponent, -1, _fr2)   # AUDIT 2026-11-17: flight
 	var bench = main.opponent_bench if is_opponent else main.player_bench
 	var is_active = (attacker == (main.opponent_active_pokemon if is_opponent else main.player_active_pokemon))
 	attacker.current_location = "deck"
+	# AUDIT 2026-11-24: ISSUE #404/#301 rule - shuffled back with its damage, a deck search could bench it hurt.
+	main.card_ops.reset_returned_pokemon(attacker, is_opponent)
 	deck.append(attacker)
 	main.card_ops.fly_card(attacker, "play", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	if is_active:
@@ -29277,6 +29280,12 @@ func prompt_and_attach_holon_pokemon_energy(card: card_object, is_opponent: bool
 	card.pokemon_energy_types = (["Any","Any"] if two_any else ["Colorless"])
 	card.current_location = "active" if target == main.player_active_pokemon else "bench"
 	target.attached_energies.append(card)
+	# AUDIT 2026-11-24: attaching it as Energy IS the turn's Energy attachment (the check at the top tested the flag,
+	# but nothing ever set it - any number of Holon's Pokémon, plus a normal Energy, could go on in one turn).
+	# Same bookkeeping as a normal attach (Main_Match_Core attach path), so extra_energy_per_turn still works.
+	main.player_energy_attach_count += 1
+	main.player_energy_played_this_turn = main.player_energy_attach_count >= main.match_effects.energy_attach_limit(false)
+	main.player_energy_attached_to = target
 	main.card_ops.fly_attach(card, "hand", _atr_28953)   # AUDIT 2026-11-17: flight (queued)
 	main.play_energy_attach_sfx()
 	await main.show_message("ATTACHED " + card.metadata.get("name","").to_upper() + " AS AN ENERGY CARD!")

@@ -52,6 +52,11 @@ const GLOWS := {
 
 ## The breath: it sinks to PULSE_DEPTH below full over half a period and comes back up
 ## over the other half, so 5.0 here is "dimmest 2.5 seconds after brightest".
+## ONE global light control (2026-11-24): a glow is as strong as the street lamps are --
+## Time_Of_Day_Grade.lights_strength(clock): off all day, fading up from LIGHTS_START_HOUR
+## (4pm) to full at LIGHTS_PEAK_HOUR (8pm), full until bed. Tune it THERE, not here.
+const TimeOfDayGrade = preload("res://Scripts/Global_Scripts/Time_Of_Day_Grade.gd")
+
 const PULSE_PERIOD := 5.0
 const PULSE_DEPTH := 0.2
 
@@ -115,12 +120,13 @@ func _process(delta: float) -> void:
 		queue_free()
 		return
 	global_position = _follow_point() + _offset_now()
-	visible = follow.visible
+	var lamps := TimeOfDayGrade.lights_strength(GameState.clock_hours())
+	visible = follow.visible and lamps > 0.0
 	# A slow breath between full and PULSE_DEPTH below it. cos() starts at the top, so a
 	# light comes on at its brightest and eases down rather than fading up from nothing.
 	_pulse = fmod(_pulse + delta, PULSE_PERIOD)
 	var swing := 0.5 * (1.0 + cos(TAU * _pulse / PULSE_PERIOD))
-	energy = _base_energy * (1.0 - PULSE_DEPTH + PULSE_DEPTH * swing)
+	energy = _base_energy * (1.0 - PULSE_DEPTH + PULSE_DEPTH * swing) * lamps
 
 
 ## Where on the host the light actually sits: its origin, plus a Sprite2D's own `offset`

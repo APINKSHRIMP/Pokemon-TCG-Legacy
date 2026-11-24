@@ -709,3 +709,10 @@ func sc_ko_fire_punch_over_flamethrower() -> void:
 	foe(mon("base1-58", [], 20))                                         # Pikachu 20/40: Fire Punch (30) already KOs
 	var a := dry_attack()
 	check("Both KO, Flamethrower discards -> Fire Punch", a == "Fire Punch", a)
+
+# ── 2026-11-24 audit: a Pokémon played from the hand is a fresh card (ISSUE #404 class) ────────────────────────────────
+func sc_fresh_from_hand_resets_damage() -> void:
+	var k := c("base1-58")                  # Pikachu 40 HP, carrying 30 stale damage from an earlier stint in play
+	k.current_hp = 10
+	m._fresh_from_hand(k)
+	check("A damaged card from the hand arrives at full HP", k.current_hp == k.get_max_hp(), "%d/%d" % [k.current_hp, k.get_max_hp()])

@@ -1,0 +1,26 @@
+{
+	"_help": "PLACEHOLDER BEDS (2026-11-24) - names, what each one fits and the slot count are NOT final, edit freely. home_slots = how many beds fit in the player's house at once. Each bed: 'accepts' = Pokémon display names it fits (variants match: 'Rattata' covers 019_Rattata_Alolan), 'accepts_templates' = any species that can spawn as one of these overworld templates (flyer, bug_tree, swinging_bug, skittish, burying, surfacing, static, fish_tank), 'accepts_any' = true fits everything, 'water' = true for a tank (its Pokémon swims there and does not wander the house), 'description' = shop text for later. A bed holds ONE Pokémon. Read by Scripts/Objects_And_Classes/Overworld_Pokemon/Pokemon_Home.gd. DEL menu: 'Give one of each bed' / 'Empty the house'.",
+	"home_slots": 3,
+	"beds": {
+		"Straw Basket": {
+			"accepts": ["Rattata", "Raticate", "Pikachu", "Raichu"],
+			"accepts_templates": ["skittish"],
+			"description": "A cosy basket for small Pokémon."
+		},
+		"Leafy Nest": {
+			"accepts": ["Caterpie", "Metapod", "Weedle", "Kakuna"],
+			"accepts_templates": ["bug_tree", "swinging_bug"],
+			"description": "A bed of soft leaves bug Pokémon love to curl up in."
+		},
+		"Perch": {
+			"accepts_templates": ["flyer"],
+			"description": "A sturdy perch for bird Pokémon to roost on."
+		},
+		"Home Fish Tank": {
+			"accepts": ["Magikarp", "Goldeen", "Seaking", "Krabby", "Shellder", "Horsea", "Staryu", "Tentacool"],
+			"accepts_templates": ["fish_tank", "surfacing"],
+			"water": true,
+			"description": "A tank for the house, so a fish you befriend has somewhere to sleep."
+		}
+	}
+}

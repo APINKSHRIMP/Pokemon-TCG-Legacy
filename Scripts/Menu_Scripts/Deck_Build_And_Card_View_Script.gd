@@ -2222,12 +2222,9 @@ func _save_energy_style_to_player_data(style_name: String) -> void:
 
 	data["energy_style"] = style_name
 
-	var write_file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.WRITE)
-	if write_file == null:
+	if not GameState.write_text_atomic(PLAYER_DATA_PATH, JSON.stringify(data, "\t")):   # AUDIT 2026-11-24: safe save
 		push_error("DeckBuild: cannot write " + PLAYER_DATA_PATH)
 		return
-	write_file.store_string(JSON.stringify(data, "\t"))
-	write_file.close()
 
 
 # ─── Scroll container ───────────────────────────────────────────────────────
@@ -3512,12 +3509,9 @@ func _save_player_data(deck_file_name: String) -> void:
 	var set_idx = unlocked_indices[current_unlock_pos]
 	data["last_set_loaded"] = set_list[set_idx]["set_id"]
 
-	var write_file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.WRITE)
-	if write_file == null:
+	if not GameState.write_text_atomic(PLAYER_DATA_PATH, JSON.stringify(data, "\t")):   # AUDIT 2026-11-24: safe save
 		push_error("DeckBuild: cannot write " + PLAYER_DATA_PATH)
 		return
-	write_file.store_string(JSON.stringify(data, "\t"))
-	write_file.close()
 
 
 # ─── Cancel ──────────────────────────────────────────────────────────────────
@@ -3564,11 +3558,7 @@ func _save_last_set_loaded() -> void:
 	var set_idx = unlocked_indices[current_unlock_pos]
 	data["last_set_loaded"] = set_list[set_idx]["set_id"]
 
-	var write_file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.WRITE)
-	if write_file == null:
-		return
-	write_file.store_string(JSON.stringify(data, "\t"))
-	write_file.close()
+	GameState.write_text_atomic(PLAYER_DATA_PATH, JSON.stringify(data, "\t"))   # AUDIT 2026-11-24: safe save
 
 
 # ─── Input handling (Escape + Shift zoom) ───────────────────────────────────

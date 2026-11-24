@@ -83,7 +83,8 @@ func _on_bed_body_entered(body: Node2D) -> void:
 	if MapManager.message_panel != null and MapManager.message_panel.visible:
 		return
 	if GameState.is_night_time():
-		MapManager.show_interactable_confirm(GameState.sleep_prompt_text(), _do_sleep)
+		# POKÉMON AT HOME: a follower with no bed blocks this until it is settled.
+		MapManager.confirm_sleep(_do_sleep)
 	else:
 		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT.get(GameState.get_time(), BED_TOO_EARLY_TEXT["Evening"]))
 

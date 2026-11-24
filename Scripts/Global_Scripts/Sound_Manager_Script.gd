@@ -395,15 +395,20 @@ func cry_length(species: String) -> float:
 const CRY_LEVEL := 0.375
 
 # `species` is the sprite basename, e.g. "278_Wingull" -> res://Audio/Cries/278_Wingull.ogg.
-# Returns true if the cry started.
-func play_cry(species: String) -> bool:
+# Returns true if the cry started. `pitch` is speed AND pitch (1.25 = 25% faster).
+# `interrupt` cuts a cry already sounding -- for cries the player CAUSED (talked to it,
+# scared it, befriended it); the random ambient cries pass false and wait their turn.
+const INTERACT_CRY_PITCH := 1.0    # TWEAKABLE -- Space on an overworld Pokémon
+const SCARED_CRY_PITCH := 1.25     # TWEAKABLE -- a skittish one bolting
+const BEFRIEND_CRY_PITCH := 0.75   # TWEAKABLE -- YES, it becomes your follower
+func play_cry(species: String, pitch: float = 1.0, interrupt: bool = false) -> bool:
 	# The main menu pauses the overworld: nothing out there should still be calling out
 	# from behind the menu. The Pokemon themselves are frozen too, so this is the safety
 	# net for any other caller (a cry fired from an interaction, the fishing catch).
 	if MapManager.overworld_paused:
 		return false
 	# is_instance_valid as well as null: the match outro frees every AudioStreamPlayer child.
-	if _cry_player != null and is_instance_valid(_cry_player) and _cry_player.playing:
+	if not interrupt and _cry_player != null and is_instance_valid(_cry_player) and _cry_player.playing:
 		return false
 	var path := _cry_path(species)
 	if path == "":
@@ -421,6 +426,7 @@ func play_cry(species: String) -> bool:
 		_cry_player.volume_db = linear_to_db(CRY_LEVEL)
 		add_child(_cry_player)
 	_cry_player.stream = stream
+	_cry_player.pitch_scale = pitch
 	_cry_player.play()
 	return true
 

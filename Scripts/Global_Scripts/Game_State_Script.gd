@@ -828,12 +828,7 @@ func _read_volume(data: Dictionary, key: String, fallback: float) -> float:
 func _save_setting_field(key: String, value) -> void:
 	var data := _read_settings()
 	data[key] = value
-	var write_file := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
-	if write_file == null:
-		push_error("GameState: cannot write " + SETTINGS_PATH)
-		return
-	write_file.store_string(JSON.stringify(data, "\t"))
-	write_file.close()
+	write_text_atomic(SETTINGS_PATH, JSON.stringify(data, "\t"))   # AUDIT 2026-11-24: safe save
 
 func _read_settings() -> Dictionary:
 	return _read_json_dict(SETTINGS_PATH)
@@ -843,6 +838,11 @@ func _read_current_data() -> Dictionary:
 
 ## Any JSON file as a Dictionary, or empty if it is missing or malformed.
 func _read_json_dict(path: String) -> Dictionary:
+	# AUDIT 2026-11-24: save files (user://) fall back to the copy write_text_atomic() keeps, so an unreadable
+	# Settings.json / Player_Current_Data.json comes back from its backup instead of reading as empty.
+	if path.begins_with("user://"):
+		var got = read_json_with_recovery(path)
+		return got if got is Dictionary else {}
 	if not FileAccess.file_exists(path):
 		return {}
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -1494,14 +1494,14 @@ func read_json_with_recovery(path: String) -> Variant:
 	var main_exists := FileAccess.file_exists(path)
 	if main_exists:
 		var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
-		if parsed is Dictionary:
+		if parsed is Dictionary or parsed is Array:   # deck files are Arrays
 			return parsed
 	for alt in [path + ".tmp", path + ".bak"]:
 		if not FileAccess.file_exists(alt):
 			continue
 		var text := FileAccess.get_file_as_string(alt)
 		var recovered = JSON.parse_string(text)
-		if recovered is Dictionary:
+		if recovered is Dictionary or recovered is Array:
 			push_warning("GameState: %s was %s - recovered the save from %s" % [path, "unreadable" if main_exists else "missing", alt.get_file()])
 			if main_exists:
 				var corrupt := path + ".corrupt"
@@ -2104,10 +2104,7 @@ func _reset_all_owned_cards() -> void:
 				if data is Dictionary and data.has("owned_cards"):
 					for entry in data["owned_cards"]:
 						entry["owned"] = 0
-					var wf := FileAccess.open(path, FileAccess.WRITE)
-					if wf != null:
-						wf.store_string(JSON.stringify(data, "\t"))
-						wf.close()
+					write_text_atomic(path, JSON.stringify(data, "\t"))   # AUDIT 2026-11-24: safe save
 		fname = dir.get_next()
 	dir.list_dir_end()
 
@@ -3015,6 +3012,79 @@ func add_item_to_collection(item_name: String) -> void:
 		progress["items"] = items
 		save_progress()
 
+
+
+# ============================================================
+# FOLLOWING POKÉMON + FOODS (2026-11-24)
+# ============================================================
+# progress["follower"]   the species key walking behind the player ("019_Rattata"), "" for none.
+#                        One at a time; befriending another sends the old one home.
+# progress["foods"]      {"Rat Cheese": 2, ...}: bait carried in the bag. A wild Pokémon that likes
+#                        one may be befriended with it (FollowingPokemon / Pokemon_Foods.json).
+# progress["befriended"] every species ever befriended, oldest first (for a later "friends" screen).
+
+func get_follower() -> String:
+	return str(progress.get("follower", ""))
+
+func set_follower(species_key: String) -> void:
+	progress["follower"] = species_key
+	if species_key != "":
+		var friends: Array = progress.get("befriended", [])
+		if species_key not in friends:
+			friends.append(species_key)
+			progress["befriended"] = friends
+	save_progress()
+
+func clear_follower() -> void:
+	set_follower("")
+
+func get_befriended() -> Array:
+	return (progress.get("befriended", []) as Array).duplicate()
+
+func get_foods() -> Dictionary:
+	var foods = progress.get("foods", {})
+	return (foods as Dictionary).duplicate() if foods is Dictionary else {}
+
+func food_count(food_name: String) -> int:
+	return int(get_foods().get(food_name, 0))
+
+func add_food(food_name: String, amount: int = 1) -> void:
+	var foods := get_foods()
+	foods[food_name] = maxi(0, int(foods.get(food_name, 0)) + amount)
+	if int(foods[food_name]) == 0:
+		foods.erase(food_name)
+	progress["foods"] = foods
+	save_progress()
+
+## POKÉMON AT HOME (PokemonHome has the rules). progress["home_beds"] = the beds placed in the
+## house, [{"bed": name, "pokemon": species or ""}]; progress["spare_beds"] = {name: count} owned
+## with no space for them.
+func get_home_beds() -> Array:
+	var list = progress.get("home_beds", [])
+	return (list as Array).duplicate(true) if list is Array else []
+
+func set_home_beds(list: Array) -> void:
+	progress["home_beds"] = list.duplicate(true)
+	save_progress()
+
+func get_spare_beds() -> Dictionary:
+	var spare = progress.get("spare_beds", {})
+	return (spare as Dictionary).duplicate() if spare is Dictionary else {}
+
+func add_spare_bed(bed_name: String, amount: int = 1) -> void:
+	var spare := get_spare_beds()
+	spare[bed_name] = maxi(0, int(spare.get(bed_name, 0)) + amount)
+	if int(spare[bed_name]) == 0:
+		spare.erase(bed_name)
+	progress["spare_beds"] = spare
+	save_progress()
+
+## Takes one `food_name` out of the bag. False (and nothing changes) when there is none.
+func use_food(food_name: String) -> bool:
+	if food_count(food_name) <= 0:
+		return false
+	add_food(food_name, -1)
+	return true
 
 
 # ISSUE #136: bulk grant used by the CHT.All_Sleeves cheat. One save at the end, same reasoning as

@@ -573,12 +573,9 @@ func _on_save_pressed() -> void:
 			data["sprite"]    = new_sprite.trim_suffix(".png")
 			saved_sprite_name = new_sprite
 
-	var write_file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.WRITE)
-	if write_file == null:
+	if not GameState.write_text_atomic(PLAYER_DATA_PATH, JSON.stringify(data, "\t")):   # AUDIT 2026-11-24: safe save
 		push_error("TrainerCard: cannot write " + PLAYER_DATA_PATH)
 		return
-	write_file.store_string(JSON.stringify(data, "\t"))
-	write_file.close()
 
 	SoundManagerScript.play_sfx(SoundManagerScript.SFX_gamemode_select)
 

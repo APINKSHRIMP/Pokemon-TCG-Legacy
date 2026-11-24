@@ -304,6 +304,9 @@ static func style_lights(root: Node, hours: float) -> void:
 	var k: float = lights_strength(hours)
 	for node in root.find_children("*", "PointLight2D", true, false):
 		var light := node as PointLight2D
+		# A Pokémon's glow sets its own energy every frame from lights_strength() too.
+		if light is PokemonGlow:
+			continue
 		if not light.has_meta(LIGHT_WANTED_META):
 			light.set_meta(LIGHT_WANTED_META, light.visible)
 		if k <= 0.0:

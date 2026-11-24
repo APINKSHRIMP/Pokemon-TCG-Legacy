@@ -6923,6 +6923,7 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 	match original_location:
 		"hand":
 			player_hand.erase(pokemon)
+			_fresh_from_hand(pokemon)
 			print("Removed pokemon from hand and added to bench: ", pokemon.metadata["name"])
 		"active":
 			# Moved from active to bench
@@ -6941,6 +6942,18 @@ func add_pokemon_to_bench(pokemon: card_object) -> void:
 ## Purple Ray, [Engage], Dragon Boost, Delta Switch...) opened a prompt that was hidden at once: an invisible
 ## question and a frozen match. Found by the autotester. The caller now awaits this AFTER the card has landed.
 ## Never during the opening setup — that isn't a turn, and the setup screen must stay up.
+## AUDIT 2026-11-24: a Pokémon played from the hand is a fresh card - full HP, no HP override. Every way of leaving
+## play is meant to wipe damage (ISSUE #404), but a path that forgets (an evolved card scooped up, a damaged Basic
+## shuffled back by an effect) would bench it already damaged, or Knocked Out at the next KO check. One guarantee
+## here covers them all. (Evolving is safe already: perform_evolution recomputes HP from the Pokémon underneath.)
+func _fresh_from_hand(pokemon: card_object) -> void:
+	if pokemon == null or pokemon.metadata.get("supertype", "") != "Pokémon":
+		return
+	pokemon.max_hp_override = 0
+	if pokemon.current_hp != pokemon.get_max_hp():
+		print("AUDIT 2026-11-24 FIX ACTIVE: ", pokemon.metadata.get("name", ""), " came from the hand at ", pokemon.current_hp, " HP - reset to ", pokemon.get_max_hp())
+		pokemon.current_hp = pokemon.get_max_hp()
+
 func run_bench_from_hand_triggers(pokemon: card_object) -> void:
 	if match_just_started_basic_pokemon_required or bench_setup_phase_active:
 		return

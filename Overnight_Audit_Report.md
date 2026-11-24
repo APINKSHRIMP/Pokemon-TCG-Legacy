@@ -58,6 +58,34 @@ from data. Removing them would be cosmetic only.
   - The shadow now mirrors the drawback terms. Two scenarios (`sc_ko_*`) were added, and all 59 scenarios pass.
   - The "CPU would retreat where you stayed" cases are all weak or zero-Energy Actives, which is sensible.
 
+## Session 3b (24 Nov, after the commit, uncommitted)
+- **Holon Pokémon as Energy: real bug fixed.** Attaching a Holon Pokémon as Energy never counted as your Energy for the turn, so you could attach them without limit. It now counts like any attachment. The CPU never plays Holons as Energy (a limitation, not a bug).
+- **Damage carried out of play: one bug class, fixed everywhere.** The rule is that a Pokémon leaving play loses its damage. Fixed:
+  - Mr. Fuji and Pilfer (Pokémon shuffled into the deck kept their damage).
+  - Beating Wings (Pokémon returned to the hand kept theirs).
+  - Scoop Up (the discarded evolution kept its damage).
+  - Belt and braces: any Pokémon benched from the hand, deck or prizes, by either side, now arrives at full HP (`_fresh_from_hand`). Revive is excluded on purpose.
+- **Trickery (CPU) location fix:** the swapped prize and deck cards now record where they really are.
+- **Crash-safe saves, the rest:** Settings, and every menu that saves your current data (coin case, costumes, info, first boot, deck builder, pack shop, sleeves), now save safely. Reads of user:// fall back to the backup.
+  - Deck files deliberately still write directly. Deleting or renaming a deck would leave a backup that recovery would bring back.
+- **Base–Gym Trainer read:** all 33 checked against the card text. Two were wrong and are fixed above (Scoop Up, Mr. Fuji). One nit left alone: the player can pick the Recycle being played.
+- **Checks:**
+  - Compile-all: 0 failures.
+  - Scenarios: 60/60.
+  - All 111 real opponents: 0 problems, 100% coverage.
+  - 40 random matches: 0 problems.
+  - Card-focused runs on Holon/Scoop Up/Fuji: 0 problems.
+- **Following Pokémon v1 is built** (master plan decision i). How it works:
+  - Talk to a wild Pokémon while a food it likes is in your bag, and you're asked "Offer it some?". Yes rolls the food's chance; a success eats the food and the Pokémon follows you.
+  - Skittish ones (rats) bolt at 100px. Hold **Ctrl to sneak**: slower walking, and they only bolt at 14px, so you can get a Space in.
+  - Landing a fish while carrying a food it likes rolls the same chance. On a success it follows you instead of going to FISH.
+  - One follower at a time; a new friend sends the old one home. Turn round to face your follower and press Space to send it home.
+  - It walks your exact path 22px behind, appears on every map, and never blocks NPCs or shows a bubble.
+  - The foods are **placeholders** in `NPC_and_Opponent_Data/Pokemon/Pokemon_Foods.json`: Rat Cheese, Luscious Leaves, Nutritious Bird Seed and Fish Flakes. Edit them freely.
+  - Use the DEL menu's "Give test foods" to try it.
+  - Not built yet: food shops (yours), bug nets, a bag or friends screen, a bed for it at home.
+  - Probe-verified (23/23), but **not yet eye-checked in-game**.
+
 ## Needs your call
 _(things that need a design decision, so they were left alone)_
 

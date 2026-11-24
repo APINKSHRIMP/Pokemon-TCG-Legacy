@@ -596,13 +596,10 @@ func _on_save_pressed() -> void:
 	# Strip .png to stay consistent with how player_data.json stores the value
 	data["coin"] = new_coin_name.trim_suffix(".png")
 
-	var write_file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.WRITE)
-	if write_file == null:
+	# AUDIT 2026-11-24: safe save (indent="\t" keeps the file human-readable)
+	if not GameState.write_text_atomic(PLAYER_DATA_PATH, JSON.stringify(data, "\t")):
 		push_error("CoinCase: cannot write " + PLAYER_DATA_PATH)
 		return
-	# indent="\t" keeps the file human-readable
-	write_file.store_string(JSON.stringify(data, "\t"))
-	write_file.close()
 
 	saved_coin_name   = new_coin_name
 	save_btn.disabled = true

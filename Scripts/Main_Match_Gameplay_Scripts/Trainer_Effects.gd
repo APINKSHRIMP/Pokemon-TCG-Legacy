@@ -2690,6 +2690,7 @@ func effect_scoop_up(is_opponent: bool) -> void:
 	# If the target itself is NOT the basic (it's an evolution), discard it too
 	if target != basic_card:
 		target.current_location = "discard"
+		target.current_hp = target.get_max_hp()   # AUDIT 2026-11-24: ISSUE #404 rule - a discarded card carries no damage
 		discard.append(target)
 
 	# Remove from play
@@ -3706,6 +3707,7 @@ func effect_mr_fuji(is_opponent: bool) -> void:
 	# Shuffle all pre-evolutions into deck
 	for pre in chosen.attached_pre_evolutions:
 		pre.current_location = "deck"
+		pre.current_hp = pre.get_max_hp()   # AUDIT 2026-11-24: ISSUE #404 rule - leaves play as a fresh card
 		deck.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.card_ops.release_special_forms(chosen, is_opponent, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
@@ -3723,6 +3725,9 @@ func effect_mr_fuji(is_opponent: bool) -> void:
 	bench.erase(chosen)
 	chosen.current_location = "deck"
 	main.clear_all_statuses(chosen, is_opponent)
+	# AUDIT 2026-11-24: ISSUE #404 rule - it leaves play as a fresh card. It kept its damage in the deck, so a deck
+	# search that benches it (Call for Family, Pokémon Fan Club) brought it back hurt, or Knocked Out.
+	main.card_ops.reset_returned_pokemon(chosen, is_opponent)   # ISSUE #301 clean slate: full HP, no counters/effects
 	deck.append(chosen)
 	await main.card_ops.fly_card(chosen, "play", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	

@@ -491,6 +491,12 @@ func initialise(
 	if map_data != "" and map_root != null \
 			and map_root.get_node_or_null("OVERWORLD_POKEMON") == null:
 		OverworldPokemonSpawner.attach(map_root, map_data, _player)
+	# FOLLOWING POKÉMON: the befriended Pokémon walks behind the player on every map.
+	if map_root != null and GameState.get_follower() != "":
+		PokemonFollower.spawn_for(map_root, _player)
+	# POKÉMON AT HOME: the ones with a bed in the house that aren't following you wander it.
+	if map_root != null and PokemonHome.HOME_WANDER_SCENE in _map_scene_path:
+		PokemonHome.spawn_wanderers(map_root, _player.global_position)
 
 	_player.interact_pressed.connect(_on_player_interact)
 	_player.npc_interact_pressed.connect(_on_player_npc_interact)
@@ -2207,7 +2213,192 @@ func _on_player_pokemon_interact(pokemon: Node) -> void:
 	current_pokemon = pokemon
 	pokemon.pause_and_face(_player.global_position)
 	_face_player_toward_actor(pokemon)
+	SoundManagerScript.play_cry(str(pokemon.species), SoundManagerScript.INTERACT_CRY_PITCH, true)
+	# FOLLOWING POKÉMON: your own follower asks to be sent home; a wild one that likes a
+	# food in the bag can be offered some (FollowingPokemon has the rules).
+	if pokemon is PokemonFollower:
+		_talk_to_follower(pokemon)
+		return
+	if pokemon is PokemonHomeWanderer:
+		_talk_to_home_pokemon(pokemon)
+		return
+	var food := FollowingPokemon.liked_food_in_bag(str(pokemon.species))
+	if food != "" and str(pokemon.species) != GameState.get_follower():
+		show_interactable_confirm("%s\nIt's sniffing at your %s. Offer it some?" % [pokemon.cry_text(), food],
+				func(): _offer_food_to_pokemon(pokemon, food))
+		return
 	_show_message_with_ok(pokemon.cry_text())
+
+
+## FOLLOWING POKÉMON: Yes to "Offer it some?". The box is already down.
+func _offer_food_to_pokemon(pokemon: Node, food: String) -> void:
+	if not is_instance_valid(pokemon):
+		return
+	var species_key := str(pokemon.species)
+	var species_name := str(pokemon.display_name)
+	if not FollowingPokemon.try_befriend(food):
+		var lost := " (The %s is gone.)" % food if FollowingPokemon.CONSUME_ON_FAIL else ""
+		show_interactable_message("%s sniffed the %s... but it isn't interested.%s" % [species_name, food, lost])
+		return
+	var at: Vector2 = (pokemon as Node2D).global_position
+	SoundManagerScript.play_cry(species_key, SoundManagerScript.BEFRIEND_CRY_PITCH, true)
+	if pokemon.has_method("despawn"):
+		pokemon.despawn()
+	var old := FollowingPokemon.befriend(species_key, at)
+	var line := "%s gobbled up the %s! %s wants to come with you!" % [species_name, food, species_name]
+	if old != "":
+		line += "\n" + PokemonHome.old_follower_note(old)
+	show_interactable_message(line)
+
+
+## DEBUG SUPER FOOD: Space/click/A while standing on any Pokémon. It holds still (all its
+## processing paused) while you answer; No lets it carry on exactly where it was.
+func offer_super_food(pokemon: OverworldPokemon) -> void:
+	if message_panel.visible or _validation_popup_active or cutscene_active:
+		return
+	if not FollowingPokemon.capturable(pokemon):
+		return
+	_set_pokemon_frozen(pokemon, true)
+	current_pokemon = pokemon
+	_face_player_toward_actor(pokemon)
+	SoundManagerScript.play_cry(pokemon.species, SoundManagerScript.INTERACT_CRY_PITCH, true)
+	show_cutscene_choice("%s!\nUse your %s to make it your partner?" % [pokemon.display_name, FollowingPokemon.SUPER_FOOD],
+			{}, func(): _capture_with_super_food(pokemon),
+			func(): _set_pokemon_frozen(pokemon, false))
+
+
+func _set_pokemon_frozen(pokemon: Node, frozen: bool) -> void:
+	if is_instance_valid(pokemon):
+		pokemon.process_mode = Node.PROCESS_MODE_DISABLED if frozen else Node.PROCESS_MODE_INHERIT
+
+
+func _capture_with_super_food(pokemon: OverworldPokemon) -> void:
+	if not is_instance_valid(pokemon):
+		return
+	var species_key := pokemon.species
+	var species_name := pokemon.display_name
+	var at := pokemon.global_position
+	FollowingPokemon.try_befriend(FollowingPokemon.SUPER_FOOD)
+	GameState.record_pokemon_met(species_key)
+	SoundManagerScript.play_cry(species_key, SoundManagerScript.BEFRIEND_CRY_PITCH, true)
+	# despawn() takes everything it carries with it (glow, shadow, bubble) and tells the
+	# spawner the spot is free; the follower is a brand-new node.
+	pokemon.process_mode = Node.PROCESS_MODE_INHERIT
+	pokemon.despawn()
+	var old := FollowingPokemon.befriend(species_key, at)
+	var line := "%s gobbled up the %s! %s is now following you!" % [species_name, FollowingPokemon.SUPER_FOOD, species_name]
+	if old != "":
+		line += "\n" + PokemonHome.old_follower_note(old)
+	show_interactable_message(line)
+
+
+## FOLLOWING POKÉMON: Space on your own follower (while facing it). In the house, with a bed
+## for it (its own, or a free one that fits): leave it at home. Anywhere else: let it go.
+func _talk_to_follower(follower: PokemonFollower) -> void:
+	var species_key := follower.species
+	var name := follower.display_name
+	if PokemonHome.in_house(_map_scene_path):
+		var bed := PokemonHome.bed_of(species_key)
+		if bed < 0:
+			bed = PokemonHome.free_bed_for(species_key)
+		if bed >= 0:
+			var bed_name := str(PokemonHome.beds()[bed].get("bed", ""))
+			show_interactable_confirm("%s\nLeave %s here at home? It can sleep in the %s." % [follower.cry_text(), name, bed_name],
+					func(): _leave_follower_home(follower, bed))
+			return
+	show_interactable_confirm("%s\nLet %s go back to the wild?" % [follower.cry_text(), name],
+			func(): _send_follower_home(name))
+
+
+## Yes to "Let X go back to the wild?".
+func _send_follower_home(follower_name: String) -> void:
+	FollowingPokemon.send_home()
+	show_interactable_message("%s went back to the wild. Bye for now!" % follower_name)
+
+
+## Yes to "Leave X here at home?": into bed `bed` (kept if it already had it), off your heels,
+## and pottering about the house (a water bed's Pokémon swims in its tank instead).
+func _leave_follower_home(follower: PokemonFollower, bed: int) -> void:
+	if not is_instance_valid(follower):
+		return
+	var species_key := follower.species
+	var name := follower.display_name
+	var at := follower.global_position
+	if PokemonHome.bed_of(species_key) != bed:
+		PokemonHome.assign(species_key, bed)
+	GameState.clear_follower()
+	follower.despawn()
+	var bed_name := str(PokemonHome.beds()[bed].get("bed", ""))
+	if PokemonHome.is_water_bed(bed_name):
+		show_interactable_message("%s is swimming happily in the %s." % [name, bed_name])
+		return
+	if PokemonHome.HOME_WANDER_SCENE in _map_scene_path:
+		PokemonHomeWanderer.spawn(_player.get_parent(), species_key, at)
+	show_interactable_message("%s settled in at home." % name)
+
+
+## Space on a Pokémon living in the house: take it out with you. The follower you have now
+## goes back to its bed if it has one -- otherwise it would go back to the wild, and the
+## question says so.
+func _talk_to_home_pokemon(pokemon: PokemonHomeWanderer) -> void:
+	var name := pokemon.display_name
+	var text := "%s\nTake %s out with you?" % [pokemon.cry_text(), name]
+	var current := GameState.get_follower()
+	if current != "" and PokemonHome.bed_of(current) < 0:
+		text += " (%s has no bed and would go back to the wild.)" % OverworldPokemonData.display_name(current)
+	show_interactable_confirm(text, func(): _take_home_pokemon_out(pokemon))
+
+
+func _take_home_pokemon_out(pokemon: PokemonHomeWanderer) -> void:
+	if not is_instance_valid(pokemon):
+		return
+	var species_key := pokemon.species
+	var name := pokemon.display_name
+	var at := pokemon.global_position
+	var old := GameState.get_follower()
+	pokemon.despawn()
+	if old != "" and PokemonHome.bed_of(old) < 0:
+		PokemonHome.release(old)
+	FollowingPokemon.befriend(species_key, at)
+	var line := "%s is coming with you!" % name
+	if old != "" and old != species_key:
+		line += "\n" + PokemonHome.old_follower_note(old)
+	show_interactable_message(line)
+
+
+## THE BED (Player_House_Upstairs, at night). You cannot go to sleep with a follower that has no
+## bed at home: a free bed that fits it is used, a full one asks to let its sleeper go, and no
+## bed at all asks to let the follower go. The sleep question only comes once it is settled.
+func confirm_sleep(do_sleep: Callable) -> void:
+	if message_panel == null or message_panel.visible:
+		return
+	var prompt := GameState.sleep_prompt_text()
+	var follower := GameState.get_follower()
+	var name := OverworldPokemonData.display_name(follower)
+	var check := PokemonHome.sleep_check()
+	match str(check.get("result", "ok")):
+		"free":
+			var bed: int = check["bed"]
+			var bed_name := str(PokemonHome.beds()[bed].get("bed", ""))
+			show_interactable_confirm("%s will sleep in the %s.\n%s" % [name, bed_name, prompt], func():
+				PokemonHome.assign(follower, bed)
+				do_sleep.call())
+		"conflict":
+			var bed: int = check["bed"]
+			var bed_name := str(PokemonHome.beds()[bed].get("bed", ""))
+			var sleeper := OverworldPokemonData.display_name(str(check["sleeper"]))
+			show_interactable_confirm(("%s needs somewhere to sleep, but %s is in the %s.\n"
+					+ "Let %s go back to the wild so %s can have it?") % [name, sleeper, bed_name, sleeper, name], func():
+				PokemonHome.assign(follower, bed)
+				show_interactable_confirm("%s went back to the wild, and %s curled up in the %s.\n%s"
+						% [sleeper, name, bed_name, prompt], do_sleep))
+		"no_bed":
+			show_interactable_confirm(("%s has nowhere to sleep. You can't go to bed with a Pokémon following you "
+					+ "unless it has a bed at home.\nLet %s go back to the wild?") % [name, name], func():
+				FollowingPokemon.send_home()
+				show_interactable_confirm("%s went back to the wild.\n%s" % [name, prompt], do_sleep))
+		_:
+			show_interactable_confirm(prompt, do_sleep)
 
 func _on_player_npc_interact(npc: Node):
 	if message_panel.visible or _validation_popup_active:

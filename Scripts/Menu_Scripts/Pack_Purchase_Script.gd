@@ -532,11 +532,7 @@ func _save_last_pack_loaded(pack_id: String) -> void:
 	if not data is Dictionary:
 		return
 	data[_last_pack_key()] = pack_id
-	var save_file := FileAccess.open(PLAYER_DATA_PATH, FileAccess.WRITE)
-	if save_file == null:
-		return
-	save_file.store_string(JSON.stringify(data, "\t"))
-	save_file.close()
+	GameState.write_text_atomic(PLAYER_DATA_PATH, JSON.stringify(data, "\t"))   # AUDIT 2026-11-24: safe save
 
 
 # ─── Set navigation ──────────────────────────────────────────────────────────

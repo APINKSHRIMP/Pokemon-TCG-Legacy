@@ -484,6 +484,9 @@ var _size_roll: float = 1.0
 ## Decided when the catch is banked (_show_catch_message): true = there was room at
 ## FISH, so it is beamed there for the bonus; false = it hops back into the water.
 var _send_to_shop: bool = false
+## FOLLOWING POKÉMON: this catch liked a food in the bag and won the roll -- it follows
+## the player instead of going to FISH or back in the water. Rolled once, with the banking.
+var _befriended: bool = false
 ## This catch took the species' last free place at FISH ("Maximum X caught").
 var _filled_last_slot: bool = false
 var _shop_bonus: int = 0
@@ -1712,20 +1715,54 @@ func _show_catch_message() -> void:
 	GameState.add_fish_coins(reward)
 	# Sent to FISH is banked here too, for the same reason: the tally moves once. The
 	# bonus is paid now and only SHOWN when the teleport starts.
-	_send_to_shop = FishShopTanks.has_room(_fish_species)
-	if _send_to_shop:
-		GameState.record_fish_sent(_fish_species)
-		_shop_bonus = FishingData.fish_shop_bonus(_fish_species)
-		GameState.add_fish_coins(_shop_bonus)
-		_filled_last_slot = not FishShopTanks.has_room(_fish_species)
+	var old_follower := GameState.get_follower()
+	# DEBUG SUPER FOOD: the catch ASKS whether to keep it (No = the usual FISH / hop back).
+	var super_food := FollowingPokemon.has_super_food() and _fish_species != old_follower
+	var befriend_food := "" if super_food else FollowingPokemon.liked_food_in_bag(_fish_species)
+	_befriended = befriend_food != "" and _fish_species != old_follower \
+			and FollowingPokemon.try_befriend(befriend_food, true)
+	_send_to_shop = false
+	if not _befriended and not super_food:
+		_bank_in_fish_shop()
 	var is_new := GameState.record_pokemon_met(_fish_species)
 	_show_fish_coin_tag(reward)
 	if is_new:
 		_show_new_tag(FISH_COIN_TAG_STACK)
 
 	var species_name := OverworldPokemonData.display_name(_fish_species)
-	MapManager.show_message_then("You caught a %s worth %d Fish Coins!" % [species_name, reward],
-			Callable(self, "_on_catch_message_ok"))
+	var text := "You caught a %s worth %d Fish Coins!" % [species_name, reward]
+	if super_food:
+		MapManager.show_cutscene_choice(text + "\nUse your %s to make it your partner?" % FollowingPokemon.SUPER_FOOD,
+				{}, Callable(self, "_on_super_food_keep"), Callable(self, "_on_super_food_release"))
+		return
+	if _befriended:
+		text += "\nIt loved your %s - it wants to come with you!" % befriend_food
+		if old_follower != "":
+			text += " " + PokemonHome.old_follower_note(old_follower)
+	MapManager.show_message_then(text, Callable(self, "_on_catch_message_ok"))
+
+
+## Sent to FISH, if a tank has room: banked once, with the bonus paid now (shown later).
+func _bank_in_fish_shop() -> void:
+	_send_to_shop = FishShopTanks.has_room(_fish_species)
+	if _send_to_shop:
+		GameState.record_fish_sent(_fish_species)
+		_shop_bonus = FishingData.fish_shop_bonus(_fish_species)
+		GameState.add_fish_coins(_shop_bonus)
+		_filled_last_slot = not FishShopTanks.has_room(_fish_species)
+
+
+## DEBUG SUPER FOOD, Yes: it becomes the follower (the box is already down).
+func _on_super_food_keep() -> void:
+	FollowingPokemon.try_befriend(FollowingPokemon.SUPER_FOOD, true)
+	_befriended = true
+	_on_catch_message_ok()
+
+
+## DEBUG SUPER FOOD, No: the normal ending -- FISH if there is room, else back in the water.
+func _on_super_food_release() -> void:
+	_bank_in_fish_shop()
+	_on_catch_message_ok()
 
 
 ## The rainbow NEW! over the player's head, for a species the Field Guide has never
@@ -1813,6 +1850,15 @@ func _on_catch_message_ok() -> void:
 		_finish()
 		return
 	var species_name := OverworldPokemonData.display_name(_fish_species)
+	if _befriended:
+		SoundManagerScript.play_cry(_fish_species, SoundManagerScript.BEFRIEND_CRY_PITCH, true)
+		# Off the line and straight to the player's heels (PokemonFollower snaps it behind them).
+		_caught.visible = false
+		_line.visible = false
+		_bobber.visible = false
+		FollowingPokemon.befriend(_fish_species)
+		_finish()
+		return
 	if _send_to_shop:
 		_show_shop_label(SENT_LABEL, "+%d" % _shop_bonus, true)
 		if _filled_last_slot:

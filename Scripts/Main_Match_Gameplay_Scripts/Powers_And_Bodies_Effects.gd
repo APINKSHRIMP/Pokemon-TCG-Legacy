@@ -2769,6 +2769,8 @@ func cpu_phase_activate_powers() -> void:
 					var prize_card = main.opponent_prize_cards[prize_idx]
 					main.opponent_prize_cards[prize_idx] = top_card
 					main.opponent_deck.insert(0, prize_card)
+					top_card.current_location = "prize"   # AUDIT 2026-11-24: locations follow the swap
+					prize_card.current_location = "deck"
 					main.display_prize_cards(true)
 					main.update_deck_icon(true)
 
@@ -8518,6 +8520,7 @@ func power_ecard1_beating_wings(pidgeot: card_object) -> void:
 	target.attached_energies.clear()
 	for pre in target.attached_pre_evolutions:
 		pre.current_location = "deck"
+		main.card_ops.reset_returned_pokemon(pre, is_opponent)   # AUDIT 2026-11-24: leaves play as a fresh card
 		deck.append(pre)
 		await main.card_ops.fly_card(pre, "attached", "deck", is_opponent, -1, {})   # AUDIT 2026-11-17: flight
 	main.card_ops.release_special_forms(target, is_opponent, "deck")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
@@ -8531,6 +8534,7 @@ func power_ecard1_beating_wings(pidgeot: card_object) -> void:
 	bench.erase(target)
 	target.current_location = "deck"
 	main.clear_all_statuses(target, is_opponent)
+	main.card_ops.reset_returned_pokemon(target, is_opponent)   # AUDIT 2026-11-24: no damage carried into the deck
 	deck.append(target)
 	await main.card_ops.fly_card(target, "play", "deck", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
 	deck.shuffle()

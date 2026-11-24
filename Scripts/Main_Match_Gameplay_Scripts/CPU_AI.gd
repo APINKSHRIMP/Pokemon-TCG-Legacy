@@ -5405,6 +5405,7 @@ func cpu_phase_bench_play() -> void:
 		var bench_from: Dictionary = main.hand_card_rect(best_card, true)
 		# Play the pokemon onto the bench
 		main.opponent_hand.erase(best_card)
+		main._fresh_from_hand(best_card)   # AUDIT 2026-11-24: a card from the hand arrives undamaged
 		best_card.current_location = "bench"
 		best_card.placed_on_field_this_turn = true
 		main.opponent_bench.append(best_card)
