@@ -330,10 +330,6 @@ static func page_step(event: InputEvent) -> int:
 
 
 # ── Alt + click: the old "open the hand large" click ─────────────────────────
-# A plain click on a hand card picks it straight off the bar now (and a drag plays
-# it). Holding Alt gives back the large hand view that click used to open.
-static func is_hand_expand_held() -> bool:
-	return Input.is_key_pressed(KEY_ALT)
 
 
 # ── Keys that belong to the mouse ────────────────────────────────────────────

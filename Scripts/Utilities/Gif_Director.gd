@@ -99,10 +99,6 @@ func find_first(from: Node, cls: String) -> Node:
 	return null
 
 
-func find_named(from: Node, nm: String) -> Node:
-	return from.find_child(nm, true, false)
-
-
 func tween_prop(obj: Object, prop: String, to, dur: float, trans := Tween.TRANS_SINE) -> void:
 	var t := get_tree().create_tween()
 	t.tween_property(obj, prop, to, dur).set_trans(trans).set_ease(Tween.EASE_IN_OUT)

@@ -450,11 +450,6 @@ func send_to_discard(card: card_object, is_opponent: bool, animate: bool = false
 		if main._should_bail(): return
 	main.update_discard_pile_display(is_opponent)
 
-# Move every card in an array to the given side's discard pile.
-func send_array_to_discard(cards: Array, is_opponent: bool, animate: bool = false) -> void:
-	for card in cards.duplicate():
-		await send_to_discard(card, is_opponent, animate)
-		if main._should_bail(): return
 
 # Discard all energies and pre-evolutions attached to a pokemon.
 func discard_all_attachments(pokemon: card_object, is_opponent: bool) -> void:

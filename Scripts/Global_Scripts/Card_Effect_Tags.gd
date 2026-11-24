@@ -130,21 +130,6 @@ static func matches(card_id: String, keys: Array, mode: String = "any", scope: i
 	return want_all
 
 
-## How many cards in the given sets carry `key` (any source). Used to hide categories the player
-## cannot possibly find yet, the same way the screen hides gated options.
-static func count_in_sets(key: String, set_ids: Array) -> int:
-	_ensure()
-	var allowed := {}
-	for s in set_ids:
-		allowed[String(s)] = true
-	var n := 0
-	for cid in _cards:
-		var sid := String(cid).split("-")[0]
-		if allowed.has(sid) and (_cards[cid] as Dictionary).has(key):
-			n += 1
-	return n
-
-
 ## Every category key that has at least one card in the given sets (one pass over the data).
 static func keys_present_in_sets(set_ids: Array) -> Dictionary:
 	_ensure()

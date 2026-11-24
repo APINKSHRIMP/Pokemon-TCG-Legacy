@@ -485,12 +485,12 @@ func _register_base_validations() -> void:
 		return "No evolved Pokemon to devolve!"
 
 	_validator_dispatch["base1-94"] = func(c, opp):  # Potion
-		var damaged = build_field_pokemon_array(opp).filter(func(p): return p.current_hp < int(p.metadata.get("hp","0")))
+		var damaged = build_field_pokemon_array(opp).filter(func(p): return p.current_hp < p.get_max_hp())   # AUDIT 2026-11-24: get_max_hp (Energy Root / match HP rules)
 		return "" if damaged.size() > 0 else "No Pokemon with damage to heal!"
 
 	_validator_dispatch["base1-90"] = func(c, opp):  # Super Potion
 		for p in build_field_pokemon_array(opp):
-			if p.current_hp < int(p.metadata.get("hp","0")) and p.attached_energies.size() > 0: return ""
+			if p.current_hp < p.get_max_hp() and p.attached_energies.size() > 0: return ""
 		return "No Pokemon with both damage and energy for Super Potion!"
 
 	_validator_dispatch["base1-92"] = func(c, opp):  # Energy Removal
@@ -596,7 +596,7 @@ func _register_base_validations() -> void:
 
 func _register_gym1_validations() -> void:
 	var fn_brock_v = func(c, opp):  # gym1-15/98 Brock
-		return "" if build_field_pokemon_array(opp).any(func(p): return p.current_hp < int(p.metadata.get("hp","0"))) else "No damaged Pokemon to heal!"
+		return "" if build_field_pokemon_array(opp).any(func(p): return p.current_hp < p.get_max_hp()) else "No damaged Pokemon to heal!"
 	_validator_dispatch["gym1-15"] = fn_brock_v;  _validator_dispatch["gym1-98"] = fn_brock_v
 
 	var fn_surge_v = func(c, opp):  # gym1-17/101 Lt. Surge
@@ -702,12 +702,12 @@ func _register_gym2_validations() -> void:
 
 	_validator_dispatch["gym2-103"] = func(c, opp):  # Erika's Kindness
 		for side in [opp, not opp]:
-			if build_field_pokemon_array(side).any(func(p): return p.current_hp < int(p.metadata.get("hp","0"))): return ""
+			if build_field_pokemon_array(side).any(func(p): return p.current_hp < p.get_max_hp()): return ""
 		return "No damaged Pokemon!"
 
 	_validator_dispatch["gym2-105"] = func(c, opp):  # Giovanni's Last Resort
 		for p in build_field_pokemon_array(opp):
-			if "Giovanni" in p.metadata.get("name","") and p.current_hp < int(p.metadata.get("hp","0")): return ""
+			if "Giovanni" in p.metadata.get("name","") and p.current_hp < p.get_max_hp(): return ""
 		return "No damaged Giovanni Pokemon!"
 
 	_validator_dispatch["gym2-107"] = func(c, opp):  # Lt. Surge's Secret Plan
@@ -3250,7 +3250,7 @@ func effect_super_potion(card: card_object, is_opponent: bool) -> void:
 	var valid_targets = []
 	var all_pokemon = build_field_pokemon_array(is_opponent)
 	for p in all_pokemon:
-		if p.current_hp < int(p.metadata.get("hp", "0")) and p.attached_energies.size() > 0:
+		if p.current_hp < p.get_max_hp() and p.attached_energies.size() > 0:
 			valid_targets.append(p)
 
 	if valid_targets.size() == 0:
@@ -3670,7 +3670,7 @@ func effect_mr_fuji(is_opponent: bool) -> void:
 		var most_damaged: card_object = null
 		var most_damage = 0
 		for bp in bench:
-			var dmg = int(bp.metadata.get("hp", "0")) - bp.current_hp
+			var dmg = bp.get_max_hp() - bp.current_hp
 			if dmg > most_damage:
 				most_damage = dmg
 				most_damaged = bp
@@ -3875,14 +3875,6 @@ func effect_recycle(is_opponent: bool) -> void:
 		if main._should_bail(): return
 		print("RECYCLE: ", chosen.metadata.get("name", ""), " placed on top of deck")
 
-# Helper: Reset trainer lock at start of turn
-func reset_trainer_lock(is_opponent: bool) -> void:
-	if is_opponent:
-		opponent_trainer_locked = false
-		opponent_trainer_lock_extra_turns = 0
-	else:
-		player_trainer_locked = false
-		player_trainer_lock_extra_turns = 0
 
 # OLD ISSUE 309: called at the END of each side's turn. The locks used to be cleared at the START of the
 # locked side's turn — so "your opponent can't play Trainer cards during his or her next turn" (Headache,
@@ -4756,9 +4748,7 @@ func gym1_heal_pokemon(pokemon: card_object, amount: int, is_opp: bool) -> void:
 	amount = main.match_effects.modify_heal_amount(amount, is_opp)
 	if amount <= 0:
 		return
-	var max_hp = int(pokemon.metadata.get("hp", "0"))
-	if pokemon.max_hp_override > 0:
-		max_hp = pokemon.max_hp_override
+	var max_hp = pokemon.get_max_hp()   # AUDIT 2026-11-24: was printed HP / override only - missed Energy Root and the match HP rule
 	var new_hp = min(max_hp, pokemon.current_hp + amount)
 	if new_hp > pokemon.current_hp:
 		pokemon.current_hp = new_hp
@@ -4829,20 +4819,6 @@ func choose_up_to_draw_count(max_n: int, side_is_opp: bool, header_text: String)
 		return 0
 	return max_n - pick
 
-func gym1_choose_draw_count(max_n: int, side_is_opp: bool, header_text: String) -> int:
-	if side_is_opp:
-		var hand = main.opponent_hand
-		if hand.size() >= 7:
-			return 0
-		return min(max_n, 7 - hand.size())
-	# Use the played Erika card (already in discard at this point) — instead anchor on player's active
-	var anchor: card_object = main.player_active_pokemon
-	if anchor == null:
-		# Fallback: just draw the max if there's no card to anchor on
-		return max_n
-	var hint = "Draw %d cards? (NO to skip)" % max_n
-	var yes = await gym1_prompt_yes_no(anchor, header_text, hint, "DRAW %d" % max_n, "SKIP")
-	return max_n if yes else 0
 
 # ============================ gym1-17 / gym1-101 — Lt. Surge ============================
 # Put a Basic from hand as your new Active; the old Active goes to the bench.
@@ -5623,7 +5599,7 @@ func gym1_effect_energy_flow(is_opponent: bool) -> void:
 		var to_return: Array = []
 		if is_opponent:
 			# CPU heuristic: only return energy from a heavily-damaged bench pokemon, or surplus energy on the active
-			var max_hp = int(pokemon.metadata.get("hp", "0"))
+			var max_hp = pokemon.get_max_hp()
 			var heavily_damaged = pokemon.current_hp <= max_hp / 2
 			if heavily_damaged:
 				to_return = pokemon.attached_energies.duplicate()
@@ -5848,7 +5824,7 @@ func gym1_narrow_gym_force_return_to_hand(side_is_opponent: bool) -> void:
 		# CPU picks the bench pokemon with the lowest strategic value (fewest energies, lowest HP %)
 		var best_score = 99999.0
 		for bp in bench:
-			var max_hp = int(bp.metadata.get("hp", "0"))
+			var max_hp = bp.get_max_hp()
 			var hp_pct = float(bp.current_hp) / max(1, max_hp)
 			var energy_count = bp.attached_energies.size()
 			var s = energy_count * 100.0 + hp_pct * 50.0  # lower = worse, choose worst
@@ -5923,7 +5899,7 @@ func gym1_celadon_activate(is_opponent: bool) -> void:
 		# CPU: pick the eligible pokemon with the most "value" to keep status-free (highest HP %)
 		var best_score = -1.0
 		for p in eligible:
-			var max_hp = int(p.metadata.get("hp", "0"))
+			var max_hp = p.get_max_hp()
 			var hp_pct = float(p.current_hp) / max(1, max_hp)
 			if hp_pct > best_score:
 				best_score = hp_pct
@@ -6990,7 +6966,7 @@ func gym2_fuchsia_activate(is_opponent: bool) -> void:
 		# CPU: pick the most-damaged Koga pokemon (recovery is most valuable for hurt ones)
 		var most_damaged = 0
 		for p in eligible:
-			var dmg = int(p.metadata.get("hp", "0")) - p.current_hp
+			var dmg = p.get_max_hp() - p.current_hp
 			if dmg > most_damaged:
 				most_damaged = dmg
 				chosen = p
@@ -9034,18 +9010,18 @@ func effect_ecard1_master_ball(is_opponent: bool) -> void:
 # POKEMON NURSE (ecard1-145): heal all damage from 1 chosen Pokemon, then discard its Energy
 func effect_ecard1_pokemon_nurse(is_opponent: bool) -> void:
 	var all_pokemon = build_field_pokemon_array(is_opponent)
-	var damaged = all_pokemon.filter(func(p): return p.current_hp < int(p.metadata.get("hp","0")))
+	var damaged = all_pokemon.filter(func(p): return p.current_hp < p.get_max_hp())
 	if damaged.size() == 0:
 		await main.show_message("NO POKEMON WITH DAMAGE!")
 		if main._should_bail(): return
 		return
 	var target: card_object = await main.card_ops.choose_card(damaged, is_opponent,
 			"POKEMON NURSE", "Select a Pokemon to fully heal (its Energy will be discarded)", "HEAL", false,
-			func(c): return float(int(c.metadata.get("hp","0")) - c.current_hp))
+			func(c): return float(c.get_max_hp() - c.current_hp))
 	if main._should_bail(): return
 	if target == null:
 		return
-	var max_hp = int(target.metadata.get("hp","0"))
+	var max_hp = target.get_max_hp()   # AUDIT 2026-11-24: get_max_hp - with Energy Root the printed HP healed nothing
 	await main.card_ops.heal_pokemon(target, max_hp - target.current_hp, is_opponent)
 	if main._should_bail(): return
 	if target.attached_energies.size() > 0:
@@ -11453,7 +11429,7 @@ func effect_ex7_surprise_time_machine(is_opponent: bool) -> void:
 		var stm_best := -INF
 		for t in evolved:
 			var low: card_object = t.attached_pre_evolutions.back()
-			if int(low.metadata.get("hp", "0")) <= int(t.metadata.get("hp", "0")) - t.current_hp: continue
+			if low.get_max_hp() <= t.get_max_hp() - t.current_hp: continue
 			var opts = deck.filter(func(c): return c.metadata.get("supertype","") == "Pokémon" and c.metadata.get("evolvesFrom","") == low.metadata.get("name",""))
 			for o in opts:
 				var s: float = main.cpu_ai.cpu_rank_keep_value(o) + (30.0 if o.metadata.get("name","") != t.metadata.get("name","") else 0.0)
@@ -11555,9 +11531,9 @@ func effect_ex7_swoop_teleporter(is_opponent: bool) -> void:
 	# Carry over state onto the new Basic.
 	new_basic.attached_energies = target.attached_energies.duplicate()
 	new_basic.attached_cards = target.attached_cards.duplicate()
-	var max_hp_old = int(target.metadata.get("hp", "0"))
+	var max_hp_old = target.get_max_hp()   # AUDIT 2026-11-24: get_max_hp (Energy Root / match HP rules)
 	var damage_taken = max_hp_old - target.current_hp
-	var new_max = int(new_basic.metadata.get("hp", "0"))
+	var new_max = new_basic.get_max_hp()
 	new_basic.current_hp = max(0, new_max - damage_taken)   # OLD ISSUE 324
 	new_basic.special_condition = target.special_condition
 	new_basic.is_poisoned = target.is_poisoned

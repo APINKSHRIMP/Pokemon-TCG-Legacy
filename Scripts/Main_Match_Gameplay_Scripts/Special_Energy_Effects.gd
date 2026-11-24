@@ -294,7 +294,7 @@ func apply_on_attach_effects(energy_card: card_object, target_pokemon: card_obje
 		"Potion Energy":
 			# Heal 1 damage counter (10 HP) when played from hand
 			# MATCH EFFECTS: no_healing / healing_multiplier gate
-			var max_hp = int(target_pokemon.metadata.get("hp", "0"))
+			var max_hp = target_pokemon.get_max_hp()   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 			var rule_heal = main.match_effects.modify_heal_amount(10, is_opponent)
 			if rule_heal > 0 and target_pokemon.current_hp < max_hp:
 				var actual_heal = min(rule_heal, max_hp - target_pokemon.current_hp)
@@ -514,52 +514,8 @@ func r4_energy_damage_mod(attacker: card_object, defender: card_object, pre_wr: 
 			mod -= 10
 	return mod
 
-# Returns a damage modifier dictionary for outgoing attacks from this pokemon.
-# Called during damage calculation if the attacker has special energies attached.
-# Returns: {"bonus": int, "reduction": int}
-# bonus = extra damage added to attacks, reduction = damage reduced from incoming attacks
-func get_outgoing_damage_modifier(pokemon: card_object) -> Dictionary:
-	# MIRACULOUS WIND: suppress Darkness/Metal passive effects
-	if main.powers_and_bodies.is_miraculous_wind_active():
-		return {"bonus": 0}
-	var bonus = 0
-	#var pokemon_types = pokemon.metadata.get("types", [])
-
-	for energy in pokemon.attached_energies:
-		var energy_name = energy.metadata.get("name", "")
-		match energy_name:
-			"Darkness Energy":
-				# +10 outgoing damage to the opponent's Active per Darkness Energy attached
-				bonus += 10
-			"R Energy":
-				# EX7: +10 damage to the opponent's Active per R Energy attached (before W/R)
-				bonus += 10
-			"Double Rainbow Energy":
-				# Damage done to the opponent by the holder is reduced by 10 (after W/R)
-				bonus -= 10
-			_:
-				pass
-
-	return {"bonus": bonus}
-
-# Returns incoming damage reduction from special energies (e.g. Metal Energy)
-func get_incoming_damage_reduction(pokemon: card_object) -> int:
-	# MIRACULOUS WIND: suppress Metal Energy damage reduction
-	if main.powers_and_bodies.is_miraculous_wind_active():
-		return 0
-	var reduction = 0
-	#var pokemon_types = pokemon.metadata.get("types", [])
-
-	for energy in pokemon.attached_energies:
-		var energy_name = energy.metadata.get("name", "")
-		match energy_name:
-			"Metal Energy":
-				# -10 incoming damage (after W/R) per Metal Energy attached
-				reduction += 10
-			_:
-				pass
-
-	return reduction
+# AUDIT 2026-11-24: removed get_outgoing_damage_modifier() / get_incoming_damage_reduction() - never called
+# (r4_energy_damage_mod above replaced them), and their flat +10/-10 ignored the W/R step and type conditions.
 
 ######################################################################################################################################################
 ############################################### CPU AI SCORING (how valuable is attaching this special energy?) ######################################
@@ -610,7 +566,7 @@ func score_special_energy_attachment(energy_card: card_object, target_pokemon: c
 		
 		"Potion Energy":
 			# Colorless + heals 10
-			var max_hp = int(target_pokemon.metadata.get("hp", "0"))
+			var max_hp = target_pokemon.get_max_hp()   # AUDIT 2026-11-24: get_max_hp - with Energy Root the printed HP said "not damaged"
 			if target_pokemon.current_hp < max_hp:
 				score += 15.0  # Heal is a nice bonus
 			score += 5.0  # Colorless baseline

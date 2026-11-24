@@ -8,8 +8,9 @@ extends Area2D
 # stands inside a shape triggers a response based on the
 # shape's NAME:
 #
-#   "Bed"  -> sleep logic (see _interact_bed)
 #   "TV"   -> cycling news headlines (see _interact_tv)
+# (The bed lives in Player_House_Upstairs.gd. AUDIT 2026-11-24: removed this script's old
+# _interact_bed / _do_sleep copy - _trigger() stopped routing "Bed" here long ago.)
 #   other  -> flavour text looked up in Interactables_Data.json
 #
 # To add a plain flavour-text interactable: add a named
@@ -19,19 +20,8 @@ extends Area2D
 
 const DATA_PATH := "res://Map_Data/Interactables_Data.json"
 
-# Fade-to-black duration when the player sleeps, in seconds.
-const SLEEP_FADE_DURATION := 3.0
-
 # Fallback text shown when a non-special shape has no JSON entry.
 const MISSING_TEXT := "There's nothing of interest here."
-
-# Text shown when interacting with the bed outside of night time (ISSUE #331: one per slot,
-# shared with Player_House_Upstairs.gd).
-const BED_TOO_EARLY_TEXT: Dictionary = {
-	"Morning":   "I've only just woken up, I'm not getting back in bed now!",
-	"Afternoon": "I'd love an afternoon nap... but I'd end up sleeping for hours...",
-	"Evening":   "Nothing wrong with an early night but it's far too early to go to sleep now!",
-}
 
 # TV news headlines, grouped by progression stage. _tv_stage()
 # picks the highest stage whose condition is currently met, and
@@ -134,41 +124,6 @@ func _trigger(shape_name: String) -> void:
 				MapManager.show_interactable_message("[center]" + text + "[/center]", 38)
 			else:
 				MapManager.show_interactable_message(text)
-
-
-# ============================================================
-# BED
-# ============================================================
-
-func _interact_bed() -> void:
-	if GameState.is_night_time():
-		MapManager.show_interactable_confirm(GameState.sleep_prompt_text(), Callable(self, "_do_sleep"))
-	else:
-		MapManager.show_interactable_message(BED_TOO_EARLY_TEXT.get(GameState.get_time(), BED_TOO_EARLY_TEXT["Evening"]))
-
-
-# Fades to black, advances the in-game day, and reloads the scene fresh
-# so any night/day specific tiles are rebuilt on wake-up.
-func _do_sleep() -> void:
-	if _player != null and _player.has_method("lock_movement"):
-		_player.lock_movement()
-
-	var scene_path := String(_scene_root.scene_file_path)
-
-	# Remember the player's spot so the reloaded scene restores it.
-	GameState.save_menu_return_state(
-		scene_path,
-		_player.position,
-		_player.get_current_direction()
-	)
-
-	# Sleep through the night: date +1 and Night/Bedtime -> Morning (the arrival night may sleep in).
-	GameState.going_to_bed = true   # no clock until the player wakes up
-	GameState.sleep_until_next_day()
-
-	var tween := create_tween()
-	tween.tween_property(_scene_root, "modulate", Color.BLACK, SLEEP_FADE_DURATION)
-	tween.tween_callback(func(): SceneCache.change_scene(scene_path))
 
 
 # ============================================================

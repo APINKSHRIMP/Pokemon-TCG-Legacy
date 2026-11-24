@@ -1154,19 +1154,9 @@ func save_player_direction(direction: String):
 func get_player_direction() -> String:
 	return last_player_direction
 
-func save_interior_player_position(pos: Vector2):
-	player_position = pos
-	print("Saved interior position: ", pos)
 
-func get_interior_player_position() -> Vector2:
-	return player_position
 
-func set_last_interior_scene(scene_name: String):
-	last_interior_scene = scene_name
-	print("Set last interior scene: ", scene_name)
 
-func get_last_interior_scene() -> String:
-	return last_interior_scene
 
 # ============================================================
 # ISSUE #254 - CLICK QUEUEING
@@ -1341,11 +1331,6 @@ func get_slot_summary(slot: int) -> Dictionary:
 		"cash":          prog.get("cash", 0),
 		"trainer_since": String(prog.get("trainer_since", "")),
 	}
-
-
-## The day this save was started, dd/mm/yyyy, or "" if it predates the field.
-func get_trainer_since() -> String:
-	return String(progress.get("trainer_since", ""))
 
 
 ## Today's date as dd/mm/yyyy, from the system clock.
@@ -2738,14 +2723,6 @@ func get_met_pokemon() -> Dictionary:
 	return _nature_guide["met"]
 
 
-func has_met_pokemon(species: String) -> bool:
-	return get_met_pokemon().has(species)
-
-
-func get_met_count(species: String) -> int:
-	return int(get_met_pokemon().get(species, 0))
-
-
 func get_met_species_total() -> int:
 	return get_met_pokemon().size()
 
@@ -2959,8 +2936,6 @@ func add_item_to_collection(item_name: String) -> void:
 		progress["items"] = items
 		save_progress()
 
-func get_items() -> Array:
-	return progress.get("items", [])
 
 
 # ISSUE #136: bulk grant used by the CHT.All_Sleeves cheat. One save at the end, same reasoning as
@@ -2994,6 +2969,12 @@ func give_cards(card_ids_csv: String) -> void:
 	for raw in card_ids_csv.split(","):
 		var trimmed = raw.strip_edges()
 		if trimmed != "":
+			# AUDIT 2026-11-24: set prefixes are lower case ("gym1-1"), but rewards typed as "Gym1-1"
+			# were saved as a separate, never-matched entry - the card never showed as owned. Only the
+			# prefix is lowered: numbers can be upper case ("ex10-A", "ecard3-H29").
+			var dash: int = trimmed.find("-")
+			if dash > 0:
+				trimmed = trimmed.substr(0, dash).to_lower() + trimmed.substr(dash)
 			ids.append(trimmed)
 
 	if ids.is_empty():

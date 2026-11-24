@@ -67,11 +67,6 @@ static func screen_extra() -> Vector2:
 	return screen_size() - Vector2(SCREEN_W, SCREEN_H)
 
 
-## The canvas centre.
-static func screen_centre() -> Vector2:
-	return screen_size() * 0.5
-
-
 ## The live content band between the header and the slim footer (CONTENT_TOP /
 ## CONTENT_BOTTOM / CONTENT_H are its 1920x1080 values).
 static func content_bottom() -> float:

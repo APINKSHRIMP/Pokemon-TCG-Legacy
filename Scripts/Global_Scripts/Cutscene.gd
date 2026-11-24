@@ -300,12 +300,6 @@ func fade_in(seconds: float = FADE_TIME) -> void:
 	await tween.finished
 
 
-## Black at once, no tween -- for a scene that must open already faded out.
-func snap_black() -> void:
-	_ensure_fade_sheet()
-	_fade_rect.color.a = 1.0
-
-
 func _ensure_fade_sheet() -> void:
 	if _fade_rect != null:
 		return
@@ -356,19 +350,3 @@ func zone_rect(node_name: String, fallback: Rect2) -> Rect2:
 
 	return fallback
 
-
-## Points of a Line2D in the map scene, in GLOBAL space, or `fallback` when the
-## map has no such node. Lets a path be drawn in the editor instead of typed out.
-func path_from_line(node_name: String, fallback: Array) -> Array:
-	if map == null:
-		return fallback
-	var node := map.find_child(node_name, true, false)
-	if not (node is Line2D):
-		return fallback
-	var line := node as Line2D
-	if line.points.size() < 2:
-		return fallback
-	var points: Array = []
-	for point in line.points:
-		points.append(line.to_global(point))
-	return points

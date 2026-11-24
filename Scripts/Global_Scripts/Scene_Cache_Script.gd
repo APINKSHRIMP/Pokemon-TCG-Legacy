@@ -132,24 +132,6 @@ func is_all_loaded() -> bool:
 	return _started and _pending.is_empty() and _waiting.is_empty()
 
 
-# Returns 0.0–1.0 progress across all pending loads (averaged).
-func get_load_progress() -> float:
-	_drain_completed()
-	if not _started:
-		return 0.0
-	var total := SCENES_TO_PRELOAD.size()
-	if total == 0:
-		return 1.0
-	var done := total - _pending.size() - _waiting.size()
-	var partial := 0.0
-	for path in _pending:
-		var progress: Array = []
-		ResourceLoader.load_threaded_get_status(path, progress)
-		if progress.size() > 0:
-			partial += float(progress[0])
-	return (float(done) + partial) / float(total)
-
-
 # Returns a cached PackedScene, or null if not cached.
 func get_packed_scene(path: String) -> PackedScene:
 	_drain_completed()

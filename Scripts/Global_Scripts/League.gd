@@ -68,17 +68,6 @@ static func next_visible_rank_xp(xp: int) -> int:
 	return next_rank_xp(xp) if rank_for_xp(xp) < visible_ranks() else -1
 
 
-## 0..1 of the way from this rank's threshold to the next (1 at the top rank).
-static func rank_progress(xp: int) -> float:
-	var th := rank_xp()
-	var r := rank_for_xp(xp)
-	if r >= th.size():
-		return 1.0
-	var lo := float(th[r - 1])
-	var hi := float(th[r])
-	return clampf((float(xp) - lo) / maxf(hi - lo, 1.0), 0.0, 1.0)
-
-
 # ── Opponents ─────────────────────────────────────────────────────────────────────────────────
 
 ## An opponent's League Rank 1-8 (their stars; an unrated opponent is rank 1).

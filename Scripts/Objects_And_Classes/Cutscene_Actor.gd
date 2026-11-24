@@ -142,17 +142,6 @@ func set_walk_speed(speed: float) -> void:
 	_path_speed = speed
 
 
-## Stop where we stand. Emits path_finished so anything awaiting the walk resumes.
-func stop_walking() -> void:
-	if not _walking:
-		return
-	_walking = false
-	velocity = Vector2.ZERO
-	animated_sprite.speed_scale = 1.0
-	animated_sprite.play("idle_" + current_facing)
-	path_finished.emit()
-
-
 func is_walking() -> bool:
 	return _walking
 

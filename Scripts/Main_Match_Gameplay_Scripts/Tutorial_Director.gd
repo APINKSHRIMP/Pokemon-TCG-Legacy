@@ -538,10 +538,6 @@ func _cm(km, pad):
 	return pad if controls == "pad" else km
 
 
-func _is_pad() -> bool:
-	return controls == "pad"
-
-
 # [PAD_*] tokens -> the pad's own button names (Controller_Diagram's table), in capitals
 # and brackets like the keyboard's [SHIFT]: "[PAD_A]" -> "[A]" on Xbox, "[CROSS]" on PlayStation.
 const PAD_TOKENS := {
@@ -735,10 +731,6 @@ const PILE_LINES := {
 	"player_prizes":    "You are viewing your prize cards. You take one every time you knock out one of your opponent's Pokemon",
 	"opponent_prizes":  "You are viewing your opponent's prize cards. They take one each time they knock out one of your Pokemon",
 }
-
-
-func _generic() -> bool:
-	return mode == "rules" or mode == "generic"
 
 
 # ============================================================

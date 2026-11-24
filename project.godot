@@ -28,6 +28,7 @@ SceneCache="*res://Scripts/Global_Scripts/Scene_Cache_Script.gd"
 MapManager="*uid://b1mp3uyvbbkl"
 PackOpeningManager="*res://Scripts/Global_Scripts/Pack_Opening_Manager.gd"
 InputDevice="*res://Scripts/Global_Scripts/Input_Device.gd"
+BugReport="*res://Scripts/Utilities/Bug_Report.gd"
 
 [display]
 

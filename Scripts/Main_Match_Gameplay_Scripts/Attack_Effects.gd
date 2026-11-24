@@ -3304,7 +3304,7 @@ func apply_bench_damage_single(effect: Dictionary, is_opponent_attacking: bool) 
 
 # Leech Seed: heal 1 damage counter from attacker if damage was dealt
 func apply_leech_seed(attacker: card_object, defender: card_object, is_opponent_attacking: bool) -> void:
-	var max_hp = int(attacker.metadata.get("hp", "0"))
+	var max_hp = attacker.get_max_hp()   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 	# MATCH EFFECTS: no_healing / healing_multiplier gate
 	var rule_heal = main.match_effects.modify_heal_amount(10, is_opponent_attacking)
 	if rule_heal > 0 and attacker.current_hp < max_hp and defender.current_hp > 0:
@@ -3537,7 +3537,7 @@ func execute_leech_life(attacker: card_object, defender: card_object, is_opponen
 	if final_damage > 0:
 		await main.card_ops.heal_pokemon(attacker, final_damage, is_opponent)
 		if main._should_bail(): return
-		var healed = min(final_damage, int(attacker.metadata.get("hp", "0")) - attacker.current_hp + final_damage)
+		var healed = min(final_damage, attacker.get_max_hp() - attacker.current_hp + final_damage)
 		await main.show_message(attacker.metadata.get("name", "").to_upper() + " DRAINED " + str(final_damage) + " HP!")
 		if main._should_bail(): return
 
@@ -4077,7 +4077,7 @@ func execute_spacing_out(attacker: card_object, is_opponent: bool) -> void:
 	if attacker == null:
 		return
 	
-	var max_hp = int(attacker.metadata.get("hp", "0"))
+	var max_hp = attacker.get_max_hp()   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 	if attacker.current_hp >= max_hp:
 		await main.show_message("SPACING OUT FAILED! NO DAMAGE TO HEAL!")
 		if main._should_bail(): return
@@ -5098,59 +5098,6 @@ func execute_surprise_thunder(attacker: card_object, defender: card_object, is_o
 	if main._should_bail(): return
 	print("ATTACK EXECUTED: Surprise Thunder")
 
-# Dark Charmeleon - Fireball: 70 damage, gated on Fire Energy, flip heads=discard 1, tails=nothing
-func execute_dark_charmeleon_fireball(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
-	var fire_energies: Array = []
-	for e in attacker.attached_energies:
-		var provided = main.get_energy_provided_by_card(e)
-		if "Fire" in provided:
-			fire_energies.append(e)
-	
-	if fire_energies.size() == 0:
-		await main.show_message("NO FIRE ENERGY! CAN'T USE FIREBALL!")
-		if main._should_bail(): return
-		return
-	
-	var coin = await main.flip_coin(false, is_opponent)
-	if coin:
-		# Heads: discard 1 fire energy, do 70 damage
-		var energy = fire_energies[0]
-		var _fr1: Dictionary = main.card_ops.capture_rect(energy, "attached", is_opponent)   # AUDIT 2026-11-17: flight
-		attacker.attached_energies.erase(energy)
-		energy.current_location = "discard"
-		var discard_pile = main.opponent_discard_pile if is_opponent else main.player_discard_pile
-		discard_pile.append(energy)
-		await main.card_ops.fly_card(energy, "attached", "discard", is_opponent, -1, _fr1)   # AUDIT 2026-11-17: flight
-		main.display_active_pokemon_energies(is_opponent)
-		main.update_discard_pile_display(is_opponent)
-		
-		await main.show_message("HEADS! DISCARDED FIRE ENERGY!")
-		if main._should_bail(): return
-		
-		var attacking_types = attacker.metadata.get("types", ["Colorless"])
-		var result = main.calculate_final_damage(70, attacking_types, defender, attacker)
-		var final_damage = result["damage"]
-		
-		var transparency_blocked = await main.powers_and_bodies.check_transparency(defender)
-		if not transparency_blocked:
-			if not main.check_defender_invincible(defender, !is_opponent):
-				final_damage = main.apply_defender_no_damage_shield(defender, final_damage, !is_opponent)
-				await main.display_and_apply_attack_damage(attacker, defender, final_damage, result["modifiers"], is_opponent, 70)
-				if main._should_bail(): return
-		
-		if is_opponent:
-			main.last_attack_on_player = {"damage": final_damage, "attack": {}, "attacker_types": attacking_types}
-			main.opponent_attacked_this_turn = true
-		else:
-			main.last_attack_on_opponent = {"damage": final_damage, "attack": {}, "attacker_types": attacking_types}
-			main.player_attacked_this_turn = true
-	else:
-		await main.show_message("TAILS! FIREBALL FIZZLED!")
-		if main._should_bail(): return
-	
-	await main.check_all_knockouts()
-	if main._should_bail(): return
-	print("ATTACK EXECUTED: Dark Charmeleon Fireball")
 
 # Check and apply Mirror Shell counter damage
 func check_mirror_shell(damaged_pokemon: card_object, attacker: card_object, damage_dealt: int, is_damaged_opponent: bool) -> void:
@@ -6307,7 +6254,7 @@ func execute_team_heal_flip(attacker: card_object, is_opponent: bool, flip_count
 	var heal = main.match_effects.modify_heal_amount(heads * 10, is_opponent)
 	var healed_any = false
 	for p in all_own:
-		var max_hp = int(p.metadata.get("hp", "0"))
+		var max_hp = p.get_max_hp()   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 		if heal > 0 and p.current_hp < max_hp:
 			p.current_hp = min(max_hp, p.current_hp + heal)
 			healed_any = true
@@ -7203,22 +7150,6 @@ func execute_lunar_power(attacker: card_object, is_opponent: bool) -> void:
 	await main.show_message("HEADS! " + target.metadata.get("name", "").to_upper() + " EVOLVED INTO " + chosen_evo.metadata.get("name", "").to_upper() + "!")
 	if main._should_bail(): return
 
-# Helper: evolve a benched Pokemon with an evolution card (carries damage / energies / pre-evolutions)
-func gym2_evolve_bench(evo_card: card_object, target_card: card_object, is_opponent: bool) -> void:
-	var damage_taken = target_card.get_max_hp() - target_card.current_hp
-	evo_card.current_hp = max(1, int(evo_card.metadata.get("hp", "0")) - damage_taken)
-	evo_card.attached_energies = target_card.attached_energies.duplicate()
-	target_card.attached_energies.clear()
-	evo_card.attached_pre_evolutions = target_card.attached_pre_evolutions.duplicate()
-	target_card.attached_pre_evolutions.clear()
-	evo_card.attached_pre_evolutions.append(target_card)
-	evo_card.placed_on_field_this_turn = true
-	evo_card.current_location = "bench"
-	var bench = main.opponent_bench if is_opponent else main.player_bench
-	var idx = bench.find(target_card)
-	if idx != -1:
-		bench[idx] = evo_card
-	main.clear_all_statuses(target_card, is_opponent)
 
 # ERRAND-RUNNING (Erika's Bulbasaur): flip — heads searches your deck for a Trainer card to your hand
 func execute_errand_running(attacker: card_object, is_opponent: bool) -> void:
@@ -13243,30 +13174,6 @@ func _neo4_count_energy_type(pokemon: card_object, type_name: String) -> int:
 			n += 1
 	return n
 
-# Evolve `base` into `evo_card` in place (transfers energy/pre-evos, replaces slot).
-func _neo4_evolve_in_place(base: card_object, evo_card: card_object, is_opponent: bool) -> void:
-	var dmg_taken = base.get_max_hp() - base.current_hp
-	evo_card.current_hp = max(1, int(evo_card.metadata.get("hp","0")) - dmg_taken)
-	evo_card.attached_energies = base.attached_energies.duplicate()
-	base.attached_energies.clear()
-	evo_card.attached_pre_evolutions = base.attached_pre_evolutions.duplicate()
-	base.attached_pre_evolutions.clear()
-	evo_card.attached_pre_evolutions.append(base)
-	evo_card.attached_cards = base.attached_cards.duplicate()
-	base.attached_cards.clear()
-	evo_card.placed_on_field_this_turn = true
-	evo_card.current_location = base.current_location
-	main.clear_all_statuses(evo_card, is_opponent)
-	var own_active = main.opponent_active_pokemon if is_opponent else main.player_active_pokemon
-	if base == own_active:
-		if is_opponent: main.opponent_active_pokemon = evo_card
-		else: main.player_active_pokemon = evo_card
-	else:
-		var bench = main.opponent_bench if is_opponent else main.player_bench
-		var idx = bench.find(base)
-		if idx >= 0: bench[idx] = evo_card
-	main.display_pokemon(is_opponent)
-	main.display_active_pokemon_energies(is_opponent)
 
 func _register_neo4_attacks() -> void:
 	_attack_dispatch["shock bolt"]        = func(atk, a, d, opp): await execute_neo4_shock_bolt(a, d, opp);            await _attack_finish(true,  50, atk, a.metadata.get("types",["Colorless"]), opp)
@@ -13510,7 +13417,7 @@ func execute_neo4_eerie_howl(attacker: card_object, defender: card_object, is_op
 		if main._should_bail(): return
 		if chosen == null: chosen = basics[0]
 	opp_hand.erase(chosen)
-	chosen.current_hp = int(chosen.metadata.get("hp","10"))
+	chosen.current_hp = chosen.get_max_hp()   # AUDIT 2026-11-24: keeps the match-rule HP shift (was the printed HP)
 	if main.card_ops.place_on_bench(chosen, not is_opponent):
 		main.refresh_hand_display(not is_opponent)
 		# Switch the newly-benched Pokemon into the Active spot
@@ -13955,7 +13862,7 @@ func execute_neo4_prehistoric_water(attacker: card_object, is_opponent: bool) ->
 	chosen.attached_cards.clear()
 	var old_max = chosen.get_max_hp()
 	var damage_taken = old_max - chosen.current_hp
-	new_form.current_hp = max(0, int(new_form.metadata.get("hp","0")) - damage_taken)   # OLD ISSUE 319: damage can KO it
+	new_form.current_hp = max(0, new_form.get_max_hp() - damage_taken)   # AUDIT 2026-11-24: get_max_hp keeps the match HP rule   # OLD ISSUE 319: damage can KO it
 	new_form.current_location = chosen.current_location
 	main.clear_all_statuses(new_form, target_is_opp)
 	if chosen == (main.opponent_active_pokemon if target_is_opp else main.player_active_pokemon):
@@ -14006,8 +13913,6 @@ func execute_neo4_provoke(attacker: card_object, is_opponent: bool) -> void:
 	await main.show_message("PROVOKE! DONE!")
 	if main._should_bail(): return
 
-func _neo4_bench_basics_from_hand(side_is_opponent: bool) -> void:
-	await _neo4_provoke_side(side_is_opponent, side_is_opponent)
 
 # Provoke half: `chooser_is_opp` looks at `victim_is_opp`'s hand and benches any number of its Baby/Basic
 # Pokémon onto the victim's Bench. The CPU benches the player's easy Knock Outs (60 HP or less).
@@ -14046,7 +13951,7 @@ func _neo4_provoke_side(victim_is_opp: bool, chooser_is_opp: bool) -> void:
 				break
 			pick = player_picks.pop_front()
 		hand.erase(pick)
-		pick.current_hp = int(pick.metadata.get("hp","10"))
+		pick.current_hp = pick.get_max_hp()   # AUDIT 2026-11-24: keeps the match-rule HP shift (was the printed HP)
 		main.card_ops.place_on_bench(pick, victim_is_opp)
 	main.refresh_hand_display(victim_is_opp)
 	var pv_placed: Array = await main.card_ops.end_bench_batch()
@@ -14592,19 +14497,6 @@ func execute_neo4_flipper_stroke(attacker: card_object, is_opponent: bool) -> vo
 		if main._should_bail(): return
 	print("ATTACK EXECUTED: Flipper Stroke")
 
-func _neo4_top3_basic_energy_to_hand(side_is_opponent: bool) -> void:
-	var deck = main.opponent_deck if side_is_opponent else main.player_deck
-	var hand = main.opponent_hand if side_is_opponent else main.player_hand
-	var top3: Array = []
-	for i in range(min(3, deck.size())):
-		top3.append(deck[i])
-	for c in top3:
-		if c.metadata.get("supertype","") == "Energy" and "Special" not in c.metadata.get("subtypes",[]):
-			deck.erase(c)
-			c.current_location = "hand"
-			hand.append(c)
-			main.card_ops.fly_card(c, "deck", "hand", side_is_opponent, -1, {})   # AUDIT 2026-11-17: flight
-	deck.shuffle()
 
 # CORE BLAST (neo4-47 Light Golduck): 30 + 20 per Special Energy on the Defender
 func execute_neo4_core_blast(attacker: card_object, defender: card_object, is_opponent: bool) -> void:
@@ -14732,7 +14624,7 @@ func execute_neo4_guiding_flame(attacker: card_object, is_opponent: bool) -> voi
 		if main._should_bail(): return
 		if chosen == null: chosen = basics[0]
 	own_discard.erase(chosen)
-	chosen.current_hp = int(chosen.metadata.get("hp","10"))
+	chosen.current_hp = chosen.get_max_hp()   # AUDIT 2026-11-24: keeps the match-rule HP shift (was the printed HP)
 	main.card_ops.place_on_bench(chosen, is_opponent)
 	main.update_discard_pile_display(is_opponent)
 	main.display_pokemon(is_opponent)
@@ -28312,7 +28204,7 @@ func execute_ex10_hidden_power(attacker: card_object, defender: card_object, is_
 		"J":
 			var coin = await main.flip_coin(false, is_opponent)
 			if coin and defender != null and not main._should_bail() and not is_protected_from_effects(defender):   # OLD ISSUE 334: prevented = nothing
-				var a_max = int(attacker.metadata.get("hp","0")); var d_max = int(defender.metadata.get("hp","0"))
+				var a_max = attacker.get_max_hp(); var d_max = defender.get_max_hp()   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 				var a_dmg = a_max - attacker.current_hp; var d_dmg = d_max - defender.current_hp
 				attacker.current_hp = max(0, a_max - d_dmg); defender.current_hp = max(0, d_max - a_dmg)
 				main.display_hp_circles_above_align(attacker, is_opponent)
@@ -28547,13 +28439,13 @@ func _ex10_return_pokemon_to_hand(pokemon: card_object, owner_is_opp: bool) -> v
 	# "...and all cards attached to it": the Pokémon it evolved from go back too (an Evolved Pokémon used to
 	# leave its Basic in no zone at all - autotester CARD MISSING, Erika's Dratini under Dragonair).
 	for pre in pokemon.attached_pre_evolutions:
-		pre.current_location = "hand"; pre.current_hp = int(pre.metadata.get("hp","0")); hand.append(pre)
+		pre.current_location = "hand"; pre.current_hp = pre.get_max_hp(); hand.append(pre)   # AUDIT 2026-11-24: get_max_hp keeps the match-rule HP shift
 		main.card_ops.fly_card(pre, "attached", "hand", owner_is_opp, -1, rh_rect)   # AUDIT 2026-11-17: flight
 	main.card_ops.release_special_forms(pokemon, owner_is_opp, "hand")   # 2026-11-21: Ditto Transform / Shapeshift form leave play too
 	pokemon.attached_pre_evolutions.clear()
 	# Reset runtime state and move the Pokemon to hand.
 	main.clear_all_statuses(pokemon, owner_is_opp)
-	pokemon.current_hp = int(pokemon.metadata.get("hp","0"))
+	pokemon.current_hp = pokemon.get_max_hp()   # AUDIT 2026-11-24: keeps the match-rule HP shift (was the printed HP)
 	pokemon.special_condition = ""; pokemon.is_poisoned = false; pokemon.is_burned = false
 	var active = main.opponent_active_pokemon if owner_is_opp else main.player_active_pokemon
 	var bench = main.opponent_bench if owner_is_opp else main.player_bench
@@ -32200,29 +32092,6 @@ func execute_ex16_mix_up(attacker: card_object, defender: card_object, is_oppone
 		await main.show_message("MIX-UP! OPPONENT'S DECK IS EMPTY!")
 	if main._should_bail(): return
 
-# DARK MIND (Dusclops ex16-14): base damage to the Active, then 20 damage to 1 of the opponent's
-# Benched Pokemon (no Weakness/Resistance for the Bench).
-func execute_ex16_dark_mind(attacker: card_object, defender: card_object, is_opponent: bool, base_damage: int) -> void:
-	if await handle_attack_confusion(attacker, is_opponent): return
-	if await handle_attack_blind(attacker, is_opponent): return
-	await gym1_hit_active(attacker, defender, is_opponent, base_damage)
-	if main._should_bail(): return
-	await main.check_all_knockouts()
-	if main._should_bail(): return
-	var target_is_opp = not is_opponent
-	var bench = main.opponent_bench if target_is_opp else main.player_bench
-	if bench.is_empty():
-		await main.show_message("DARK MIND! NO BENCHED POKEMON!")
-		if main._should_bail(): return
-		return
-	var targets = await gym1_choose_bench_targets(bench, 1, target_is_opp, is_opponent, "DARK MIND: CHOOSE A BENCHED POKEMON", 20)
-	if main._should_bail(): return
-	if targets.size() > 0:
-		await main.card_ops.apply_bench_damage(targets[0], 20, target_is_opp)
-		await main.show_message("DARK MIND! 20 DAMAGE TO " + targets[0].metadata.get("name","").to_upper() + "!")
-		if main._should_bail(): return
-	await main.check_all_knockouts()
-	if main._should_bail(): return
 
 # WRECK (Walrein ex ex16-99): 70; if any Stadium card is in play, 90 and discard that Stadium.
 func execute_ex16_wreck(attacker: card_object, defender: card_object, is_opponent: bool) -> int:

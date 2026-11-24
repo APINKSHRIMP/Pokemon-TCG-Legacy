@@ -3280,10 +3280,6 @@ func _cpu_best_other_damage(attacks: Array, skip: int, cpu_types: Array) -> int:
 		best = maxi(best, int(main.calculate_final_damage(r["min"], cpu_types, foe, me)["damage"]))
 	return best
 
-## Does another payable attack (not attacks[skip]) surely Knock Out the Defending Pokémon without a recoil that
-## could KO our own Active? (self_ko_verdict's "only this attack reaches it" test.)
-func _cpu_other_attack_kos(attacks: Array, skip: int, player_hp: int, cpu_types: Array) -> bool:
-	return _cpu_best_other_damage(attacks, skip, cpu_types) >= player_hp
 
 # Scores the value of parsed attack effects for CPU attack selection
 # True if the defender's own abilities/body text grants outright poison immunity
@@ -6141,19 +6137,6 @@ func _cpu_score_ko_10_coin(any_target: bool) -> float:
 		return 45.0
 	return 15.0
 
-# MR. BRINEY'S COMPASSION (ex3-87): only valuable when the CPU has a damaged non-ex Pokemon worth
-# saving (returning it to hand heals it and rescues it from a knockout).
-func _cpu_score_ex3_mr_brineys_compassion() -> float:
-	var best = 0
-	for p in main.card_ops.get_all_pokemon_in_play(true):
-		if main.is_ex_pokemon(p):
-			continue
-		best = max(best, p.get_damage_counters())
-	if best >= 4:
-		return 55.0
-	if best >= 2:
-		return 25.0
-	return -100.0
 
 # RARE CANDY (ex2-88): valuable only when the CPU has a Basic in play with a matching evolution in hand.
 func _cpu_score_ex2_rare_candy() -> float:
@@ -6235,14 +6218,6 @@ func _cpu_score_life_herb() -> float:
 		if p.special_condition != "" or p.get_damage_counters() > 0: return 45.0
 	return 0.0
 
-func _cpu_score_super_scoop_up() -> float:
-	# Coin-gated rescue: most valuable when the Active is about to be Knocked Out (saves the
-	# attached cards) or is burdened by a bad Special Condition.
-	var active = main.opponent_active_pokemon
-	if active == null: return 0.0
-	if active.special_condition != "": return 40.0
-	if active.current_hp <= 30 and active.get_damage_counters() > 0: return 35.0
-	return 0.0
 
 func _cpu_score_ex7_pow_hand_extension() -> float:
 	if main.opponent_prize_cards.size() <= main.player_prize_cards.size(): return -100.0  # unplayable
@@ -6267,7 +6242,7 @@ func _cpu_score_ex14_windstorm() -> float:
 	var count = 0
 	for p in ([main.player_active_pokemon] if main.player_active_pokemon != null else []) + main.player_bench:
 		for c in p.attached_cards:
-			if "Tool" in c.metadata.get("subtypes", []): count += 1
+			if "Pokémon Tool" in c.metadata.get("subtypes", []): count += 1   # AUDIT 2026-11-24: the subtype is "Pokémon Tool" - "Tool" never matched, so Windstorm only ever saw the Stadium
 	if main.current_stadium_card != null and not main.current_stadium_owner_is_opponent: count += 1
 	if count == 0: return -100.0
 	return 35.0 if count == 1 else 50.0
@@ -6344,13 +6319,6 @@ func _cpu_score_neo1_professor_elm() -> float:
 	if hand.size() > 5: return -20.0
 	return 70.0 if hand.size() <= 3 else 40.0
 
-func _cpu_score_neo1_super_scoop_up() -> float:
-	# Good to scoop when a bench pokemon is badly damaged
-	var best_dmg = 0
-	for bp in main.opponent_bench:
-		var dmg = bp.get_max_hp() - bp.current_hp
-		if dmg > best_dmg: best_dmg = dmg
-	return 60.0 if best_dmg >= 40 else 20.0
 
 func _cpu_score_neo1_berry() -> float:
 	var all_cpu: Array = []
@@ -6791,15 +6759,6 @@ func _cpu_score_pokemon_trader() -> float:
 			if already_in_play: return 70.0
 	return 0.0
 
-func _cpu_score_scoop_up() -> float:
-	var all_pokemon = []
-	if main.opponent_active_pokemon != null: all_pokemon.append(main.opponent_active_pokemon)
-	all_pokemon.append_array(main.opponent_bench)
-	for p in all_pokemon:
-		var max_hp = int(p.metadata.get("hp", "0"))
-		if p.current_hp <= max_hp / 2 and main.opponent_bench.size() > 0:
-			return 80.0
-	return 0.0
 
 func _cpu_score_super_energy_removal() -> float:
 	if main.player_active_pokemon == null: return 0.0
@@ -9912,43 +9871,6 @@ func opponent_take_prize_card() -> void:
 
 
 
-# Returns priority score for discarding a card (lower = discard first)
-func evaluate_hand_card_priority(card: card_object, hand: Array) -> int:
-	if hand.size() <= 2:
-		return 99
-	
-	var supertype = card.metadata.get("supertype", "")
-	
-	if supertype == "Energy":
-		var energy_count = 0
-		for c in hand:
-			if c.metadata.get("supertype") == "Energy":
-				energy_count += 1
-		if energy_count >= 3:
-			return 1
-		else:
-			return 99
-	
-	var subtypes = card.metadata.get("subtypes", [])
-	if "Stage 1" in subtypes or "Stage 2" in subtypes:
-		return 4
-	
-	if supertype == "Pokémon":
-		if "Basic" in subtypes:
-			if main.opponent_bench.size() >= 2:
-				return 2
-			else:
-				return 4
-	
-	if supertype == "Trainer":
-		var subtype = subtypes[0] if subtypes.size() > 0 else ""
-		if subtype == "Supporter":
-			return 4
-		else:
-			return 3
-	
-	return 3
-
 # Chooses bench damage targets sorted by lowest HP first (maximize KOs)
 func cpu_choose_bench_damage_targets(count: int, damage_per: int) -> Array:
 	var bench = main.player_bench
@@ -11065,9 +10987,6 @@ func _cpu_hand_nonenergy_actionable() -> int:
 
 
 # ── foresight ───────────────────────────────────────────────────────────────────────────────────────────────────────
-## True when the CPU is allowed to look at its own deck order (foresight dial; Pokédex knowledge is separate).
-func cpu_sees_deck() -> bool:
-	return CpuWeights.cheat_cards >= 1.0 or CpuWeights.cheating_cards()
 
 ## The next `n` cards the CPU will draw, if it knows them (foresight, or a Pokédex look) - else [].
 func cpu_next_draws(n: int) -> Array:
@@ -11872,7 +11791,10 @@ func _cpu_attack_decks_out(atk: Dictionary) -> bool:
 ## Only worth attaching to the Active, when it can attack this turn and the Energy adds damage (unlocks an attack,
 ## or R Energy's +10).
 func _cpu_one_turn_energy_wasted(p: card_object, e: card_object) -> bool:
-	if not main.special_energy_effects.must_discard_end_of_turn(e.metadata.get("name", "")):
+	# AUDIT 2026-11-24: Aqua / Magma Energy are one-turn Energy too ("At the end of your turn, discard"), but they are
+	# discarded by gym1_end_of_turn_cleanup, not must_discard_end_of_turn, so this gate let the CPU waste them.
+	var e_name: String = e.metadata.get("name", "")
+	if not (main.special_energy_effects.must_discard_end_of_turn(e_name) or e_name in ["Aqua Energy", "Magma Energy"]):
 		return false
 	var foe = main.player_active_pokemon
 	if p != main.opponent_active_pokemon or foe == null or not _cpu_active_can_attack_or_could(p):

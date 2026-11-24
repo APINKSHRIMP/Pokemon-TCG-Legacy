@@ -1309,11 +1309,6 @@ func theme_display_name(theme_id: String) -> String:
 	return " ".join(words)
 
 
-## Every theme id, in declaration order.
-func theme_ids() -> Array:
-	return THEMES.keys()
-
-
 # ─── Look and mode ───────────────────────────────────────────────────────────
 # Every theme id is `<look>_<mode>` — "umbreon_dark", "sunset_light". The Options
 # picker offers those as TWO rows rather than one, because sixteen buttons each

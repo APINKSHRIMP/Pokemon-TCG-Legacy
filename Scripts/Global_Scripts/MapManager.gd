@@ -1653,11 +1653,6 @@ func _show_large_message_with_ok(text: String) -> void:
 	message_panel.visible = true
 	_player.can_move = false
 
-# ISSUE #108: as _show_large_message_with_ok, but fires `on_ok` once the player dismisses it. Used to
-# chain a big "You received the X" notice into the follow-up dialogue.
-func _show_large_message_then(text: String, on_ok: Callable) -> void:
-	_pending_ok_action = on_ok
-	_show_large_message_with_ok(text)
 
 func _hide_message():
 	_hide_modifiers_box()
@@ -1701,16 +1696,6 @@ func show_message_then(text: String, on_ok: Callable) -> void:
 	_pending_ok_action = on_ok
 	_show_message_with_ok(text)
 
-# ISSUE #138: an OK dialog spoken BY a named NPC, for use after the speaker has already been
-# cleared. _on_yes_pressed() calls _hide_message() before it runs the pending confirm callback,
-# and _hide_message() nulls current_npc -- so anything a shop/NPC says as the *result* of a Yes
-# (a shopkeeper's thank-you after a purchase) came out as a chipless grey
-# interactables box instead of that NPC's own coloured, name-chipped box. Re-seating the speaker
-# is all that is needed: _apply_actor_chips() then finds them again and themes the box normally.
-func show_npc_message_with_ok(npc: Node, text: String, font_size: int = 28) -> void:
-	if npc != null and is_instance_valid(npc):
-		current_npc = npc
-	_show_message_with_ok(text, font_size)
 
 # ------------------------------------------------------------
 # CUTSCENE DIALOGUE

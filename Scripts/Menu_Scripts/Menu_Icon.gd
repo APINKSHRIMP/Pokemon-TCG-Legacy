@@ -46,11 +46,6 @@ func _init(icon_kind: int = Kind.CARDS, icon_ink: Color = Color.WHITE) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func set_ink(colour: Color) -> void:
-	ink = colour
-	queue_redraw()
-
-
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		queue_redraw()

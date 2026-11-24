@@ -2677,8 +2677,8 @@ func _player_can_act_now() -> bool:
 ## Turn 1 cannot attack, a Paralyzed or Asleep Pokemon cannot attack, and an
 ## attack already made this turn ends the turn — pressing a second one used to
 ## deal its damage anyway, which is the "keep hitting the attack button" the user
-## saw. show_attack_buttons() enforces the first three with messages; this is the
-## silent version the rows disable themselves with.
+## saw. This is the silent check the rows disable themselves with (_attack_row_reason gives the
+## message).
 func _player_can_attack_now() -> bool:
 	if not _player_can_act_now():
 		return false
@@ -2697,8 +2697,7 @@ func _player_can_attack_now() -> bool:
 ## right now (the opponent's turn, a selection screen, a message box open), and a
 ## popup explaining that on every stray click would be noise rather than help.
 ##
-## The wording matches show_attack_buttons() line for line, so the same rule
-## reads the same whichever route the player reaches it by.
+## One wording for each rule, whichever route the player reaches it by.
 func _attack_row_reason(mon: card_object, attack: Dictionary, attack_name: String) -> String:
 	if not _player_can_act_now():
 		return ""
@@ -3765,32 +3764,6 @@ func _stack_offset(count: int, card_width: float) -> float:
 	return maxf((ATTACH_STACK_SPAN - card_width) / float(count - 1), 8.0)
 
 
-# Calculates the total pixel height the tallest energy stack in the array will occupy above
-# its pokemon card. Used by display_hand_cards_array to shift small_selection_container down
-# so energy cards don't clip into the header area.
-# Returns 0.0 if no cards in the array are in play or if pokemon_selection_mode is false.
-func _calculate_max_energy_stack_height(card_array: Array, card_size: Vector2, pokemon_selection_mode: bool) -> float:
-	if not pokemon_selection_mode:
-		return 0.0
-	var max_px = 0.0
-	for card_obj in card_array:
-		var loc = card_obj.current_location
-		if loc != "bench" and loc != "active":
-			continue
-		if not card_obj.metadata.has("hp"):
-			continue
-		var energy_count = card_obj.attached_energies.size()
-		if energy_count == 0:
-			continue
-		# Mirror the same formula used in build_pokemon_slot_with_energies_and_hp.
-		var fraction = 0.12 - (energy_count - 1) * 0.01
-		var energy_offset = max(10.0, card_size.y * fraction)
-		# Total stack height = sum of all offsets = energy_count * energy_offset
-		# (each card peeks by energy_offset, and the stack is energy_count cards deep).
-		var stack_height = energy_count * energy_offset
-		max_px = max(max_px, stack_height)
-	return max_px
-
 # Builds a VBoxContainer wrapping a pokemon card with stacked energy behind it and an HP label below.
 # card_obj      : the pokemon card_object
 # card_size     : Vector2 pixel size for the pokemon card and each energy card
@@ -3904,7 +3877,7 @@ func build_pokemon_slot_with_energies_and_hp(card_obj: card_object, card_size: V
 	
 	# HP label only when card is in play (bench or active) and hp metadata exists.
 	if show_hp_and_energies and card_obj.metadata.has("hp"):
-		var max_hp = int(card_obj.metadata["hp"])
+		var max_hp = card_obj.get_max_hp()   # AUDIT 2026-11-24: showed the printed HP ("100 / 80" with Energy Root or a +HP match rule)
 		var current_hp = card_obj.current_hp
 		# ISSUE #235: the bench passes show_hp_number = false. The blocks below carry
 		# the same information and are what the card text actually keys off.
@@ -4014,7 +3987,7 @@ func display_hp_circles_above_align(active_pokemon: card_object, is_opponent: bo
 	hp_grid_container.visible = true
 	hp_grid_container.columns = 1
 
-	var max_hp: int = int(active_pokemon.metadata["hp"])
+	var max_hp: int = active_pokemon.get_max_hp()   # AUDIT 2026-11-24: showed the printed HP ("100 / 80" with Energy Root or a +HP match rule)
 	var current_hp: int = active_pokemon.current_hp
 
 	# ISSUE #234 (retest) / #256 / #257: BOTH ROWS HUG THE ACTIVE CARD.
@@ -4150,421 +4123,15 @@ func _paint_hp_block(blocks: HBoxContainer, index: int, is_damaged: bool) -> voi
 	(block as Panel).add_theme_stylebox_override("panel", sb)
 
 
-# Adds one row of HP circles and spacers to the grid container
-# circles_first: if true, circles are drawn before spacers (left-aligned for opponent)
-# red_from_right: if true, red fills from the right side of the row (opponent bottom row)
-func _add_hp_row(container: GridContainer, circle_count: int, spacer_count: int, red_count: int, circles_first: bool, red_from_right: bool) -> void:
-	if circles_first:
-		_add_hp_circles(container, circle_count, red_count, red_from_right)
-		_add_hp_spacers(container, spacer_count)
-	else:
-		_add_hp_spacers(container, spacer_count)
-		_add_hp_circles(container, circle_count, red_count, red_from_right)
-
-# Draws colored circles into the HP grid, coloring red for damage taken
-func _add_hp_circles(container: GridContainer, count: int, red_count: int, red_from_right: bool) -> void:
-	for i in range(count):
-		var circle = ColorRect.new()
-		circle.custom_minimum_size = Vector2(30, 30)
-		if red_from_right:
-			circle.color = Color.RED if i >= (count - red_count) else Color.GREEN
-		else:
-			circle.color = Color.RED if i < red_count else Color.GREEN
-		container.add_child(circle)
-
-# Draws invisible spacer cells to align HP circles within the 12-column grid
-func _add_hp_spacers(container: GridContainer, count: int) -> void:
-	for _i in range(count):
-		var spacer = Control.new()
-		spacer.custom_minimum_size = Vector2(30, 30)
-		container.add_child(spacer)
-
-# Hides the main action buttons and generates one attack button per attack the pokemon has
-func show_attack_buttons() -> void:
-	if player_active_pokemon == null:
-		return
-	
-	if turn_number <= 1:
-		await show_message("You cannot attack on the first turn!")
-		hide_attack_buttons()
-		return
-	if player_active_pokemon.special_condition == "Paralyzed":
-		if card_fx != null: card_fx.status(player_active_pokemon, "Paralyzed")   # ISSUE #345
-		await show_message(player_active_pokemon.metadata.get("name", "").to_upper() + " IS PARALYZED AND CANNOT ATTACK!")
-		hide_attack_buttons()
-		return
-	if player_active_pokemon.special_condition == "Asleep":
-		if card_fx != null: card_fx.status(player_active_pokemon, "Asleep")   # ISSUE #345
-		await show_message(player_active_pokemon.metadata.get("name", "").to_upper() + " IS ASLEEP AND CANNOT ATTACK!")
-		hide_attack_buttons()
-		return
-	
-	main_buttons_container.visible = false
-	attack_buttons_container.visible = true
-	
-	var attacks = get_attacks_for_card(player_active_pokemon)
-	
-	if attacks.size() == 0:
-		print("Active pokemon has no attacks")
-		return
-	
-	_attack_list = attacks
-	_attack_page = 0
-	_render_attack_page()
-
-
-# ============================================================
-# ATTACK BUTTON CONTENT — [energy icons] [name] [damage]
-# ============================================================
-# A Button cannot carry inline images through its `text`, so the row is built as
-# child Controls laid out with ANCHORS rather than absolute offsets: the button's
-# final size is decided by the HBoxContainer after this runs, and anchored
-# children re-flow to whatever it ends up being.
-#
-# Every child is MOUSE_FILTER_IGNORE, or it would swallow the click meant for the
-# button underneath it.
-#
-# The cost is read from the attack dict handed over by get_attacks_for_card(),
-# NOT from the card's own metadata — ex11's Delta Aura rewrites the cost of a
-# paired attack on the way through, so the button shows the discounted cost the
-# player will actually be charged.
-
-# ── Roomy defaults: what a normal 1-3 attack Pokemon gets ──
-# 99% of cards have three attacks or fewer, so these are tuned for that case and
-# everything below only kicks in when a card exceeds it.
-const ATTACK_BTN_MAX_W: float      = 520.0  # ceiling even when there is room to spare
-const ATTACK_BTN_PAD_X: float      = 14.0   # button edge -> first icon / last digit
-const ATTACK_COST_ICON: float      = 26.0   # energy icon square
-const ATTACK_COST_GAP: float       = 3.0    # between two energy icons
-const ATTACK_SECTION_GAP: float    = 12.0   # icons -> name, and name -> damage
-const ATTACK_NAME_FONT: int        = 20     # matches the kenneyUI theme's button size
-const ATTACK_NAME_MIN_FONT: int    = 9      # hard floor when a long name has to shrink
-const ATTACK_DAMAGE_FONT: int      = 24     # the headline number, a touch larger
-# Content on a disabled button, dimmed to sit alongside the theme's own
-# font_disabled_color rather than staying at full strength over a greyed panel.
-const ATTACK_DISABLED_ALPHA: float = 0.35
-
-# ── Crowding: how the row gives ground as attacks are added ──
-# A card can end up with far more attacks than it was printed with — every
-# Technical Machine attached replaces or adds one, Meteor Falls and gym1 Recall
-# add the whole pre-evolution chain, and ex12 Versatile adds the attacks of every
-# Pokemon in play. There is no upper bound, so the row has to degrade gracefully
-# rather than run off the screen.
-#
-# Three levers, applied in this order:
-#   1. CANCEL shrinks (it is one word in a 350px button)
-#   2. separation collapses
-#   3. the buttons themselves shrink, and their contents scale with them
-# Past ATTACKS_PER_PAGE the buttons would stop being readable, so the row pages
-# instead of shrinking any further.
-const ATTACK_ROOMY_MAX: int        = 3      # at or below this, keep the generous look
-const ATTACKS_PER_PAGE: int        = 5      # most that stay legible on one row
+# AUDIT 2026-11-24: removed the old attack-button row (show_attack_buttons, _render_attack_page, the MORE pager,
+# _attack_row_metrics, _build_attack_button_content and their sizing constants, ~380 lines). Nothing called
+# show_attack_buttons() any more - attacks are chosen from the action-panel rows (_attack_row_reason /
+# _player_can_attack_now) - so the whole chain was unreachable. Kept: the constants still used below / elsewhere.
+const ATTACK_DISABLED_ALPHA: float = 0.35   # attack-row content on a disabled row
 const ATTACK_CANCEL_W_ROOMY: float = 350.0  # CANCEL's authored width
-const ATTACK_CANCEL_W_TIGHT: float = 200.0  # CANCEL once the row is crowded
-const ATTACK_MORE_BTN_W: float     = 210.0  # the "MORE 1/3" page button
 const ATTACK_SEP_BASE: float       = 100.0  # the container's authored separation
-const ATTACK_SEP_MIN: float        = 20.0
-const ATTACK_BTN_FLOOR_W: float    = 120.0  # absolute floor; only reachable on a tiny row
-# Used only if the container's own offsets ever read as zero. Matches the width
-# authored in Main_Match_Core_GamePlay_Scene.tscn (offset_left -1843 -> right 57).
-const ATTACK_ROW_FALLBACK_W: float = 1900.0
-# The row is clamped to the screen width (UIKit.screen_w(), read in
-# _attack_row_metrics) because the button container is authored wider than the display.
-# Contents scale against this width. A button at or above it draws at full size;
-# narrower buttons scale their icons, padding and fonts down proportionally.
-const ATTACK_SCALE_REF_W: float    = 420.0
-const ATTACK_SCALE_MIN: float      = 0.42
-
 const ENERGY_ICON_DIR: String = "res://Image_Assets/Icons/Energy_Icons/"
-const ATTACK_BTN_FONT_PATH: String = "res://UI_Themes/ChakraPetch-Bold.ttf"
 
-var _attack_btn_font: Font = null
-# The full attack list for the current selection, and which page of it is shown.
-# Held so the MORE button can re-render without re-running show_attack_buttons()'s
-# guards (which would re-show "cannot attack on the first turn" messages).
-var _attack_list: Array = []
-var _attack_page: int = 0
-
-
-func _get_attack_btn_font() -> Font:
-	if _attack_btn_font == null:
-		_attack_btn_font = load(ATTACK_BTN_FONT_PATH)
-	return _attack_btn_font
-
-
-## Everything the row needs to lay itself out for the current page, worked out in
-## one place so the button builder never has to re-derive a size.
-##
-## Returns: page_count, page_start, shown (attack count on this page), paged,
-## btn_w, sep, cancel_w, scale.
-func _attack_row_metrics() -> Dictionary:
-	var total: int = _attack_list.size()
-	var page_count: int = maxi(1, ceili(float(total) / float(ATTACKS_PER_PAGE)))
-	_attack_page = clampi(_attack_page, 0, page_count - 1)
-	var paged: bool = total > ATTACKS_PER_PAGE
-	var page_start: int = _attack_page * ATTACKS_PER_PAGE
-	var shown: int = mini(ATTACKS_PER_PAGE, total - page_start) if paged else total
-
-	var m := {
-		"page_count": page_count,
-		"page_start": page_start,
-		"shown": shown,
-		"paged": paged,
-	}
-	if shown <= 0:
-		m["btn_w"] = ATTACK_BTN_MAX_W
-		m["sep"] = ATTACK_SEP_BASE
-		m["cancel_w"] = ATTACK_CANCEL_W_ROOMY
-		m["scale"] = 1.0
-		return m
-
-	# How much room the row ACTUALLY has, which is not the container's own width.
-	#
-	# Two traps here, both of which cost a fix each:
-	#   1. NOT container.size.x. A BoxContainer's size is max(its own rect, the sum
-	#      of its children's minimums), so once a row has overflowed, size.x reports
-	#      the OVERFLOWED width and the next layout budgets against a row wider than
-	#      the screen — it would never recover.
-	#   2. NOT the authored offsets either. The container is 1900 wide but sits at
-	#      x=64 (BUTTONS is at offset_left 1907, the container at -1843), so its
-	#      right edge is at 1964 — 44px PAST the 1920 screen. Budgeting against 1900
-	#      put the last button half off the display no matter how the maths inside
-	#      it worked out.
-	# So: take the authored width, but clamp it to what fits on screen, mirroring the
-	# container's own left inset on the right so the row sits evenly.
-	var screen_w: float = UIKit.screen_w()
-	var left_x: float = clampf(attack_buttons_container.global_position.x, 0.0, screen_w)
-	var authored: float = attack_buttons_container.offset_right - attack_buttons_container.offset_left
-	if authored <= 0.0:
-		authored = ATTACK_ROW_FALLBACK_W
-	var row_w: float = minf(authored, screen_w - left_x * 2.0)
-	if row_w <= 0.0:
-		row_w = ATTACK_ROW_FALLBACK_W
-
-	# Lever 1 + 2. Separation eases off rather than snapping, so going from three
-	# to four attacks does not visibly jolt the row.
-	var cancel_w: float = ATTACK_CANCEL_W_ROOMY if shown <= ATTACK_ROOMY_MAX else ATTACK_CANCEL_W_TIGHT
-	var sep: float = ATTACK_SEP_BASE
-	if shown > ATTACK_ROOMY_MAX:
-		sep = clampf(ATTACK_SEP_BASE / float(shown - ATTACK_ROOMY_MAX + 1),
-					 ATTACK_SEP_MIN, ATTACK_SEP_BASE)
-
-	# Children on the row: the attack buttons, CANCEL, and MORE when paging.
-	var child_count: int = shown + 1 + (1 if paged else 0)
-	var fixed_w: float = cancel_w + (ATTACK_MORE_BTN_W if paged else 0.0)
-	var free: float = row_w - fixed_w - sep * float(child_count - 1)
-	var btn_w: float = clampf(free / float(shown), ATTACK_BTN_FLOOR_W, ATTACK_BTN_MAX_W)
-
-	m["btn_w"] = btn_w
-	m["sep"] = sep
-	m["cancel_w"] = cancel_w
-	m["scale"] = clampf(btn_w / ATTACK_SCALE_REF_W, ATTACK_SCALE_MIN, 1.0)
-	return m
-
-
-## Builds (or rebuilds) the visible page of attack buttons. Safe to call again on
-## a page change — it clears everything except the permanent CANCEL button, which
-## is a scene node rather than a generated one.
-func _render_attack_page() -> void:
-	for child in attack_buttons_container.get_children():
-		if child.name == "cancel_attack_mode_button":
-			continue
-		# remove_child BEFORE queue_free: queue_free only takes effect at the end of
-		# the frame, so on a page change the old buttons would still be laid out by
-		# the container alongside the new ones and every width would be halved.
-		attack_buttons_container.remove_child(child)
-		child.queue_free()
-
-	var m := _attack_row_metrics()
-
-	attack_buttons_container.add_theme_constant_override("separation", int(m["sep"]))
-	var cancel := attack_buttons_container.get_node_or_null("cancel_attack_mode_button")
-	if cancel != null:
-		cancel.custom_minimum_size.x = float(m["cancel_w"])
-
-	var page_start: int = m["page_start"]
-	for offset in range(int(m["shown"])):
-		var index: int = page_start + offset
-		var attack = _attack_list[index]
-		var btn = Button.new()
-		# The label is drawn by _build_attack_button_content() as icons + name +
-		# damage, so the Button's own text stays empty -- a Button draws its text
-		# centred over the whole rect and it would sit on top of the energy icons.
-		btn.text = ""
-
-		# Check if attack is disabled (Farfetch'd permanent, Amnesia, etc.)
-		var attack_name = attack.get("name", "")
-		var label_text: String = attack_name
-		if is_attack_disabled(player_active_pokemon, attack_name):
-			btn.disabled = true
-			btn.theme = theme_disabled
-			label_text = attack_name + " (DISABLED)"
-		# OLD ISSUE 292: printed "can't be used" condition currently unmet — greyed out like a disabled attack.
-		elif attack_effects.attack_unusable_reason(attack, player_active_pokemon) != "":
-			btn.disabled = true
-			btn.theme = theme_disabled
-		# Enable and colour green if requirements met, disable and grey out if not
-		elif check_attack_requirements(attack, player_active_pokemon):
-			btn.disabled = false
-			btn.theme = theme_green
-		else:
-			btn.disabled = true
-			btn.theme = theme_disabled
-
-		# ISSUE #288: same press-not-release fix as the forfeit dialog. These are
-		# hand-built Buttons carrying the legacy themes, so they never picked up
-		# UIKit.style_button's action_mode either.
-		btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-		btn.custom_minimum_size = Vector2(float(m["btn_w"]), 50)
-		attack_buttons_container.add_child(btn)
-		_build_attack_button_content(btn, attack, label_text, float(m["scale"]), float(m["btn_w"]))
-
-		# bind(index) locks the TRUE index into the callable — the index into the
-		# whole attack list, not the position on this page, or paging to page 2
-		# would fire page 1's attacks.
-		btn.pressed.connect(perform_attack.bind(index))
-
-	if m["paged"]:
-		attack_buttons_container.add_child(
-				_make_attack_page_button(int(m["page_count"]), float(m["sep"])))
-
-
-## The "MORE 2/3" button. One button that cycles forward and wraps, rather than a
-## back/forward pair plus a counter: three children would eat the width the
-## attack buttons need, and with only a handful of pages cycling round is quicker
-## than reaching for the right arrow anyway.
-func _make_attack_page_button(page_count: int, _sep: float) -> Button:
-	var btn := Button.new()
-	btn.text = "MORE  %d/%d" % [_attack_page + 1, page_count]
-	btn.theme = theme_blue
-	btn.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS   # ISSUE #288
-	btn.custom_minimum_size = Vector2(ATTACK_MORE_BTN_W, 50)
-	btn.pressed.connect(func():
-		_attack_page = (_attack_page + 1) % page_count
-		_render_attack_page())
-	return btn
-
-
-## Total width the cost icons occupy at this scale, 0 for a free attack.
-func _attack_cost_width(attack: Dictionary, scale: float) -> float:
-	var n := _attack_cost_types(attack).size()
-	if n == 0:
-		return 0.0
-	return float(n) * (ATTACK_COST_ICON * scale) + float(n - 1) * (ATTACK_COST_GAP * scale)
-
-
-## The cost as a list of type names that actually have an icon on disk. An
-## unknown type is dropped rather than drawn as a gap, so a data typo shows a
-## short cost instead of a hole in the row.
-func _attack_cost_types(attack: Dictionary) -> Array:
-	var out: Array = []
-	for entry in attack.get("cost", []):
-		var type_name := String(entry).strip_edges()
-		if type_name == "":
-			continue
-		if ResourceLoader.exists(ENERGY_ICON_DIR + "color_icon_" + type_name.to_lower() + ".png"):
-			out.append(type_name)
-	return out
-
-
-func _build_attack_button_content(btn: Button, attack: Dictionary, label_text: String,
-								  scale: float, btn_w: float) -> void:
-	var font := _get_attack_btn_font()
-
-	# Everything on the row scales together, so a crowded button stays a smaller
-	# copy of a roomy one rather than a roomy one with the name squeezed out.
-	var pad_x: float   = ATTACK_BTN_PAD_X * scale
-	var icon_px: float = ATTACK_COST_ICON * scale
-	var sect_gap: float = ATTACK_SECTION_GAP * scale
-	# Damage is two to four characters, so it barely needs to give ground — it
-	# scales, but off a high floor.
-	var dmg_font: int = maxi(14, int(round(float(ATTACK_DAMAGE_FONT) * scale)))
-	# The NAME deliberately does NOT scale with the button. It is the one thing on
-	# the row you have to be able to read, so it starts at full size and the fit
-	# loop below takes it down only as far as this particular name actually needs.
-	# Scaling the ceiling too would shrink "COLLECT" on a crowded row for no reason.
-	var name_ceiling: int = ATTACK_NAME_FONT
-
-	# One wrapper for everything, so a disabled button dims its whole row with a
-	# single modulate instead of every child needing its own colour.
-	var content := Control.new()
-	content.anchor_right  = 1.0
-	content.anchor_bottom = 1.0
-	content.mouse_filter  = Control.MOUSE_FILTER_IGNORE
-	if btn.disabled:
-		content.modulate = Color(1, 1, 1, ATTACK_DISABLED_ALPHA)
-	btn.add_child(content)
-
-	# ── Energy cost, pinned left and vertically centred ──
-	var cost_types := _attack_cost_types(attack)
-	var x := pad_x
-	for type_name in cost_types:
-		var icon := TextureRect.new()
-		icon.texture = load(ENERGY_ICON_DIR + "color_icon_" + String(type_name).to_lower() + ".png")
-		icon.expand_mode  = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon.anchor_top    = 0.5
-		icon.anchor_bottom = 0.5
-		icon.offset_left   = x
-		icon.offset_right  = x + icon_px
-		icon.offset_top    = -icon_px * 0.5
-		icon.offset_bottom = icon_px * 0.5
-		content.add_child(icon)
-		x += icon_px + ATTACK_COST_GAP * scale
-
-	var cost_w := _attack_cost_width(attack, scale)
-
-	# ── Damage, pinned right ──
-	var dmg := String(attack.get("damage", ""))
-	var dmg_w: float = 0.0
-	if dmg != "":
-		dmg_w = font.get_string_size(dmg, HORIZONTAL_ALIGNMENT_LEFT, -1, dmg_font).x
-		var dmg_lbl := Label.new()
-		dmg_lbl.text = dmg
-		dmg_lbl.add_theme_font_override("font", font)
-		dmg_lbl.add_theme_font_size_override("font_size", dmg_font)
-		dmg_lbl.add_theme_color_override("font_color", Color(0, 0, 0, 1))
-		dmg_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		dmg_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-		dmg_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		dmg_lbl.anchor_left   = 1.0
-		dmg_lbl.anchor_right  = 1.0
-		dmg_lbl.anchor_bottom = 1.0
-		dmg_lbl.offset_left   = -(pad_x + dmg_w)
-		dmg_lbl.offset_right  = -pad_x
-		content.add_child(dmg_lbl)
-
-	# ── Name, centred in whatever is left between the two ──
-	# Centred rather than left-aligned so names line up down the column of buttons
-	# instead of jogging sideways with each attack's cost count — and because that
-	# is how the name sits on the printed card.
-	var left_edge := pad_x + cost_w + (sect_gap if cost_w > 0.0 else 0.0)
-	var right_edge := pad_x + dmg_w + (sect_gap if dmg_w > 0.0 else 0.0)
-	var name_space: float = btn_w - left_edge - right_edge
-
-	# Step the size down until the name fits the gap, exactly the way
-	# DynamicMessageBox.set_body_text() fits a long line into a fixed panel.
-	var name_size := name_ceiling
-	while name_size > ATTACK_NAME_MIN_FONT \
-			and font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, name_size).x > name_space:
-		name_size -= 1
-
-	var name_lbl := Label.new()
-	name_lbl.text = label_text
-	name_lbl.add_theme_font_override("font", font)
-	name_lbl.add_theme_font_size_override("font_size", name_size)
-	name_lbl.add_theme_color_override("font_color", Color(0, 0, 0, 1))
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-	name_lbl.clip_text = true
-	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_lbl.anchor_right  = 1.0
-	name_lbl.anchor_bottom = 1.0
-	name_lbl.offset_left   = left_edge
-	name_lbl.offset_right  = -right_edge
-	content.add_child(name_lbl)
 
 # Clears generated attack buttons and restores the main action buttons
 func hide_attack_buttons() -> void:
@@ -4575,15 +4142,11 @@ func hide_attack_buttons() -> void:
 		attack_buttons_container.remove_child(child)
 		child.queue_free()
 
-	# Put back everything _render_attack_page() may have squeezed for a crowded
-	# card, so the next Pokemon starts from the authored layout rather than
-	# inheriting the last one's tight spacing.
+	# Put the row back to its authored layout.
 	attack_buttons_container.add_theme_constant_override("separation", int(ATTACK_SEP_BASE))
 	var cancel := attack_buttons_container.get_node_or_null("cancel_attack_mode_button")
 	if cancel != null:
 		cancel.custom_minimum_size.x = ATTACK_CANCEL_W_ROOMY
-	_attack_list = []
-	_attack_page = 0
 
 	attack_buttons_container.visible = false
 	main_buttons_container.visible = true
@@ -4747,7 +4310,11 @@ func show_message(message_text: String, log_it: bool = true, log_kind: String = 
 		var wait_until: int = Time.get_ticks_msec() + 2000
 		while card_ops.bench_landings_pending > 0 and Time.get_ticks_msec() < wait_until:
 			await get_tree().process_frame
-	cry_watch()   # MATCH CRIES: so a cry lines up with "X was placed on the Bench" even before the board redraws	trainer_undo_commit("message")
+	cry_watch()   # MATCH CRIES: so a cry lines up with "X was placed on the Bench" even before the board redraws
+	# AUDIT 2026-11-24: the cries commit had glued this call onto the end of the comment above, so no
+	# message closed the Trainer undo window any more (a Trainer that had already shown a message could
+	# still be taken back at its first picker).
+	trainer_undo_commit("message")
 	await settle_after_draw()   # ISSUE #346
 	message_text = fix_plurals(message_text)   # ISSUE #389
 	if log_it:
@@ -5774,33 +5341,7 @@ func get_type_colour(type_name: String) -> Color:
 		"fairy": return Color(1.0, 0.4, 0.7)
 		_: return Color(1.0, 1.0, 1.0)
 
-# Plays a one-shot upward particle burst over a pokemon card for evolution
-# Determines a pokemon's screen position and size by checking against known game variables
-# Returns {"position": Vector2, "size": Vector2, "is_active": bool} or empty dict if not found
-# Returns a Dictionary view of one side's collections and UI nodes.
-# Arrays are pass-by-reference so mutations through the dict affect the live arrays.
-# Note: "active" is a snapshot — re-query after any KO or switch.
-func get_side(is_opponent: bool) -> Dictionary:
-	return {
-		"active":              opponent_active_pokemon if is_opponent else player_active_pokemon,
-		"bench":               opponent_bench if is_opponent else player_bench,
-		"hand":                opponent_hand if is_opponent else player_hand,
-		"deck":                opponent_deck if is_opponent else player_deck,
-		"discard":             opponent_discard_pile if is_opponent else player_discard_pile,
-		"prizes":              opponent_prize_cards if is_opponent else player_prize_cards,
-		"tickled_set_aside":   opponent_tickled_set_aside if is_opponent else player_tickled_set_aside,
-		"hand_container":      opponent_hand_container if is_opponent else player_hand_container,
-		"bench_container":     opponent_bench_container if is_opponent else player_bench_container,
-		"active_container":    opponent_active_container if is_opponent else player_active_container,
-		"discard_icon":        opponent_discard_icon if is_opponent else player_discard_icon,
-		"deck_icon":           opponent_deck_icon if is_opponent else player_deck_icon,
-		"attached_container":  opponent_attached_cards_container if is_opponent else player_attached_cards_container,
-		"is_opponent":         is_opponent,
-	}
 
-# Returns the side dict for whichever side owns the given card.
-func get_owner_side(card: card_object) -> Dictionary:
-	return get_side(card.is_owner_opp(self))
 
 ## ISSUE #174: REFRESH THE RIGHT POKEMON'S HP READOUT.
 ##

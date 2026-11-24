@@ -88,18 +88,9 @@ static func rod_texture(vertical: bool) -> Texture2D:
 	return tex
 
 
-static func fish_frame_count(big: bool = false) -> int:
-	return FISH_BIG_RECTS.size() if big else FISH_SMALL_RECTS.size()
-
-
 static func fish_size(frame: int, big: bool = false) -> Vector2:
 	var r := _fish_rect(frame, big)
 	return Vector2(r.size.x, r.size.y)
-
-
-static func rod_size(vertical: bool) -> Vector2:
-	var tex := rod_texture(vertical)
-	return Vector2(tex.get_width(), tex.get_height()) if tex != null else Vector2.ZERO
 
 
 # ============================================================

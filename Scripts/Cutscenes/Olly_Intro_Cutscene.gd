@@ -871,13 +871,6 @@ func _walk_lock(on: bool) -> void:
 		_walk_block_layer = null
 
 
-func _count_ids(ids: Array) -> Dictionary:
-	var out := {}
-	for id in ids:
-		out[id] = int(out.get(id, 0)) + 1
-	return out
-
-
 func _read_deck(path: String) -> Dictionary:
 	var out := {}
 	var data = JSON.parse_string(FileAccess.get_file_as_string(path))

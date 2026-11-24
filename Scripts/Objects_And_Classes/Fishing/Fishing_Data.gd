@@ -31,11 +31,6 @@ extends RefCounted
 static var _cache: Dictionary = {}
 
 
-## True when the player owns any rod (FishingRods -- the Proto Rod is Olly's gift).
-static func player_has_rod() -> bool:
-	return FishingRods.has_any_rod()
-
-
 ## Every fishing spot on a map, in file order.
 static func spots_for(map_data: String) -> Array:
 	if _cache.has(map_data):

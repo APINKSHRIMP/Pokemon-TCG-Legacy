@@ -980,13 +980,8 @@ func _build_sort_row(y: float) -> float:
 # Build helpers
 # ══════════════════════════════════════════════════════════════════════════════
 
-## ISSUE #144: pitch (cell-to-cell step) for a row of `count` equally sized cells laid out from
-## CTRL_X. Fills the full CTRL_W when the row has enough cells to; otherwise falls back to
-## "cell + max_gap" so a two- or three-cell row isn't flung across the whole screen.
-func _row_pitch(count: int, cell: float, max_gap: float) -> float:
-	if count <= 1:
-		return cell
-	return minf(CTRL_W / float(count), cell + max_gap)
+# AUDIT 2026-11-24: removed _row_pitch() and _make_icon_h() (no callers left: the rows are chips sized by
+# their text now, see _make_icon). The notes above that name them are the layout's history.
 
 
 ## Filters an option table down to the entries whose unlock gate has been met.
@@ -1090,13 +1085,6 @@ func _tighten(btn: Button, pad_x: float, pad_y: float) -> void:
 		dup.content_margin_top = pad_y
 		dup.content_margin_bottom = pad_y
 		btn.add_theme_stylebox_override(state, dup)
-
-
-func _make_icon_h(folder: String, stem: String, height: float, pos: Vector2, tip: String) -> Control:
-	# Identical to _make_icon now - a chip is sized by its text, not by art aspect.
-	# Kept as its own name so the rows that used the height-fitted variant read the
-	# way they always did.
-	return _make_icon(folder, stem, height, pos, tip)
 
 
 ## Width a chip needs for its label, floored so the short ones do not look starved.

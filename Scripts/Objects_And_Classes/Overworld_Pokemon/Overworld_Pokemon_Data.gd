@@ -314,10 +314,6 @@ static func field_guide_path(species: String, shiny: bool = false) -> String:
 	return FIELD_GUIDE_DIR + species + ("_Shiny" if shiny else "") + ".png"
 
 
-static func has_field_guide_art(species: String, shiny: bool = false) -> bool:
-	return ResourceLoader.exists(field_guide_path(species, shiny))
-
-
 ## "019_Rattata_Alolan" -> 19. 0 when the basename does not start with a number.
 static func dex_number(species: String) -> int:
 	var parts := species.split("_")

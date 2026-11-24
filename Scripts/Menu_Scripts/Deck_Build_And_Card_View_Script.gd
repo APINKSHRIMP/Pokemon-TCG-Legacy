@@ -1829,10 +1829,9 @@ func _clear_viewer_chrome() -> void:
 ## The right-hand contents list: one boxed row per unique card, name on the left
 ## and the count on the right.
 ##
-## REPLACES CardViewerList.build_side_list here. That helper draws an INDIVIDUAL
-## heading over a run of plain text lines and a CATEGORIES block under it; the
-## categories are chips in the header now, and a boxed row per card reads far
-## better than a text column. The helper is untouched for the bulk-sell screen.
+## Replaced the old CardViewerList.build_side_list text column (INDIVIDUAL lines over a
+## CATEGORIES block): the categories are chips in the header now, and a boxed row per card
+## reads far better. (AUDIT 2026-11-24: that helper had no callers left and was removed.)
 func _build_viewer_contents(sorted_ids: Array) -> void:
 	var scroll := ScrollContainer.new()
 	scroll.position = Vector2(VIEWER_LIST_X, UIKit.CONTENT_TOP + VIEWER_LIST_PAD)
@@ -2188,23 +2187,6 @@ func _on_view_deck_pressed() -> void:
 # shows the same list for the cards it is about to buy, and one copy is what keeps the two
 # from drifting apart. Every tweakable in there (bar width, font floors and ceilings, the
 # header colour, line spacing) is documented at its own constant; tune them there, not here.
-
-
-## Builds the right-hand card list for the deck viewer. `sorted_ids` is the same unique-card order
-## the grid is drawn in, so the list and the cards read down the screen together.
-func _build_viewer_card_list(sorted_ids: Array) -> void:
-	if deck_viewer_overlay == null or sorted_ids.is_empty():
-		return
-	var lines : Array = CardViewerList.individual_lines(sorted_ids, deck_cards, _get_card_meta)
-	if lines.is_empty():
-		return
-	CardViewerList.build_side_list(deck_viewer_overlay, lines, _deck_category_rows())
-
-
-## Per-copy counts for the CATEGORIES section, in display order. Counts COPIES, not unique
-## cards, so the six numbers add up to the deck total.
-func _deck_category_rows() -> Array:
-	return CardViewerList.category_rows(deck_cards, _get_card_meta)
 
 
 ## Closes and frees the deck viewer overlay, restoring normal UI.
@@ -4722,17 +4704,6 @@ func walkthrough_end() -> void:
 	_walk_blocker = null
 
 
-## Shows `set_id` with the cards in `new_counts` (card_id -> copies just received) held back as empty
-## slots, scrolls so the first row holding one is the top row, then flies each copy in -- the copies
-## of one card a moment apart -- and ticks its "in deck / owned" count up as it lands.
-func walkthrough_reveal_new_cards(set_id: String, _new_counts: Dictionary) -> void:
-	# ISSUE #466: every owned card in the set flies in now (the deck's as well as the new ones), all
-	# together - one sets off every WALK_ALL_STAGGER and each takes WALK_ALL_FLY_TIME - while the grid
-	# scrolls smoothly down behind them. `new_counts` is kept for the old one-by-one reveal below.
-	await walkthrough_show_empty(set_id)
-	await walkthrough_fly_in()
-
-
 ## 2026-11-12: the two halves of the reveal, so Olly can talk in between. First the set with every
 ## owned card held back as an empty slot (the binder, empty)...
 var _walk_entries: Array = []   # [cell, card_id, copies], filled by walkthrough_show_empty
@@ -5019,11 +4990,6 @@ func _walk_fly_into(idx: int, cid: String) -> void:
 	cell.set_meta("owned", owned)
 	var lbl: Label = cell.get_meta("count_label")
 	lbl.text = "%d / %d" % [int(cell.get_meta("in_deck", 0)), owned]
-
-
-## ISSUE #466: shows `set_id` with every owned card held back as an empty slot, then flies them all in.
-func _walk_reveal_all(set_id: String) -> void:
-	await _walk_fly_entries(await _walk_hold_all(set_id))
 
 
 ## The set on screen with every owned card held back; returns [cell, card_id, copies] per owned card.

@@ -47,6 +47,8 @@ func _ready() -> void:
 	_build()
 	_fill()
 	_search.call_deferred("grab_focus")
+	# REPORT BUG (Bug_Report.gd) sits top right; the key hint below leaves room for it.
+	BugReport.register_menu(self, close, "match DEL menu (attack animation tester)")
 
 
 func _build() -> void:
@@ -61,7 +63,7 @@ func _build() -> void:
 	title.position = Vector2(MARGIN, 24)
 	root.add_child(title)
 	var hint := _label("Type to search.  Enter or double-click plays it.  Del or Esc closes.", NOTE_FONT_SIZE, NOTE_COLOUR)
-	hint.position = Vector2(1920 - MARGIN - 900, 36)
+	hint.position = Vector2(1920 - MARGIN - 900 - BugReport.BUTTON_RESERVE, 36)
 	hint.size = Vector2(900, 30)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	root.add_child(hint)

@@ -51,9 +51,3 @@ static func load_sprite_frames(sprite_name: String) -> SpriteFrames:
 	
 	return sprite_frames
 
-static func _colors_match(a: Color, b: Color) -> bool:
-	return (
-		absf(a.r - b.r) < COLOR_TOLERANCE
-		and absf(a.g - b.g) < COLOR_TOLERANCE
-		and absf(a.b - b.b) < COLOR_TOLERANCE
-	)

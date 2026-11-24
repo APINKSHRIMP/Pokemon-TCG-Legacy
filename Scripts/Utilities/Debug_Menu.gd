@@ -80,6 +80,8 @@ func _ready() -> void:
 	layer = LAYER
 	_build()
 	_refresh_state()
+	# REPORT BUG (Bug_Report.gd) sits top right, in the space the header leaves free.
+	BugReport.register_menu(self, func(): MapManager.close_debug_menu(), "overworld DEL menu")
 
 
 # ============================================================
@@ -98,7 +100,7 @@ func _build() -> void:
 	# Header: title, the save's live numbers, and a close button.
 	var header := HBoxContainer.new()
 	header.position = Vector2(MARGIN, 24)
-	header.custom_minimum_size = Vector2(screen.x - MARGIN * 2, 0)
+	header.custom_minimum_size = Vector2(screen.x - MARGIN * 2 - BugReport.BUTTON_RESERVE, 0)
 	header.add_theme_constant_override("separation", 18)
 	root.add_child(header)
 	var title := _label("Debug menu", TITLE_FONT_SIZE)

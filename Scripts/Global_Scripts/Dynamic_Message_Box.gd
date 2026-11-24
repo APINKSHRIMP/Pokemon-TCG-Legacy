@@ -470,10 +470,6 @@ func set_system_variant(is_system: bool) -> void:
 		_layout_panel()
 
 
-func is_system_variant() -> bool:
-	return _system_variant
-
-
 # ============================================================
 # LAYOUT
 # ============================================================
@@ -675,14 +671,6 @@ func show_advance_caret(shown: bool) -> void:
 
 func is_ok_mode() -> bool:
 	return _mode == "ok"
-
-
-## ISSUE #350: an OK box that can't be dismissed yet -- no caret (it would promise an input that does
-## nothing), and MapManager ignores the click / key while ok_armed is false. Release it with false.
-func hold_advance(held: bool) -> void:
-	ok_armed = not held
-	if _mode == "ok":
-		_set_caret_visible(not held)
 
 
 func is_choice_mode() -> bool:
@@ -1562,21 +1550,6 @@ func _measured_text_height(plain: String, wrap_w: float, size: int) -> float:
 # SHOWING
 # ============================================================
 
-func show_choices(text: String, theme_key: String = "") -> void:
-	apply_theme(theme_key)
-	set_mode("choices")
-	set_body_text(text)
-	visible = true
-
-
-# No OK button - set_mode("ok") hides the whole button row and shows the caret
-# instead. Dismissed by a click anywhere, or Space / Enter / Escape, both of which
-# the callers already route through UIInput.
-func show_ok(text: String, theme_key: String = "") -> void:
-	apply_theme(theme_key)
-	set_mode("ok")
-	set_body_text(text)
-	visible = true
 
 
 # NOT get_node("/root/UITheme"): configure() runs BEFORE the box is added to a

@@ -260,19 +260,8 @@ func _input(event: InputEvent) -> void:
 			if not is_inside_tree():
 				return
 
-			# Get reference to the main script to check if we're in selection mode
-			var main_node = get_tree().root.get_child(0)
-			if main_node == null:
-				print("Error: Could not find main script node")
-				return
-
-			var messagebox = main_node.get_node_or_null("messagebox_container")
-			if messagebox and messagebox.visible:
-				return
-				
-			# If in selection mode, consume the input so it doesn't propagate to other cards
-			if main_node.has_method("card_selection_mode_enabled") and main_node.card_selection_mode_enabled:
-				get_tree().get_root().set_input_as_handled()
+			# AUDIT 2026-11-24: removed a selection-mode block here that never ran - it looked the match up as
+			# root.get_child(0) (that is the first autoload) and used has_method() on a variable (always false).
 
 ## The match screen this card sits on (the nearest ancestor that can say whether a menu covers
 ## the board), or null outside a match - the deck builder, shops and so on.

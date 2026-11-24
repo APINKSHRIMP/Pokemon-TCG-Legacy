@@ -199,13 +199,6 @@ func _relative_luminance(c: Color) -> float:
 	return 0.2126 * _linear(c.r) + 0.7152 * _linear(c.g) + 0.0722 * _linear(c.b)
 
 
-## The cheap gamma-space luminance UITheme uses for its light-ink/dark-ink and
-## chrome-polarity decisions. Mirrored here so the audit asks the same question
-## the builder did, rather than a slightly different one.
-func ui_luminance(c: Color) -> float:
-	return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
-
-
 func _linear(channel: float) -> float:
 	return channel / 12.92 if channel <= 0.04045 else pow((channel + 0.055) / 1.055, 2.4)
 

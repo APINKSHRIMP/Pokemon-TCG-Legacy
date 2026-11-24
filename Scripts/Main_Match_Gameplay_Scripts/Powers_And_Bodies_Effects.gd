@@ -128,11 +128,7 @@ var _damage_modifier_hooks: Array = []
 func register_on_damage_hook(fn: Callable) -> void:
 	_on_damage_hooks.append(fn)
 
-func register_pre_ko_hook(fn: Callable) -> void:
-	_pre_ko_hooks.append(fn)
 
-func add_damage_modifier_hook(fn: Callable) -> void:
-	_damage_modifier_hooks.append(fn)
 
 # OLD ISSUE 350: Bodies printed "(before applying Weakness and Resistance)" used to run with the other modifier hooks,
 # AFTER Weakness/Resistance (so a Weak Defender didn't take double the bonus, and a reduction wasn't doubled either).
@@ -1271,7 +1267,7 @@ func _buzzap_attach_electrode(electrode: card_object, target: card_object, energ
 	var discard: Array = main.opponent_discard_pile if is_opp else main.player_discard_pile
 	discard.erase(electrode)
 	electrode.current_location = "attached"
-	electrode.current_hp = int(electrode.metadata.get("hp", "0"))
+	electrode.current_hp = electrode.get_max_hp()   # AUDIT 2026-11-24: keeps the match-rule HP shift
 	electrode.is_electrode_energy = true
 	electrode.electrode_energy_type = energy_type
 	target.attached_energies.append(electrode)
@@ -1322,18 +1318,6 @@ func power_bench_token_discard(token: card_object) -> void:
 
 ############################################### Section K: JUNGLE SET POWERS ###############################################################
 
-# Get retreat cost reduction from Dodrio Retreat Aid
-func get_retreat_cost_reduction(is_opponent: bool) -> int:
-	var bench = main.opponent_bench if is_opponent else main.player_bench
-	var reduction = 0
-	for bp in bench:
-		var abilities = bp.metadata.get("abilities", [])
-		for ab in abilities:
-			if ab.get("name", "") == "Retreat Aid":
-				if not is_power_blocked_by_status(bp):
-					reduction += 2 if "colorlesscolorless less" in str(ab.get("text", "")).to_lower() else 1   # AUDIT 2026-11-18 #19
-					print("RETREAT AID: Dodrio reduces retreat cost by 1")
-	return reduction
 
 # ISSUE #46: all non-Colorless types currently present on Pokémon in play (both sides). Venomoth's
 # Shift can only copy the type of ANOTHER Pokémon in play, so the CPU picks from this set.
@@ -1889,8 +1873,9 @@ func project_ditto(ditto: card_object, onto: card_object) -> card_object:
 	var base_uid: String = ditto.ditto_original_uid if ditto.is_ditto_transformed else ditto.uid
 	var base_meta: Dictionary = ditto.ditto_original_metadata if ditto.is_ditto_transformed else ditto.metadata
 	var clone := card_object.new(base_uid, base_meta)
-	var damage: int = int(ditto.metadata.get("hp", "0")) - ditto.current_hp
-	clone.current_hp = maxi(1, int(base_meta.get("hp", "0")) - damage)
+	var damage: int = ditto.get_max_hp() - ditto.current_hp   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
+	clone.match_hp_shift = ditto.match_hp_shift
+	clone.current_hp = maxi(1, clone.get_max_hp() - damage)
 	clone.attached_energies = ditto.attached_energies   # shared on purpose: read-only, and an
 	clone.attached_cards = ditto.attached_cards         # Energy the CPU test-attaches shows up
 	clone.attached_pre_evolutions = ditto.attached_pre_evolutions
@@ -2153,7 +2138,7 @@ func cpu_phase_activate_powers() -> void:
 			if "Koga" in bp.metadata.get("name", ""):
 				fuchsia_candidates.append(bp)
 		for p in fuchsia_candidates:
-			var dmg = int(p.metadata.get("hp", "0")) - p.current_hp
+			var dmg = p.get_max_hp() - p.current_hp   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 			if dmg >= 40:
 				fuchsia_should_use = true
 				break
@@ -2524,7 +2509,7 @@ func cpu_phase_activate_powers() -> void:
 	if slowbro != null and not _cpu_power_locked(slowbro) and not is_toxic_gas_active():
 		var active = main.opponent_active_pokemon
 		if active != null and active != slowbro:
-			var active_damage = int(active.metadata.get("hp", "0")) - active.current_hp
+			var active_damage = active.get_max_hp() - active.current_hp   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 			# ISSUE #106: this used to move damage counters around in total silence — no message at
 			# all. Announce -> explain -> move + animate, and only when there is something to move.
 			if active_damage >= 10 and slowbro.current_hp > 10:
@@ -3887,7 +3872,7 @@ func check_flee(damaged_pokemon: card_object, is_damaged_opp: bool) -> bool:
 	var do_flee: bool = false
 	if is_damaged_opp:
 		# CPU: flee if HP is critical or there's a healthier replacement
-		var hp_pct = float(damaged_pokemon.current_hp) / max(1, int(damaged_pokemon.metadata.get("hp", "0")))
+		var hp_pct = float(damaged_pokemon.current_hp) / max(1, damaged_pokemon.get_max_hp())
 		if hp_pct <= 0.4:
 			do_flee = true
 	else:
@@ -4139,7 +4124,7 @@ func _cpu_pick_shapeshift_form(ninetales: card_object) -> card_object:
 			continue
 		if not main.get_valid_evolution_targets(ev, true).is_empty():
 			continue
-		if int(ev.metadata.get("hp", "0")) <= dmg_on:
+		if ev.get_max_hp() <= dmg_on:   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 			continue   # the form would be Knocked Out by the damage already on Ninetales
 		var weak := 0.0
 		for w in ev.metadata.get("weaknesses", []):
@@ -4469,7 +4454,7 @@ func check_healing_fire(pokemon: card_object, energy: card_object, is_opp: bool)
 	var provided = main.get_energy_provided_by_card(energy)
 	if "Fire" not in provided:
 		return
-	var max_hp = int(pokemon.metadata.get("hp", "0"))
+	var max_hp = pokemon.get_max_hp()   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 	if pokemon.current_hp >= max_hp:
 		return
 	# MATCH EFFECTS: no_healing / healing_multiplier gate
@@ -4936,7 +4921,7 @@ func cpu_phase_gym_powers() -> void:
 	# --- Natural Healing (gym1-65 Blaine's Vulpix) ---
 	var vulpix = _find_pokemon_with_power_on_side("Natural Healing", true)
 	if vulpix != null and not vulpix.power_used_this_turn and _power_active_on(vulpix, "Natural Healing", false):
-		if vulpix.current_hp < int(vulpix.metadata.get("hp", "0")):
+		if vulpix.current_hp < vulpix.get_max_hp():   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 			await announce_cpu_power(vulpix, "Natural Healing")   # ISSUE #106
 			if main._should_bail(): return
 			await power_natural_healing(vulpix)
@@ -5336,10 +5321,7 @@ func power_chain_reaction(eevee: card_object) -> void:
 			return
 	eevee.power_used_this_turn = true
 	# Perform evolution (mirrors perform_evolution in Main, incl. ISSUE #59 attached-card carry-over)
-	var max_hp_old = int(eevee.metadata.get("hp", "0"))
-	var damage_taken = max_hp_old - eevee.current_hp
-	var max_hp_new = int(chosen_evo.metadata.get("hp", "0"))
-	chosen_evo.current_hp = max(1, max_hp_new - damage_taken)
+	var damage_taken = maxi(0, eevee.get_max_hp() - eevee.current_hp)   # AUDIT 2026-11-24: get_max_hp (Energy Root / Giant Growth / match HP rules) - was the printed HP
 	chosen_evo.attached_energies = eevee.attached_energies.duplicate()
 	eevee.attached_energies.clear()
 	chosen_evo.attached_cards = eevee.attached_cards.duplicate()
@@ -5350,6 +5332,7 @@ func power_chain_reaction(eevee: card_object) -> void:
 	chosen_evo.attached_pre_evolutions = eevee.attached_pre_evolutions.duplicate()
 	eevee.attached_pre_evolutions.clear()
 	chosen_evo.attached_pre_evolutions.append(eevee)
+	chosen_evo.current_hp = max(1, chosen_evo.get_max_hp() - damage_taken)   # AUDIT 2026-11-24: after the Tools move over, like perform_evolution
 	chosen_evo.placed_on_field_this_turn = true
 	deck.erase(chosen_evo)
 	chosen_evo.current_location = eevee.current_location
@@ -6666,29 +6649,7 @@ func _register_neo3_powers() -> void:
 
 # ── PASSIVE BODIES ──────────────────────────────────────────────────────────────
 
-# CRYSTAL BODY (neo3-12 Porygon2): opponent's effects on Porygon2 are prevented (but damage still applies)
-# This is queried from apply_attack_effects_on_target. Returns true if effects are blocked.
-func has_crystal_body(pokemon: card_object) -> bool:
-	if pokemon == null: return false
-	for ab in pokemon.metadata.get("abilities",[]):
-		if ab.get("name","") == "Crystal Body":
-			if not pokemon.gaze_suppressed and not is_power_blocked_by_status(pokemon):
-				if not is_toxic_gas_active() and not main.goop_gas_active:
-					return true
-	return false
 
-# LEGENDARY BODY (neo3-17 Entei, neo3-22 Raikou, neo3-27 Suicune Rare): while Active, trainer effects ignored
-# Called from play_trainer_card in Main_Match. Returns true if trainer should be blocked.
-func check_legendary_body_blocks_trainer(is_opponent_playing_trainer: bool) -> bool:
-	# The defender of the trainer effect is the opponent of the player playing it
-	var target_active = main.player_active_pokemon if is_opponent_playing_trainer else main.opponent_active_pokemon
-	if target_active == null: return false
-	for ab in target_active.metadata.get("abilities",[]):
-		if ab.get("name","") == "Legendary Body":
-			if not target_active.gaze_suppressed and not is_power_blocked_by_status(target_active):
-				if not is_toxic_gas_active() and not main.goop_gas_active:
-					return true
-	return false
 
 # LIGHTNING BURST (neo3-13 Raikou): whenever you attach a Lightning Energy card from your hand to Raikou, if your
 # opponent has any Benched Pokémon, HE OR SHE chooses 1 of them and switches it with the Defending Pokémon.
@@ -16441,15 +16402,16 @@ func _r4_cpu_makeover_plan() -> Dictionary:
 		if main.is_ex_pokemon(p): continue
 		var before = _r4_min_unmet(p)
 		if before <= 0 or before >= 99: continue
-		for e in p.attached_energies:
+		# AUDIT 2026-11-24: swap in place. It used to erase + append while looping over the same array, which
+		# moved the Energy to the end, skipped the next one and left the Pokemon's Energy reordered.
+		for idx in range(p.attached_energies.size()):
+			var e = p.attached_energies[idx]
 			if not ("Basic" in e.metadata.get("subtypes", [])): continue
 			for ne in disc:
 				if ne.metadata.get("name","") == e.metadata.get("name",""): continue
-				p.attached_energies.erase(e)
-				p.attached_energies.append(ne)
+				p.attached_energies[idx] = ne
 				var gain = before - _r4_min_unmet(p)
-				p.attached_energies.erase(ne)
-				p.attached_energies.append(e)
+				p.attached_energies[idx] = e
 				if gain > best_gain:
 					best_gain = gain
 					best = {"p": p, "out": e, "in": ne}
@@ -19205,10 +19167,6 @@ func is_ex14_extra_liquid_active() -> bool:
 				return true
 	return false
 
-# True while the side OPPOSING `against_is_opp` has an Active Aggron ex with Intimidating Armor.
-func is_ex14_intimidating_armor_active(against_is_opp: bool) -> bool:
-	var opp_active = main.opponent_active_pokemon if not against_is_opp else main.player_active_pokemon
-	return opp_active != null and opp_active.has_ability("Intimidating Armor") and not is_power_blocked_by_status(opp_active)
 
 # INTIMIDATING ARMOR (Aggron ex ex14-89): the opposing Active Aggron ex prevents `card` (a Basic Pokemon)
 # from attacking.

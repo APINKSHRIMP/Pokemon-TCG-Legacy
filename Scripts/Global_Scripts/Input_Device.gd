@@ -147,6 +147,10 @@ func _add_pad_buttons_to_ui_actions() -> void:
 
 
 func _on_window_input(event: InputEvent) -> void:
+	# The DEL menu's REPORT BUG text box (Bug_Report.gd): typing in it is not a switch to the
+	# keyboard, and the arrow keys move its caret, not the paused menu's focus.
+	if BugReport.is_box_open():
+		return
 	if UIInput.nav_direction(event) != Vector2i.ZERO:
 		_last_nav_press_ms = Time.get_ticks_msec()
 	var now := last
@@ -182,6 +186,8 @@ func _on_window_input(event: InputEvent) -> void:
 ## edge (no cell that way) the press falls through to the normal geometric search, which is
 ## how the cursor leaves the grid for the buttons around it.
 func _input(event: InputEvent) -> void:
+	if BugReport.is_box_open():
+		return
 	if suspended:
 		if UIInput.is_nav_event(event):
 			get_viewport().set_input_as_handled()   # ISSUE #468: nothing to move while a cutscene drives the menu
@@ -449,7 +455,7 @@ func _focusable_in_cell(c: Control) -> Control:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if suspended:
+	if suspended or BugReport.is_box_open():
 		return
 	# Pad Start on a sub-menu (sleeves, coins, costumes, options...): the first press jumps the cursor
 	# to the screen's Save / main action, the next press (or A) confirms it. The pause menu and the
