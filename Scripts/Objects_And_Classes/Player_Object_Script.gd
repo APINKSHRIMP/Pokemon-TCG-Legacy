@@ -9,7 +9,8 @@ signal npc_interact_pressed(npc)
 signal pokemon_interact_pressed(pokemon)
 
 # Groups the InteractionArea treats as something Space can talk to.
-const INTERACT_GROUPS := ["opponents", "npcs", "pokemon"]
+## "bed_spots_talkable": a bedroom bed space Space can change (PokemonBedSpot).
+const INTERACT_GROUPS := ["opponents", "npcs", "pokemon", "bed_spots_talkable"]
 
 @export var move_speed: float = 160.0
 # Speed/animation multiplier while Shift is held. The debug value is used instead while
@@ -368,6 +369,8 @@ func _unhandled_input(event):
 				npc_interact_pressed.emit(_active_candidate)
 			elif _active_candidate.is_in_group("pokemon"):
 				pokemon_interact_pressed.emit(_active_candidate)
+			elif _active_candidate is PokemonBedSpot:
+				(_active_candidate as PokemonBedSpot).interact()
 
 	if event is InputEventMouseButton:
 		# TOUCH / MOUSE DRAG: a left press on the open map (nothing on screen took it) starts the
@@ -384,7 +387,7 @@ func _unhandled_input(event):
 				# which would silently zoom the map behind the box).
 				if UIInput.is_scroll(event):
 					return
-				MapManager.handle_message_accept()
+				MapManager.handle_message_click()
 				return
 			# ISSUE #82: don't let the mouse wheel zoom the overworld camera while the player is locked
 			# — i.e. while a menu/sub-menu overlay (deck/card/coin/sleeves) is open on top of the still-

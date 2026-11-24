@@ -322,6 +322,7 @@ func _spawn_at(point: Dictionary, config: Dictionary) -> OverworldPokemon:
 	if pokemon == null:
 		return null
 	pokemon.configure(species, point)
+	pokemon.shiny = OverworldPokemonData.roll_shiny()
 	pokemon.size_scale = OverworldPokemonData.species_scale(species)
 	pokemon.can_cry = OverworldPokemonData.CRY_TEMPLATES.has(template)
 	var id := str(point.get("id", ""))
@@ -595,6 +596,7 @@ func spawn_flyer_group(config: Dictionary) -> void:
 	for i in count:
 		var flyer := PokemonFlyer.new()
 		flyer.configure(species)
+		flyer.shiny = OverworldPokemonData.roll_shiny()   # each flock member rolls on its own
 		flyer.direction = direction
 		flyer.end_x = end_x
 		flyer.speed = flock_speed

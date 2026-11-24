@@ -2,9 +2,11 @@ extends BaseMapScene
 
 const SCENE_PATH = "res://Scenes/Map_Scenes/Player_House_Upstairs.tscn"
 
-# The bedroom. The player has always lived here, so the house is fully moved in; the
-# only thing up here that does anything is the bed. What it asks tonight (and what
-# the arrival night wakes up to) lives in GameState's ARRIVAL NIGHT section.
+# The bedroom. The player has always lived here, so the house is fully moved in. The
+# player's bed is the sleep trigger; what it asks tonight (and what the arrival night
+# wakes up to) lives in GameState's ARRIVAL NIGHT section.
+# POKÉMON BEDS: PokemonHome.home_slots() bed spaces (PokemonBedSpot) are built here; the
+# Pokémon on them are placed by MapManager.initialise -> PokemonHome.refresh_house.
 
 var _player_in_bed_area: bool = true  # starts true to suppress any load-time trigger
 const SLEEP_FADE_DURATION := 2.5
@@ -19,6 +21,8 @@ const BED_TOO_EARLY_TEXT := {
 	"Evening":   "Nothing wrong with an early night but it's far too early to go to sleep now!",
 }
 const NEXT_MORNING_FONT := "res://UI_Themes/ChakraPetch-Bold.ttf"
+## TWEAKABLE -- seconds the follower takes to walk onto its bed when you go to sleep.
+const FOLLOWER_TO_BED_TIME := 0.8
 
 func get_scene_path() -> String:      return SCENE_PATH
 func get_bgm_path() -> String:        return SoundManagerScript.BGM_PLAYER_HOME_DAY
@@ -26,6 +30,7 @@ func get_evening_bgm_path() -> String: return SoundManagerScript.BGM_PLAYER_HOME
 
 func _scene_setup():
 	_apply_moved_in_state()
+	PokemonBedSpot.build_all(self)
 
 	var interactables := $Interactables as Area2D
 	interactables.collision_mask = 2
@@ -102,6 +107,8 @@ func _do_sleep() -> void:
 	SoundManagerScript.stop_bgm()
 	if ResourceLoader.exists(BEDTIME_SFX_PATH):
 		SoundManagerScript.play_sfx_from_path(BEDTIME_SFX_PATH)
+	# Your follower goes to its bed (everyone without one left at confirm_sleep).
+	PokemonHome.tuck_in_follower(self, FOLLOWER_TO_BED_TIME)
 	# Lights out first: every lamp in the room goes off, a short beat, then the fade.
 	for light in find_children("*", "PointLight2D", true, false):
 		(light as PointLight2D).visible = false

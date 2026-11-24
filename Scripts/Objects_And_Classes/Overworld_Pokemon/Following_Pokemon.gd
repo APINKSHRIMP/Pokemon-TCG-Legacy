@@ -10,10 +10,12 @@ extends RefCounted
 ##     bolt unless you SNEAK up on them -- hold Ctrl (PlayerObject.is_sneaking()).
 ##   * Fishing: land a fish while a food it likes is in the bag -> the same roll; on a
 ##     success it follows you instead of going to the FISH tanks or back in the water.
-## One follower at a time; a new friend sends the old one home (GameState.befriended
-## remembers every one). Talk to your follower while facing it to send it home.
+## One follower at a time; a new friend sends the old one to live at your house
+## (PokemonHome; GameState.befriended remembers every one). Talk to your follower while
+## facing it to leave it at home (in the house) or let it go (anywhere else).
 ##
-## Data: NPC_and_Opponent_Data/Pokemon/Pokemon_Foods.json (placeholder foods).
+## Data: which food each Pokémon likes = Pokemon_Food_And_Beds.csv (PokemonPrefs);
+## each food's chance / description / sprite = Pokemon_Foods.json.
 ## Save: GameState.get_follower / set_follower / food_count / add_food / use_food.
 
 const FOODS_PATH := "res://NPC_and_Opponent_Data/Pokemon/Pokemon_Foods.json"
@@ -25,6 +27,8 @@ const CONSUME_ON_FAIL := false
 const CONSUME_ON_FAIL_FISHING := false
 ## Chance used when a food entry has no `chance`.
 const DEFAULT_CHANCE := 50.0
+## Food art for the bag: Image_Assets/Food/<sprite or food name>.png.
+const FOOD_ART_DIR := "res://Image_Assets/Food"
 ## DEBUG (2026-11-24): SUPER FOOD is liked by every Pokémon, always works, and with it in
 ## the bag Space/click/A on ANY Pokémon you overlap (any template, flyers and bugs too)
 ## or any fish you land offers to make it your follower. Given by the DEL menu. Not in
@@ -60,32 +64,56 @@ static func foods() -> Dictionary:
 
 static func reload() -> void:
 	_loaded = false
+	PokemonPrefs.reload()
 
 
+## Every food: the ones the CSV names, then any extra ones only Pokemon_Foods.json has.
 static func food_names() -> Array:
-	return foods().keys()
+	var out: Array = PokemonPrefs.food_names()
+	for food_name in foods().keys():
+		if AssetLookup.match_key(_as_dict(out), str(food_name)) == "":
+			out.append(str(food_name))
+	return out
 
 
-## Does `food_name` attract this species? Matched on display name, so every variant
-## sheet of a species ("019_Rattata", "019_Rattata_Alolan") counts.
+static func _as_dict(names: Array) -> Dictionary:
+	var d := {}
+	for n in names:
+		d[n] = true
+	return d
+
+
+## Pokemon_Foods.json's entry for a food, matched ignoring case; {} for a CSV-only food.
+static func food_info(food_name: String) -> Dictionary:
+	var key := AssetLookup.match_key(foods(), food_name)
+	var entry = foods().get(key, {}) if key != "" else {}
+	return entry if entry is Dictionary else {}
+
+
+static func food_description(food_name: String) -> String:
+	return str(food_info(food_name).get("description", ""))
+
+
+## The food's picture for the bag, "" until its art exists in Image_Assets/Food.
+static func food_art_path(food_name: String) -> String:
+	if not DirAccess.dir_exists_absolute(FOOD_ART_DIR):
+		return ""
+	return AssetLookup.resolve(FOOD_ART_DIR, str(food_info(food_name).get("sprite", food_name)), ".png")
+
+
+## Does `food_name` attract this species? Its ONE food is the CSV's "Food" column, matched
+## on display name, so every variant sheet ("019_Rattata", "019_Rattata_Alolan") counts.
 static func likes(species_key: String, food_name: String) -> bool:
 	if food_name == SUPER_FOOD:
 		return true
-	var entry = foods().get(food_name, {})
-	if not (entry is Dictionary):
-		return false
-	var name := OverworldPokemonData.display_name(species_key).to_lower()
-	for liked in entry.get("likes", []):
-		if str(liked).to_lower() == name:
-			return true
-	return false
+	var liked := PokemonPrefs.food_of(species_key)
+	return liked != "" and liked.to_lower() == food_name.strip_edges().to_lower()
 
 
 static func chance(food_name: String) -> float:
 	if food_name == SUPER_FOOD:
 		return 100.0
-	var entry = foods().get(food_name, {})
-	return float(entry.get("chance", DEFAULT_CHANCE)) if entry is Dictionary else 0.0
+	return float(food_info(food_name).get("chance", DEFAULT_CHANCE))
 
 
 ## The best liked food the player is carrying for `species_key` (highest chance), "" for none.
@@ -94,8 +122,8 @@ static func liked_food_in_bag(species_key: String) -> String:
 		return SUPER_FOOD
 	var best := ""
 	var best_chance := -1.0
-	for food_name in foods().keys():
-		if GameState.food_count(str(food_name)) <= 0 or not likes(species_key, str(food_name)):
+	for food_name in GameState.get_foods().keys():
+		if str(food_name) == SUPER_FOOD or GameState.food_count(str(food_name)) <= 0 or not likes(species_key, str(food_name)):
 			continue
 		if chance(str(food_name)) > best_chance:
 			best = str(food_name)
@@ -178,21 +206,22 @@ static func super_food_target(player: Node2D) -> OverworldPokemon:
 	return best
 
 
-## Makes `species_key` the follower and puts it on the current map behind the player,
-## replacing (and sending home) any follower already there. Returns the old species, "" if none.
-static func befriend(species_key: String, at_global: Variant = null) -> String:
-	var old := GameState.get_follower()
-	GameState.set_follower(species_key)
+## Makes `species_key` the follower and puts it on the current map behind the player.
+## Any follower already there goes to live at your house -- never dismissed here (bedtime
+## sorts out who has a bed). Returns the old species, "" if none.
+## `shiny` goes into its flags (PokemonHome.is_shiny) - pass the wild one's when shinies exist.
+static func befriend(species_key: String, at_global: Variant = null, shiny: bool = false) -> String:
+	var old := PokemonHome.make_follower(species_key, shiny)
 	var player := _player()
 	if player != null:
 		PokemonFollower.spawn_for(player.get_parent(), player, at_global)
-		# In the house the old follower, if it has a bed there, walks about again.
-		if PokemonHome.HOME_WANDER_SCENE in MapManager._map_scene_path:
-			PokemonHome.spawn_wanderers(player.get_parent(), player.global_position)
-	return old if old != species_key else ""
+		# In the house the old follower walks about (or lies down) again.
+		if PokemonHome.in_house(MapManager._map_scene_path):
+			PokemonHome.refresh_house(player.get_parent())
+	return old
 
 
-## The follower goes back to the WILD: off your heels and out of any bed it had at home
+## The follower goes back to the WILD: off your heels and out of the house for good
 ## (PokemonHome.release). Leaving it at home instead is MapManager._leave_follower_home.
 static func send_home() -> void:
 	PokemonHome.release(GameState.get_follower())

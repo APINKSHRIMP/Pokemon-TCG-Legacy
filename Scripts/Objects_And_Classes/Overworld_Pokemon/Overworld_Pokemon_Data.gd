@@ -294,7 +294,28 @@ static func all_species() -> Array:
 	return _all_species_cache
 
 
-static func sheet_path(species: String) -> String:
+# ============================================================
+# SHINY ROLL
+# ============================================================
+## TWEAKABLE: 1 in this many wild Pokémon spawns shiny - every spawner Pokémon (ground,
+## water, bugs, skittish, flock members each on their own) and every fishing bite. A
+## shiny keeps its shiny when you recruit it (FollowingPokemon.befriend's `shiny`).
+const SHINY_ODDS := 906
+## DEBUG (DEL menu): > 0 replaces SHINY_ODDS until the game closes (1 = every spawn).
+static var debug_shiny_odds: int = 0
+
+
+static func roll_shiny() -> bool:
+	var odds := debug_shiny_odds if debug_shiny_odds > 0 else SHINY_ODDS
+	return randi() % maxi(odds, 1) == 0
+
+
+## `shiny`: the "_Shiny" sheet beside it, falling back to the normal one if there is none.
+static func sheet_path(species: String, shiny: bool = false) -> String:
+	if shiny:
+		var shiny_path := SPRITE_DIR + species + "_Shiny.png"
+		if ResourceLoader.exists(shiny_path):
+			return shiny_path
 	return SPRITE_DIR + species + ".png"
 
 

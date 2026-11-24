@@ -1,26 +1,38 @@
 {
-	"_help": "PLACEHOLDER BEDS (2026-11-24) - names, what each one fits and the slot count are NOT final, edit freely. home_slots = how many beds fit in the player's house at once. Each bed: 'accepts' = Pokémon display names it fits (variants match: 'Rattata' covers 019_Rattata_Alolan), 'accepts_templates' = any species that can spawn as one of these overworld templates (flyer, bug_tree, swinging_bug, skittish, burying, surfacing, static, fish_tank), 'accepts_any' = true fits everything, 'water' = true for a tank (its Pokémon swims there and does not wander the house), 'description' = shop text for later. A bed holds ONE Pokémon. Read by Scripts/Objects_And_Classes/Overworld_Pokemon/Pokemon_Home.gd. DEL menu: 'Give one of each bed' / 'Empty the house'.",
+	"_help": "POKÉMON BEDS (2026-11-24). Which Pokémon sleeps in which KIND of bed is the 'Bed' column of Pokemon_Food_And_Beds.csv (blank = default_bed). Each bed here: 'sprite' = file name in Image_Assets/Beds (no .png; a missing file draws a grey placeholder box), 'frames'/'fps' = an animated strip (frames side by side), 'icon' = a still picture for the bag (default: the sprite), 'seat' = how many px down from the bed's TOP edge the sleeping Pokémon's feet go (leave it out for 62% of the height, right for flat rugs; raised beds like rocks want a small number so it sits ON top), 'water' = true for a tank (its Pokémon swims there day and night instead of wandering the house), 'description' = bag/shop text. home_slots = bed spaces in the bedroom. bedroom_spots = where each space is in Player_House_Upstairs, [x, y] = the BOTTOM-CENTRE of the bed; move them in-game with DEL -> 'Move bed spots' (Enter saves here). Read by Scripts/Objects_And_Classes/Overworld_Pokemon/Pokemon_Home.gd.",
 	"home_slots": 3,
+	"default_bed": "Hay Bale",
+	"bedroom_spots": [[102, 197], [174, 149], [237, 200]],
 	"beds": {
-		"Straw Basket": {
-			"accepts": ["Rattata", "Raticate", "Pikachu", "Raichu"],
-			"accepts_templates": ["skittish"],
-			"description": "A cosy basket for small Pokémon."
-		},
-		"Leafy Nest": {
-			"accepts": ["Caterpie", "Metapod", "Weedle", "Kakuna"],
-			"accepts_templates": ["bug_tree", "swinging_bug"],
-			"description": "A bed of soft leaves bug Pokémon love to curl up in."
-		},
-		"Perch": {
-			"accepts_templates": ["flyer"],
-			"description": "A sturdy perch for bird Pokémon to roost on."
-		},
-		"Home Fish Tank": {
-			"accepts": ["Magikarp", "Goldeen", "Seaking", "Krabby", "Shellder", "Horsea", "Staryu", "Tentacool"],
-			"accepts_templates": ["fish_tank", "surfacing"],
-			"water": true,
-			"description": "A tank for the house, so a fish you befriend has somewhere to sleep."
-		}
+		"Hay Bale": {"sprite": "Haybale", "seat": 12, "description": "A springy bale of hay. Most Pokémon will happily curl up on it."},
+		"Big Lily Pad": {"sprite": "Lily_Pad_Big", "description": "A huge lily pad, big enough for a large Pokémon to lounge on."},
+		"Cloud Rug": {"sprite": "Cloud_Rug", "description": "A rug as soft and puffy as a cloud."},
+		"Crescent Moon": {"sprite": "Crescent_Moon", "seat": 34, "description": "A crescent-moon cradle for Pokémon that love the night sky."},
+		"Dimensional Hole": {"sprite": "Dimensional_Hole", "description": "A swirling hole in space. Psychic Pokémon find it oddly relaxing."},
+		"Flower Patch": {"sprite": "Flower_Patch", "description": "A soft patch of flowers to nap among."},
+		"Fluffy Cushion": {"sprite": "Fluffy_Cushion", "seat": 18, "description": "A plump, fluffy cushion."},
+		"Forest Stump": {"sprite": "Forest_Stump", "seat": 11, "description": "An old tree stump from the forest."},
+		"Glowing Crystal Rock": {"sprite": "Glowing_Crystal_Rock_strip32", "icon": "Glowing_Crystal_Rock", "frames": 32, "fps": 10, "seat": 13, "description": "A magical rock that slowly shifts through every colour."},
+		"Icy Stump": {"sprite": "Icy_Stump", "seat": 12, "description": "A stump coated in ice that never melts."},
+		"Kecleon Mat": {"sprite": "Kecleon_Mat", "description": "A small woven mat."},
+		"Leaf Pile": {"sprite": "Leaf_Pile", "seat": 26, "description": "A big heap of fallen leaves to burrow into."},
+		"Leafy Plant": {"sprite": "Leafy_Plant", "seat": 16, "description": "A leafy pot plant to nestle in."},
+		"Lily Pad": {"sprite": "Lily_Pad", "description": "A broad green lily pad."},
+		"Log Post": {"sprite": "Log_Post", "seat": 9, "description": "A tall log post to perch on top of."},
+		"Mossy Rock": {"sprite": "Mossy_Rock", "seat": 18, "description": "A cool, mossy rock."},
+		"Mushroom Log": {"sprite": "Mushroom_Log", "seat": 20, "description": "A fallen log sprouting mushrooms."},
+		"Pink Rug": {"sprite": "Pink_Rug", "description": "A pretty pink rug."},
+		"Red Rock": {"sprite": "Red_Rock", "seat": 10, "description": "A sun-warmed red rock."},
+		"Red Woven Rug": {"sprite": "Red_Woven_Rug", "description": "A red rug with a woven pattern."},
+		"Rock Bundle": {"sprite": "Rock_Bundle", "seat": 11, "description": "A little bundle of smooth rocks."},
+		"Round Green Pad": {"sprite": "Round_Green_Pad", "seat": 18, "description": "A round, springy green pad."},
+		"Round Table": {"sprite": "Round_Table", "seat": 16, "description": "A small round table to sit on top of."},
+		"Sand Pit": {"sprite": "Sand_Pit", "description": "A pit of warm, soft sand."},
+		"Snowflake Platform": {"sprite": "Snowflake_Platform", "seat": 40, "description": "An icy snowflake-shaped platform."},
+		"Spider Web": {"sprite": "Spider_Web", "description": "A sturdy web for bug Pokémon to rest in."},
+		"Stone Pillar": {"sprite": "Stone_Pillar", "seat": 12, "description": "A tall stone pillar to sit on top of."},
+		"Swirl Doormat": {"sprite": "Swirl_Doormat", "description": "A doormat with a swirly pattern."},
+		"Small Water Tank": {"sprite": "Small_Water_Tank", "water": true, "seat": 20, "description": "A small fish tank, the same as the ones in the FISH shop."},
+		"Small Land Tank": {"sprite": "Small_Land_Tank", "seat": 20, "description": "A small land tank, the same as the ones in the FISH shop."}
 	}
 }

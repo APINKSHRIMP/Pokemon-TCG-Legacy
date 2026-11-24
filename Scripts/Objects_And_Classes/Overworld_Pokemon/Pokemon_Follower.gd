@@ -64,6 +64,8 @@ static func spawn_for(map_root: Node, player: Node2D, at_global: Variant = null)
 	var follower := PokemonFollower.new()
 	follower.name = "FOLLOWER"
 	follower.configure(key)
+	follower.display_name = PokemonHome.name_of(key)   # its nickname, if it has one
+	follower.shiny = PokemonHome.is_shiny(key)
 	follower._player = player
 	map_root.add_child(follower)
 	# Before the player in the tree, so at the same z it draws behind them.

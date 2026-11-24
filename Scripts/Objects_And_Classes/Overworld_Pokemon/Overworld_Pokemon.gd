@@ -41,6 +41,8 @@ const DIR_VECTORS := {"up": Vector2.UP, "down": Vector2.DOWN, "left": Vector2.LE
 
 var species: String = ""
 var display_name: String = ""
+## Drawn from the "_Shiny" sheet. Set before add_child (your own Pokémon: from its flags).
+var shiny: bool = false
 ## The registry entry for this species (spin, particle_colour, up_time, ...).
 var species_data: Dictionary = {}
 ## The spawn point that produced this Pokémon; {} for flyers.
@@ -94,7 +96,7 @@ func _ready() -> void:
 	sprite.scale = Vector2(draw_scale(), draw_scale())
 	sprite.region_enabled = true
 	sprite.region_filter_clip_enabled = true
-	var path := OverworldPokemonData.sheet_path(species)
+	var path := OverworldPokemonData.sheet_path(species, shiny)
 	var texture: Texture2D = load(path) if ResourceLoader.exists(path) else null
 	if texture == null:
 		push_error("OverworldPokemon: no sprite sheet at " + path)

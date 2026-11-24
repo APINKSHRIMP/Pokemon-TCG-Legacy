@@ -3056,15 +3056,25 @@ func add_food(food_name: String, amount: int = 1) -> void:
 	progress["foods"] = foods
 	save_progress()
 
-## POKÉMON AT HOME (PokemonHome has the rules). progress["home_beds"] = the beds placed in the
-## house, [{"bed": name, "pokemon": species or ""}]; progress["spare_beds"] = {name: count} owned
-## with no space for them.
-func get_home_beds() -> Array:
-	var list = progress.get("home_beds", [])
-	return (list as Array).duplicate(true) if list is Array else []
+## POKÉMON AT HOME (PokemonHome has the rules).
+##   progress["home_pokemon"] = the befriended Pokémon living in the house that are NOT
+##                              following you, oldest first (the order beds are handed out in).
+##   progress["bed_slots"]    = the bed in each of the bedroom's spaces, "" for empty.
+##   progress["spare_beds"]   = {name: count}, beds owned but not placed.
+func get_home_pokemon() -> Array:
+	var list = progress.get("home_pokemon", [])
+	return (list as Array).duplicate() if list is Array else []
 
-func set_home_beds(list: Array) -> void:
-	progress["home_beds"] = list.duplicate(true)
+func set_home_pokemon(list: Array) -> void:
+	progress["home_pokemon"] = list.duplicate()
+	save_progress()
+
+func get_bed_slots() -> Array:
+	var list = progress.get("bed_slots", [])
+	return (list as Array).duplicate() if list is Array else []
+
+func set_bed_slots(list: Array) -> void:
+	progress["bed_slots"] = list.duplicate()
 	save_progress()
 
 func get_spare_beds() -> Dictionary:
@@ -3078,6 +3088,63 @@ func add_spare_bed(bed_name: String, amount: int = 1) -> void:
 		spare.erase(bed_name)
 	progress["spare_beds"] = spare
 	save_progress()
+
+## YOUR POKÉMON'S OWN FLAGS (follower or at home), keyed by species:
+##   progress["pokemon_flags"] = {species: {"species": "forretress", "shiny": false,
+##                                          "name": "Sir Spikes", "pets": 4, "meals": 2}}
+## Written when it joins you (PokemonHome.make_follower) and wiped when it goes back to the wild.
+##   "species"  its species key (the dict key too - kept in the block so it stands alone)
+##   "shiny"    shiny or not (no shinies in the game yet; PokemonHome.is_shiny reads it)
+##   "name"     the nickname, "" = its species name (PokemonHome.name_of is the one reader)
+##   "pets" / "meals"  running counts, for anything that wants to know how loved it is later
+func get_pokemon_flags(species_key: String) -> Dictionary:
+	var all = progress.get("pokemon_flags", {})
+	if not (all is Dictionary):
+		return {}
+	var mine = (all as Dictionary).get(species_key, {})
+	return (mine as Dictionary).duplicate() if mine is Dictionary else {}
+
+func set_pokemon_flags(species_key: String, flags: Dictionary) -> void:
+	if species_key == "":
+		return
+	var all = progress.get("pokemon_flags", {})
+	if not (all is Dictionary):
+		all = {}
+	all[species_key] = flags.duplicate()
+	progress["pokemon_flags"] = all
+	save_progress()
+
+func set_pokemon_flag(species_key: String, key: String, value: Variant) -> void:
+	if species_key == "":
+		return
+	var all = progress.get("pokemon_flags", {})
+	if not (all is Dictionary):
+		all = {}
+	var mine := get_pokemon_flags(species_key)
+	mine[key] = value
+	all[species_key] = mine
+	progress["pokemon_flags"] = all
+	save_progress()
+
+## +1 on a count flag ("pets", "meals"); returns the new count.
+func bump_pokemon_flag(species_key: String, key: String) -> int:
+	var n := int(get_pokemon_flags(species_key).get(key, 0)) + 1
+	set_pokemon_flag(species_key, key, n)
+	return n
+
+func clear_pokemon_flags(species_key: String) -> void:
+	var all = progress.get("pokemon_flags", {})
+	if all is Dictionary and (all as Dictionary).has(species_key):
+		(all as Dictionary).erase(species_key)
+		progress["pokemon_flags"] = all
+		save_progress()
+
+func get_pokemon_nickname(species_key: String) -> String:
+	return str(get_pokemon_flags(species_key).get("name", ""))
+
+func set_pokemon_nickname(species_key: String, nickname: String) -> void:
+	set_pokemon_flag(species_key, "name", nickname.strip_edges())
+
 
 ## Takes one `food_name` out of the bag. False (and nothing changes) when there is none.
 func use_food(food_name: String) -> bool:

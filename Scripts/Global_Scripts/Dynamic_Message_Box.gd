@@ -536,13 +536,55 @@ func _layout_panel() -> void:
 
 
 func _apply_panel_shader() -> void:
-	var mat: ShaderMaterial = _panel.material as ShaderMaterial
+	_paint_panel(_panel)
+
+
+# ── SIDE PANELS ──────────────────────────────────────────────
+# Anything docked against the box (the Pokémon action menu) is built from the SAME
+# panel - same fill, hairline, spine, glow and shadow, in the current speaker's colour -
+# so it reads as part of the box rather than a second widget. The rect is inflated by
+# PANEL_SHADOW_PAD on every side, exactly like the box's own: place it with that in mind.
+
+## A blank panel rect; size it, add it, then paint_side_panel() it.
+func make_side_panel() -> ColorRect:
+	var rect := ColorRect.new()
+	rect.color = Color.WHITE
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = load(PANEL_SHADER)
+	rect.material = mat
+	return rect
+
+## Paints `rect` (already sized, including the shadow pad) to match the box right now.
+func paint_side_panel(rect: ColorRect) -> void:
+	_paint_panel(rect)
+
+## The speaker's own colour (the name pill's, the spine's).
+func speaker_colour() -> Color:
+	return MessageBoxTheme.chip_color(_theme_key, 0)
+
+## A capsule in the speaker's colour - the name pill's look - for a highlighted row.
+func make_speaker_pill(pill_size: Vector2) -> ColorRect:
+	var pill := _make_chip_rect()
+	pill.size = pill_size
+	var own := speaker_colour()
+	var next := MessageBoxTheme.chip_color(_theme_key, 1)
+	_apply_chip_shader(pill, own, own.lerp(next, CHIP_NEIGHBOUR_MIX), own, pill_size.y * 0.5)
+	return pill
+
+const SIDE_PANEL_PAD := PANEL_SHADOW_PAD
+
+
+func _paint_panel(rect: ColorRect) -> void:
+	if rect == null:
+		return
+	var mat: ShaderMaterial = rect.material as ShaderMaterial
 	if mat == null:
 		return
 	var ui := _ui()
 	var speaker := MessageBoxTheme.chip_color(_theme_key, 0)
 
-	mat.set_shader_parameter("rect_size", _panel.size)
+	mat.set_shader_parameter("rect_size", rect.size)
 	mat.set_shader_parameter("pad", PANEL_SHADOW_PAD)
 	mat.set_shader_parameter("corner_radius", PANEL_CORNER_R)
 	var fill: Color = ui.msgbox_col("bg")
@@ -1103,7 +1145,9 @@ static func sprite_icon(sprite_name: String) -> Texture2D:
 	if _sprite_icon_cache.has(sprite_name):
 		return _sprite_icon_cache[sprite_name]
 
-	var path := SPRITE_DIR + sprite_name + ".png"
+	# A full res:// path is taken as-is: an owned Pokémon's portrait is its overworld sheet
+	# (OverworldPokemonData.sheet_path), which is the same 4x4 layout with down-idle at 0,0.
+	var path := sprite_name if sprite_name.begins_with("res://") else SPRITE_DIR + sprite_name + ".png"
 	if not ResourceLoader.exists(path):
 		_sprite_icon_cache[sprite_name] = null
 		return null

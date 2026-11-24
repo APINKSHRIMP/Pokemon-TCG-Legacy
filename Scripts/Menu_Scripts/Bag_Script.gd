@@ -12,6 +12,11 @@ extends Control
 ##   * fishing rods and fishing permits -- items in progress["items"] (FishingRods)
 ##   * anything in FLAG_ITEMS -- a save flag shown as an item (none at the moment).
 ## Add a new key item by adding a row here.
+## Then, after the key items (2026-11-24, until the bag gets pockets):
+##   * Pokémon foods with how many you carry (art: Image_Assets/Food, FollowingPokemon)
+##   * spare beds with how many, then the beds placed in your room (art: Image_Assets/Beds)
+## An entry may carry "art_path" (a full path) instead of "art" (an Assorted_Extras name).
+## A bag too tall for the screen scrolls.
 
 ## TWEAKABLE — grid shape and text.
 ## Live: the cells and art grow with UIKit.item_scale(), and a wider screen fits more
@@ -80,6 +85,25 @@ func _owned_entries() -> Array:
 	for row in FLAG_ITEMS:
 		if bool(GameState.progress.get(row["flag"], false)):
 			out.append({"label": row["label"], "art": row["art"]})
+	# FOLLOWING POKÉMON foods, in the order the CSV names them (SUPER FOOD is debug, last).
+	var foods := GameState.get_foods()
+	var food_order: Array = FollowingPokemon.food_names()
+	for food_name in foods.keys():
+		if food_name not in food_order:
+			food_order.append(food_name)
+	for food_name in food_order:
+		var n := int(foods.get(food_name, 0))
+		if n > 0:
+			out.append({"label": "%s x%d" % [food_name, n], "art_path": FollowingPokemon.food_art_path(str(food_name))})
+	# POKÉMON BEDS: spares, then the ones placed in your room.
+	var spare := GameState.get_spare_beds()
+	for bed_name in PokemonHome.bed_names():
+		var n := int(spare.get(bed_name, 0))
+		if n > 0:
+			out.append({"label": "%s x%d" % [bed_name, n], "art_path": PokemonHome.bed_icon_path(str(bed_name))})
+	for bed_name in PokemonHome.slots():
+		if str(bed_name) != "":
+			out.append({"label": "%s (in your room)" % bed_name, "art_path": PokemonHome.bed_icon_path(str(bed_name))})
 	return out
 
 
@@ -108,6 +132,17 @@ func _build() -> void:
 			rows * CELL_SIZE.y + (rows - 1) * CELL_SEP)
 	grid.size = content
 	grid.position = Vector2((UIKit.screen_w() - content.x) * 0.5, UIKit.CONTENT_TOP + GRID_INSET_Y)
+	# Too tall for the content band (lots of foods and beds): scroll it.
+	var room := UIKit.content_h() - GRID_INSET_Y * 2.0
+	if content.y > room:
+		var scroll := ScrollContainer.new()
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scroll.position = grid.position
+		scroll.size = Vector2(content.x + 20.0, room)
+		grid.get_parent().add_child(scroll)
+		grid.reparent(scroll, false)
+		grid.position = Vector2.ZERO
+		grid.custom_minimum_size = content
 
 
 func _make_cell(entry: Dictionary) -> Control:
@@ -120,8 +155,8 @@ func _make_cell(entry: Dictionary) -> Control:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cell.add_child(box)
 
-	var art_path := "res://Image_Assets/Assorted_Extras/%s.png" % str(entry.get("art", ""))
-	if ResourceLoader.exists(art_path):
+	var art_path := str(entry.get("art_path", "res://Image_Assets/Assorted_Extras/%s.png" % str(entry.get("art", ""))))
+	if art_path != "" and ResourceLoader.exists(art_path):
 		var tex: Texture2D = load(art_path)
 		# Pixel art: a whole-number enlargement (24px rods x8), or a plain fit when the
 		# art is bigger than the box (the 200px permits fit at 1x).

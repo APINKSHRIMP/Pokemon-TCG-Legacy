@@ -182,11 +182,13 @@ func _build_world_column(col: VBoxContainer) -> void:
 	_add_expanded(follow_row, _button("Give test foods", _give_test_foods))
 	_add_expanded(follow_row, _button("Send follower home", _debug_send_follower_home))
 	col.add_child(_button("Add SUPER FOOD (capture any Pokémon)", _give_super_food))
+	col.add_child(_button("Shiny odds: 1 in 1 / back to 1 in %d" % OverworldPokemonData.SHINY_ODDS, _toggle_shiny_odds))
 	var home_row := _row(col)
 	_add_expanded(home_row, _button("Give one of each bed", _give_test_beds))
 	_add_expanded(home_row, _button("Empty the house", _empty_house))
-	col.add_child(_note("Beds (Pokemon_Beds.json) go into the house's bed spaces, spares after that. A follower with no bed blocks going to sleep."))
-	col.add_child(_note("3 of every food in Pokemon_Foods.json. Talk to a Pokémon that likes one (Ctrl to sneak up on a skittish one), or fish with it in the bag."))
+	col.add_child(_button("Move bed spots (bedroom)", _move_bed_spots))
+	col.add_child(_note("Beds: in the bedroom, Space at a bed space cycles EVERY bed (debug: beds from nowhere; empty spaces are pink dots). 'Give one of each bed' puts one of each in your spares for the real cycle. Who likes which food / bed: Pokemon_Food_And_Beds.csv."))
+	col.add_child(_note("3 of every food (the CSV's Food column + Pokemon_Foods.json). Talk to a Pokémon that likes one (Ctrl to sneak up on a skittish one), or fish with it in the bag."))
 
 
 ## A caption, a number box and a button: Cash [ 4780 ] [ Set ]. Enter in the box works too.
@@ -379,20 +381,34 @@ func _force_all_spawns() -> void:
 
 func _give_test_beds() -> void:
 	PokemonHome.reload()
-	var placed: Array = []
 	for bed_name in PokemonHome.bed_names():
-		if PokemonHome.add_bed(str(bed_name)):
-			placed.append(str(bed_name))
-	_say("Beds in the house: %s. (Spares: %s.) Re-enter the house to see Pokémon at home." % [
-			", ".join(PackedStringArray(placed)) if not placed.is_empty() else "none (it's full)",
-			str(GameState.get_spare_beds())])
+		PokemonHome.add_bed(str(bed_name))
+	_refresh_bed_spots()
+	_say("One of each of the %d beds added to your spare beds (see the bag). Space at a bed space in your room to place them." % PokemonHome.bed_names().size())
 
 
 func _empty_house() -> void:
-	GameState.set_home_beds([])
+	GameState.set_bed_slots([])
+	GameState.set_home_pokemon([])
 	GameState.progress["spare_beds"] = {}
 	GameState.save_progress()
-	_say("Every bed and Pokémon at home removed. Your follower (if any) is still following you.")
+	_refresh_bed_spots()
+	_say("Every bed, spare bed and Pokémon at home removed. Your follower (if any) is still following you.")
+
+
+func _refresh_bed_spots() -> void:
+	var map_root: Node = MapManager._player.get_parent() if MapManager._player != null and is_instance_valid(MapManager._player) else null
+	if map_root != null and PokemonHome.in_house(MapManager._map_scene_path):
+		PokemonHome.refresh_house(map_root)
+
+
+func _move_bed_spots() -> void:
+	if not (PokemonHome.BEDROOM_SCENE in MapManager._map_scene_path):
+		_say("Go up to your bedroom first -- the bed spaces are there.", BAD_COLOUR)
+		return
+	var map_root: Node = MapManager._player.get_parent()
+	MapManager.close_debug_menu()
+	BedSpotMover.open(map_root)
 
 
 func _give_super_food() -> void:
@@ -401,11 +417,19 @@ func _give_super_food() -> void:
 	_say("SUPER FOOD is in the bag. Stand on any Pokémon and press Space / click / A, or fish one up.")
 
 
+func _toggle_shiny_odds() -> void:
+	OverworldPokemonData.debug_shiny_odds = 0 if OverworldPokemonData.debug_shiny_odds == 1 else 1
+	if OverworldPokemonData.debug_shiny_odds == 1:
+		_say("Every Pokémon spawn and fishing bite is now SHINY (until you press this again or close the game). Re-enter a map to respawn.")
+	else:
+		_say("Shiny odds back to 1 in %d." % OverworldPokemonData.SHINY_ODDS)
+
+
 func _debug_send_follower_home() -> void:
 	if GameState.get_follower() == "":
 		_say("No Pokémon is following you.", BAD_COLOUR)
 		return
-	var gone := OverworldPokemonData.display_name(GameState.get_follower())
+	var gone := PokemonHome.name_of(GameState.get_follower())
 	FollowingPokemon.send_home()
 	_say("%s went home." % gone)
 

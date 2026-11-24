@@ -33,6 +33,13 @@ var current_opponent: Node = null
 var current_npc: Node = null
 ## The overworld Pokémon (skittish / static template) currently saying its name.
 var current_pokemon: Node = null
+## YOUR POKÉMON talking: {"name", "portrait"} for the name pill, kept for the follow-up lines
+## after a menu choice (the node may already be gone - dismissed, gone home). See _pokemon_say().
+var pokemon_speaker: Dictionary = {}
+## The docked action list on the message box (MessageActionMenu), while one is up.
+var _action_menu: MessageActionMenu = null
+## The rename keyboard is up: the box is hidden but still owns the presses.
+var _renaming: bool = false
 
 # ------------------------------------------------------------
 # CUTSCENES (Scripts/Global_Scripts/Cutscene.gd)
@@ -494,9 +501,10 @@ func initialise(
 	# FOLLOWING POKÉMON: the befriended Pokémon walks behind the player on every map.
 	if map_root != null and GameState.get_follower() != "":
 		PokemonFollower.spawn_for(map_root, _player)
-	# POKÉMON AT HOME: the ones with a bed in the house that aren't following you wander it.
-	if map_root != null and PokemonHome.HOME_WANDER_SCENE in _map_scene_path:
-		PokemonHome.spawn_wanderers(map_root, _player.global_position)
+	# POKÉMON AT HOME: the ones living in the house that aren't following you -- wandering
+	# downstairs by day, asleep on their beds upstairs at night, always in a water tank.
+	if map_root != null and PokemonHome.in_house(_map_scene_path):
+		PokemonHome.refresh_house(map_root)
 
 	_player.interact_pressed.connect(_on_player_interact)
 	_player.npc_interact_pressed.connect(_on_player_npc_interact)
@@ -1438,13 +1446,19 @@ func _apply_actor_chips() -> void:
 		message_panel.set_chips([])
 		return
 
-	# An overworld Pokémon: its name on the pill, nothing else. No voice -- the speech
-	# blips are keyed by trainer sprite and a Pokémon has none.
-	if current_pokemon != null and is_instance_valid(current_pokemon):
+	# An overworld Pokémon: its name (your own one's nickname) and its little overworld
+	# portrait on the pill, nothing else. No voice -- the speech blips are keyed by trainer
+	# sprite and a Pokémon has none. pokemon_speaker outranks the node: it is kept for the
+	# lines after a menu choice, when the node may already have gone.
+	if not pokemon_speaker.is_empty() or (current_pokemon != null and is_instance_valid(current_pokemon)):
+		var poke_name: String = str(pokemon_speaker.get("name", "")) if not pokemon_speaker.is_empty() \
+				else str(current_pokemon.display_name)
+		var portrait: String = str(pokemon_speaker.get("portrait", "")) if not pokemon_speaker.is_empty() \
+				else OverworldPokemonData.sheet_path(str(current_pokemon.species), bool(current_pokemon.shiny))
 		message_panel.set_system_variant(false)
 		message_panel.apply_theme("")
 		message_panel.set_right_chips([])
-		message_panel.set_name_pill(str(current_pokemon.display_name), "")
+		message_panel.set_name_pill(poke_name, portrait)
 		message_panel.set_voice("")
 		message_panel.set_chips([])
 		return
@@ -1662,6 +1676,8 @@ func _show_large_message_with_ok(text: String) -> void:
 
 func _hide_message():
 	_hide_modifiers_box()
+	_close_action_menu()
+	pokemon_speaker = {}
 	message_panel.visible = false
 	message_panel.clear_chips()
 	_clear_gift_display()
@@ -1851,6 +1867,7 @@ func show_interactable_confirm(text: String, on_yes: Callable) -> void:
 func wants_message_input() -> bool:
 	return _emote_busy or _gift_reveal_active \
 		or _validation_popup_active \
+		or _renaming \
 		or _coinflip_animating \
 		or (message_panel != null and message_panel.visible)
 
@@ -1868,6 +1885,9 @@ func handle_message_accept() -> void:
 	# has not finished reading. The second press does what it always did.
 	if message_panel.advance_consumed():
 		return
+	if action_menu_open():
+		_action_menu.accept()
+		return
 	# ISSUE #128: there is no OK button to test any more -- the box itself reports which kind
 	# it is. ok_armed is false while a gift reveal is still animating.
 	if message_panel.is_ok_mode():
@@ -1881,9 +1901,36 @@ func handle_message_accept() -> void:
 		else:
 			_on_yes_pressed()
 
+## A click / tap on the map while a box is up (the player's mouse path). The same as accept,
+## except with the action list up: a click OFF its rows must not choose the highlighted one
+## (a click on a row is the row's own) - it only finishes the typewriter.
+func handle_message_click() -> void:
+	if action_menu_open() and message_panel != null and message_panel.visible and not _emote_busy:
+		message_panel.advance_consumed()
+		return
+	handle_message_accept()
+
+
+func action_menu_open() -> bool:
+	return _action_menu != null and is_instance_valid(_action_menu)
+
+
+func _close_action_menu() -> void:
+	if action_menu_open():
+		_action_menu.close()
+	_action_menu = null
+
+
 ## ISSUE #460: Left / Right on a Yes/No question move the highlight between the two buttons.
 ## Returns true when the press was used.
 func handle_message_nav(dir: Vector2i) -> bool:
+	# The docked action list: Up / Down move its highlight; Left / Right do nothing.
+	if action_menu_open() and message_panel != null and message_panel.visible:
+		if _emote_busy:
+			return true
+		if dir.y != 0:
+			_action_menu.move(dir.y)
+		return true
 	if dir.x == 0 or message_panel == null or not message_panel.visible or not message_panel.is_choice_mode():
 		return false
 	if _emote_busy or _gift_reveal_active or _validation_popup_active:
@@ -1905,6 +1952,9 @@ func handle_message_cancel() -> void:
 	if not message_panel.visible:
 		return
 	if message_panel.advance_consumed():
+		return
+	if action_menu_open():
+		_action_menu.cancel()
 		return
 	# A plain OK box has nothing to say no to, so cancel just dismisses it.
 	if message_panel.is_ok_mode():
@@ -2203,6 +2253,9 @@ func _on_pack_opening_finished() -> void:
 # INTERACTION — NPCs
 # ============================================================
 
+## TWEAKABLE: added under a Pokémon's line the first time you ever talk to one of its species.
+const FIELD_GUIDE_NEW_NOTE := "(Added to your Field Guide!)"
+
 ## Space on an overworld Pokémon (skittish / static templates). For now it just says
 ## its own name; OverworldPokemon.cry_text() is the one place that line comes from.
 func _on_player_pokemon_interact(pokemon: Node) -> void:
@@ -2213,21 +2266,21 @@ func _on_player_pokemon_interact(pokemon: Node) -> void:
 	current_pokemon = pokemon
 	pokemon.pause_and_face(_player.global_position)
 	_face_player_toward_actor(pokemon)
+	# FIELD GUIDE: talking to a Pokémon - wild, following or at home - counts as meeting it.
+	var guide_new := GameState.record_pokemon_met(str(pokemon.species))
+	var guide_note := "\n" + FIELD_GUIDE_NEW_NOTE if guide_new else ""
 	SoundManagerScript.play_cry(str(pokemon.species), SoundManagerScript.INTERACT_CRY_PITCH, true)
 	# FOLLOWING POKÉMON: your own follower asks to be sent home; a wild one that likes a
 	# food in the bag can be offered some (FollowingPokemon has the rules).
-	if pokemon is PokemonFollower:
-		_talk_to_follower(pokemon)
-		return
-	if pokemon is PokemonHomeWanderer:
-		_talk_to_home_pokemon(pokemon)
+	if pokemon is PokemonFollower or pokemon is PokemonHomeWanderer:
+		_open_pokemon_menu(pokemon)
 		return
 	var food := FollowingPokemon.liked_food_in_bag(str(pokemon.species))
 	if food != "" and str(pokemon.species) != GameState.get_follower():
-		show_interactable_confirm("%s\nIt's sniffing at your %s. Offer it some?" % [pokemon.cry_text(), food],
+		show_interactable_confirm("%s%s\nIt's sniffing at your %s. Offer it some?" % [pokemon.cry_text(), guide_note, food],
 				func(): _offer_food_to_pokemon(pokemon, food))
 		return
-	_show_message_with_ok(pokemon.cry_text())
+	_show_message_with_ok(pokemon.cry_text() + guide_note)
 
 
 ## FOLLOWING POKÉMON: Yes to "Offer it some?". The box is already down.
@@ -2242,9 +2295,10 @@ func _offer_food_to_pokemon(pokemon: Node, food: String) -> void:
 		return
 	var at: Vector2 = (pokemon as Node2D).global_position
 	SoundManagerScript.play_cry(species_key, SoundManagerScript.BEFRIEND_CRY_PITCH, true)
+	var was_shiny := bool(pokemon.get("shiny"))
 	if pokemon.has_method("despawn"):
 		pokemon.despawn()
-	var old := FollowingPokemon.befriend(species_key, at)
+	var old := FollowingPokemon.befriend(species_key, at, was_shiny)
 	var line := "%s gobbled up the %s! %s wants to come with you!" % [species_name, food, species_name]
 	if old != "":
 		line += "\n" + PokemonHome.old_follower_note(old)
@@ -2284,121 +2338,314 @@ func _capture_with_super_food(pokemon: OverworldPokemon) -> void:
 	# despawn() takes everything it carries with it (glow, shadow, bubble) and tells the
 	# spawner the spot is free; the follower is a brand-new node.
 	pokemon.process_mode = Node.PROCESS_MODE_INHERIT
+	var was_shiny := pokemon.shiny
 	pokemon.despawn()
-	var old := FollowingPokemon.befriend(species_key, at)
+	var old := FollowingPokemon.befriend(species_key, at, was_shiny)
 	var line := "%s gobbled up the %s! %s is now following you!" % [species_name, FollowingPokemon.SUPER_FOOD, species_name]
 	if old != "":
 		line += "\n" + PokemonHome.old_follower_note(old)
 	show_interactable_message(line)
 
 
-## FOLLOWING POKÉMON: Space on your own follower (while facing it). In the house, with a bed
-## for it (its own, or a free one that fits): leave it at home. Anywhere else: let it go.
-func _talk_to_follower(follower: PokemonFollower) -> void:
-	var species_key := follower.species
-	var name := follower.display_name
-	if PokemonHome.in_house(_map_scene_path):
-		var bed := PokemonHome.bed_of(species_key)
-		if bed < 0:
-			bed = PokemonHome.free_bed_for(species_key)
-		if bed >= 0:
-			var bed_name := str(PokemonHome.beds()[bed].get("bed", ""))
-			show_interactable_confirm("%s\nLeave %s here at home? It can sleep in the %s." % [follower.cry_text(), name, bed_name],
-					func(): _leave_follower_home(follower, bed))
-			return
-	show_interactable_confirm("%s\nLet %s go back to the wild?" % [follower.cry_text(), name],
-			func(): _send_follower_home(name))
+# ============================================================
+# YOUR POKÉMON - the action menu
+# ============================================================
+# Space / A / a click on your follower, or on one living in the house, opens the box with
+# its name (nickname) and overworld portrait on the pill, and a short list docked to the
+# box's top-right corner (MessageActionMenu). What is on the list depends on where it is:
+#
+#   following you, out and about   PET  FEED  RENAME  SEND HOME  DISMISS  CANCEL
+#   following you, in the house    PET  FEED  RENAME  STAY HERE  DISMISS  CANCEL
+#   living at home (inactive)      FOLLOW ME  PET  FEED  RENAME  DISMISS  CANCEL
+#
+#   SEND HOME / STAY HERE  it stops following and lives in the house (a bed only matters at bedtime)
+#   FOLLOW ME              it swaps places with your follower, who goes home
+#   DISMISS                asks first; Yes = back to the wild, nickname and flags with it
+#   No to the Dismiss question, or Escape on the rename keyboard, comes back to the list.
+
+## TWEAKABLE: the labels (the theme upper-cases them, like every button).
+const POKEMON_MENU_LABELS := {
+	"follow": "Follow me", "pet": "Pet", "feed": "Feed", "rename": "Rename",
+	"send_home": "Send home", "stay": "Stay here", "dismiss": "Dismiss", "cancel": "Cancel",
+}
+## TWEAKABLE: the cry pitch when you pet or feed it (1.0 = its normal cry; higher = happier).
+const PET_CRY_PITCH := 1.15
+## TWEAKABLE: the double hop when it is petted or fed - height (its own pixels) and time per half-hop.
+const PET_HOP_PX := 4.0
+const PET_HOP_TIME := 0.09
+## TWEAKABLE: what it does when you pet it; one at random (%s = its name).
+const PET_LINES := [
+	"%s nuzzles up against you happily!",
+	"%s loves being petted!",
+	"%s closes its eyes and leans into your hand.",
+]
 
 
-## Yes to "Let X go back to the wild?".
-func _send_follower_home(follower_name: String) -> void:
-	FollowingPokemon.send_home()
-	show_interactable_message("%s went back to the wild. Bye for now!" % follower_name)
+func _pokemon_menu_items(pokemon: Node) -> Array:
+	var ids: Array
+	if pokemon is PokemonHomeWanderer:
+		ids = ["follow", "pet", "feed", "rename", "dismiss", "cancel"]
+	elif PokemonHome.in_house(_map_scene_path):
+		ids = ["pet", "feed", "rename", "stay", "dismiss", "cancel"]
+	else:
+		ids = ["pet", "feed", "rename", "send_home", "dismiss", "cancel"]
+	var items: Array = []
+	for id in ids:
+		items.append({"id": id, "label": POKEMON_MENU_LABELS[id]})
+	return items
 
 
-## Yes to "Leave X here at home?": into bed `bed` (kept if it already had it), off your heels,
-## and pottering about the house (a water bed's Pokémon swims in its tank instead).
-func _leave_follower_home(follower: PokemonFollower, bed: int) -> void:
-	if not is_instance_valid(follower):
-		return
-	var species_key := follower.species
-	var name := follower.display_name
-	var at := follower.global_position
-	if PokemonHome.bed_of(species_key) != bed:
-		PokemonHome.assign(species_key, bed)
-	GameState.clear_follower()
-	follower.despawn()
-	var bed_name := str(PokemonHome.beds()[bed].get("bed", ""))
-	if PokemonHome.is_water_bed(bed_name):
-		show_interactable_message("%s is swimming happily in the %s." % [name, bed_name])
-		return
-	if PokemonHome.HOME_WANDER_SCENE in _map_scene_path:
-		PokemonHomeWanderer.spawn(_player.get_parent(), species_key, at)
-	show_interactable_message("%s settled in at home." % name)
-
-
-## Space on a Pokémon living in the house: take it out with you. The follower you have now
-## goes back to its bed if it has one -- otherwise it would go back to the wild, and the
-## question says so.
-func _talk_to_home_pokemon(pokemon: PokemonHomeWanderer) -> void:
-	var name := pokemon.display_name
-	var text := "%s\nTake %s out with you?" % [pokemon.cry_text(), name]
-	var current := GameState.get_follower()
-	if current != "" and PokemonHome.bed_of(current) < 0:
-		text += " (%s has no bed and would go back to the wild.)" % OverworldPokemonData.display_name(current)
-	show_interactable_confirm(text, func(): _take_home_pokemon_out(pokemon))
-
-
-func _take_home_pokemon_out(pokemon: PokemonHomeWanderer) -> void:
+## Opens (or re-opens: after a No, or a cancelled rename) the action list for `pokemon`,
+## with the `start_id` row highlighted.
+func _open_pokemon_menu(pokemon: Node, start_id: String = "") -> void:
 	if not is_instance_valid(pokemon):
+		_hide_message()
 		return
-	var species_key := pokemon.species
-	var name := pokemon.display_name
-	var at := pokemon.global_position
-	var old := GameState.get_follower()
-	pokemon.despawn()
-	if old != "" and PokemonHome.bed_of(old) < 0:
-		PokemonHome.release(old)
-	FollowingPokemon.befriend(species_key, at)
-	var line := "%s is coming with you!" % name
-	if old != "" and old != species_key:
+	current_pokemon = pokemon
+	pokemon.pause_and_face(_player.global_position)
+	pokemon_speaker = {}
+	_pending_ok_action = Callable()
+	_pending_confirm_yes = Callable()
+	_pending_confirm_no = Callable()
+	var items := _pokemon_menu_items(pokemon)
+	var start := 0
+	for i in items.size():
+		if str(items[i]["id"]) == start_id:
+			start = i
+	_show_message_with_menu(pokemon.cry_text(), items, start,
+			func(id: String) -> void: _on_pokemon_menu_choice(pokemon, id))
+
+
+## The box with a docked action list. `on_choose(id)` runs with the list gone and the box
+## still up, so the next line swaps in place. CANCEL / Escape / B close the box.
+func _show_message_with_menu(text: String, items: Array, start: int, on_choose: Callable) -> void:
+	_hide_modifiers_box()
+	_close_action_menu()
+	text = await _emote_prelude(text)
+	_apply_actor_chips()
+	message_panel.set_mode("menu")          # neither OK nor Yes/No: the list answers
+	message_panel.show_advance_caret(false)
+	message_panel.set_body_text(text)
+	message_panel.visible = true
+	_player.can_move = false
+	var menu := MessageActionMenu.open(message_panel, items, start)
+	_action_menu = menu
+	menu.chosen.connect(func(id: String) -> void:
+		_action_menu = null
+		if id == "cancel":
+			_hide_message()
+			return
+		on_choose.call(id))
+	menu.cancelled.connect(func() -> void:
+		_action_menu = null
+		_hide_message())
+
+
+func _on_pokemon_menu_choice(pokemon: Node, id: String) -> void:
+	if not is_instance_valid(pokemon):
+		_hide_message()
+		return
+	match id:
+		"pet":       _pet_pokemon(pokemon)
+		"feed":      _feed_pokemon(pokemon)
+		"rename":    _rename_pokemon(pokemon)
+		"send_home": _send_follower_to_house(pokemon)
+		"stay":      _leave_follower_home(pokemon)
+		"follow":    _take_home_pokemon_out(pokemon)
+		"dismiss":   _confirm_dismiss_pokemon(pokemon)
+		_:           _hide_message()
+
+
+## A line about your Pokémon with ITS name and portrait on the pill, swapped into the box in
+## place (or opening it). The name is handed in because the line can come after it has gone.
+func _pokemon_say(species_key: String, poke_name: String, text: String, on_ok: Callable = Callable()) -> void:
+	pokemon_speaker = {"name": poke_name, "portrait": PokemonHome.portrait_path(species_key)}
+	_pending_ok_action = on_ok
+	_show_message_with_ok(text)
+
+
+func _is_asleep(pokemon: Node) -> bool:
+	return pokemon is PokemonHomeWanderer and (pokemon as PokemonHomeWanderer).asleep
+
+
+## Two quick hops - happy.
+func _happy_hop(pokemon: Node) -> void:
+	var spr = pokemon.get("sprite")
+	if not (spr is Node2D) or UITheme.motion_reduced():
+		return
+	var y0: float = (spr as Node2D).position.y
+	var tw := (spr as Node2D).create_tween()
+	for _k in 2:
+		tw.tween_property(spr, "position:y", y0 - PET_HOP_PX, PET_HOP_TIME) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(spr, "position:y", y0, PET_HOP_TIME) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+
+func _pet_pokemon(pokemon: Node) -> void:
+	var species_key := str(pokemon.species)
+	var poke_name := str(pokemon.display_name)
+	GameState.bump_pokemon_flag(species_key, "pets")
+	if _is_asleep(pokemon):
+		_pokemon_say(species_key, poke_name, "You give %s a gentle pat. It's fast asleep..." % poke_name)
+		return
+	SoundManagerScript.play_cry(species_key, PET_CRY_PITCH, true)
+	_happy_hop(pokemon)
+	_pokemon_say(species_key, poke_name, str(PET_LINES.pick_random()) % poke_name)
+
+
+## Its favourite food (the CSV's Food column) from the bag.
+func _feed_pokemon(pokemon: Node) -> void:
+	var species_key := str(pokemon.species)
+	var poke_name := str(pokemon.display_name)
+	if _is_asleep(pokemon):
+		_pokemon_say(species_key, poke_name, "%s is fast asleep. Best let it rest." % poke_name)
+		return
+	var food := PokemonPrefs.food_of(species_key)
+	if food == "":
+		_pokemon_say(species_key, poke_name, "%s doesn't seem hungry right now." % poke_name)
+		return
+	if not GameState.use_food(food):
+		_pokemon_say(species_key, poke_name, "You don't have any %s. It's %s's favourite!" % [food, poke_name])
+		return
+	GameState.bump_pokemon_flag(species_key, "meals")
+	SoundManagerScript.play_cry(species_key, PET_CRY_PITCH, true)
+	_happy_hop(pokemon)
+	_pokemon_say(species_key, poke_name, "%s gobbled up the %s! It looks really happy." % [poke_name, food])
+
+
+## The on-screen keyboard, the same one the trainer name uses. The box steps aside while it
+## is up. Done with nothing typed (or its species name) takes the nickname away again.
+func _rename_pokemon(pokemon: Node) -> void:
+	var species_key := str(pokemon.species)
+	var old_name := str(pokemon.display_name)
+	var species_name := OverworldPokemonData.display_name(species_key)
+	# The keyboard writes into a LineEdit; this one is never seen (the keyboard has its own preview).
+	var field := LineEdit.new()
+	field.max_length = PokemonHome.NICKNAME_MAX
+	field.text = old_name
+	field.placeholder_text = species_name
+	field.modulate.a = 0.0
+	field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	field.focus_mode = Control.FOCUS_NONE
+	field.position = Vector2(-4000, -4000)
+	_ui_layer.add_child(field)
+	message_panel.visible = false
+	_renaming = true
+	var kb := OnScreenKeyboard.open(field, {"title": "Rename %s" % old_name, "submit": false, "replace": true})
+	var submitted := false
+	if kb != null:
+		submitted = await kb.finished
+	var typed := field.text
+	field.queue_free()
+	# One frame, so the Enter / Escape that closed the keyboard is not also read by the box.
+	await get_tree().process_frame
+	_renaming = false
+	if not is_instance_valid(pokemon):
+		_hide_message()
+		return
+	if not submitted:
+		_open_pokemon_menu(pokemon, "rename")
+		return
+	var nick := PokemonHome.clean_nickname(typed)
+	GameState.set_pokemon_nickname(species_key, "" if nick == species_name else nick)
+	var new_name := PokemonHome.name_of(species_key)
+	pokemon.display_name = new_name
+	if new_name == old_name:
+		_open_pokemon_menu(pokemon, "rename")
+		return
+	SoundManagerScript.play_cry(species_key, PET_CRY_PITCH, true)
+	_happy_hop(pokemon)
+	var line := ("%s is called %s again." % [old_name, new_name]) if new_name == species_name \
+			else ("%s will now be known as %s!" % [old_name, new_name])
+	_pokemon_say(species_key, new_name, line)
+
+
+## SEND HOME (out and about): it stops following and heads back to the house.
+func _send_follower_to_house(follower: Node) -> void:
+	var species_key := str(follower.species)
+	var poke_name := str(follower.display_name)
+	PokemonHome.leave_at_home()
+	(follower as OverworldPokemon).despawn()
+	_pokemon_say(species_key, poke_name, "%s headed back to your house. It'll be waiting for you there!" % poke_name)
+
+
+## STAY HERE (in the house): off your heels and living in the house (pottering about, or on
+## its bed / in its tank -- PokemonHome.refresh_house decides).
+func _leave_follower_home(follower: Node) -> void:
+	var species_key := str(follower.species)
+	var poke_name := str(follower.display_name)
+	PokemonHome.leave_at_home()
+	(follower as OverworldPokemon).despawn()
+	PokemonHome.refresh_house(_player.get_parent())
+	var bed := PokemonHome.bed_of(species_key)
+	var line := "%s settled in at home." % poke_name
+	if bed < 0:
+		line += "\nIt has no bed yet -- it'll need one in your room by bedtime."
+	elif PokemonHome.is_water_bed(str(PokemonHome.slots()[bed])):
+		line = "%s is swimming happily in the %s upstairs." % [poke_name, str(PokemonHome.slots()[bed])]
+	_pokemon_say(species_key, poke_name, line)
+
+
+## FOLLOW ME (a Pokémon living at home): it swaps places with your follower.
+func _take_home_pokemon_out(pokemon: Node) -> void:
+	var species_key := str(pokemon.species)
+	var poke_name := str(pokemon.display_name)
+	var at: Vector2 = (pokemon as Node2D).global_position
+	(pokemon as OverworldPokemon).despawn()
+	var old := FollowingPokemon.befriend(species_key, at)
+	var line := "%s is coming with you!" % poke_name
+	if old != "":
 		line += "\n" + PokemonHome.old_follower_note(old)
-	show_interactable_message(line)
+	_pokemon_say(species_key, poke_name, line)
 
 
-## THE BED (Player_House_Upstairs, at night). You cannot go to sleep with a follower that has no
-## bed at home: a free bed that fits it is used, a full one asks to let its sleeper go, and no
-## bed at all asks to let the follower go. The sleep question only comes once it is settled.
+## DISMISS asks first. No comes back to the list.
+func _confirm_dismiss_pokemon(pokemon: Node) -> void:
+	var species_key := str(pokemon.species)
+	var poke_name := str(pokemon.display_name)
+	pokemon_speaker = {}
+	_pending_ok_action = Callable()
+	_show_message_with_choices("Say goodbye to %s?\nIt will go back to the wild." % poke_name)
+	_pending_confirm_yes = func() -> void: _dismiss_pokemon(pokemon, species_key, poke_name)
+	_pending_confirm_no = func() -> void: _open_pokemon_menu(pokemon, "dismiss")
+
+
+func _dismiss_pokemon(pokemon: Node, species_key: String, poke_name: String) -> void:
+	var was_home := species_key in PokemonHome.home_pokemon()
+	PokemonHome.release(species_key)
+	if is_instance_valid(pokemon):
+		(pokemon as OverworldPokemon).despawn()
+	# A bed it held may now go to someone else.
+	if was_home and PokemonHome.in_house(_map_scene_path):
+		PokemonHome.refresh_house(_player.get_parent())
+	_pokemon_say(species_key, poke_name, "%s went back to the wild. Bye for now!" % poke_name)
+
+
+## THE BED (Player_House_Upstairs, at night). Beds only matter now: every Pokémon with no
+## bed in your room -- your follower too -- is named, and going to sleep anyway means they
+## leave while you sleep. Everyone with a bed goes to it (the bedroom's _do_sleep).
 func confirm_sleep(do_sleep: Callable) -> void:
 	if message_panel == null or message_panel.visible:
 		return
 	var prompt := GameState.sleep_prompt_text()
-	var follower := GameState.get_follower()
-	var name := OverworldPokemonData.display_name(follower)
-	var check := PokemonHome.sleep_check()
-	match str(check.get("result", "ok")):
-		"free":
-			var bed: int = check["bed"]
-			var bed_name := str(PokemonHome.beds()[bed].get("bed", ""))
-			show_interactable_confirm("%s will sleep in the %s.\n%s" % [name, bed_name, prompt], func():
-				PokemonHome.assign(follower, bed)
-				do_sleep.call())
-		"conflict":
-			var bed: int = check["bed"]
-			var bed_name := str(PokemonHome.beds()[bed].get("bed", ""))
-			var sleeper := OverworldPokemonData.display_name(str(check["sleeper"]))
-			show_interactable_confirm(("%s needs somewhere to sleep, but %s is in the %s.\n"
-					+ "Let %s go back to the wild so %s can have it?") % [name, sleeper, bed_name, sleeper, name], func():
-				PokemonHome.assign(follower, bed)
-				show_interactable_confirm("%s went back to the wild, and %s curled up in the %s.\n%s"
-						% [sleeper, name, bed_name, prompt], do_sleep))
-		"no_bed":
-			show_interactable_confirm(("%s has nowhere to sleep. You can't go to bed with a Pokémon following you "
-					+ "unless it has a bed at home.\nLet %s go back to the wild?") % [name, name], func():
-				FollowingPokemon.send_home()
-				show_interactable_confirm("%s went back to the wild.\n%s" % [name, prompt], do_sleep))
-		_:
-			show_interactable_confirm(prompt, do_sleep)
+	var homeless := PokemonHome.homeless_at_bedtime()
+	if homeless.is_empty():
+		show_interactable_confirm(prompt, do_sleep)
+		return
+	var names := PokemonHome.names_text(homeless)
+	var has := "has" if homeless.size() == 1 else "have"
+	var they := "it" if homeless.size() == 1 else "they"
+	show_interactable_confirm(("%s %s no bed in your room, so %s'll leave while you sleep.
+%s")
+			% [names, has, they, prompt], func():
+		var follower_left := GameState.get_follower() in homeless
+		for species_key in homeless:
+			PokemonHome.release(str(species_key))
+		if follower_left and _player != null:
+			for node in get_tree().get_nodes_in_group(PokemonFollower.GROUP):
+				(node as OverworldPokemon).despawn()
+		do_sleep.call())
 
 func _on_player_npc_interact(npc: Node):
 	if message_panel.visible or _validation_popup_active:

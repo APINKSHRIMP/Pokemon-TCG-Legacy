@@ -1,23 +1,19 @@
 {
-	"_help": "PLACEHOLDER FOODS (2026-11-24) - names, species and chances are NOT final, edit freely. Each food: 'likes' = Pokémon display names (variants match too: 'Rattata' covers 019_Rattata_Alolan), 'chance' = % a liked Pokémon befriends you when offered one (talking to it on land, or landing it on the rod while the food is in your bag), 'description' = bag/shop text for later. Read by Scripts/Objects_And_Classes/Overworld_Pokemon/Following_Pokemon.gd. Give foods in-game with the DEL menu's 'Give test foods' button.",
+	"_help": "POKÉMON FOODS (2026-11-24). WHICH Pokémon likes which food is the 'Food' column of Pokemon_Food_And_Beds.csv (one food per Pokémon, many Pokémon per food). This file only holds each food's details: 'chance' = % a Pokémon that likes it befriends you when offered one (talking to it on land, or landing it on the rod while the food is in your bag), 'description' = bag/shop text, 'sprite' = file name in Image_Assets/Food (no .png; leave it out to use the food's own name). A food named in the CSV but missing here still works, with chance 50. Read by Scripts/Objects_And_Classes/Overworld_Pokemon/Following_Pokemon.gd. DEL menu 'Give test foods' gives 3 of every food.",
 	"foods": {
 		"Rat Cheese": {
-			"likes": ["Rattata", "Pikachu"],
 			"chance": 50,
 			"description": "A pungent wedge of cheese. Small rodent Pokémon can't resist it."
 		},
 		"Luscious Leaves": {
-			"likes": ["Caterpie", "Weedle"],
 			"chance": 50,
 			"description": "Crisp, juicy leaves that bug Pokémon love to munch."
 		},
 		"Nutritious Bird Seed": {
-			"likes": ["Pidgey", "Spearow", "Wingull"],
 			"chance": 40,
 			"description": "A seed mix for bird Pokémon."
 		},
 		"Fish Flakes": {
-			"likes": ["Magikarp", "Goldeen", "Krabby", "Shellder"],
 			"chance": 25,
 			"description": "Flaky fish food. A fish that bites while you carry it may want to come with you."
 		}

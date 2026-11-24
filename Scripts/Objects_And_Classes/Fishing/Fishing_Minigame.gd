@@ -476,6 +476,8 @@ var _side_min: float = -INF
 var _side_max: float = INF
 
 var _fish_species: String = ""
+## This bite is shiny (OverworldPokemonData.roll_shiny, one roll per fish). Recruiting it keeps it.
+var _fish_shiny: bool = false
 ## The rolled row's weight on its table (its rarity, for the Fish Coin reward) and this
 ## particular fish's size roll, FishingData.FISH_SIZE_ROLL_MIN..MAX. The roll scales the
 ## silhouette, the Pokémon pulled out and the reward alike.
@@ -1017,6 +1019,7 @@ func _tick_bobber_idle(delta: float) -> void:
 func _spawn_fish() -> void:
 	var row := FishingData.pick_fish_row(_spot)
 	_fish_species = str(row.get("species", ""))
+	_fish_shiny = _fish_species != "" and OverworldPokemonData.roll_shiny()
 	_fish_rate = float(row.get("percent", 0.0))
 	_stats = OverworldPokemonData.fish_stats(_fish_species)
 	if _fish_species == "":
@@ -1601,7 +1604,7 @@ func _build_caught() -> void:
 	_caught.z_as_relative = false
 	_caught.z_index = CAUGHT_Z
 	_caught.centered = true
-	var sheet: Texture2D = load(OverworldPokemonData.sheet_path(_fish_species))
+	var sheet: Texture2D = load(OverworldPokemonData.sheet_path(_fish_species, _fish_shiny))
 	if sheet == null:
 		return
 	_caught_cell = Vector2(sheet.get_width() / 4.0, sheet.get_height() / 4.0)
@@ -1622,7 +1625,7 @@ func _set_caught_row(row: int) -> void:
 		return
 	_caught_row = row
 	var atlas := AtlasTexture.new()
-	atlas.atlas = load(OverworldPokemonData.sheet_path(_fish_species))
+	atlas.atlas = load(OverworldPokemonData.sheet_path(_fish_species, _fish_shiny))
 	atlas.region = Rect2(0.0, row * _caught_cell.y, _caught_cell.x, _caught_cell.y)
 	atlas.filter_clip = true
 	_caught.texture = atlas
@@ -1634,7 +1637,7 @@ func _set_caught_row(row: int) -> void:
 ## Pokémon by, and a 64px cell of mostly empty space makes the difference obvious.
 func _scan_caught_bbox() -> void:
 	_caught_bbox = Rect2(Vector2.ZERO, _caught_cell)
-	var sheet: Texture2D = load(OverworldPokemonData.sheet_path(_fish_species))
+	var sheet: Texture2D = load(OverworldPokemonData.sheet_path(_fish_species, _fish_shiny))
 	if sheet == null:
 		return
 	var img := sheet.get_image()
@@ -1856,7 +1859,7 @@ func _on_catch_message_ok() -> void:
 		_caught.visible = false
 		_line.visible = false
 		_bobber.visible = false
-		FollowingPokemon.befriend(_fish_species)
+		FollowingPokemon.befriend(_fish_species, null, _fish_shiny)
 		_finish()
 		return
 	if _send_to_shop:
