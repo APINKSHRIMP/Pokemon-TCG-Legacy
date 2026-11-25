@@ -40,6 +40,9 @@ const DIRECTIONS := ["down", "left", "right", "up"]
 const DIR_VECTORS := {"up": Vector2.UP, "down": Vector2.DOWN, "left": Vector2.LEFT, "right": Vector2.RIGHT}
 
 var species: String = ""
+## YOUR Pokémon only (follower / at home): its ID in the roster ("019_Rattata#2"); "" for a
+## wild one. PokemonHome.id_of(node) reads it.
+var pokemon_id: String = ""
 var display_name: String = ""
 ## Drawn from the "_Shiny" sheet. Set before add_child (your own Pokémon: from its flags).
 var shiny: bool = false

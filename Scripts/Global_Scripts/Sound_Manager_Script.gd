@@ -374,6 +374,7 @@ var _cry_player: AudioStreamPlayer = null
 const CRY_EXTS := [".ogg", ".mp3"]
 
 func _cry_path(species: String) -> String:
+	species = OverworldPokemonData.species_of(species)   # one of your Pokémon's IDs ("..#2")
 	for ext in CRY_EXTS:
 		if ResourceLoader.exists(CRY_DIR + species + ext):
 			return CRY_DIR + species + ext

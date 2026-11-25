@@ -7816,6 +7816,7 @@ func send_card_to_discard(card: card_object, is_opponent: bool) -> void:
 func take_prize_card(card: card_object, is_opponent: bool, from_rect: Dictionary = {}) -> void:
 	if not is_opponent:
 		GameState.bump_counter("prizes_taken_total")   # MEDALS
+		GameState.match_prizes_taken += 1              # AFFECTION (read + reset by record_match_result)
 	card.prize_face_up = false   # OLD ISSUE 364
 	var prizes = opponent_prize_cards if is_opponent else player_prize_cards
 	var hand = opponent_hand if is_opponent else player_hand

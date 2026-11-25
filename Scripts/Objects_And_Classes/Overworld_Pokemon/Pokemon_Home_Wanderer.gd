@@ -45,7 +45,8 @@ var _sleep_z: Label = null
 
 static func spawn(map_root: Node, species_key: String, at: Vector2) -> PokemonHomeWanderer:
 	var w := PokemonHomeWanderer.new()
-	w.configure(species_key)
+	w.configure(PokemonHome.species_of(species_key))   # species_key is its ID ("..#2")
+	w.pokemon_id = species_key
 	w.display_name = PokemonHome.name_of(species_key)   # its nickname, if it has one
 	w.shiny = PokemonHome.is_shiny(species_key)
 	w.position = at - (map_root as Node2D).global_position if map_root is Node2D else at
@@ -56,7 +57,8 @@ static func spawn(map_root: Node, species_key: String, at: Vector2) -> PokemonHo
 ## On a bed (or in a tank): feet on `seat_global`, asleep or not.
 static func spawn_resting(map_root: Node, species_key: String, seat_global: Vector2, is_asleep: bool) -> PokemonHomeWanderer:
 	var w := PokemonHomeWanderer.new()
-	w.configure(species_key)
+	w.configure(PokemonHome.species_of(species_key))   # species_key is its ID ("..#2")
+	w.pokemon_id = species_key
 	w.display_name = PokemonHome.name_of(species_key)   # its nickname, if it has one
 	w.shiny = PokemonHome.is_shiny(species_key)
 	w.resting = true

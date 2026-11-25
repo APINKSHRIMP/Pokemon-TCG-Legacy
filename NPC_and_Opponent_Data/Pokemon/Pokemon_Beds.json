@@ -2,6 +2,8 @@
 	"_help": "POKÉMON BEDS (2026-11-24). Which Pokémon sleeps in which KIND of bed is the 'Bed' column of Pokemon_Food_And_Beds.csv (blank = default_bed). Each bed here: 'sprite' = file name in Image_Assets/Beds (no .png; a missing file draws a grey placeholder box), 'frames'/'fps' = an animated strip (frames side by side), 'icon' = a still picture for the bag (default: the sprite), 'seat' = how many px down from the bed's TOP edge the sleeping Pokémon's feet go (leave it out for 62% of the height, right for flat rugs; raised beds like rocks want a small number so it sits ON top), 'water' = true for a tank (its Pokémon swims there day and night instead of wandering the house), 'description' = bag/shop text. home_slots = bed spaces in the bedroom. bedroom_spots = where each space is in Player_House_Upstairs, [x, y] = the BOTTOM-CENTRE of the bed; move them in-game with DEL -> 'Move bed spots' (Enter saves here). Read by Scripts/Objects_And_Classes/Overworld_Pokemon/Pokemon_Home.gd.",
 	"home_slots": 3,
 	"default_bed": "Hay Bale",
+	"_any_bed_help": "TESTING SWITCH: true = ANY Pokémon sleeps in ANY bed (only needs a bed, not its CSV bed). Set false to use the CSV 'Bed' column again.",
+	"any_pokemon_any_bed": true,
 	"bedroom_spots": [[102, 197], [174, 149], [237, 200]],
 	"beds": {
 		"Hay Bale": {"sprite": "Haybale", "seat": 12, "description": "A springy bale of hay. Most Pokémon will happily curl up on it."},

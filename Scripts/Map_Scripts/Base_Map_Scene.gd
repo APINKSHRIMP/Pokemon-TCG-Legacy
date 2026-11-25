@@ -317,6 +317,12 @@ func _ready():
 		[]
 	)
 
+	# AFFECTION: the follower is paid for every whole hour it has spent with you since last time.
+	PokemonAffection.credit_hours()
+	# EVOLUTION: one waiting from the match just won plays once the battle-return fade is done
+	# and any medal from the match has been shown (it waits on BaseMapScene.medals_waiting()).
+	if PokemonEvolution.has_pending():
+		PokemonEvolution.run_pending(self)
 	_medal_watch()   # MEDALS: announces anything earned since the player last heard (runs on, waits its turn)
 
 	# Stepping outside counts toward the café breakfast reminder calls.
@@ -583,6 +589,10 @@ func _input(event: InputEvent) -> void:
 		return
 	if is_enter and MapManager.wants_message_input():
 		return
+	# A medal waiting to be shown / an evolution: no menu until it is over.
+	if MapManager.is_hard_locked():
+		get_viewport().set_input_as_handled()
+		return
 	if not _allow_menu_open(is_enter):
 		return
 	if _menu_canvas_layer != null:
@@ -594,13 +604,30 @@ func _input(event: InputEvent) -> void:
 ## as the map is up: whenever something medal-worthy was written (GameState.medals_dirty - the check
 ## scans the card files, hence the flag) and nothing else has the screen (the battle-return fade, a
 ## cutscene, an open message), it checks and announces each one with its art, once.
+##
+## INPUT LOCK (user rule): the moment a medal is earned, ALL player control is shut off
+## (MapManager.hard_lock "medal") until its screen has appeared and gone. Anything already on
+## screen (a message, the battle-return fade, an evolution already PLAYING) finishes first - a
+## message can still be read and closed - then the medal shows, then control comes back.
+## ORDER (user rule): after a match the MEDAL comes first, then the evolution - the medal takes
+## the screen (the black dim), the evolution plays out on the map after it. PokemonEvolution
+## waits while medals_waiting(). The awards are taken as
+## soon as GameState.medals_dirty says to look, and wait in _queued_medals (static: a map change
+## in between hands them to the next map, still locked).
 ## TWEAKABLE: poll rate, and the beat before a notice.
-const MEDAL_POLL := 0.5
+const MEDAL_POLL := 0.1
 const MEDAL_NOTICE_DELAY_S := 0.6
 var _medal_notice_up: bool = false
+static var _queued_medals: Array = []
+
+## True from the moment a medal is earned until its screen has closed (PokemonEvolution waits on it).
+static func medals_waiting() -> bool:
+	return not _queued_medals.is_empty()
 
 func _medal_screen_busy() -> bool:
 	if MatchTransition.is_returning() or MapManager.cutscene_active or _medal_notice_up or MapManager.is_debug_menu_open():
+		return true
+	if PokemonEvolution.is_playing():
 		return true
 	var panel = MapManager.message_panel
 	return panel != null and is_instance_valid(panel) and panel.visible
@@ -611,17 +638,27 @@ func _medal_watch() -> void:
 		return
 	await get_tree().process_frame
 	while is_inside_tree():
-		if GameState.medals_dirty and not _medal_screen_busy():
-			await get_tree().create_timer(MEDAL_NOTICE_DELAY_S).timeout
-			if not is_inside_tree():
-				return
+		if GameState.medals_dirty and not MapManager.is_debug_menu_open():
+			var fresh: Array = MedalData.take_new_awards()
+			GameState.medals_dirty = false   # take_new_awards saves, which re-flags it
+			if not fresh.is_empty():
+				_queued_medals.append_array(fresh)
+		if not _queued_medals.is_empty():
+			MapManager.hard_lock("medal")
 			if not _medal_screen_busy():
-				var fresh: Array = MedalData.take_new_awards()
-				GameState.medals_dirty = false   # take_new_awards saves, which re-flags it
-				if not fresh.is_empty():
+				await get_tree().create_timer(MEDAL_NOTICE_DELAY_S).timeout
+				if not is_inside_tree():
+					return
+				if not _medal_screen_busy():
+					# Kept in the queue until shown, so medals_waiting() holds the evolution back.
+					var awards: Array = _queued_medals.duplicate()
 					_medal_notice_up = true
-					await MedalReveal.play(self, fresh)   # the spinning 3D medal; press / click to move on
+					await MedalReveal.play(self, awards)   # the spinning 3D medal; press / click to move on
 					_medal_notice_up = false
+					for a in awards:
+						_queued_medals.erase(a)
+					if _queued_medals.is_empty():
+						MapManager.hard_unlock("medal")
 		await get_tree().create_timer(MEDAL_POLL).timeout
 
 

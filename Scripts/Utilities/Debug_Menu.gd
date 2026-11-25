@@ -182,13 +182,28 @@ func _build_world_column(col: VBoxContainer) -> void:
 	_add_expanded(follow_row, _button("Give test foods", _give_test_foods))
 	_add_expanded(follow_row, _button("Send follower home", _debug_send_follower_home))
 	col.add_child(_button("Add SUPER FOOD (capture any Pokémon)", _give_super_food))
-	col.add_child(_button("Shiny odds: 1 in 1 / back to 1 in %d" % OverworldPokemonData.SHINY_ODDS, _toggle_shiny_odds))
+	col.add_child(_button("Befriend another of your follower's species", _befriend_duplicate))
+	col.add_child(_button("Shiny odds: 1 in %d / back to 1 in %d" % [DEBUG_SHINY_ODDS, OverworldPokemonData.SHINY_ODDS], _toggle_shiny_odds))
 	var home_row := _row(col)
 	_add_expanded(home_row, _button("Give one of each bed", _give_test_beds))
 	_add_expanded(home_row, _button("Empty the house", _empty_house))
 	col.add_child(_button("Move bed spots (bedroom)", _move_bed_spots))
 	col.add_child(_note("Beds: in the bedroom, Space at a bed space cycles EVERY bed (debug: beds from nowhere; empty spaces are pink dots). 'Give one of each bed' puts one of each in your spares for the real cycle. Who likes which food / bed: Pokemon_Food_And_Beds.csv."))
 	col.add_child(_note("3 of every food (the CSV's Food column + Pokemon_Foods.json). Talk to a Pokémon that likes one (Ctrl to sneak up on a skittish one), or fish with it in the bag."))
+
+	_heading(col, "Affection + evolution (your follower)")
+	var aff_row := _row(col)
+	_add_expanded(aff_row, _button("Affection -1 level", func() -> void: _bump_affection(-PokemonAffection.LEVEL_SIZE)))
+	_add_expanded(aff_row, _button("Affection +1 level", func() -> void: _bump_affection(PokemonAffection.LEVEL_SIZE)))
+	var aff_row2 := _row(col)
+	_add_expanded(aff_row2, _button("Affection to 0", func() -> void: _set_affection(0)))
+	_add_expanded(aff_row2, _button("Affection to max", func() -> void: _set_affection(PokemonAffection.MAX)))
+	col.add_child(_button("Show affection + evolutions", _show_affection))
+	var evo_row := _row(col)
+	_add_expanded(evo_row, _button("Evolve follower now", _evolve_follower_now))
+	_add_expanded(evo_row, _button("Evolve after next win", _toggle_evolve_after_win))
+	col.add_child(_button("Show a test medal (checks the input lock)", _show_test_medal))
+	col.add_child(_note("Affection: 0-196, a new level (0-7) every 28. Talk to your follower to see its level's reaction and line. Evolve now plays the full animation on this map; 'after next win' evolves it once you win a match (a T test match counts), after any medal."))
 
 
 ## A caption, a number box and a button: Cash [ 4780 ] [ Set ]. Enter in the box works too.
@@ -417,12 +432,106 @@ func _give_super_food() -> void:
 	_say("SUPER FOOD is in the bag. Stand on any Pokémon and press Space / click / A, or fish one up.")
 
 
+## TWEAKABLE: the shiny odds the DEL button switches to.
+const DEBUG_SHINY_ODDS := 4
+
 func _toggle_shiny_odds() -> void:
-	OverworldPokemonData.debug_shiny_odds = 0 if OverworldPokemonData.debug_shiny_odds == 1 else 1
-	if OverworldPokemonData.debug_shiny_odds == 1:
-		_say("Every Pokémon spawn and fishing bite is now SHINY (until you press this again or close the game). Re-enter a map to respawn.")
+	var on := OverworldPokemonData.debug_shiny_odds != DEBUG_SHINY_ODDS
+	OverworldPokemonData.debug_shiny_odds = DEBUG_SHINY_ODDS if on else 0
+	if on:
+		_say("Shiny odds are now 1 in %d for every spawn and fishing bite (until you press this again or close the game). Re-enter a map to respawn." % DEBUG_SHINY_ODDS)
 	else:
 		_say("Shiny odds back to 1 in %d." % OverworldPokemonData.SHINY_ODDS)
+
+
+## The follower, or "" with a red note.
+func _debug_follower() -> String:
+	var f := GameState.get_follower()
+	if f == "":
+		_say("No Pokémon is following you.", BAD_COLOUR)
+	return f
+
+
+func _affection_text(f: String) -> String:
+	var p := PokemonAffection.points(f)
+	return "%s: affection %d / %d (level %d)" % [PokemonHome.name_of(f), p, PokemonAffection.MAX, PokemonAffection.level_of_points(p)]
+
+
+func _bump_affection(amount: int) -> void:
+	var f := _debug_follower()
+	if f == "":
+		return
+	PokemonAffection.add(f, amount)
+	_say(_affection_text(f))
+
+
+func _set_affection(p: int) -> void:
+	var f := _debug_follower()
+	if f == "":
+		return
+	PokemonAffection.set_points(f, p)
+	_say(_affection_text(f))
+
+
+func _show_affection() -> void:
+	var f := _debug_follower()
+	if f == "":
+		return
+	PokemonAffection.credit_hours()
+	var flags := GameState.get_pokemon_flags(f)
+	var evos: Array = []
+	for e in PokemonEvolution.evolutions_of(f):
+		evos.append(OverworldPokemonData.display_name(str(e)))
+	_say("%s | wins %d, pets %d, meals %d | evolves into: %s | CSV: '%s'" % [_affection_text(f),
+			int(flags.get("wins", 0)), int(flags.get("pets", 0)), int(flags.get("meals", 0)),
+			", ".join(evos) if not evos.is_empty() else "nothing", PokemonPrefs.evolution_of(PokemonHome.species_of(f))])
+
+
+func _evolve_follower_now() -> void:
+	var f := _debug_follower()
+	if f == "":
+		return
+	var evos := PokemonEvolution.evolutions_of(f)
+	if evos.is_empty():
+		_say("%s has no evolution." % PokemonHome.name_of(f), BAD_COLOUR)
+		return
+	if not PokemonEvolution.queue(f, str(evos[0])):
+		_say("Can't evolve into %s (it has no overworld art)." % OverworldPokemonData.display_name(str(evos[0])), BAD_COLOUR)
+		return
+	var map_root: Node = MapManager._player.get_parent()
+	MapManager.close_debug_menu()
+	PokemonEvolution.run_pending(map_root)
+
+
+func _toggle_evolve_after_win() -> void:
+	PokemonEvolution.debug_after_next_win = not PokemonEvolution.debug_after_next_win
+	_say("Evolve after the next win: %s" % ("ON - win a match with your follower" if PokemonEvolution.debug_after_next_win else "off"))
+
+
+## Queues one medal reveal without earning anything, through the same path a real one takes
+## (the input lock goes on at once and lifts when the medal screen closes).
+func _show_test_medal() -> void:
+	var defs := MedalData.all()
+	if defs.is_empty():
+		_say("No medals defined.", BAD_COLOUR)
+		return
+	BaseMapScene._queued_medals.append({"def": defs[randi() % defs.size()], "tier": 0})
+	MapManager.close_debug_menu()
+
+
+## A second (third...) of the follower's species joins you, so owning several of one species can
+## be tried without hunting for another. The old follower goes home as usual.
+func _befriend_duplicate() -> void:
+	var f := _debug_follower()
+	if f == "":
+		return
+	var old := FollowingPokemon.befriend(PokemonHome.species_of(f), null, false)
+	var copies := 0
+	for id in PokemonHome.roster():
+		if PokemonHome.species_of(str(id)) == PokemonHome.species_of(f):
+			copies += 1
+	_say("Another %s joined you (ID %s). You now have %d. %s" % [OverworldPokemonData.display_name(f),
+			GameState.get_follower(), copies, PokemonHome.old_follower_note(old)])
 
 
 func _debug_send_follower_home() -> void:

@@ -99,7 +99,10 @@ func _do_sleep() -> void:
 	var scene_path := get_scene_path()
 	GameState.save_menu_return_state(scene_path, _player.position, "left")
 	GameState.going_to_bed = true   # no clock until the player wakes up
+	# AFFECTION: the follower is paid up to bedtime; the night it sleeps through does not count.
+	PokemonAffection.credit_hours()
 	GameState.sleep_until_next_day()
+	PokemonAffection.start_clock(GameState.get_follower())
 	GameState.sleep_wakeup_fade = true
 	# ISSUE #489: the bedroom music stops DEAD (no fade) and the goodnight sound plays on its own; the
 	# new day's track starts once "The next morning..." has gone (BaseMapScene._ready, WAKE_BGM_FADE_IN).

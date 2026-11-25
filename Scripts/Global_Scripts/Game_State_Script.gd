@@ -2498,7 +2498,19 @@ func set_flag(flag_name: String, value: bool = true) -> void:
 # round of a best-of-3 separately, a rematch against an already-beaten opponent again, and a
 # forfeit as a played loss. Losses are matches_played - matches_won, so they aren't stored.
 # Called from Main_Match_Core_Gameplay_Script.game_end_logic(), the one place a result is set.
+## Runtime: prize cards the PLAYER took in the match being played (take_prize_card bumps it).
+var match_prizes_taken: int = 0
+
 func record_match_result(won: bool) -> void:
+	var prizes := match_prizes_taken
+	match_prizes_taken = 0
+	# AFFECTION: a win with your Pokémon following you, +1 per prize card you took (first, so an
+	# evolution that needs affection sees it).
+	if won and not test_match_mode:
+		PokemonAffection.on_match_won(prizes)
+	# EVOLUTION: the DEL "evolve after the next win" test also works off the T-key test match.
+	if won:
+		PokemonEvolution.check_after_win(test_match_mode)
 	if test_match_mode:
 		return  # the T-key debug match isn't a real match — keep it out of the trainer card
 	progress["matches_played"] = int(progress.get("matches_played", 0)) + 1
@@ -2806,6 +2818,7 @@ func get_met_species_total() -> int:
 ## Records one meeting and saves. Returns TRUE only when this is the first time
 ## the species has ever been met — the caller's cue to show the NEW! flourish.
 func record_pokemon_met(species: String) -> bool:
+	species = OverworldPokemonData.species_of(species)   # one of your Pokémon's IDs ("..#2")
 	if species == "":
 		return false
 	_load_nature_guide()
@@ -3017,7 +3030,8 @@ func add_item_to_collection(item_name: String) -> void:
 # ============================================================
 # FOLLOWING POKÉMON + FOODS (2026-11-24)
 # ============================================================
-# progress["follower"]   the species key walking behind the player ("019_Rattata"), "" for none.
+# progress["follower"]   the ID of the Pokémon walking behind the player ("019_Rattata", or
+#                        "019_Rattata#2" for a second one - PokemonHome.new_id), "" for none.
 #                        One at a time; befriending another sends the old one home.
 # progress["foods"]      {"Rat Cheese": 2, ...}: bait carried in the bag. A wild Pokémon that likes
 #                        one may be befriended with it (FollowingPokemon / Pokemon_Foods.json).
@@ -3030,8 +3044,9 @@ func set_follower(species_key: String) -> void:
 	progress["follower"] = species_key
 	if species_key != "":
 		var friends: Array = progress.get("befriended", [])
-		if species_key not in friends:
-			friends.append(species_key)
+		var species := OverworldPokemonData.species_of(species_key)
+		if species not in friends:
+			friends.append(species)
 			progress["befriended"] = friends
 	save_progress()
 
@@ -3089,11 +3104,12 @@ func add_spare_bed(bed_name: String, amount: int = 1) -> void:
 	progress["spare_beds"] = spare
 	save_progress()
 
-## YOUR POKÉMON'S OWN FLAGS (follower or at home), keyed by species:
-##   progress["pokemon_flags"] = {species: {"species": "forretress", "shiny": false,
+## YOUR POKÉMON'S OWN FLAGS (follower or at home), keyed by its ID (the species key, or
+## "019_Rattata#2" etc. for a second one of a species - PokemonHome.new_id):
+##   progress["pokemon_flags"] = {id: {"species": "forretress", "shiny": false,
 ##                                          "name": "Sir Spikes", "pets": 4, "meals": 2}}
 ## Written when it joins you (PokemonHome.make_follower) and wiped when it goes back to the wild.
-##   "species"  its species key (the dict key too - kept in the block so it stands alone)
+##   "species"  its species key (the ID minus any "#2" - kept in the block so it stands alone)
 ##   "shiny"    shiny or not (no shinies in the game yet; PokemonHome.is_shiny reads it)
 ##   "name"     the nickname, "" = its species name (PokemonHome.name_of is the one reader)
 ##   "pets" / "meals"  running counts, for anything that wants to know how loved it is later

@@ -24,6 +24,12 @@ extends RefCounted
 ## Pokémon whose bed is a water tank is always in its tank.
 ##
 ## Save: GameState home_pokemon / bed_slots / spare_beds (see Game_State_Script.gd).
+##
+## IDs (2026-11-24): you can own as many of one species as you like, so everything here (the
+## follower, the home list, the flags, the bed assignment) is keyed by each Pokémon's ID - the
+## species key for the first one ("019_Rattata"), then "019_Rattata#2", "019_Rattata#3"...
+## (new_id). species_of(id) gives the species back for art, cries, the CSV and the Field Guide;
+## id_of(node) is the ID of a follower / home Pokémon on the map.
 
 const BEDS_PATH := "res://NPC_and_Opponent_Data/Pokemon/Pokemon_Beds.json"
 const BED_ART_DIR := "res://Image_Assets/Beds"
@@ -72,6 +78,12 @@ static func reload() -> void:
 
 static func home_slots() -> int:
 	return int(data().get("home_slots", DEFAULT_SLOTS))
+
+
+## TESTING SWITCH (Pokemon_Beds.json "any_pokemon_any_bed"): every Pokémon fits every bed,
+## so only HAVING a bed matters, not the CSV's bed kind.
+static func any_bed_fits() -> bool:
+	return bool(data().get("any_pokemon_any_bed", false))
 
 
 static func default_bed() -> String:
@@ -205,6 +217,32 @@ static func home_pokemon() -> Array:
 	return GameState.get_home_pokemon()
 
 
+## "019_Rattata#2" -> "019_Rattata".
+static func species_of(id: String) -> String:
+	return OverworldPokemonData.species_of(id)
+
+
+## The ID of one of your Pokémon on the map (PokemonFollower / PokemonHomeWanderer); a wild one's
+## species if handed one.
+static func id_of(pokemon: Node) -> String:
+	if pokemon == null or not is_instance_valid(pokemon):
+		return ""
+	var id := str(pokemon.get("pokemon_id")) if pokemon.get("pokemon_id") != null else ""
+	return id if id != "" else str(pokemon.get("species"))
+
+
+## The ID a newly befriended `species_key` gets: the bare species key if it is free, else
+## "#2", "#3"... - the first one not already yours.
+static func new_id(species_key: String) -> String:
+	var base := species_of(species_key)
+	var taken := roster()
+	for n in range(1, 10000):
+		var id := base if n == 1 else "%s#%d" % [base, n]
+		if not (id in taken) and GameState.get_pokemon_flags(id).is_empty():
+			return id
+	return base
+
+
 ## Everyone who needs a bed, in the order beds are handed out: home first, follower last.
 static func roster(home: Variant = null, follower: Variant = null) -> Array:
 	var out: Array = (home if home is Array else home_pokemon()).duplicate()
@@ -214,15 +252,16 @@ static func roster(home: Variant = null, follower: Variant = null) -> Array:
 	return out
 
 
-## species -> slot index, for everyone in the roster who has a bed.
+## ID -> slot index, for everyone in the roster who has a bed.
 static func assignment(slot_list: Variant = null, home: Variant = null, follower: Variant = null) -> Dictionary:
 	var list: Array = slot_list if slot_list is Array else slots()
 	var taken := {}
 	var out := {}
+	var any_bed := any_bed_fits()
 	for species_key in roster(home, follower):
-		var kind := PokemonPrefs.bed_of(str(species_key))
+		var kind := PokemonPrefs.bed_of(species_of(str(species_key)))
 		for i in list.size():
-			if not taken.has(i) and str(list[i]) == kind:
+			if not taken.has(i) and (str(list[i]) == kind or (any_bed and str(list[i]) != "")):
 				taken[i] = true
 				out[species_key] = i
 				break
@@ -325,22 +364,37 @@ static func is_shiny(species_key: String) -> bool:
 
 ## Its portrait for the message box's name pill (DynamicMessageBox.sprite_icon takes the path).
 static func portrait_path(species_key: String) -> String:
-	return OverworldPokemonData.sheet_path(species_key, is_shiny(species_key))
+	return OverworldPokemonData.sheet_path(species_of(species_key), is_shiny(species_key))
 
 
 # ---- the roster -------------------------------------------------------------------
 
-## Makes `species_key` the follower. The old follower goes home (inactive). Returns the old
-## follower's species, "" if none or the same one.
-static func make_follower(species_key: String, shiny: bool = false) -> String:
+## A NEW Pokémon joins you (befriended / caught): it gets its own ID - even if you already
+## have one of its species - and its flag block, and becomes the follower. Returns the old
+## follower's ID, "" if none.
+static func recruit(species_key: String, shiny: bool = false) -> String:
+	var id := new_id(species_key)
+	_ensure_flags(id, shiny)
+	return make_follower(id)
+
+
+## Makes the Pokémon `species_key` (an ID - one already yours, or one recruit() just made) the
+## follower. The old follower goes home (inactive). Returns the old follower's ID, "" if none
+## or the same one.
+static func make_follower(species_key: String) -> String:
 	var old := GameState.get_follower()
-	_ensure_flags(species_key, shiny)
+	# AFFECTION: the old follower is paid its hours before it stops following; the new one
+	# starts counting from now (time at home does not count).
+	PokemonAffection.credit_hours()
+	_ensure_flags(species_key, false)
 	var home := home_pokemon()
 	home.erase(species_key)
 	if old != "" and old != species_key and old not in home:
 		home.append(old)
 	GameState.set_home_pokemon(home)
 	GameState.set_follower(species_key)
+	if old != species_key:
+		PokemonAffection.start_clock(species_key)
 	return old if old != species_key else ""
 
 
@@ -350,8 +404,32 @@ static func _ensure_flags(species_key: String, shiny: bool) -> void:
 	if species_key == "" or not GameState.get_pokemon_flags(species_key).is_empty():
 		return
 	GameState.set_pokemon_flags(species_key, {
-		"species": species_key, "shiny": shiny, "name": "", "pets": 0, "meals": 0,
+		"species": species_of(species_key), "shiny": shiny, "name": "", "pets": 0, "meals": 0,
+		"affection": 0,
 	})
+
+
+## EVOLUTION: your Pokémon `old` (an ID) becomes the species `into` everywhere - follower,
+## home list (same place in it), flags (nickname, shiny, affection and counts carry over) -
+## under a new ID for its new species, and the new species goes in the Field Guide. Returns
+## the new ID (`old` if nothing changed).
+static func evolve(old: String, into: String) -> String:
+	if old == "" or into == "" or species_of(old) == into:
+		return old
+	var new := new_id(into)
+	var flags := GameState.get_pokemon_flags(old)
+	flags["species"] = into
+	GameState.clear_pokemon_flags(old)
+	GameState.set_pokemon_flags(new, flags)
+	var home := home_pokemon()
+	var i := home.find(old)
+	if i >= 0:
+		home[i] = new
+		GameState.set_home_pokemon(home)
+	if GameState.get_follower() == old:
+		GameState.set_follower(new)
+	GameState.record_pokemon_met(into)
+	return new
 
 
 ## The follower stops following and lives at home.
@@ -359,6 +437,7 @@ static func leave_at_home() -> void:
 	var follower := GameState.get_follower()
 	if follower == "":
 		return
+	PokemonAffection.credit_hours()
 	var home := home_pokemon()
 	if follower not in home:
 		home.append(follower)
@@ -444,7 +523,7 @@ static func refresh_house(map_root: Node, scene_path: String = "") -> void:
 			var water := is_water_bed(str(list[int(a[species_key])]))
 			if not (water or night):
 				continue
-			if not ResourceLoader.exists(OverworldPokemonData.sheet_path(str(species_key))):
+			if not ResourceLoader.exists(OverworldPokemonData.sheet_path(species_of(str(species_key)))):
 				continue
 			var spot: PokemonBedSpot = spots[int(a[species_key])]
 			PokemonHomeWanderer.spawn_resting(map_root, str(species_key), spot.seat_global(), night)
@@ -483,7 +562,7 @@ static func _spawn_wanderers(map_root: Node, a: Dictionary, list: Array, night: 
 			# In its tank all day, or asleep upstairs at night.
 			if is_water_bed(str(list[int(a[species_key])])) or night:
 				continue
-		if not ResourceLoader.exists(OverworldPokemonData.sheet_path(str(species_key))):
+		if not ResourceLoader.exists(OverworldPokemonData.sheet_path(species_of(str(species_key)))):
 			continue
 		# No placed spots: a few steps from the player TOWARD the room's middle (they usually
 		# stand in a doorway, so "below them" was outside the room).
@@ -502,7 +581,7 @@ static func tuck_in_follower(map_root: Node, walk_time: float) -> void:
 	var follower := map_root.get_tree().get_first_node_in_group(PokemonFollower.GROUP) as PokemonFollower
 	if follower == null:
 		return
-	var bed := bed_of(follower.species)
+	var bed := bed_of(id_of(follower))
 	if bed < 0:
 		return
 	for node in map_root.get_tree().get_nodes_in_group(PokemonBedSpot.GROUP):

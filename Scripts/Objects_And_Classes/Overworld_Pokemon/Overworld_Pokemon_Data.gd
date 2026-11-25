@@ -243,8 +243,16 @@ static func invalidate() -> void:
 	_registry = {}
 
 
+## The species of one of YOUR Pokémon's IDs: "019_Rattata#2" -> "019_Rattata" (PokemonHome
+## gives each Pokémon you own an ID so you can have several of one species). A plain species
+## key comes back as it is. Every species lookup here goes through it, so an ID never finds
+## the wrong art / name.
+static func species_of(key: String) -> String:
+	return key.get_slice("#", 0)
+
+
 static func species_info(species: String) -> Dictionary:
-	var info = registry()["species"].get(species, {})
+	var info = registry()["species"].get(species_of(species), {})
 	return info if info is Dictionary else {}
 
 
@@ -253,10 +261,10 @@ static func display_name(species: String) -> String:
 	var override := str(species_info(species).get("name", ""))
 	if override != "":
 		return override
-	var parts := species.split("_")
+	var parts := species_of(species).split("_")
 	if parts.size() >= 2:
 		return parts[1]
-	return species
+	return species_of(species)
 
 
 static func species_for_template(template: String) -> Array:
@@ -312,11 +320,81 @@ static func roll_shiny() -> bool:
 
 ## `shiny`: the "_Shiny" sheet beside it, falling back to the normal one if there is none.
 static func sheet_path(species: String, shiny: bool = false) -> String:
+	species = species_of(species)
 	if shiny:
 		var shiny_path := SPRITE_DIR + species + "_Shiny.png"
 		if ResourceLoader.exists(shiny_path):
 			return shiny_path
 	return SPRITE_DIR + species + ".png"
+
+
+# ============================================================
+# ITS COLOUR (the message box)
+# ============================================================
+# Talking to a Pokémon colours the box's name pill and edge with the MOST COMMON colour in
+# its sprite sheet (the shiny sheet for a shiny one), so a Pikachu's box is Pikachu yellow.
+# Worked out once per sheet and cached.
+#
+# TWEAKABLES:
+## Pixels darker than this (HSV value 0-1) are skipped: the black / dark outlines.
+const COLOUR_OUTLINE_MAX_V := 0.22
+## Pixels less opaque than this are skipped (the background).
+const COLOUR_MIN_ALPHA := 0.5
+## The chosen colour is brightened to at least this value so the box edge still glows
+## (a near-black Pokémon would otherwise give an invisible edge).
+const COLOUR_BOX_MIN_V := 0.45
+## A near-white pick (saturation under COLOUR_PALE_SAT: Togetic, Swablu, Furfrou...) is dimmed
+## to at most this value - the light grey of the "white" box theme - so the white name text on
+## the pill stays readable.
+const COLOUR_PALE_SAT := 0.15
+const COLOUR_PALE_MAX_V := 0.86
+## No colour found (no sheet, or nothing but outline): this theme key.
+const COLOUR_FALLBACK_THEME := "grey"
+
+static var _colour_cache: Dictionary = {}
+
+
+## The most common colour in the sheet at `path` (outlines and see-through pixels skipped),
+## brightened to COLOUR_BOX_MIN_V. Null if there is no sheet or nothing counts.
+static func sprite_colour(path: String) -> Variant:
+	if _colour_cache.has(path):
+		return _colour_cache[path]
+	var out: Variant = null
+	if path != "" and ResourceLoader.exists(path):
+		var tex := load(path) as Texture2D
+		var img: Image = tex.get_image() if tex != null else null
+		if img != null:
+			if img.is_compressed():
+				img.decompress()
+			var counts := {}
+			var best := -1
+			var best_n := 0
+			for y in img.get_height():
+				for x in img.get_width():
+					var c := img.get_pixel(x, y)
+					if c.a < COLOUR_MIN_ALPHA or c.v <= COLOUR_OUTLINE_MAX_V:
+						continue
+					var k := (int(c.r8) << 16) | (int(c.g8) << 8) | int(c.b8)
+					var n: int = int(counts.get(k, 0)) + 1
+					counts[k] = n
+					if n > best_n:
+						best_n = n
+						best = k
+			if best >= 0:
+				var c := Color8((best >> 16) & 255, (best >> 8) & 255, best & 255)
+				if c.v < COLOUR_BOX_MIN_V:
+					c = Color.from_hsv(c.h, c.s, COLOUR_BOX_MIN_V)
+				elif c.s < COLOUR_PALE_SAT and c.v > COLOUR_PALE_MAX_V:
+					c = Color.from_hsv(c.h, c.s, COLOUR_PALE_MAX_V)
+				out = c
+	_colour_cache[path] = out
+	return out
+
+
+## The message box theme key for the Pokémon drawn from the sheet at `path`.
+static func box_theme(path: String) -> String:
+	var c: Variant = sprite_colour(path)
+	return MessageBoxTheme.key_for_colour(c) if c is Color else COLOUR_FALLBACK_THEME
 
 
 # ============================================================

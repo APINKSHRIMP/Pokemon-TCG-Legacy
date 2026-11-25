@@ -1720,10 +1720,9 @@ func _show_catch_message() -> void:
 	# bonus is paid now and only SHOWN when the teleport starts.
 	var old_follower := GameState.get_follower()
 	# DEBUG SUPER FOOD: the catch ASKS whether to keep it (No = the usual FISH / hop back).
-	var super_food := FollowingPokemon.has_super_food() and _fish_species != old_follower
+	var super_food := FollowingPokemon.has_super_food()
 	var befriend_food := "" if super_food else FollowingPokemon.liked_food_in_bag(_fish_species)
-	_befriended = befriend_food != "" and _fish_species != old_follower \
-			and FollowingPokemon.try_befriend(befriend_food, true)
+	_befriended = befriend_food != "" and FollowingPokemon.try_befriend(befriend_food, true)
 	_send_to_shop = false
 	if not _befriended and not super_food:
 		_bank_in_fish_shop()

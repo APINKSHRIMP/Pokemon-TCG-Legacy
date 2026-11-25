@@ -58,12 +58,13 @@ static func spawn_for(map_root: Node, player: Node2D, at_global: Variant = null)
 		return null
 	for old in player.get_tree().get_nodes_in_group(GROUP):
 		(old as OverworldPokemon).despawn()
-	var key := GameState.get_follower()
-	if key == "" or not ResourceLoader.exists(OverworldPokemonData.sheet_path(key)):
+	var key := GameState.get_follower()   # its ID ("019_Rattata", "019_Rattata#2")
+	if key == "" or not ResourceLoader.exists(OverworldPokemonData.sheet_path(PokemonHome.species_of(key))):
 		return null
 	var follower := PokemonFollower.new()
 	follower.name = "FOLLOWER"
-	follower.configure(key)
+	follower.configure(PokemonHome.species_of(key))
+	follower.pokemon_id = key
 	follower.display_name = PokemonHome.name_of(key)   # its nickname, if it has one
 	follower.shiny = PokemonHome.is_shiny(key)
 	follower._player = player

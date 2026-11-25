@@ -49,6 +49,7 @@ static func _parse() -> Dictionary:
 	var name_col: int = cols.get("pokemon", -1)
 	var food_col: int = cols.get("food", -1)
 	var bed_col: int = cols.get("bed", -1)
+	var evo_col: int = cols.get("evolution", -1)
 	if name_col < 0:
 		push_error("PokemonPrefs: %s has no 'Pokemon' column" % CSV_PATH)
 		return out
@@ -62,6 +63,7 @@ static func _parse() -> Dictionary:
 		out[pokemon.to_lower()] = {
 			"food": line[food_col].strip_edges() if food_col >= 0 and line.size() > food_col else "",
 			"bed": line[bed_col].strip_edges() if bed_col >= 0 and line.size() > bed_col else "",
+			"evolution": line[evo_col].strip_edges() if evo_col >= 0 and line.size() > evo_col else "",
 		}
 	return out
 
@@ -86,6 +88,11 @@ static func bed_of(species_key: String) -> String:
 			_bad_beds_reported[written] = true
 			push_warning("PokemonPrefs: bed '%s' (CSV) is not in Pokemon_Beds.json, using the default" % written)
 	return PokemonHome.default_bed()
+
+
+## The CSV's Evolution cell for this species, as written ("" for none). PokemonEvolution reads it.
+static func evolution_of(species_key: String) -> String:
+	return str(_row(species_key).get("evolution", ""))
 
 
 ## Every food any Pokémon in the CSV likes, in first-seen order.

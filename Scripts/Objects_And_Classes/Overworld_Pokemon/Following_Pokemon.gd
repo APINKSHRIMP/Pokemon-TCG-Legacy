@@ -206,19 +206,32 @@ static func super_food_target(player: Node2D) -> OverworldPokemon:
 	return best
 
 
-## Makes `species_key` the follower and puts it on the current map behind the player.
+## A NEW `species_key` joins you (always a new one, even if you already have that species -
+## PokemonHome.recruit gives it its own ID) and walks behind the player on the current map.
 ## Any follower already there goes to live at your house -- never dismissed here (bedtime
-## sorts out who has a bed). Returns the old species, "" if none.
-## `shiny` goes into its flags (PokemonHome.is_shiny) - pass the wild one's when shinies exist.
+## sorts out who has a bed). Returns the old follower's ID, "" if none.
+## `shiny` goes into its flags (PokemonHome.is_shiny): the wild one's.
 static func befriend(species_key: String, at_global: Variant = null, shiny: bool = false) -> String:
-	var old := PokemonHome.make_follower(species_key, shiny)
+	var old := PokemonHome.recruit(species_key, shiny)
+	_put_follower_on_map(at_global)
+	return old
+
+
+## FOLLOW ME: your Pokémon `pokemon_id` (living at home) swaps places with the follower.
+## Returns the old follower's ID, "" if none.
+static func take_out(pokemon_id: String, at_global: Variant = null) -> String:
+	var old := PokemonHome.make_follower(pokemon_id)
+	_put_follower_on_map(at_global)
+	return old
+
+
+static func _put_follower_on_map(at_global: Variant) -> void:
 	var player := _player()
 	if player != null:
 		PokemonFollower.spawn_for(player.get_parent(), player, at_global)
 		# In the house the old follower walks about (or lies down) again.
 		if PokemonHome.in_house(MapManager._map_scene_path):
 			PokemonHome.refresh_house(player.get_parent())
-	return old
 
 
 ## The follower goes back to the WILD: off your heels and out of the house for good

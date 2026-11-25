@@ -23,7 +23,17 @@ const SNEAK_MULTIPLIER := 0.45
 
 var current_direction: String = "down"
 var is_moving: bool = false
-var can_move: bool = true
+## False while the player is held still. Reading it ALSO says false while MapManager holds a
+## hard input lock (a medal waiting to be shown, an evolution), whatever anyone last wrote:
+## the message box sets it back to true when a line closes, and that must not let the player
+## walk, talk or open a menu in the gap before the medal screen. Everything gated on can_move
+## (movement, Space, click-to-walk, zoom, the debug keys, the phone map) is gated on that too.
+var can_move: bool = true:
+	get:
+		return _can_move_raw and not MapManager.is_hard_locked()
+	set(value):
+		_can_move_raw = value
+var _can_move_raw: bool = true
 ## Lets the mouse wheel keep zooming while the player is locked. Set by the fishing
 ## minigame, which freezes movement for a minute at a time and still wants the player to
 ## be able to pull the camera in on the bobber. Nothing else should set it.

@@ -26,6 +26,10 @@ class_name MessageBoxTheme
 # fall back to DEFAULT_THEME. A day-file entry may also set `message_colour`
 # directly; the constant-file value only fills in when it does not.
 #
+# A COLOUR AS A KEY: "#rrggbb" is a theme too - that colour as the base, with
+# HEX_HUE_STEP. Overworld Pokémon use it: their box takes the most common colour of
+# their own sprite sheet (OverworldPokemonData.sprite_colour).
+#
 # RESERVED COLOURS
 # Only "match" (the in-match box, below). "white" used to be held back for a
 # rival character; the rival became the three leads (Ellie, Olly, Alexander), so
@@ -79,17 +83,33 @@ const THEMES := {
 # actor whose `message_colour` is missing or misspelled, though apply_theme() warns about the latter.
 const DEFAULT_THEME := "grey"
 
+# TWEAKABLE: the hue drift along the chip row for a "#rrggbb" key.
+const HEX_HUE_STEP := -14.0
+
 
 static func has_theme(key: String) -> bool:
-	return THEMES.has(key)
+	return THEMES.has(key) or _is_hex(key)
+
+
+static func _is_hex(key: String) -> bool:
+	return key.begins_with("#") and Color.html_is_valid(key)
+
+
+## A "#rrggbb" theme key for any colour.
+static func key_for_colour(c: Color) -> String:
+	return "#" + c.to_html(false)
 
 
 static func base_color(theme_key: String) -> Color:
+	if _is_hex(theme_key):
+		return Color.html(theme_key)
 	var entry: Dictionary = THEMES.get(theme_key, THEMES[DEFAULT_THEME])
 	return Color(entry["base"])
 
 
 static func hue_step(theme_key: String) -> float:
+	if _is_hex(theme_key):
+		return HEX_HUE_STEP
 	var entry: Dictionary = THEMES.get(theme_key, THEMES[DEFAULT_THEME])
 	return float(entry["hue_step"])
 

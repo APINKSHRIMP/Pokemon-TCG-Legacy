@@ -1447,7 +1447,8 @@ func _apply_actor_chips() -> void:
 		return
 
 	# An overworld Pokémon: its name (your own one's nickname) and its little overworld
-	# portrait on the pill, nothing else. No voice -- the speech blips are keyed by trainer
+	# portrait on the pill, nothing else; the pill and edge in its own colour (the most
+	# common colour in its sprite sheet - OverworldPokemonData.box_theme). No voice -- the speech blips are keyed by trainer
 	# sprite and a Pokémon has none. pokemon_speaker outranks the node: it is kept for the
 	# lines after a menu choice, when the node may already have gone.
 	if not pokemon_speaker.is_empty() or (current_pokemon != null and is_instance_valid(current_pokemon)):
@@ -1456,7 +1457,7 @@ func _apply_actor_chips() -> void:
 		var portrait: String = str(pokemon_speaker.get("portrait", "")) if not pokemon_speaker.is_empty() \
 				else OverworldPokemonData.sheet_path(str(current_pokemon.species), bool(current_pokemon.shiny))
 		message_panel.set_system_variant(false)
-		message_panel.apply_theme("")
+		message_panel.apply_theme(OverworldPokemonData.box_theme(portrait))
 		message_panel.set_right_chips([])
 		message_panel.set_name_pill(poke_name, portrait)
 		message_panel.set_voice("")
@@ -1863,6 +1864,24 @@ func show_interactable_confirm(text: String, on_yes: Callable) -> void:
 # Callers ask wants_message_input() first: while a dialog, the deck-validation
 # popup or a gift reveal owns the screen the press belongs to that, not to the
 # world underneath it.
+
+## HARD INPUT LOCK: while any reason holds it, the player cannot walk, talk, click-to-walk,
+## zoom, open the pause menu, the phone map or the debug menu (Player.can_move reads false,
+## BaseMapScene refuses the menu). A message box already up still takes its presses, so a
+## line can be read and closed. Holders: BaseMapScene's medal watch ("medal", from the moment
+## a medal is earned until its screen has gone) and PokemonEvolution ("evolution").
+## Survives a map change on purpose (a medal earned in one map is shown in the next).
+var _hard_locks: Dictionary = {}
+
+func hard_lock(reason: String) -> void:
+	_hard_locks[reason] = true
+
+func hard_unlock(reason: String) -> void:
+	_hard_locks.erase(reason)
+
+func is_hard_locked() -> bool:
+	return not _hard_locks.is_empty()
+
 
 func wants_message_input() -> bool:
 	return _emote_busy or _gift_reveal_active \
@@ -2276,7 +2295,7 @@ func _on_player_pokemon_interact(pokemon: Node) -> void:
 		_open_pokemon_menu(pokemon)
 		return
 	var food := FollowingPokemon.liked_food_in_bag(str(pokemon.species))
-	if food != "" and str(pokemon.species) != GameState.get_follower():
+	if food != "":   # even a species you already have: you can own several of one
 		show_interactable_confirm("%s%s\nIt's sniffing at your %s. Offer it some?" % [pokemon.cry_text(), guide_note, food],
 				func(): _offer_food_to_pokemon(pokemon, food))
 		return
@@ -2412,7 +2431,14 @@ func _open_pokemon_menu(pokemon: Node, start_id: String = "") -> void:
 	for i in items.size():
 		if str(items[i]["id"]) == start_id:
 			start = i
-	_show_message_with_menu(pokemon.cry_text(), items, start,
+	# AFFECTION: a fresh talk (not a return to the list) gets its level's reaction and line.
+	var text: String = pokemon.cry_text()
+	if start_id == "" and not _is_asleep(pokemon):
+		PokemonAffection.credit_hours()
+		var lvl := PokemonAffection.level(PokemonHome.id_of(pokemon))
+		text = PokemonAffection.talk_line(PokemonHome.id_of(pokemon), str(pokemon.display_name))
+		PokemonAffection.react(pokemon as OverworldPokemon, lvl, _player.global_position)
+	_show_message_with_menu(text, items, start,
 			func(id: String) -> void: _on_pokemon_menu_choice(pokemon, id))
 
 
@@ -2470,38 +2496,32 @@ func _is_asleep(pokemon: Node) -> bool:
 
 ## Two quick hops - happy.
 func _happy_hop(pokemon: Node) -> void:
-	var spr = pokemon.get("sprite")
-	if not (spr is Node2D) or UITheme.motion_reduced():
+	if not (pokemon is OverworldPokemon) or (pokemon as OverworldPokemon).sprite == null or UITheme.motion_reduced():
 		return
-	var y0: float = (spr as Node2D).position.y
-	var tw := (spr as Node2D).create_tween()
-	for _k in 2:
-		tw.tween_property(spr, "position:y", y0 - PET_HOP_PX, PET_HOP_TIME) \
-				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tw.tween_property(spr, "position:y", y0, PET_HOP_TIME) \
-				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	PokemonAffection.hop(pokemon as OverworldPokemon, 2, PET_HOP_PX, PET_HOP_TIME)
 
 
 func _pet_pokemon(pokemon: Node) -> void:
-	var species_key := str(pokemon.species)
+	var species_key := PokemonHome.id_of(pokemon)   # its ID ("..#2")
 	var poke_name := str(pokemon.display_name)
 	GameState.bump_pokemon_flag(species_key, "pets")
+	PokemonAffection.add(species_key, PokemonAffection.GAIN_PET)
 	if _is_asleep(pokemon):
 		_pokemon_say(species_key, poke_name, "You give %s a gentle pat. It's fast asleep..." % poke_name)
 		return
-	SoundManagerScript.play_cry(species_key, PET_CRY_PITCH, true)
+	SoundManagerScript.play_cry(PokemonHome.species_of(species_key), PET_CRY_PITCH, true)
 	_happy_hop(pokemon)
 	_pokemon_say(species_key, poke_name, str(PET_LINES.pick_random()) % poke_name)
 
 
 ## Its favourite food (the CSV's Food column) from the bag.
 func _feed_pokemon(pokemon: Node) -> void:
-	var species_key := str(pokemon.species)
+	var species_key := PokemonHome.id_of(pokemon)   # its ID ("..#2")
 	var poke_name := str(pokemon.display_name)
 	if _is_asleep(pokemon):
 		_pokemon_say(species_key, poke_name, "%s is fast asleep. Best let it rest." % poke_name)
 		return
-	var food := PokemonPrefs.food_of(species_key)
+	var food := PokemonPrefs.food_of(PokemonHome.species_of(species_key))
 	if food == "":
 		_pokemon_say(species_key, poke_name, "%s doesn't seem hungry right now." % poke_name)
 		return
@@ -2509,7 +2529,8 @@ func _feed_pokemon(pokemon: Node) -> void:
 		_pokemon_say(species_key, poke_name, "You don't have any %s. It's %s's favourite!" % [food, poke_name])
 		return
 	GameState.bump_pokemon_flag(species_key, "meals")
-	SoundManagerScript.play_cry(species_key, PET_CRY_PITCH, true)
+	PokemonAffection.add(species_key, PokemonAffection.GAIN_FAVOURITE_FOOD)   # it is always its favourite
+	SoundManagerScript.play_cry(PokemonHome.species_of(species_key), PET_CRY_PITCH, true)
 	_happy_hop(pokemon)
 	_pokemon_say(species_key, poke_name, "%s gobbled up the %s! It looks really happy." % [poke_name, food])
 
@@ -2517,9 +2538,9 @@ func _feed_pokemon(pokemon: Node) -> void:
 ## The on-screen keyboard, the same one the trainer name uses. The box steps aside while it
 ## is up. Done with nothing typed (or its species name) takes the nickname away again.
 func _rename_pokemon(pokemon: Node) -> void:
-	var species_key := str(pokemon.species)
+	var species_key := PokemonHome.id_of(pokemon)   # its ID ("..#2")
 	var old_name := str(pokemon.display_name)
-	var species_name := OverworldPokemonData.display_name(species_key)
+	var species_name := OverworldPokemonData.display_name(PokemonHome.species_of(species_key))
 	# The keyboard writes into a LineEdit; this one is never seen (the keyboard has its own preview).
 	var field := LineEdit.new()
 	field.max_length = PokemonHome.NICKNAME_MAX
@@ -2554,7 +2575,7 @@ func _rename_pokemon(pokemon: Node) -> void:
 	if new_name == old_name:
 		_open_pokemon_menu(pokemon, "rename")
 		return
-	SoundManagerScript.play_cry(species_key, PET_CRY_PITCH, true)
+	SoundManagerScript.play_cry(PokemonHome.species_of(species_key), PET_CRY_PITCH, true)
 	_happy_hop(pokemon)
 	var line := ("%s is called %s again." % [old_name, new_name]) if new_name == species_name \
 			else ("%s will now be known as %s!" % [old_name, new_name])
@@ -2563,7 +2584,7 @@ func _rename_pokemon(pokemon: Node) -> void:
 
 ## SEND HOME (out and about): it stops following and heads back to the house.
 func _send_follower_to_house(follower: Node) -> void:
-	var species_key := str(follower.species)
+	var species_key := PokemonHome.id_of(follower)   # its ID ("..#2")
 	var poke_name := str(follower.display_name)
 	PokemonHome.leave_at_home()
 	(follower as OverworldPokemon).despawn()
@@ -2573,7 +2594,7 @@ func _send_follower_to_house(follower: Node) -> void:
 ## STAY HERE (in the house): off your heels and living in the house (pottering about, or on
 ## its bed / in its tank -- PokemonHome.refresh_house decides).
 func _leave_follower_home(follower: Node) -> void:
-	var species_key := str(follower.species)
+	var species_key := PokemonHome.id_of(follower)   # its ID ("..#2")
 	var poke_name := str(follower.display_name)
 	PokemonHome.leave_at_home()
 	(follower as OverworldPokemon).despawn()
@@ -2589,11 +2610,11 @@ func _leave_follower_home(follower: Node) -> void:
 
 ## FOLLOW ME (a Pokémon living at home): it swaps places with your follower.
 func _take_home_pokemon_out(pokemon: Node) -> void:
-	var species_key := str(pokemon.species)
+	var species_key := PokemonHome.id_of(pokemon)   # its ID ("..#2")
 	var poke_name := str(pokemon.display_name)
 	var at: Vector2 = (pokemon as Node2D).global_position
 	(pokemon as OverworldPokemon).despawn()
-	var old := FollowingPokemon.befriend(species_key, at)
+	var old := FollowingPokemon.take_out(species_key, at)
 	var line := "%s is coming with you!" % poke_name
 	if old != "":
 		line += "\n" + PokemonHome.old_follower_note(old)
@@ -2602,7 +2623,7 @@ func _take_home_pokemon_out(pokemon: Node) -> void:
 
 ## DISMISS asks first. No comes back to the list.
 func _confirm_dismiss_pokemon(pokemon: Node) -> void:
-	var species_key := str(pokemon.species)
+	var species_key := PokemonHome.id_of(pokemon)   # its ID ("..#2")
 	var poke_name := str(pokemon.display_name)
 	pokemon_speaker = {}
 	_pending_ok_action = Callable()
