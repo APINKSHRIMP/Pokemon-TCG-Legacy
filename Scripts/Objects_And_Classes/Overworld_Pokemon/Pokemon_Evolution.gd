@@ -19,8 +19,8 @@ extends Node2D
 ## whole time it holds MapManager.hard_lock("evolution") - nothing can be pressed but the
 ## lines' OK. A medal earned WHILE it plays waits for it (is_playing()).
 ##
-## WHAT IT EVOLVES INTO: evolutions_of() reads the card data (a card's evolvesFrom), so every
-## species knows its next stage(s) with no table to keep. The RULES for when are the CSV's
+## WHAT IT EVOLVES INTO: evolutions_of() reads Pokemon_Evolutions.json (made from the card
+## data's evolvesFrom plus everything the cards can't know - forms, babies, later generations). The RULES for when are the CSV's
 ## Evolution column (PokemonPrefs.evolution_of) - NOT implemented yet: the user fills the
 ## column in first. Until then only the DEL menu evolves anything ("Evolve follower now" /
 ## "Evolve after the next win").
@@ -126,52 +126,24 @@ var _pulse_t: float = 0.0
 # DATA
 # ============================================================
 
-## The species this one evolves into (species keys, "010_Caterpie" -> ["011_Metapod"]). From the
-## card data: every Pokémon card whose evolvesFrom is this species' name, keeping only names that
-## are plain overworld species (no "Dark", "Brock's", "ex" ...). Built once.
+## The species this one evolves into (species keys, "010_Caterpie" -> ["011_Metapod"]), from
+## EVOLUTIONS_PATH: built from the card data's evolvesFrom plus forms, babies and every line
+## after the card era (2026-11-25), and hand-editable. Read once.
+const EVOLUTIONS_PATH := "res://NPC_and_Opponent_Data/Pokemon/Pokemon_Evolutions.json"
+
 static func evolutions_of(species_key: String) -> Array:
 	if not _evo_map_built:
-		_build_evo_map()
-	return (_evo_map.get(OverworldPokemonData.display_name(OverworldPokemonData.species_of(species_key)), []) as Array).duplicate()
-
-
-static func _build_evo_map() -> void:
-	_evo_map_built = true
-	# display name -> species key, plain sheets only ("019_Rattata", not "019_Rattata_Alolan").
-	var by_name: Dictionary = {}
-	for key in OverworldPokemonData.all_species():
-		var parts := str(key).split("_")
-		if parts.size() == 2 and not by_name.has(parts[1]):
-			by_name[OverworldPokemonData.display_name(str(key))] = str(key)
-	var dir := DirAccess.open("res://Card_Set_Data")
-	if dir == null:
-		return
-	var paths: Array = []
-	dir.list_dir_begin()
-	var fname := dir.get_next()
-	while fname != "":
-		if not dir.current_is_dir() and fname.ends_with(".json") and fname != "pack_prices.json":
-			paths.append("res://Card_Set_Data/" + fname)
-		fname = dir.get_next()
-	dir.list_dir_end()
-	for path in paths:
-		var f := FileAccess.open(path, FileAccess.READ)
-		if f == null:
-			continue
-		var cards = JSON.parse_string(f.get_as_text())
-		if not (cards is Array):
-			continue
-		for card in cards:
-			if not (card is Dictionary):
-				continue
-			var from := str(card.get("evolvesFrom", ""))
-			var to := str(card.get("name", ""))
-			if from == "" or not by_name.has(from) or not by_name.has(to):
-				continue
-			var list: Array = _evo_map.get(from, [])
-			if not (str(by_name[to]) in list):
-				list.append(str(by_name[to]))
-			_evo_map[from] = list
+		_evo_map_built = true
+		_evo_map = {}
+		if FileAccess.file_exists(EVOLUTIONS_PATH):
+			var parsed = JSON.parse_string(FileAccess.get_file_as_string(EVOLUTIONS_PATH))
+			if parsed is Dictionary and parsed.get("evolutions") is Dictionary:
+				_evo_map = parsed["evolutions"]
+			else:
+				push_error("PokemonEvolution: %s has no \"evolutions\" object" % EVOLUTIONS_PATH)
+		else:
+			push_error("PokemonEvolution: no %s" % EVOLUTIONS_PATH)
+	return (_evo_map.get(OverworldPokemonData.species_of(species_key), []) as Array).duplicate()
 
 
 ## Can your Pokémon `species_key` (an ID) become `into` right now? Not when `into` has no
@@ -234,19 +206,24 @@ static func is_playing() -> bool:
 static func run_pending(map_root: Node) -> void:
 	if _running or _pending.is_empty() or map_root == null:
 		return
+	var p := _pending.duplicate()
+	if not (str(p.get("id", "")) in PokemonHome.roster()):
+		_pending = {}   # not yours any more (dismissed, or another save loaded): nothing to play
+		return
 	_running = true
 	MapManager.hard_lock("evolution")
-	var p := _pending.duplicate()
 	var tree := map_root.get_tree()
 	# The battle-return fade, any medal (earned or still being looked for), a line already up,
 	# a cutscene: all go first.
 	await tree.process_frame
 	await tree.process_frame
 	while is_instance_valid(map_root) and map_root.is_inside_tree() and _must_wait():
+		MapManager.hard_lock("evolution")
 		await tree.process_frame
 	await tree.create_timer(START_BEAT).timeout
 	# Something may have come up during the beat (a medal found late): wait again.
 	while is_instance_valid(map_root) and map_root.is_inside_tree() and _must_wait():
+		MapManager.hard_lock("evolution")
 		await tree.process_frame
 	_playing = true
 	if is_instance_valid(map_root) and map_root.is_inside_tree():
@@ -314,6 +291,7 @@ static func _say(tree: SceneTree, species_key: String, poke_name: String, text: 
 	MapManager._pokemon_say(species_key, poke_name, text)
 	await tree.process_frame
 	while MapManager.message_panel != null and MapManager.message_panel.visible:
+		MapManager.hard_lock("evolution")
 		await tree.process_frame
 
 

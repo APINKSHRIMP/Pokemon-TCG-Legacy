@@ -180,7 +180,7 @@ func _build_world_column(col: VBoxContainer) -> void:
 	_heading(col, "Following Pokémon")
 	var follow_row := _row(col)
 	_add_expanded(follow_row, _button("Give test foods", _give_test_foods))
-	_add_expanded(follow_row, _button("Send follower home", _debug_send_follower_home))
+	_add_expanded(follow_row, _button("Release follower (to the wild)", _debug_send_follower_home))
 	col.add_child(_button("Add SUPER FOOD (capture any Pokémon)", _give_super_food))
 	col.add_child(_button("Befriend another of your follower's species", _befriend_duplicate))
 	col.add_child(_button("Shiny odds: 1 in %d / back to 1 in %d" % [DEBUG_SHINY_ODDS, OverworldPokemonData.SHINY_ODDS], _toggle_shiny_odds))
@@ -199,11 +199,20 @@ func _build_world_column(col: VBoxContainer) -> void:
 	_add_expanded(aff_row2, _button("Affection to 0", func() -> void: _set_affection(0)))
 	_add_expanded(aff_row2, _button("Affection to max", func() -> void: _set_affection(PokemonAffection.MAX)))
 	col.add_child(_button("Show affection + evolutions", _show_affection))
+	var care_row := _row(col)
+	_add_expanded(care_row, _button("Follower hungry", func() -> void: _debug_hunger(1.0)))
+	_add_expanded(care_row, _button("Very hungry", func() -> void: _debug_hunger(1.0 + (PokemonCare.STARVING_FACTOR - 1.0) * PokemonCare.VERY_HUNGRY_FRACTION)))
+	_add_expanded(care_row, _button("Starving (free hour)", func() -> void: _debug_hunger(PokemonCare.STARVING_FACTOR)))
+	var care_row2 := _row(col)
+	_add_expanded(care_row2, _button("Starved (sad, -20)", func() -> void: _debug_hunger(PokemonCare.STARVING_FACTOR, float(PokemonCare.STARVE_GRACE_HOURS) + 0.05)))
+	_add_expanded(care_row2, _button("Follower fed", func() -> void: _debug_hunger(0.0)))
+	_add_expanded(care_row2, _button("Ignored 6h (-10)", _debug_ignored))
+	_add_expanded(care_row2, _button("Next pet works", _debug_free_pet))
 	var evo_row := _row(col)
 	_add_expanded(evo_row, _button("Evolve follower now", _evolve_follower_now))
 	_add_expanded(evo_row, _button("Evolve after next win", _toggle_evolve_after_win))
 	col.add_child(_button("Show a test medal (checks the input lock)", _show_test_medal))
-	col.add_child(_note("Affection: 0-196, a new level (0-7) every 28. Talk to your follower to see its level's reaction and line. Evolve now plays the full animation on this map; 'after next win' evolves it once you win a match (a T test match counts), after any medal."))
+	col.add_child(_note("Affection: 0-700, a new level (0-7) every 100. Talk to your follower to see its level's reaction and line. Evolve now plays the full animation on this map; 'after next win' evolves it once you win a match (a T test match counts), after any medal."))
 
 
 ## A caption, a number box and a button: Cash [ 4780 ] [ Set ]. Enter in the box works too.
@@ -404,9 +413,12 @@ func _give_test_beds() -> void:
 
 func _empty_house() -> void:
 	GameState.set_bed_slots([])
-	GameState.set_home_pokemon([])
-	GameState.progress["spare_beds"] = {}
-	GameState.save_progress()
+	# Released properly, flags and all: left-over flags would make the next one of that species
+	# a "#2" for no reason (PokemonHome.new_id skips any ID that still has flags).
+	for id in PokemonHome.home_pokemon():
+		PokemonHome.release(str(id))
+	for bed_name in GameState.get_spare_beds().keys():
+		GameState.add_spare_bed(str(bed_name), -int(GameState.get_spare_beds()[bed_name]))
 	_refresh_bed_spots()
 	_say("Every bed, spare bed and Pokémon at home removed. Your follower (if any) is still following you.")
 
@@ -454,7 +466,8 @@ func _debug_follower() -> String:
 
 func _affection_text(f: String) -> String:
 	var p := PokemonAffection.points(f)
-	return "%s: affection %d / %d (level %d)" % [PokemonHome.name_of(f), p, PokemonAffection.MAX, PokemonAffection.level_of_points(p)]
+	return "%s: affection %d / %d (level %d), pet chance %d%%" % [PokemonHome.name_of(f), p, PokemonAffection.MAX,
+			PokemonAffection.level_of_points(p), roundi(PokemonAffection.pet_chance(f) * 100.0)]
 
 
 func _bump_affection(amount: int) -> void:
@@ -462,6 +475,42 @@ func _bump_affection(amount: int) -> void:
 	if f == "":
 		return
 	PokemonAffection.add(f, amount)
+	_say(_affection_text(f))
+
+
+## Sets the follower's hunger to `times` its CSV Hunger hours (+ `extra` hours): 1 = hungry,
+## 2 = starving, 0 = fed. The next watch tick charges whatever that costs.
+func _debug_hunger(times: float, extra: float = 0.0) -> void:
+	var f := _debug_follower()
+	if f == "":
+		return
+	var limit := PokemonCare.hunger_limit(f)
+	if limit <= 0.0:
+		_say("%s has no Hunger hours in Pokemon_Food_And_Beds.csv, so it never gets hungry." % PokemonHome.name_of(f))
+		return
+	GameState.set_pokemon_flag_values(f, {"hunger": limit * times + extra, "starve_paid": 0,
+			"hunger_clock": PokemonAffection.now_hours()})
+	_say("%s: hunger %.1f h (hungry at %.0f, very hungry at %.0f, starving at %.0f, sad + -20 an hour from %.0f)." % [
+			PokemonHome.name_of(f), limit * times + extra, limit,
+			limit + limit * (PokemonCare.STARVING_FACTOR - 1.0) * PokemonCare.VERY_HUNGRY_FRACTION,
+			limit * PokemonCare.STARVING_FACTOR, limit * PokemonCare.STARVING_FACTOR + PokemonCare.STARVE_GRACE_HOURS])
+
+
+## The follower has gone NEGLECT_FOLLOW_HOURS without a talk: the next watch tick takes the
+## affection, and the next talk says it felt forgotten.
+func _debug_ignored() -> void:
+	var f := _debug_follower()
+	if f == "":
+		return
+	GameState.set_pokemon_flag(f, "lonely_follow", PokemonCare.NEGLECT_FOLLOW_HOURS + 0.01)
+	_say("%s has been ignored for %.0f hours." % [PokemonHome.name_of(f), PokemonCare.NEGLECT_FOLLOW_HOURS])
+
+
+func _debug_free_pet() -> void:
+	var f := _debug_follower()
+	if f == "":
+		return
+	GameState.set_pokemon_flag(f, "pet_free", true)
 	_say(_affection_text(f))
 
 
@@ -540,7 +589,7 @@ func _debug_send_follower_home() -> void:
 		return
 	var gone := PokemonHome.name_of(GameState.get_follower())
 	FollowingPokemon.send_home()
-	_say("%s went home." % gone)
+	_say("%s went back to the wild." % gone)
 
 
 func _fill_fish_tanks() -> void:

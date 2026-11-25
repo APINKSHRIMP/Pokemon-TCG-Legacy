@@ -1570,12 +1570,31 @@ func _hide_modifiers_box() -> void:
 	if _stars_row != null and is_instance_valid(_stars_row):
 		_stars_row.queue_free()
 	_stars_row = null
+	if _hearts_row != null and is_instance_valid(_hearts_row):
+		_hearts_row.queue_free()
+	_hearts_row = null
 
 
 ## The opponent's difficulty stars on their Yes/No challenge (Difficulty_Stars.gd). Nothing
 ## is shown for an opponent with no rating yet. Built after _show_modifiers_box(), which
 ## clears both.
 const DIFFICULTY_STARS_SCRIPT := "res://Scripts/Global_Scripts/Difficulty_Stars.gd"
+## YOUR Pokémon's affection hearts (Affection_Hearts.gd), on the box after its line is up.
+const AFFECTION_HEARTS_SCRIPT := "res://Scripts/Global_Scripts/Affection_Hearts.gd"
+var _hearts_row: Control = null
+
+## Shows `species_key`'s (an ID) affection on the box. `from_points` >= 0 slides the fill up
+## from there (a pet, a meal). Call it right AFTER the line is put up (which clears it).
+func show_affection_hearts(species_key: String, from_points: int = -1) -> void:
+	if _hearts_row != null and is_instance_valid(_hearts_row):
+		_hearts_row.queue_free()
+	_hearts_row = null
+	if message_panel == null or GameState.get_pokemon_flags(species_key).is_empty():
+		return
+	_hearts_row = load(AFFECTION_HEARTS_SCRIPT).new()
+	_hearts_row.setup(message_panel, PokemonAffection.points(species_key), from_points)
+	message_panel.add_child(_hearts_row)
+
 const OpponentRatings := preload("res://Scripts/Global_Scripts/Opponent_Ratings.gd")
 var _stars_row: Control = null
 
@@ -1871,15 +1890,27 @@ func show_interactable_confirm(text: String, on_yes: Callable) -> void:
 ## line can be read and closed. Holders: BaseMapScene's medal watch ("medal", from the moment
 ## a medal is earned until its screen has gone) and PokemonEvolution ("evolution").
 ## Survives a map change on purpose (a medal earned in one map is shown in the next).
-var _hard_locks: Dictionary = {}
+## FAILSAFE: a lock nobody has renewed for HARD_LOCK_MAX_MS is dropped with a warning, so a bug
+## in a holder can never softlock the game (the lock even shuts the DEL menu). The holders renew
+## it while they wait (the medal watch every poll, the evolution every frame it waits).
+const HARD_LOCK_MAX_MS := 120000
+var _hard_locks: Dictionary = {}   # reason -> Time.get_ticks_msec() when last (re)asserted
 
 func hard_lock(reason: String) -> void:
-	_hard_locks[reason] = true
+	_hard_locks[reason] = Time.get_ticks_msec()
 
 func hard_unlock(reason: String) -> void:
 	_hard_locks.erase(reason)
 
 func is_hard_locked() -> bool:
+	if _hard_locks.is_empty():
+		return false
+	var now := Time.get_ticks_msec()
+	for reason in _hard_locks.keys():
+		if now - int(_hard_locks[reason]) > HARD_LOCK_MAX_MS:
+			push_warning("MapManager: hard input lock '%s' held %ds without renewal - released (failsafe)"
+					% [reason, HARD_LOCK_MAX_MS / 1000])
+			_hard_locks.erase(reason)
 	return not _hard_locks.is_empty()
 
 
@@ -2373,31 +2404,28 @@ func _capture_with_super_food(pokemon: OverworldPokemon) -> void:
 # its name (nickname) and overworld portrait on the pill, and a short list docked to the
 # box's top-right corner (MessageActionMenu). What is on the list depends on where it is:
 #
-#   following you, out and about   PET  FEED  RENAME  SEND HOME  DISMISS  CANCEL
-#   following you, in the house    PET  FEED  RENAME  STAY HERE  DISMISS  CANCEL
-#   living at home (inactive)      FOLLOW ME  PET  FEED  RENAME  DISMISS  CANCEL
+#   following you, out and about   PET  FEED  RENAME  SEND HOME  SAY GOODBYE  CANCEL
+#   following you, in the house    PET  FEED  RENAME  STAY HOME  SAY GOODBYE  CANCEL
+#   living at home (inactive)      FOLLOW ME  PET  FEED  RENAME  SAY GOODBYE  CANCEL
 #
-#   SEND HOME / STAY HERE  it stops following and lives in the house (a bed only matters at bedtime)
+#   SEND HOME / STAY HOME  it stops following and lives in the house (a bed only matters at bedtime)
 #   FOLLOW ME              it swaps places with your follower, who goes home
-#   DISMISS                asks first; Yes = back to the wild, nickname and flags with it
-#   No to the Dismiss question, or Escape on the rename keyboard, comes back to the list.
+#   SAY GOODBYE            asks first; Yes = back to the wild, nickname and flags with it
+#   No to the Say Goodbye question, or Escape on the rename keyboard, comes back to the list.
 
 ## TWEAKABLE: the labels (the theme upper-cases them, like every button).
 const POKEMON_MENU_LABELS := {
 	"follow": "Follow me", "pet": "Pet", "feed": "Feed", "rename": "Rename",
-	"send_home": "Send home", "stay": "Stay here", "dismiss": "Dismiss", "cancel": "Cancel",
+	"send_home": "Send home", "stay": "Stay home", "dismiss": "Say goodbye", "cancel": "Cancel",
 }
 ## TWEAKABLE: the cry pitch when you pet or feed it (1.0 = its normal cry; higher = happier).
 const PET_CRY_PITCH := 1.15
 ## TWEAKABLE: the double hop when it is petted or fed - height (its own pixels) and time per half-hop.
 const PET_HOP_PX := 4.0
 const PET_HOP_TIME := 0.09
-## TWEAKABLE: what it does when you pet it; one at random (%s = its name).
-const PET_LINES := [
-	"%s nuzzles up against you happily!",
-	"%s loves being petted!",
-	"%s closes its eyes and leans into your hand.",
-]
+## TWEAKABLE: the cry when a level 0-1 Pokémon refuses a pet (lower = grumpier).
+const PET_SNAP_CRY_PITCH := 0.85
+## The pet's chance and lines are in PokemonAffection (PET CHANCE / PET_LINES).
 
 
 func _pokemon_menu_items(pokemon: Node) -> Array:
@@ -2431,15 +2459,33 @@ func _open_pokemon_menu(pokemon: Node, start_id: String = "") -> void:
 	for i in items.size():
 		if str(items[i]["id"]) == start_id:
 			start = i
-	# AFFECTION: a fresh talk (not a return to the list) gets its level's reaction and line.
+	# AFFECTION: a fresh talk (not a return to the list) gets its level's reaction and line -
+	# or, asleep, it wakes up (with its level's wake-up line); or a level up waiting to be told.
 	var text: String = pokemon.cry_text()
-	if start_id == "" and not _is_asleep(pokemon):
+	var my_id := PokemonHome.id_of(pokemon)
+	if start_id == "":
 		PokemonAffection.credit_hours()
-		var lvl := PokemonAffection.level(PokemonHome.id_of(pokemon))
-		text = PokemonAffection.talk_line(PokemonHome.id_of(pokemon), str(pokemon.display_name))
+		var lvl := PokemonAffection.level(my_id)
+		var poke_name := str(pokemon.display_name)
+		if _is_asleep(pokemon):
+			(pokemon as PokemonHomeWanderer).wake_up()
+			pokemon.pause_and_face(_player.global_position)
+			text = PokemonAffection.wake_line(lvl, poke_name)
+		else:
+			# CARE (PokemonCare): hunger, needing sleep, being ignored, getting sleepy - in that
+			# order - beat the level-up line (the watch shows that once the box closes) and the
+			# level's own talk line.
+			PokemonCare.credit_hunger()
+			text = PokemonCare.care_line(my_id, poke_name, pokemon is PokemonFollower)
+			if text == "":
+				text = PokemonCare.take_level_up_line(my_id)
+			if text == "":
+				text = PokemonAffection.talk_line(my_id, poke_name)
+		PokemonCare.note_talked_to(my_id)
 		PokemonAffection.react(pokemon as OverworldPokemon, lvl, _player.global_position)
 	_show_message_with_menu(text, items, start,
 			func(id: String) -> void: _on_pokemon_menu_choice(pokemon, id))
+	show_affection_hearts(my_id)
 
 
 ## The box with a docked action list. `on_choose(id)` runs with the list gone and the box
@@ -2504,14 +2550,33 @@ func _happy_hop(pokemon: Node) -> void:
 func _pet_pokemon(pokemon: Node) -> void:
 	var species_key := PokemonHome.id_of(pokemon)   # its ID ("..#2")
 	var poke_name := str(pokemon.display_name)
-	GameState.bump_pokemon_flag(species_key, "pets")
-	PokemonAffection.add(species_key, PokemonAffection.GAIN_PET)
 	if _is_asleep(pokemon):
+		# Not a try: no chance rolled, no timer restarted, no affection.
 		_pokemon_say(species_key, poke_name, "You give %s a gentle pat. It's fast asleep..." % poke_name)
 		return
-	SoundManagerScript.play_cry(PokemonHome.species_of(species_key), PET_CRY_PITCH, true)
-	_happy_hop(pokemon)
-	_pokemon_say(species_key, poke_name, str(PET_LINES.pick_random()) % poke_name)
+	PokemonAffection.credit_hours()   # its level right now, hours following included
+	var before := PokemonAffection.points(species_key)
+	var result := PokemonAffection.try_pet(species_key)
+	var lvl := int(result["level"])
+	var band := PokemonAffection.pet_band(lvl)
+	var poke := pokemon as OverworldPokemon
+	var species := PokemonHome.species_of(species_key)
+	if bool(result["ok"]):
+		# 0-1 puts up with it, 2-3 doesn't mind, 4-5 a hop, 6-7 a double hop and hearts.
+		SoundManagerScript.play_cry(species, PET_CRY_PITCH if band >= 2 else 1.0, true)
+		if poke != null and poke.sprite != null:
+			if band == 3:
+				PokemonAffection._hearts(poke, PokemonAffection.HEARTS[6])
+			if band >= 2 and not UITheme.motion_reduced():
+				PokemonAffection.hop(poke, 1 if band == 2 else 2, PET_HOP_PX, PET_HOP_TIME)
+	else:
+		# 0-1 snaps and turns away, 2-3 turns away for a moment, 4-5 just isn't in the mood.
+		if band == 0:
+			SoundManagerScript.play_cry(species, PET_SNAP_CRY_PITCH, true)
+		if band <= 1 and poke != null and is_instance_valid(_player):
+			PokemonAffection.react(poke, band, _player.global_position)
+	_pokemon_say(species_key, poke_name, PokemonAffection.pet_line(lvl, bool(result["ok"]), poke_name))
+	show_affection_hearts(species_key, before)
 
 
 ## Its favourite food (the CSV's Food column) from the bag.
@@ -2522,17 +2587,26 @@ func _feed_pokemon(pokemon: Node) -> void:
 		_pokemon_say(species_key, poke_name, "%s is fast asleep. Best let it rest." % poke_name)
 		return
 	var food := PokemonPrefs.food_of(PokemonHome.species_of(species_key))
-	if food == "":
+	# HUNGER (PokemonCare): only a hungry Pokémon eats.
+	PokemonCare.credit_hunger()
+	if food == "" or not PokemonCare.is_hungry(species_key):
 		_pokemon_say(species_key, poke_name, "%s doesn't seem hungry right now." % poke_name)
+		show_affection_hearts(species_key)
 		return
 	if not GameState.use_food(food):
 		_pokemon_say(species_key, poke_name, "You don't have any %s. It's %s's favourite!" % [food, poke_name])
+		show_affection_hearts(species_key)
 		return
 	GameState.bump_pokemon_flag(species_key, "meals")
+	var before := PokemonAffection.points(species_key)
+	PokemonCare.feed(species_key)
 	PokemonAffection.add(species_key, PokemonAffection.GAIN_FAVOURITE_FOOD)   # it is always its favourite
+	if pokemon is OverworldPokemon:
+		(pokemon as OverworldPokemon).set_unhappy(false)
 	SoundManagerScript.play_cry(PokemonHome.species_of(species_key), PET_CRY_PITCH, true)
 	_happy_hop(pokemon)
 	_pokemon_say(species_key, poke_name, "%s gobbled up the %s! It looks really happy." % [poke_name, food])
+	show_affection_hearts(species_key, before)
 
 
 ## The on-screen keyboard, the same one the trainer name uses. The box steps aside while it
@@ -2591,7 +2665,7 @@ func _send_follower_to_house(follower: Node) -> void:
 	_pokemon_say(species_key, poke_name, "%s headed back to your house. It'll be waiting for you there!" % poke_name)
 
 
-## STAY HERE (in the house): off your heels and living in the house (pottering about, or on
+## STAY HOME (in the house): off your heels and living in the house (pottering about, or on
 ## its bed / in its tank -- PokemonHome.refresh_house decides).
 func _leave_follower_home(follower: Node) -> void:
 	var species_key := PokemonHome.id_of(follower)   # its ID ("..#2")
@@ -2621,7 +2695,7 @@ func _take_home_pokemon_out(pokemon: Node) -> void:
 	_pokemon_say(species_key, poke_name, line)
 
 
-## DISMISS asks first. No comes back to the list.
+## SAY GOODBYE asks first. No comes back to the list.
 func _confirm_dismiss_pokemon(pokemon: Node) -> void:
 	var species_key := PokemonHome.id_of(pokemon)   # its ID ("..#2")
 	var poke_name := str(pokemon.display_name)

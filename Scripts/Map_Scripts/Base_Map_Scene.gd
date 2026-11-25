@@ -324,6 +324,7 @@ func _ready():
 	if PokemonEvolution.has_pending():
 		PokemonEvolution.run_pending(self)
 	_medal_watch()   # MEDALS: announces anything earned since the player last heard (runs on, waits its turn)
+	PokemonCare.watch(self)   # HUNGER, Pokémon leaving, affection level ups (runs on, waits its turn)
 
 	# Stepping outside counts toward the café breakfast reminder calls.
 	if came_outside:
@@ -589,13 +590,13 @@ func _input(event: InputEvent) -> void:
 		return
 	if is_enter and MapManager.wants_message_input():
 		return
+	if _menu_canvas_layer != null:
+		return   # the open menu handles its own Escape (never swallowed by the lock below)
 	# A medal waiting to be shown / an evolution: no menu until it is over.
 	if MapManager.is_hard_locked():
 		get_viewport().set_input_as_handled()
 		return
 	if not _allow_menu_open(is_enter):
-		return
-	if _menu_canvas_layer != null:
 		return
 	get_viewport().set_input_as_handled()
 	_open_menu_overlay()

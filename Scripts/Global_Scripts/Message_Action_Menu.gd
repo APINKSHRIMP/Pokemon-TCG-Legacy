@@ -126,6 +126,11 @@ func cancel() -> void:
 	_finish(false, "")
 
 
+## The left edge of the menu's panel on screen (the affection hearts stop short of it).
+func panel_left() -> float:
+	return _panel.position.x + position.x if _panel != null else INF
+
+
 func selected_id() -> String:
 	return String(_items[_cursor].get("id", "")) if not _items.is_empty() else ""
 

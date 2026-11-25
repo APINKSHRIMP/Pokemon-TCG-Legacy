@@ -88,6 +88,17 @@ func fall_asleep() -> void:
 		_start_sleep_z()
 
 
+## Talked to while asleep (user 2026-11-25): it wakes up, but stays on its bed.
+func wake_up() -> void:
+	if not asleep:
+		return
+	asleep = false
+	animating = true
+	if _sleep_z != null:
+		_sleep_z.free()   # now, not at frame end: its looping tween's callbacks use _sleep_z
+		_sleep_z = null
+
+
 func _template_ready() -> void:
 	add_to_group(GROUP)
 	add_to_group("pokemon")

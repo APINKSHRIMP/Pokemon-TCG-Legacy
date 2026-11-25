@@ -2504,10 +2504,10 @@ var match_prizes_taken: int = 0
 func record_match_result(won: bool) -> void:
 	var prizes := match_prizes_taken
 	match_prizes_taken = 0
-	# AFFECTION: a win with your Pokémon following you, +1 per prize card you took (first, so an
-	# evolution that needs affection sees it).
-	if won and not test_match_mode:
-		PokemonAffection.on_match_won(prizes)
+	# AFFECTION: any match with your Pokémon following you, +1 per prize card you took, and +5
+	# for a win (first, so an evolution that needs affection sees it).
+	if not test_match_mode:
+		PokemonAffection.on_match_result(won, prizes)
 	# EVOLUTION: the DEL "evolve after the next win" test also works off the T-key test match.
 	if won:
 		PokemonEvolution.check_after_win(test_match_mode)
@@ -3140,6 +3140,29 @@ func set_pokemon_flag(species_key: String, key: String, value: Variant) -> void:
 	mine[key] = value
 	all[species_key] = mine
 	progress["pokemon_flags"] = all
+	save_progress()
+
+## Several flags at once, one save (PokemonCare's hunger count runs often).
+func set_pokemon_flag_values(species_key: String, values: Dictionary) -> void:
+	if species_key == "" or values.is_empty():
+		return
+	var all = progress.get("pokemon_flags", {})
+	if not (all is Dictionary):
+		all = {}
+	var mine := get_pokemon_flags(species_key)
+	mine.merge(values, true)
+	all[species_key] = mine
+	progress["pokemon_flags"] = all
+	save_progress()
+
+## Pokémon that left the house while you were out (PokemonCare): [{"name", "species"}], told
+## the next time you are home.
+func get_pokemon_left_notices() -> Array:
+	var notes = progress.get("pokemon_left_notices", [])
+	return (notes as Array).duplicate(true) if notes is Array else []
+
+func set_pokemon_left_notices(notes: Array) -> void:
+	progress["pokemon_left_notices"] = notes.duplicate(true)
 	save_progress()
 
 ## +1 on a count flag ("pets", "meals"); returns the new count.

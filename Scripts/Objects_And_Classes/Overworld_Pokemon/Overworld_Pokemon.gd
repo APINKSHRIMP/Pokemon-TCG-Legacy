@@ -300,8 +300,41 @@ func cry_text() -> String:
 	return display_name + "!"
 
 
+## YOUR Pokémon only (PokemonCare): a bubble with a sad face over its head while it is
+## unhappy (starved past the free hour, or kept up past its bedtime). It stands in for the
+## talk bubble, which stays hidden meanwhile.
+const UNHAPPY_BUBBLE := "res://Image_Assets/Icons/Message_Icons/sad.png"
+## TWEAKABLE: the sad bubble's bob (world px, seconds per bob).
+const UNHAPPY_BOB_PX := 1.5
+const UNHAPPY_BOB_TIME := 0.6
+var _unhappy_bubble: Sprite2D = null
+
+func set_unhappy(on: bool) -> void:
+	if on == (_unhappy_bubble != null):
+		return
+	if not on:
+		_unhappy_bubble.queue_free()
+		_unhappy_bubble = null
+		return
+	if sprite == null or not ResourceLoader.exists(UNHAPPY_BUBBLE):
+		return
+	hide_bubble()
+	_unhappy_bubble = Sprite2D.new()
+	_unhappy_bubble.texture = load(UNHAPPY_BUBBLE)
+	_unhappy_bubble.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_unhappy_bubble.z_as_relative = false
+	_unhappy_bubble.z_index = 100
+	_unhappy_bubble.add_to_group("no_time_grade")   # keeps its own colours at night
+	var y := PokemonAffection.head_y(self) - 6.0
+	_unhappy_bubble.position = Vector2(0, y)
+	add_child(_unhappy_bubble)
+	var tw := _unhappy_bubble.create_tween().set_loops()
+	tw.tween_property(_unhappy_bubble, "position:y", y - UNHAPPY_BOB_PX, UNHAPPY_BOB_TIME).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(_unhappy_bubble, "position:y", y, UNHAPPY_BOB_TIME).set_trans(Tween.TRANS_SINE)
+
+
 func show_bubble() -> void:
-	if not is_interactable():
+	if not is_interactable() or _unhappy_bubble != null:
 		return
 	if _bubble == null:
 		_bubble = Sprite2D.new()

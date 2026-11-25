@@ -1712,6 +1712,7 @@ func _show_catch_message() -> void:
 	# landed fish, on arrival at the rod tip, so the tally and the Field Guide entry
 	# cannot double-count however the player dismisses the box afterwards.
 	GameState.add_fish_caught()
+	PokemonAffection.on_fish_caught()   # AFFECTION: +1 for your follower
 	GameState.record_fish_species(_fish_species)   # MEDALS: Marine Biologist
 	CafeBreakfastCutscene.note_fish_caught()   # the café morning's "are you fishing?" call
 	var reward := FishingData.fish_coin_reward(_fish_species, _fish_rate, _size_roll)

@@ -383,8 +383,8 @@ static func recruit(species_key: String, shiny: bool = false) -> String:
 ## or the same one.
 static func make_follower(species_key: String) -> String:
 	var old := GameState.get_follower()
-	# AFFECTION: the old follower is paid its hours before it stops following; the new one
-	# starts counting from now (time at home does not count).
+	# AFFECTION: everyone is paid their hours so far (following and home hours earn different
+	# amounts) before anyone swaps.
 	PokemonAffection.credit_hours()
 	_ensure_flags(species_key, false)
 	var home := home_pokemon()
@@ -393,8 +393,7 @@ static func make_follower(species_key: String) -> String:
 		home.append(old)
 	GameState.set_home_pokemon(home)
 	GameState.set_follower(species_key)
-	if old != species_key:
-		PokemonAffection.start_clock(species_key)
+	# (Its affection clock carries on: from now its hours count at the following rate.)
 	return old if old != species_key else ""
 
 
@@ -403,9 +402,13 @@ static func make_follower(species_key: String) -> String:
 static func _ensure_flags(species_key: String, shiny: bool) -> void:
 	if species_key == "" or not GameState.get_pokemon_flags(species_key).is_empty():
 		return
+	# The pet timer starts the moment it joins (user 2026-11-25: at level 0 that is 5 hours
+	# before a pet can work), and so does its hunger.
+	var now := PokemonAffection.now_hours()
 	GameState.set_pokemon_flags(species_key, {
 		"species": species_of(species_key), "shiny": shiny, "name": "", "pets": 0, "meals": 0,
-		"affection": 0,
+		"affection": 0, "announced_level": 0, "pet_clock": now, "hunger": 0.0, "hunger_clock": now,
+		"affection_clock": now,
 	})
 
 
@@ -457,6 +460,11 @@ static func release(species_key: String) -> void:
 		GameState.clear_follower()
 	# Back in the wild it is just a wild one again: a friend made later starts afresh.
 	GameState.clear_pokemon_flags(species_key)
+
+
+## Does `species_key` sleep on YOUR bed tonight (not one of the bed spaces)?
+static func sleeps_on_player_bed(_species_key: String) -> bool:
+	return false
 
 
 ## Everyone (active too) with no bed: they leave if you go to sleep.

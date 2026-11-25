@@ -7,7 +7,8 @@ extends RefCounted
 ## Rattata sleeps on a Hay Bale and Pikachu on the Glowing Crystal Rock.
 ##
 ## Columns used (found by header name, any order): "Pokemon" (display name, so every variant
-## sheet -- 019_Rattata, 019_Rattata_Alolan -- shares the row), "Food", "Bed". Other columns
+## sheet -- 019_Rattata, 019_Rattata_Alolan -- shares the row), "Food", "Bed", "Evolution",
+## "Hunger" (hours until it is hungry; blank = never - PokemonCare). Other columns
 ## are notes for the user. Names are matched ignoring case, and a bed may be written as its
 ## name ("Hay Bale") or its sprite file name ("Haybale", "Lily_Pad_Big").
 ##   * Food blank -> no food attracts it (only the debug SUPER FOOD).
@@ -50,6 +51,7 @@ static func _parse() -> Dictionary:
 	var food_col: int = cols.get("food", -1)
 	var bed_col: int = cols.get("bed", -1)
 	var evo_col: int = cols.get("evolution", -1)
+	var hunger_col: int = cols.get("hunger", -1)
 	if name_col < 0:
 		push_error("PokemonPrefs: %s has no 'Pokemon' column" % CSV_PATH)
 		return out
@@ -64,6 +66,7 @@ static func _parse() -> Dictionary:
 			"food": line[food_col].strip_edges() if food_col >= 0 and line.size() > food_col else "",
 			"bed": line[bed_col].strip_edges() if bed_col >= 0 and line.size() > bed_col else "",
 			"evolution": line[evo_col].strip_edges() if evo_col >= 0 and line.size() > evo_col else "",
+			"hunger": line[hunger_col].strip_edges() if hunger_col >= 0 and line.size() > hunger_col else "",
 		}
 	return out
 
@@ -93,6 +96,12 @@ static func bed_of(species_key: String) -> String:
 ## The CSV's Evolution cell for this species, as written ("" for none). PokemonEvolution reads it.
 static func evolution_of(species_key: String) -> String:
 	return str(_row(species_key).get("evolution", ""))
+
+
+## The CSV's Hunger cell: hours until this species is hungry. 0 = blank / not a number = never.
+static func hunger_of(species_key: String) -> float:
+	var cell := str(_row(species_key).get("hunger", ""))
+	return maxf(cell.to_float(), 0.0) if cell.is_valid_float() else 0.0
 
 
 ## Every food any Pokémon in the CSV likes, in first-seen order.

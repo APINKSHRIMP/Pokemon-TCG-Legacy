@@ -15,20 +15,119 @@ extends RefCounted
 ##   level 6   jumps up and down with hearts - it loves you lots
 ##   level 7   jumps AND wiggles, with hearts - your best friend, ready for anything
 ##
-## Where points come from (only the FOLLOWER gains from time and matches):
-##   * GAIN_PER_HOUR for every in-game hour it spends following you (the clock; the night you
-##     sleep through does not count). Credited whenever a map loads, and when it stops following.
-##   * GAIN_PER_PRIZE for every prize card you take in a match you WIN with it following you.
-##   * GAIN_PET when you pet it, GAIN_FAVOURITE_FOOD when you feed it its favourite food.
+## Where points come from (user 2026-11-25; matches and fish only count for the FOLLOWER):
+##   * GAIN_PER_HOUR for every in-game hour it spends following you, GAIN_PER_HOUR_HOME for
+##     every hour it spends at home (the clock - matches, fishing, anything that moves it; the
+##     night you sleep through does NOT count). Credited by the care watch on every map, and
+##     whenever it starts or stops following.
+##   * GAIN_PER_NIGHT_IN_BED for every night it sleeps in a bed (the bedroom's _do_sleep).
+##   * GAIN_PER_PRIZE for every prize card you take in a match (won or lost) with it following
+##     you, and GAIN_PER_WIN for a win.
+##   * GAIN_PER_FISH for every fish you catch with it following you.
+##   * GAIN_PET when it ACCEPTS a pet (a chance - PET CHANCE below); LOSS_FAILED_PET when it
+##     doesn't. GAIN_FAVOURITE_FOOD when you feed it (always its favourite food).
+##   * Losses for hunger and being ignored: PokemonCare.
 ## Some Pokémon will evolve at a level (PokemonEvolution - the CSV's Evolution column).
 
 # ---- TWEAKABLES -------------------------------------------------------------
-const MAX := 196
-const LEVEL_SIZE := 28          ## 196 / 28 = 7: levels 0..7 (7 only at the very top)
-const GAIN_PER_HOUR := 1
+const MAX := 700
+const LEVEL_SIZE := 100         ## 700 / 100 = 7: levels 0..7 (7 only at the very top)
+const GAIN_PER_HOUR := 2        ## following you
+const GAIN_PER_HOUR_HOME := 1   ## living at home
+const GAIN_PER_NIGHT_IN_BED := 10
 const GAIN_PER_PRIZE := 1
+const GAIN_PER_WIN := 5
+const GAIN_PER_FISH := 1
 const GAIN_PET := 2
-const GAIN_FAVOURITE_FOOD := 5
+const LOSS_FAILED_PET := 1
+const GAIN_FAVOURITE_FOOD := 10
+
+## PET CHANCE (user 2026-11-25): a pet can be tried any time, but whether it is accepted
+## depends on its level and the in-game hours since the LAST TRY (pass or fail - every try
+## restarts the timer; the hours you sleep through count, it's real time apart).
+##   * levels 0-5: for PET_LOCKOUT_HOURS[level] hours after a try, every try fails. After that
+##     it starts at PET_START_CHANCE and climbs PET_CHANCE_PER_HOUR per hour (smoothly, per
+##     minute) to a sure thing: level 0 = 5h locked, 50% at 5h, 60% at 6h ... 100% at 10h;
+##     level 5 = never locked, 50% straight away, 100% after 5h.
+##   * level 6 and 7 (from PET_ALWAYS_LEVEL): it always works - it loves you already.
+##   * just gone up to a new highest level (flag "pet_free"): the next try works, then the
+##     timer runs again from that try.
+##   * a NEW Pokémon's timer starts when it joins you (PokemonHome), so a level 0 one can't be
+##     pet for its first 5 hours. (No "pet_clock" at all - only an old save - counts as never tried.)
+## Only an accepted pet gives GAIN_PET (and counts in its "pets" flag).
+const PET_LOCKOUT_HOURS := [5.0, 4.0, 3.0, 2.0, 1.0, 0.0]   ## per level 0..5
+const PET_START_CHANCE := 0.5
+const PET_CHANCE_PER_HOUR := 0.1
+const PET_ALWAYS_LEVEL := 6
+## What it says when you wake it up, per level 0..7 (%s = its name).
+const WAKE_LINES := [
+	["%s was fast asleep! It glares at you for waking it up.", "%s jolts awake and snaps at you. Why did you wake it up?!"],
+	["%s wakes with a start. It hated being woken up!", "%s grumbles awake. It wasn't happy about that."],
+	["%s wakes up groggily... It doesn't look pleased.", "%s blinks awake and eyes you suspiciously."],
+	["%s yawns and slowly wakes up. It doesn't seem to mind too much.", "%s stirs awake. It seems okay with it."],
+	["%s stretches and wakes up. It doesn't mind being woken up.", "%s wakes up with a little yawn and looks at you."],
+	["%s wakes up and stretches happily. It seems pleased to see you!", "%s opens its eyes and perks right up when it sees you."],
+	["%s wakes up and beams at you. It's glad you woke it up!", "%s wakes up and nuzzles you straight away!"],
+	["%s springs awake, overjoyed to see you!", "%s wakes up and jumps for joy. It missed you!"],
+]
+## The pet lines come in four bands of two levels: 0-1, 2-3, 4-5, 6-7 (one picked at random,
+## %s = its name). Bands 6-7 can't fail, so they have no "fail" lines. Say "pet", never
+## "petting" / "petted" (user's rule).
+const PET_LINES := {
+	"fail": [
+		[   # levels 0-1: won't have it
+			"%s jerks away from your hand!",
+			"%s snaps at your fingers! It doesn't want to be touched.",
+			"%s backs off and keeps its distance.",
+			"%s dodges your hand and glares at you.",
+			"%s shuffles out of reach. It isn't having any of it.",
+		],
+		[   # levels 2-3: doesn't trust you yet
+			"%s steps back, watching you closely. It doesn't trust you yet.",
+			"%s turns away. It isn't ready for that yet.",
+			"%s edges away from your hand, keeping an eye on you.",
+			"%s isn't quite sure about you yet and moves out of reach.",
+			"%s ducks under your hand and watches you warily.",
+		],
+		[   # levels 4-5: had enough for now
+			"%s has had plenty of attention for now.",
+			"%s wriggles away. It's had enough pets for the moment.",
+			"%s looks a bit crowded. Maybe give it some space.",
+			"%s doesn't want a pet right now.",
+			"%s feels a little smothered. Maybe later!",
+		],
+	],
+	"ok": [
+		[   # levels 0-1: puts up with it
+			"%s grudgingly lets you give it a pet.",
+			"%s winces a little as you touch it... but it puts up with it.",
+			"%s tenses up, but lets you give it a quick pet.",
+			"%s tolerates the pet. It doesn't seem to enjoy it much.",
+			"%s tentatively lets you reach out. It isn't sure about this...",
+		],
+		[   # levels 2-3: doesn't mind
+			"%s lets you give it a pet. It doesn't seem to mind.",
+			"%s accepts the pet, though it doesn't lean into it.",
+			"%s seems okay with that.",
+			"%s stays still for the pet. It almost seems to enjoy it!",
+			"%s doesn't pull away. It seems to be warming up to you.",
+		],
+		[   # levels 4-5: enjoyed it
+			"%s loved that! ...but it seems to have had enough for now.",
+			"%s enjoyed the pet... just about!",
+			"%s seems to smile as you give it a pet.",
+			"%s leans into your hand. It's feeling closer to you.",
+			"%s closes its eyes happily. It really liked that!",
+		],
+		[   # levels 6-7: loves it
+			"%s leans right into your hand. It loves it!",
+			"%s nuzzles up against you. It can't get enough!",
+			"%s snuggles closer. It didn't want you to stop!",
+			"%s is your best bud! It loves every pet.",
+			"%s presses happily against your hand. It loves you!",
+		],
+	],
+}
 
 ## Level 0 / 1: how long it looks away before turning back (seconds).
 const LOOK_AWAY_TIME := [1.1, 0.45]
@@ -111,12 +210,75 @@ static func level(species_key: String) -> int:
 
 ## Adds (or with a negative amount, takes) points, clamped to 0..MAX. Only for Pokémon you own.
 ## Returns the new total.
+## A NEW HIGHEST level (user 2026-11-25) is announced (PokemonCare's LEVEL_UP_LINES - flag
+## "level_up") and makes the next pet a sure thing (flag "pet_free"). Losing a level (hunger)
+## and getting it back again is not new, so it isn't announced twice.
 static func add(species_key: String, amount: int) -> int:
-	if species_key == "" or GameState.get_pokemon_flags(species_key).is_empty():
+	var flags := GameState.get_pokemon_flags(species_key)
+	if species_key == "" or flags.is_empty():
 		return 0
-	var p := clampi(points(species_key) + amount, 0, MAX)
-	GameState.set_pokemon_flag(species_key, "affection", p)
+	var before := points(species_key)
+	var p := clampi(before + amount, 0, MAX)
+	var changes := {"affection": p}
+	var lvl := level_of_points(p)
+	if lvl > int(flags.get("announced_level", level_of_points(before))):
+		changes["announced_level"] = lvl
+		changes["level_up"] = lvl
+		changes["pet_free"] = true
+	GameState.set_pokemon_flag_values(species_key, changes)
 	return p
+
+
+# ---- a pet (see PET CHANCE above) --------------------------------------------------
+
+## The chance (0..1) a pet would be accepted right now.
+static func pet_chance(species_key: String) -> float:
+	var lvl := level(species_key)
+	if lvl >= PET_ALWAYS_LEVEL:
+		return 1.0
+	var flags := GameState.get_pokemon_flags(species_key)
+	if bool(flags.get("pet_free", false)):
+		return 1.0   # it has just gone up a level
+	if not flags.has("pet_clock"):
+		return 1.0   # never tried
+	var since := now_hours() - float(flags["pet_clock"])
+	if since < 0.0:
+		return 1.0   # the clock went backwards (a debug time jump): treat it as long ago
+	var lock: float = PET_LOCKOUT_HOURS[mini(lvl, PET_LOCKOUT_HOURS.size() - 1)]
+	if since < lock:
+		return 0.0
+	return clampf(PET_START_CHANCE + PET_CHANCE_PER_HOUR * (since - lock), 0.0, 1.0)
+
+
+## Tries a pet: rolls pet_chance, restarts the timer (pass or fail), and on a pass gives
+## GAIN_PET and counts it. Returns {"ok": accepted, "level": the level it was AT when you tried}.
+static func try_pet(species_key: String) -> Dictionary:
+	var lvl := level(species_key)
+	var ok := randf() < pet_chance(species_key)
+	GameState.set_pokemon_flag_values(species_key, {"pet_clock": now_hours(), "pet_free": false})
+	if ok:
+		GameState.bump_pokemon_flag(species_key, "pets")
+		add(species_key, GAIN_PET)
+	else:
+		add(species_key, -LOSS_FAILED_PET)
+	return {"ok": ok, "level": lvl}
+
+
+## 0-3: which two-level band `lvl` is in (0-1, 2-3, 4-5, 6-7).
+static func pet_band(lvl: int) -> int:
+	return clampi(lvl / 2, 0, 3)
+
+
+## Talking to it while it sleeps wakes it up (user 2026-11-25): one of its level's lines.
+static func wake_line(lvl: int, poke_name: String) -> String:
+	var lines: Array = WAKE_LINES[clampi(lvl, 0, WAKE_LINES.size() - 1)]
+	return str(lines.pick_random()) % poke_name
+
+
+static func pet_line(lvl: int, ok: bool, poke_name: String) -> String:
+	var bands: Array = PET_LINES["ok" if ok else "fail"]
+	var lines: Array = bands[mini(pet_band(lvl), bands.size() - 1)]
+	return str(lines.pick_random()) % poke_name
 
 
 static func set_points(species_key: String, p: int) -> void:
@@ -132,46 +294,73 @@ static func now_hours() -> float:
 	return float(GameState.get_date() - 1) * 24.0 + GameState.clock_hours()
 
 
-## Starts counting hours for `species_key` from now (it has just started following you,
-## or you have just woken up). Its flag "affection_clock" holds the hour last credited.
+## Starts counting hours for `species_key` from now (it has just joined you, or you have
+## just woken up). Its flag "affection_clock" holds the hour last credited.
 static func start_clock(species_key: String) -> void:
 	if species_key == "" or GameState.get_pokemon_flags(species_key).is_empty():
 		return
 	GameState.set_pokemon_flag(species_key, "affection_clock", now_hours())
 
 
-## Credits the follower with every WHOLE hour since it was last credited; the part-hour is
-## kept for next time. Safe to call as often as you like.
+## Every clock starts again from now (after the night: the night is not counted).
+static func start_all_clocks() -> void:
+	for id in PokemonHome.roster():
+		start_clock(str(id))
+
+
+## Credits every Pokémon you own with every WHOLE hour since it was last credited -
+## GAIN_PER_HOUR following you, GAIN_PER_HOUR_HOME at home; the part-hour is kept for next
+## time. Safe to call as often as you like (it writes only when a whole hour has gone by).
 static func credit_hours() -> void:
 	var follower := GameState.get_follower()
-	if follower == "":
-		return
-	var flags := GameState.get_pokemon_flags(follower)
-	if flags.is_empty():
-		return
-	if not flags.has("affection_clock"):
-		start_clock(follower)
-		return
-	var since := float(flags["affection_clock"])
-	var whole := int(floor(now_hours() - since))
-	if whole <= 0:
-		if whole < 0:
-			start_clock(follower)   # the clock went backwards (a debug time jump): start again
-		return
-	add(follower, whole * GAIN_PER_HOUR)
-	GameState.set_pokemon_flag(follower, "affection_clock", since + float(whole))
+	var now := now_hours()
+	for id in PokemonHome.roster():
+		var species_key := str(id)
+		var flags := GameState.get_pokemon_flags(species_key)
+		if flags.is_empty():
+			continue
+		if not flags.has("affection_clock"):
+			start_clock(species_key)
+			continue
+		var since := float(flags["affection_clock"])
+		var whole := int(floor(now - since))
+		if whole <= 0:
+			if whole < 0:
+				start_clock(species_key)   # the clock went backwards (a debug time jump): start again
+			continue
+		GameState.set_pokemon_flag(species_key, "affection_clock", since + float(whole))
+		add(species_key, whole * (GAIN_PER_HOUR if species_key == follower else GAIN_PER_HOUR_HOME))
 
 
-## A match you WON with it following you: GAIN_PER_PRIZE per prize card you took.
-## Also counts the win on it (flag "wins": matches won with it following you - kept for the
-## "win X battles" evolutions).
-static func on_match_won(prizes_taken: int) -> void:
+## Bedtime: GAIN_PER_NIGHT_IN_BED for everyone sleeping in a bed tonight (anyone without one
+## has already left - MapManager.confirm_sleep).
+static func credit_night_in_bed() -> void:
+	var beds := PokemonHome.assignment()
+	for id in PokemonHome.roster():
+		if beds.has(id) or PokemonHome.sleeps_on_player_bed(str(id)):
+			add(str(id), GAIN_PER_NIGHT_IN_BED)
+
+
+## A match with it following you, won or lost: GAIN_PER_PRIZE per prize card you took, and
+## GAIN_PER_WIN for a win. A win is also counted on it (flag "wins": matches won with it
+## following you - kept for the "win X battles" evolutions).
+static func on_match_result(won: bool, prizes_taken: int) -> void:
 	var follower := GameState.get_follower()
 	if follower == "" or GameState.get_pokemon_flags(follower).is_empty():
 		return
-	GameState.bump_pokemon_flag(follower, "wins")
-	if prizes_taken > 0:
-		add(follower, prizes_taken * GAIN_PER_PRIZE)
+	var gain := maxi(prizes_taken, 0) * GAIN_PER_PRIZE
+	if won:
+		GameState.bump_pokemon_flag(follower, "wins")
+		gain += GAIN_PER_WIN
+	if gain > 0:
+		add(follower, gain)
+
+
+## A fish caught with it following you.
+static func on_fish_caught() -> void:
+	var follower := GameState.get_follower()
+	if follower != "" and not GameState.get_pokemon_flags(follower).is_empty():
+		add(follower, GAIN_PER_FISH)
 
 
 # ---- talking to it -------------------------------------------------------------
