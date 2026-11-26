@@ -52,6 +52,7 @@ const FONT_SIZE    : int   = 21
 const TRACK_EM     : float = 0.11    # letter spacing, the name pill's
 const IN_TIME      : float = 0.12    # fade/rise in
 const IN_RISE      : float = 8.0
+const DISABLED_ALPHA : float = 0.4   # an item with "disabled": true is drawn this faint
 
 var _box: DynamicMessageBox = null
 var _items: Array = []
@@ -67,7 +68,8 @@ var _done: bool = false
 
 
 ## Opens the menu on `box` (which must be in the tree and showing). `items` are
-## {"id": String, "label": String}; labels are cased by the theme (buttons are caps).
+## {"id": String, "label": String, "disabled": bool (optional: greyed out, still choosable)};
+## labels are cased by the theme (buttons are caps).
 static func open(box: DynamicMessageBox, items: Array, start_index: int = 0) -> MessageActionMenu:
 	var m := MessageActionMenu.new()
 	m.name = "MessageActionMenu"
@@ -242,6 +244,8 @@ func _set_cursor(i: int, _animate: bool = true) -> void:
 		else:
 			lbl.add_theme_color_override("font_color", _ui().col("field_fg"))
 			lbl.remove_theme_color_override("font_shadow_color")
+		# A "disabled" item is greyed out (still choosable: the caller explains why it can't).
+		lbl.modulate.a = DISABLED_ALPHA if bool(_items[j].get("disabled", false)) else 1.0
 	# The selection ring - the same cursor the box's Yes / No buttons wear.
 	if _ring != null and is_instance_valid(_ring):
 		remove_child(_ring)

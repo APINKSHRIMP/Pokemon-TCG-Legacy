@@ -3,14 +3,21 @@ extends RefCounted
 
 ## POKÉMON AT HOME (2026-11-24).
 ##
-## The roster: one ACTIVE follower (GameState.get_follower) plus any number of INACTIVE ones
-## living in the house (GameState.get_home_pokemon, oldest first).
-##   * Befriending a new Pokémon never asks you to dismiss anyone: the old follower just goes
-##     home and becomes inactive.
+## The roster: one ACTIVE follower (GameState.get_follower) plus the INACTIVE ones living in
+## the house (GameState.get_home_pokemon, oldest first).
+## BEDS DECIDE WHO CAN LIVE AT HOME (user 2026-11-26):
+##   * A Pokémon can only go home (SEND HOME outside, STAY HOME inside, or being swapped out /
+##     replaced by a new recruit) if it has been in your house before (flag "visited_home",
+##     set when it walks in with you - has_visited_home) AND a bed is free for it
+##     (can_live_at_home). Otherwise it stays with you, or - replaced by a new partner, after a
+##     warning (new_partner_warning) - goes back to the wild.
+##   * So at most home_slots (3) live at home, plus one level PLAYER_BED_LEVEL+ Pokémon on
+##     YOUR bed (player_bed_holder: the follower first, else the first one at home), plus the
+##     follower: 4, or 5 with a high-affection one.
+##   * Going to sleep still warns about every Pokémon (active too) with no bed: they leave
+##     while you sleep (a level 6 one that fell to 5 loses your bed and needs a normal one).
 ##   * In the house, talk to your follower to leave it at home; talk to a Pokémon at home to
 ##     swap it with your follower.
-##   * Beds are NOT needed until bedtime. Going to sleep warns about every Pokémon (active
-##     too) with no bed: they leave while you sleep.
 ##   * Changing a bed that an INACTIVE Pokémon sleeps in warns first, and Yes dismisses it.
 ##     Changing your active follower's bed never warns (bedtime does).
 ##
@@ -19,9 +26,11 @@ extends RefCounted
 ## which bed is WORKED OUT, never saved: inactive Pokémon in order, then the follower, each
 ## takes the first free space holding its kind of bed.
 ##
-## Where they are: by day the inactive ones wander downstairs (HOME_WANDER_SCENE); at night
-## the ones with a bed sleep on it in the bedroom, and the bedless ones stay downstairs. A
-## Pokémon whose bed is a water tank is always in its tank.
+## Where they are (SLEEP, user 2026-11-25): during ITS sleep slot (the CSV's Sleeps column,
+## PokemonCare.is_sleep_time) a Pokémon with a bed sleeps on it in the bedroom (one with no bed
+## dozes downstairs); the rest of the time it wanders downstairs - so a night Pokémon wanders
+## downstairs all night and sleeps through the day. A Pokémon whose bed is a water tank is
+## always in its tank.
 ##
 ## Save: GameState home_pokemon / bed_slots / spare_beds (see Game_State_Script.gd).
 ##
@@ -259,6 +268,8 @@ static func assignment(slot_list: Variant = null, home: Variant = null, follower
 	var out := {}
 	var any_bed := any_bed_fits()
 	for species_key in roster(home, follower):
+		if sleeps_on_player_bed(str(species_key), home, follower):
+			continue   # on your bed tonight: it leaves the bed spaces to the others
 		var kind := PokemonPrefs.bed_of(species_of(str(species_key)))
 		for i in list.size():
 			if not taken.has(i) and (str(list[i]) == kind or (any_bed and str(list[i]) != "")):
@@ -388,12 +399,29 @@ static func make_follower(species_key: String) -> String:
 	PokemonAffection.credit_hours()
 	_ensure_flags(species_key, false)
 	var home := home_pokemon()
+	var was_home := species_key in home
 	home.erase(species_key)
+	var old_goes_home := false
 	if old != "" and old != species_key and old not in home:
-		home.append(old)
+		# BEDS (user 2026-11-26): the old follower only goes home if it knows the way and a
+		# bed is free for it - otherwise it goes back to the wild (the caller warned first).
+		var home_after := home.duplicate()
+		home_after.append(old)
+		old_goes_home = can_live_at_home(old, home_after, species_key)
+		if old_goes_home:
+			home = home_after
 	GameState.set_home_pokemon(home)
+	if old != "" and old != species_key and not old_goes_home:
+		GameState.clear_pokemon_flags(old)   # (release(): it's a wild one again)
+	elif old_goes_home and in_house(MapManager._map_scene_path):
+		place_here(old)   # it stays on this floor, where it was
 	GameState.set_follower(species_key)
+	if was_home:
+		GameState.set_pokemon_flag(species_key, "visited_home", true)
+	forget_place(species_key)
 	# (Its affection clock carries on: from now its hours count at the following rate.)
+	if old != species_key:
+		PokemonCare.note_following(species_key)   # SLEEP: kept-up hours count from now
 	return old if old != species_key else ""
 
 
@@ -446,12 +474,15 @@ static func leave_at_home() -> void:
 		home.append(follower)
 	GameState.set_home_pokemon(home)
 	GameState.clear_follower()
+	if in_house(MapManager._map_scene_path):
+		place_here(follower)   # STAY HOME: it starts wandering this floor, where you are
 
 
 ## A Pokémon goes back to the wild: off your heels and out of the house.
 static func release(species_key: String) -> void:
 	if species_key == "":
 		return
+	forget_place(species_key)
 	var home := home_pokemon()
 	if species_key in home:
 		home.erase(species_key)
@@ -462,9 +493,96 @@ static func release(species_key: String) -> void:
 	GameState.clear_pokemon_flags(species_key)
 
 
-## Does `species_key` sleep on YOUR bed tonight (not one of the bed spaces)?
-static func sleeps_on_player_bed(_species_key: String) -> bool:
-	return false
+## TWEAKABLE (user 2026-11-26, was 7): from this affection level a Pokémon can sleep on your
+## own bed, at its foot, so it needs no bed space - ONE Pokémon at a time (player_bed_holder).
+## Level 6 to the top of 7 is 200 points, so it has 100 points of slack before it drops back.
+const PLAYER_BED_LEVEL := 6
+
+
+## Who sleeps on YOUR bed (the foot of it): your follower if it is PLAYER_BED_LEVEL+, else the
+## first one living at home that is (user 2026-11-26: home ones count too). "" for nobody.
+## `home` / `follower` = a what-if roster (null = as it is now).
+static func player_bed_holder(home: Variant = null, follower: Variant = null) -> String:
+	var active := str(follower) if follower != null else GameState.get_follower()
+	if active != "" and PokemonAffection.level(active) >= PLAYER_BED_LEVEL:
+		return active
+	for id in (home if home is Array else home_pokemon()):
+		if str(id) != active and PokemonAffection.level(str(id)) >= PLAYER_BED_LEVEL:
+			return str(id)
+	return ""
+
+
+## Does `species_key` sleep on YOUR bed (not one of the bed spaces)?
+static func sleeps_on_player_bed(species_key: String, home: Variant = null, follower: Variant = null) -> bool:
+	return species_key != "" and species_key == player_bed_holder(home, follower)
+
+
+## Has it been inside your house (so it knows the way home)? Set when it walks in with you
+## (note_in_house); anyone already living there has, of course.
+static func has_visited_home(species_key: String) -> bool:
+	return species_key in home_pokemon() \
+			or bool(GameState.get_pokemon_flags(species_key).get("visited_home", false))
+
+
+## It is in the house with you: from now on it knows the way home.
+static func note_in_house(species_key: String) -> void:
+	if species_key != "" and not GameState.get_pokemon_flags(species_key).is_empty() \
+			and not has_visited_home(species_key):
+		GameState.set_pokemon_flag(species_key, "visited_home", true)
+
+
+## Would `species_key` have somewhere to sleep with `home` living at home and `follower`
+## following? (A bed space, or your bed.) Its having visited is NOT checked here.
+static func has_bed_in(species_key: String, home: Array, follower: String) -> bool:
+	return sleeps_on_player_bed(species_key, home, follower) \
+			or assignment(null, home, follower).has(species_key)
+
+
+## Can `species_key` live at home in that what-if roster: it knows the way AND has a bed.
+static func can_live_at_home(species_key: String, home: Array, follower: String) -> bool:
+	return has_visited_home(species_key) and has_bed_in(species_key, home, follower)
+
+
+## Why your follower can't go home right now ("" = it can): "lost" (never been to your
+## house) or "no_bed". `new_follower` = who would be following instead ("" = nobody).
+static func cant_go_home_reason(new_follower: String = "") -> String:
+	var follower := GameState.get_follower()
+	if follower == "":
+		return ""
+	if not has_visited_home(follower):
+		return "lost"
+	var home := home_pokemon()
+	home.erase(new_follower)
+	if follower not in home:
+		home.append(follower)
+	return "" if has_bed_in(follower, home, new_follower) else "no_bed"
+
+
+## TWEAKABLE: the lines for a Pokémon that can't go home (%s = its name).
+const LOST_LINE := "You can't send %s home -- it doesn't know where you live! Take it to your house first."
+const NO_BED_LINE := "%s has no bed in your room, so it won't stick around at home."
+## When a new partner would replace a follower that can't go home (%s = its name).
+const LOST_PARTNER_LINE := "But %s doesn't know where you live, so it would wander back to the wild!"
+const NO_BED_PARTNER_LINE := "But there's no bed for %s at home, so it would go back to the wild!"
+
+
+## The line for SEND HOME / STAY HOME that doesn't work ("" = it does).
+static func cant_go_home_line(reason: String, poke_name: String) -> String:
+	match reason:
+		"lost": return LOST_LINE % poke_name
+		"no_bed": return NO_BED_LINE % poke_name
+	return ""
+
+
+## A NEW partner (recruit) or one from home (FOLLOW ME, `new_follower` = its ID) is about to
+## replace your follower: the warning if the follower can't go home and would leave for good,
+## "" if it can (or there's no follower).
+static func new_partner_warning(new_follower: String = "") -> String:
+	var follower := GameState.get_follower()
+	match cant_go_home_reason(new_follower):
+		"lost": return LOST_PARTNER_LINE % name_of(follower)
+		"no_bed": return NO_BED_PARTNER_LINE % name_of(follower)
+	return ""
 
 
 ## Everyone (active too) with no bed: they leave if you go to sleep.
@@ -472,7 +590,7 @@ static func homeless_at_bedtime() -> Array:
 	var a := assignment()
 	var out: Array = []
 	for species_key in roster():
-		if not a.has(species_key):
+		if not a.has(species_key) and not sleeps_on_player_bed(str(species_key)):
 			out.append(species_key)
 	return out
 
@@ -505,9 +623,82 @@ static func names_text(species_list: Array) -> String:
 
 
 # ---- putting them on the map --------------------------------------------------------
+#
+# THE HOUSE LAYOUT (user 2026-11-26): each time you walk in from outside (or load a save in
+# the house, or wake up to a new day) every home Pokémon that's up and about is given a
+# RANDOM floor (downstairs or upstairs) and a random free spot on it - so they're never lined
+# up by the door. Going up and down the stairs keeps the layout: each floor shows the ones on
+# it, where they had wandered to (the watch notes their positions every POLL_TIME).
+
+## "down" / "up".
+const FLOOR_DOWN := "down"
+const FLOOR_UP := "up"
+## TWEAKABLE: chance (0-1) a Pokémon is put UPSTAIRS on a fresh entry.
+const UPSTAIRS_CHANCE := 0.5
+## TWEAKABLE: a random spot is at least this far (world px) from the player and from each other.
+const SPAWN_CLEAR_OF_PLAYER := 28.0
+const SPAWN_CLEAR_OF_OTHERS := 22.0
+## TWEAKABLE: the box (world px, around its feet) that must be clear of furniture and walls.
+const SPAWN_BODY := Vector2(14, 10)
+
+## ID -> {"floor": FLOOR_*, "pos": Vector2 or null (null = pick a spot when that floor loads),
+## "near_player": bool}. Lives only while you're in the house.
+static var _layout: Dictionary = {}
+## The date the layout was made (a new day = a new layout).
+static var _layout_date: int = -1
+## A fresh entry: anyone not in the layout yet gets a random floor (else: this floor).
+static var _layout_fresh: bool = false
+
+
+## MapManager.initialise, before refresh_house: `previous_scene` = the map you came from.
+static func note_house_entry(previous_scene: String) -> void:
+	if not in_house(previous_scene) or GameState.get_date() != _layout_date:
+		_layout.clear()
+		_layout_date = GameState.get_date()
+		_layout_fresh = true
+
+
+static func floor_of_scene(scene_path: String) -> String:
+	if BEDROOM_SCENE in scene_path:
+		return FLOOR_UP
+	if HOME_WANDER_SCENE in scene_path:
+		return FLOOR_DOWN
+	return ""
+
+
+## It has just come home on THIS floor (left at home / swapped out): it starts by you.
+static func place_here(species_key: String) -> void:
+	var here := floor_of_scene(MapManager._map_scene_path)
+	if here == "":
+		return
+	var at: Variant = null
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null:
+		for node in tree.get_nodes_in_group(PokemonFollower.GROUP):
+			if id_of(node) == species_key:
+				at = (node as Node2D).global_position
+	_layout[species_key] = {"floor": here, "pos": at, "near_player": at == null}
+
+
+static func forget_place(species_key: String) -> void:
+	_layout.erase(species_key)
+
+
+## The watch: where each wanderer on this floor is now, so the stairs don't reset them.
+static func note_positions(tree: SceneTree) -> void:
+	var here := floor_of_scene(MapManager._map_scene_path)
+	if here == "":
+		return
+	for node in tree.get_nodes_in_group(PokemonHomeWanderer.GROUP):
+		var w := node as PokemonHomeWanderer
+		if w == null or w.resting or w._is_gone or w.pokemon_id == "":
+			continue
+		_layout[w.pokemon_id] = {"floor": here, "pos": w.global_position, "near_player": false}
+
 
 ## Re-places every home Pokémon on `map_root` for the scene `scene_path` and the time of day:
-## wanderers downstairs, sleepers / tank swimmers on the bedroom's bed spots.
+## wanderers on the floor the layout gives them, sleepers / tank swimmers on the bedroom's bed
+## spots (or the foot of your bed).
 static func refresh_house(map_root: Node, scene_path: String = "") -> void:
 	if map_root == null or not map_root.is_inside_tree():
 		return
@@ -515,70 +706,161 @@ static func refresh_house(map_root: Node, scene_path: String = "") -> void:
 		scene_path = MapManager._map_scene_path
 	for old in map_root.get_tree().get_nodes_in_group(PokemonHomeWanderer.GROUP):
 		(old as OverworldPokemon).despawn()
-	var night := GameState.is_night_time()
+	var here := floor_of_scene(scene_path)
+	if here == "":
+		return
 	var a := assignment()
 	var list := slots()
-	if HOME_WANDER_SCENE in scene_path:
-		_spawn_wanderers(map_root, a, list, night)
-	elif BEDROOM_SCENE in scene_path:
-		var spots := {}
+	var spots := {}
+	if here == FLOOR_UP:
 		for spot in map_root.get_tree().get_nodes_in_group(PokemonBedSpot.GROUP):
 			spots[(spot as PokemonBedSpot).slot] = spot
 			(spot as PokemonBedSpot).refresh()
-		for species_key in home_pokemon():
-			if not a.has(species_key) or not spots.has(int(a[species_key])):
-				continue
-			var water := is_water_bed(str(list[int(a[species_key])]))
-			if not (water or night):
-				continue
-			if not ResourceLoader.exists(OverworldPokemonData.sheet_path(species_of(str(species_key)))):
-				continue
-			var spot: PokemonBedSpot = spots[int(a[species_key])]
-			PokemonHomeWanderer.spawn_resting(map_root, str(species_key), spot.seat_global(), night)
+	var taken: Array = []   # spots handed out this refresh
+	for id in home_pokemon():
+		var species_key := str(id)
+		if not ResourceLoader.exists(OverworldPokemonData.sheet_path(species_of(species_key))):
+			continue
+		var asleep := PokemonCare.is_sleep_time(species_key)
+		var water := a.has(species_key) and is_water_bed(str(list[int(a[species_key])]))
+		# On a bed: the bedroom only.
+		if water or (asleep and a.has(species_key)):
+			if here == FLOOR_UP and spots.has(int(a[species_key])):
+				var spot: PokemonBedSpot = spots[int(a[species_key])]
+				PokemonHomeWanderer.spawn_resting(map_root, species_key, spot.seat_global(), asleep)
+			continue
+		if asleep and sleeps_on_player_bed(species_key):
+			if here == FLOOR_UP and map_root.has_method("bed_foot_global"):
+				var w := PokemonHomeWanderer.spawn_resting(map_root, species_key, map_root.call("bed_foot_global"), true)
+				w.z_index = PokemonHomeWanderer.ON_PLAYER_BED_Z
+			continue
+		# Up and about (or dozing where it is, with no bed): wherever the layout puts it.
+		if not _layout.has(species_key):
+			var pick := here
+			if _layout_fresh:
+				pick = FLOOR_UP if randf() < UPSTAIRS_CHANCE else FLOOR_DOWN
+			_layout[species_key] = {"floor": pick, "pos": null, "near_player": not _layout_fresh}
+		var place: Dictionary = _layout[species_key]
+		if str(place["floor"]) != here:
+			continue
+		var at: Variant = place.get("pos")
+		if not (at is Vector2):
+			at = _near_player(map_root, taken.size()) if bool(place.get("near_player", false)) \
+					else _random_spot(map_root, taken)
+			place["pos"] = at
+		taken.append(at)
+		if asleep:
+			PokemonHomeWanderer.spawn_resting(map_root, species_key, at, true)   # no bed: dozes here
+		else:
+			PokemonHomeWanderer.spawn(map_root, species_key, at)
+	_layout_fresh = false
 
 
-## TWEAKABLE: how far (world px) from the player toward the room's middle home Pokémon appear
-## when the map has no "home_pokemon_spot" markers.
+## TWEAKABLE: how far (world px) from the player toward the room's middle a Pokémon you've
+## just left at home appears (when it has no follower spot to start from).
 const WANDER_START_STEP := 48.0
 
 
 ## The centre of the map's floor (its first TileMapLayer's used cells), global; null if none.
 static func _room_middle(map_root: Node) -> Variant:
+	var floor_layer := _floor_layer(map_root)
+	if floor_layer == null:
+		return null
+	var used := floor_layer.get_used_rect()
+	return floor_layer.to_global(floor_layer.map_to_local(used.position + used.size / 2))
+
+
+## The map's floor tiles: the TileMapLayer called "Floor", else the first one with tiles.
+static func _floor_layer(map_root: Node) -> TileMapLayer:
+	var first: TileMapLayer = null
 	for layer in map_root.find_children("*", "TileMapLayer", true, false):
 		var tl := layer as TileMapLayer
-		var used := tl.get_used_rect()
-		if used.size == Vector2i.ZERO:
+		if tl.get_used_rect().size == Vector2i.ZERO:
 			continue
-		var mid_cell := used.position + used.size / 2
-		return tl.to_global(tl.map_to_local(mid_cell))
-	return null
+		if tl.name == "Floor":
+			return tl
+		if first == null:
+			first = tl
+	return first
 
 
-static func _spawn_wanderers(map_root: Node, a: Dictionary, list: Array, night: bool) -> void:
-	var spots: Array = map_root.get_tree().get_nodes_in_group("home_pokemon_spot")
-	var around := Vector2.ZERO
+## A few steps from the player toward the room's middle (they usually stand in a doorway).
+static func _near_player(map_root: Node, n: int) -> Vector2:
 	var player := map_root.get_tree().get_first_node_in_group("player") as Node2D
-	if player != null:
-		around = player.global_position
+	var around := player.global_position if player != null else Vector2.ZERO
 	var inward := Vector2.UP
 	var middle: Variant = _room_middle(map_root)
 	if middle is Vector2 and (middle as Vector2).distance_to(around) > 1.0:
 		inward = ((middle as Vector2) - around).normalized()
-	var n := 0
-	for species_key in home_pokemon():
-		if a.has(species_key):
-			# In its tank all day, or asleep upstairs at night.
-			if is_water_bed(str(list[int(a[species_key])])) or night:
-				continue
-		if not ResourceLoader.exists(OverworldPokemonData.sheet_path(species_of(str(species_key)))):
+	return around + inward * WANDER_START_STEP + Vector2(-30 + 30 * (n % 3), 18 * int(n / 3) * signf(inward.y + 0.001))
+
+
+## A random free spot on this floor (global): a floor tile whose SPAWN_BODY box hits no wall
+## or furniture (StaticBody2D shapes) or bed space, clear of the player and of `taken`.
+## Placed "home_pokemon_spot" markers, if the map has any, are picked from instead.
+static func _random_spot(map_root: Node, taken: Array) -> Vector2:
+	var tree := map_root.get_tree()
+	var markers: Array = []
+	for m in tree.get_nodes_in_group("home_pokemon_spot"):
+		if m is Node2D and (m as Node2D).is_inside_tree():
+			markers.append((m as Node2D).global_position)
+	var player := tree.get_first_node_in_group("player") as Node2D
+	var player_at: Variant = player.global_position if player != null else null
+	var candidates: Array = markers
+	if candidates.is_empty():
+		var floor_layer := _floor_layer(map_root)
+		if floor_layer == null:
+			return _near_player(map_root, taken.size())
+		var blockers := _blocker_rects(map_root)
+		for cell in floor_layer.get_used_cells():
+			var at := floor_layer.to_global(floor_layer.map_to_local(cell))
+			var body := Rect2(at - SPAWN_BODY * 0.5, SPAWN_BODY)
+			var clear := true
+			for r in blockers:
+				if (r as Rect2).intersects(body):
+					clear = false
+					break
+			if clear:
+				candidates.append(at)
+	candidates.shuffle()
+	for at in candidates:
+		if player_at is Vector2 and (at as Vector2).distance_to(player_at) < SPAWN_CLEAR_OF_PLAYER:
 			continue
-		# No placed spots: a few steps from the player TOWARD the room's middle (they usually
-		# stand in a doorway, so "below them" was outside the room).
-		var at: Vector2 = around + inward * WANDER_START_STEP + Vector2(-30 + 30 * (n % 3), 18 * int(n / 3) * signf(inward.y + 0.001))
-		if n < spots.size() and spots[n] is Node2D:
-			at = (spots[n] as Node2D).global_position
-		PokemonHomeWanderer.spawn(map_root, str(species_key), at)
-		n += 1
+		var near_other := false
+		for t in taken:
+			if t is Vector2 and (at as Vector2).distance_to(t) < SPAWN_CLEAR_OF_OTHERS:
+				near_other = true
+				break
+		if not near_other:
+			return at
+	return candidates[0] if not candidates.is_empty() else _near_player(map_root, taken.size())
+
+
+## Global rects of everything a Pokémon can't stand in: StaticBody2D shapes (walls,
+## furniture) and the bedroom's bed spaces. Shapes are taken as their bounding boxes.
+static func _blocker_rects(map_root: Node) -> Array:
+	var out: Array = []
+	for node in map_root.find_children("*", "CollisionShape2D", true, false):
+		var cs := node as CollisionShape2D
+		if cs.shape == null or cs.disabled or cs.is_queued_for_deletion():
+			continue
+		var body := cs.get_parent()
+		var blocks := (body is StaticBody2D and ((body as StaticBody2D).collision_layer & 1) != 0) \
+				or (body != null and body.is_in_group(PokemonBedSpot.GROUP))
+		if not blocks or _queued(body):
+			continue
+		var local := cs.shape.get_rect()
+		out.append(cs.get_global_transform() * local)
+	return out
+
+
+## Is `node` or one of its parents on its way out (the bedroom frees the old "Moving In" set)?
+static func _queued(node: Node) -> bool:
+	while node != null:
+		if node.is_queued_for_deletion():
+			return true
+		node = node.get_parent()
+	return false
 
 
 ## Bedtime: the follower walks onto its bed and lies down (the bedroom's _do_sleep, while the
@@ -587,8 +869,8 @@ static func tuck_in_follower(map_root: Node, walk_time: float) -> void:
 	if map_root == null:
 		return
 	var follower := map_root.get_tree().get_first_node_in_group(PokemonFollower.GROUP) as PokemonFollower
-	if follower == null:
-		return
+	if follower == null or sleeps_on_player_bed(id_of(follower)):
+		return   # (one on your bed hops up after you - the bedroom's going-to-bed scene)
 	var bed := bed_of(id_of(follower))
 	if bed < 0:
 		return

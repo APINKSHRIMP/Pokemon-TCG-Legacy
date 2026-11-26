@@ -432,6 +432,56 @@ func play_cry(species: String, pitch: float = 1.0, interrupt: bool = false) -> b
 	return true
 
 
+# A PART of a cry (user 2026-11-26: your Pokémon's hungry / tired warning): the first
+# `fraction` of it at `pitch` (pitch_scale is pitch AND speed: 0.75 = 25% lower and slower),
+# faded out over WARN_CRY_FADE at the cut. Its own player, so it never cuts a normal cry -
+# and it waits for one that's sounding. Returns true if it started.
+const WARN_CRY_FADE := 0.08   # TWEAKABLE -- seconds of fade-out at the cut
+var _warn_cry_player: AudioStreamPlayer = null
+var _warn_cry_tween: Tween = null
+
+func play_cry_part(species: String, pitch: float, fraction: float, level: float = 1.0) -> bool:
+	if MapManager.overworld_paused:
+		return false
+	if _cry_player != null and is_instance_valid(_cry_player) and _cry_player.playing:
+		return false
+	if _warn_cry_player != null and is_instance_valid(_warn_cry_player) and _warn_cry_player.playing:
+		return false
+	var path := _cry_path(species)
+	if path == "":
+		return false
+	var stream = load(path)
+	if stream == null:
+		return false
+	if "loop" in stream:
+		stream = stream.duplicate()
+		stream.loop = false
+	_ensure_buses()
+	if _warn_cry_player == null or not is_instance_valid(_warn_cry_player):
+		_warn_cry_player = AudioStreamPlayer.new()
+		_warn_cry_player.bus = CRIES_BUS
+		add_child(_warn_cry_player)
+	if _warn_cry_tween != null and _warn_cry_tween.is_valid():
+		_warn_cry_tween.kill()
+	var full_db := linear_to_db(CRY_LEVEL * level)
+	_warn_cry_player.stream = stream
+	_warn_cry_player.pitch_scale = pitch
+	_warn_cry_player.volume_db = full_db
+	_warn_cry_player.play()
+	# Real seconds until the cut: that much of the file, played at `pitch`.
+	var run := float(stream.get_length()) * clampf(fraction, 0.0, 1.0) / maxf(pitch, 0.01)
+	var fade := minf(WARN_CRY_FADE, run * 0.5)
+	var p := _warn_cry_player
+	_warn_cry_tween = create_tween()
+	_warn_cry_tween.tween_interval(maxf(run - fade, 0.0))
+	_warn_cry_tween.tween_property(p, "volume_db", -60.0, fade)
+	_warn_cry_tween.tween_callback(func():
+		if is_instance_valid(p):
+			p.stop()
+			p.volume_db = full_db)
+	return true
+
+
 # --- MATCH CRIES (2026-11-23) ---
 # A card's cry in battle, found by National Pokédex number (card metadata "nationalPokedexNumbers").
 # Its own player, so the overworld's drop-while-playing rule never touches it. Two ways to play:

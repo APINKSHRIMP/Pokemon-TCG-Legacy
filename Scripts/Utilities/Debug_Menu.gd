@@ -466,8 +466,10 @@ func _debug_follower() -> String:
 
 func _affection_text(f: String) -> String:
 	var p := PokemonAffection.points(f)
-	return "%s: affection %d / %d (level %d), pet chance %d%%" % [PokemonHome.name_of(f), p, PokemonAffection.MAX,
-			PokemonAffection.level_of_points(p), roundi(PokemonAffection.pet_chance(f) * 100.0)]
+	return "%s: affection %d / %d (level %d), pet chance %d%% | hunger stage %d | sleeps %s (now %s, kept up %.1fh)" % [
+			PokemonHome.name_of(f), p, PokemonAffection.MAX,
+			PokemonAffection.level_of_points(p), roundi(PokemonAffection.pet_chance(f) * 100.0),
+			PokemonCare.hunger_stage(f), PokemonCare.sleep_slot(f), PokemonCare.current_slot(), PokemonCare.hours_kept_up(f)]
 
 
 func _bump_affection(amount: int) -> void:

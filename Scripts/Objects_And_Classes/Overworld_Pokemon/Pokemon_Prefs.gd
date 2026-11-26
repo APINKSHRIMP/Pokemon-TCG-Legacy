@@ -8,7 +8,9 @@ extends RefCounted
 ##
 ## Columns used (found by header name, any order): "Pokemon" (display name, so every variant
 ## sheet -- 019_Rattata, 019_Rattata_Alolan -- shares the row), "Food", "Bed", "Evolution",
-## "Hunger" (hours until it is hungry; blank = never - PokemonCare). Other columns
+## "Hunger" (hours until it is hungry; blank = never - PokemonCare), "Sleeps" (the ONE time
+## slot it sleeps in: Morning / Afternoon / Evening / Night, blank = Night - PokemonCare;
+## Night includes after midnight). Other columns
 ## are notes for the user. Names are matched ignoring case, and a bed may be written as its
 ## name ("Hay Bale") or its sprite file name ("Haybale", "Lily_Pad_Big").
 ##   * Food blank -> no food attracts it (only the debug SUPER FOOD).
@@ -52,6 +54,7 @@ static func _parse() -> Dictionary:
 	var bed_col: int = cols.get("bed", -1)
 	var evo_col: int = cols.get("evolution", -1)
 	var hunger_col: int = cols.get("hunger", -1)
+	var sleeps_col: int = cols.get("sleeps", -1)
 	if name_col < 0:
 		push_error("PokemonPrefs: %s has no 'Pokemon' column" % CSV_PATH)
 		return out
@@ -67,6 +70,7 @@ static func _parse() -> Dictionary:
 			"bed": line[bed_col].strip_edges() if bed_col >= 0 and line.size() > bed_col else "",
 			"evolution": line[evo_col].strip_edges() if evo_col >= 0 and line.size() > evo_col else "",
 			"hunger": line[hunger_col].strip_edges() if hunger_col >= 0 and line.size() > hunger_col else "",
+			"sleeps": line[sleeps_col].strip_edges() if sleeps_col >= 0 and line.size() > sleeps_col else "",
 		}
 	return out
 
@@ -102,6 +106,15 @@ static func evolution_of(species_key: String) -> String:
 static func hunger_of(species_key: String) -> float:
 	var cell := str(_row(species_key).get("hunger", ""))
 	return maxf(cell.to_float(), 0.0) if cell.is_valid_float() else 0.0
+
+
+## The CSV's Sleeps cell: the time slot this species sleeps in ("Morning", "Afternoon",
+## "Evening" or "Night"); blank or anything else = "Night".
+const SLEEP_SLOTS := ["Morning", "Afternoon", "Evening", "Night"]
+
+static func sleeps_of(species_key: String) -> String:
+	var cell := str(_row(species_key).get("sleeps", "")).strip_edges().capitalize()
+	return cell if cell in SLEEP_SLOTS else "Night"
 
 
 ## Every food any Pokémon in the CSV likes, in first-seen order.

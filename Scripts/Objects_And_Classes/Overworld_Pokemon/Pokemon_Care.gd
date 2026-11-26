@@ -26,6 +26,20 @@ extends RefCounted
 ##   per NEGLECT_HOME_HOURS. The next talk says it felt forgotten (NEGLECT_LINES), and the
 ##   counts start again. A charge that leaves it at 0 affection -> it leaves (NEGLECT_LEFT_LINES).
 ##
+## SLEEP (user 2026-11-25): each species sleeps in ONE time slot (the CSV's Sleeps column;
+##   Night includes after midnight). Only your FOLLOWER can be kept up:
+##   * the slot BEFORE its sleep slot: talking to it says it's getting sleepy (SLEEPY_LINES -
+##     the least urgent line of all).
+##   * its sleep slot, following you: stronger lines (TIRED_LINES), and from
+##     SLEEP_SAD_AFTER_HOURS into the slot (counted from when it started following you, if
+##     later) the sad bubble; every whole hour after that costs SLEEP_LOSS_PER_HOUR (2pm sad,
+##     3pm -20, 4pm -20 for an Afternoon sleeper). It never leaves over this.
+##   * leave it at home and it goes to bed (PokemonHome.refresh_house puts each home Pokémon
+##     on its bed during its sleep slot, and wandering downstairs the rest of the time - a
+##     night Pokémon wanders downstairs all night, even while you sleep).
+##   Flags: "follow_since" (the hour it last started following, or you woke up), "sleep_paid"
+##   (hours charged) for the slot starting at "sleep_paid_at".
+##
 ## LEAVING: flag "leave_reason" ("hunger" / "neglect") is set by the charge that took it to 0.
 ##   Following you: told at once. At home: told when you're next in the house
 ##   (GameState pokemon_left_notices).
@@ -51,7 +65,50 @@ const NEGLECT_FOLLOW_HOURS := 6.0
 const NEGLECT_FOLLOW_LOSS := 10
 const NEGLECT_HOME_HOURS := 12.0
 const NEGLECT_HOME_LOSS := 20
+const SLEEP_SAD_AFTER_HOURS := 2.0
+const SLEEP_LOSS_PER_HOUR := 20
 const POLL_TIME := 0.5
+
+## THE WARNING CRY (user 2026-11-26): no hunger or tiredness bar - instead, a Pokémon that
+## needs something (hungry at any stage, or your follower in its sleep slot) gives a short,
+## low, slow cry every WARN_CRY_EVERY real seconds while it's following you or on the same
+## map (in the room) with you: the first WARN_CRY_FRACTION of its cry at WARN_CRY_PITCH
+## (pitch AND speed: 0.75 = 25% lower and slower). Asleep ones stay quiet.
+const WARN_CRY_EVERY := 30.0
+const WARN_CRY_FRACTION := 0.5
+const WARN_CRY_PITCH := 0.75
+const WARN_CRY_LEVEL := 0.85   # its loudness against a normal cry (1.0)
+## THE ALERT CRY (user 2026-11-26): once it's actually LOSING affection (starved past the
+## free hour, or your follower kept up into the hours that cost it), the warning becomes the
+## WHOLE cry (ALERT_CRY_FRACTION) at ALERT_CRY_PITCH (0.65 = 35% lower, and slower).
+## Same timing as the warning.
+const ALERT_CRY_FRACTION := 1.0
+const ALERT_CRY_PITCH := 0.65
+const ALERT_CRY_LEVEL := 1.0
+## The first warning on each map load comes a random whole number of seconds in this range
+## after you have control (user 2026-11-26) - the clock only starts once the post-match
+## things (messages, medals, evolution, cutscenes) are done, and every warning timer is
+## PAUSED while anything is on screen, so a warning is never heard over one.
+const WARN_CRY_FIRST_MIN := 4
+const WARN_CRY_FIRST_MAX := 10
+## The slot before its sleep slot: it's getting sleepy (%s = its name).
+const SLEEPY_LINES := [
+	"%s is looking a bit sleepy!",
+	"%s looks like it could go to sleep soon.",
+	"%s is looking tired now.",
+	"%s lets out a big yawn.",
+	"%s's eyelids are starting to droop.",
+	"%s is rubbing its eyes. It'll want its bed soon.",
+]
+## Its sleep slot and still following you (%s = its name).
+const TIRED_LINES := [
+	"%s can't keep its eyes open!",
+	"%s is fighting to stay awake!",
+	"%s should be in bed!",
+	"%s is struggling to stay up, it's so tired.",
+	"%s keeps nodding off on its feet!",
+	"%s is so tired it can barely walk straight. Take it home to bed!",
+]
 ## Said when it reaches a new highest level, levels 1..7 (%s = its name).
 const LEVEL_UP_LINES := [
 	"%s seems to be starting to trust you a tiny bit... Now might be a chance to pet it.",
@@ -123,6 +180,10 @@ const NEGLECT_LEFT_LINES := [
 # -----------------------------------------------------------------------------
 
 static var _watching: Node = null
+## THE WARNING CRY: ID -> the msec (Time.get_ticks_msec) its next warning is due.
+static var _next_warn_ms: Dictionary = {}
+## The msec of the last poll (busy polls push every timer back by the time they took).
+static var _last_warn_poll_ms: int = 0
 
 
 # ---- hunger ---------------------------------------------------------------------
@@ -162,9 +223,76 @@ static func is_starving(species_key: String) -> bool:
 	return hunger_stage(species_key) >= 3
 
 
-## The sad bubble: starved past the free hour.
+## The sad bubble: starved past the free hour, or a follower kept up past its bedtime.
 static func is_unhappy(species_key: String) -> bool:
-	return hunger_stage(species_key) >= 4
+	return hunger_stage(species_key) >= 4 or hours_kept_up(species_key) >= SLEEP_SAD_AFTER_HOURS
+
+
+# ---- sleep ----------------------------------------------------------------------
+
+## The slot right now, Bedtime counted as Night.
+static func current_slot() -> String:
+	var t := GameState.get_time()
+	return "Night" if t == "Bedtime" else t
+
+
+static func slot_before(slot: String) -> String:
+	var i := PokemonPrefs.SLEEP_SLOTS.find(slot)
+	return PokemonPrefs.SLEEP_SLOTS[(i + PokemonPrefs.SLEEP_SLOTS.size() - 1) % PokemonPrefs.SLEEP_SLOTS.size()]
+
+
+static func sleep_slot(species_key: String) -> String:
+	return PokemonPrefs.sleeps_of(PokemonHome.species_of(species_key))
+
+
+## Is it this Pokémon's sleep slot right now?
+static func is_sleep_time(species_key: String) -> bool:
+	return current_slot() == sleep_slot(species_key)
+
+
+static func is_sleepy_soon(species_key: String) -> bool:
+	return current_slot() == slot_before(sleep_slot(species_key))
+
+
+## The hour (now_hours) the current slot began.
+static func slot_start_hours() -> float:
+	var start: float = GameState.CLOCK_SLOT_START.get(current_slot(), 8.0)
+	return PokemonAffection.now_hours() - (GameState.clock_hours() - start)
+
+
+## Hours your FOLLOWER has been kept up in its sleep slot (0 for anyone else, or out of it).
+static func hours_kept_up(species_key: String) -> float:
+	if species_key == "" or species_key != GameState.get_follower() or not is_sleep_time(species_key):
+		return 0.0
+	var since := slot_start_hours()
+	var flags := GameState.get_pokemon_flags(species_key)
+	if flags.has("follow_since"):
+		since = maxf(since, float(flags["follow_since"]))
+	return maxf(PokemonAffection.now_hours() - since, 0.0)
+
+
+## Charges the follower SLEEP_LOSS_PER_HOUR for every whole hour kept up past
+## SLEEP_SAD_AFTER_HOURS in its sleep slot.
+static func credit_sleep() -> void:
+	var follower := GameState.get_follower()
+	if follower == "" or GameState.get_pokemon_flags(follower).is_empty():
+		return
+	var kept := hours_kept_up(follower)
+	if kept < SLEEP_SAD_AFTER_HOURS + 1.0:
+		return
+	var due := int(floor(kept - SLEEP_SAD_AFTER_HOURS))
+	var flags := GameState.get_pokemon_flags(follower)
+	var key := slot_start_hours()
+	var paid := int(flags.get("sleep_paid", 0)) if is_equal_approx(float(flags.get("sleep_paid_at", -1.0)), key) else 0
+	if due > paid:
+		GameState.set_pokemon_flag_values(follower, {"sleep_paid": due, "sleep_paid_at": key})
+		PokemonAffection.add(follower, -(due - paid) * SLEEP_LOSS_PER_HOUR)
+
+
+## It has just started following you (or you've just woken up together).
+static func note_following(species_key: String) -> void:
+	if species_key != "" and not GameState.get_pokemon_flags(species_key).is_empty():
+		GameState.set_pokemon_flag(species_key, "follow_since", PokemonAffection.now_hours())
 
 
 ## What the k-th charged starving hour costs (k from 1).
@@ -237,6 +365,7 @@ static func restart_hunger_clocks() -> void:
 	for id in PokemonHome.roster():
 		if not GameState.get_pokemon_flags(str(id)).is_empty():
 			GameState.set_pokemon_flag(str(id), "hunger_clock", now)
+	note_following(GameState.get_follower())   # it woke up with you
 
 
 ## It has just eaten.
@@ -266,16 +395,21 @@ static func is_leaving(species_key: String) -> bool:
 
 
 ## What it says when you talk to it about how it's doing, "" for nothing to say. Most urgent
-## first: hunger, then (from PokemonSleep, if any) needing sleep, being ignored, getting sleepy.
+## first: hunger, then needing sleep, being ignored, getting sleepy (the last two only matter
+## for the follower).
 ## Call BEFORE note_talked_to (which clears the ignored count).
 static func care_line(species_key: String, poke_name: String, following: bool) -> String:
 	var stage := hunger_stage(species_key)
 	if stage > 0:
 		var lines: Array = HUNGER_LINES[[0, 0, 1, 1, 2][stage]]
 		return str(lines.pick_random()) % poke_name
+	if following and is_sleep_time(species_key):
+		return str(TIRED_LINES.pick_random()) % poke_name
 	var flags := GameState.get_pokemon_flags(species_key)
 	if int(flags.get("lonely_follow_paid", 0)) > 0 or int(flags.get("lonely_home_paid", 0)) > 0:
 		return str(NEGLECT_LINES.pick_random()) % poke_name
+	if following and is_sleepy_soon(species_key):
+		return str(SLEEPY_LINES.pick_random()) % poke_name
 	return ""
 
 
@@ -290,6 +424,8 @@ static func left_line(reason: String, poke_name: String, at_home: bool) -> Strin
 
 static func watch(map_root: Node) -> void:
 	_watching = map_root
+	_next_warn_ms.clear()   # a new map: the first warning is 4-10 s after you have control
+	_last_warn_poll_ms = Time.get_ticks_msec()
 	var tree := map_root.get_tree()
 	while is_instance_valid(map_root) and map_root.is_inside_tree() and _watching == map_root:
 		await tree.create_timer(POLL_TIME).timeout
@@ -299,9 +435,68 @@ static func watch(map_root: Node) -> void:
 			continue
 		PokemonAffection.credit_hours()
 		credit_hunger()
+		credit_sleep()
 		update_bubbles(tree)
-		if not _busy(map_root):
+		PokemonHome.note_positions(tree)   # the house layout (stairs keep where they were)
+		var busy := _busy(map_root)
+		warn_cries(tree, busy)
+		if not busy:
 			_show_next(map_root)
+
+
+## Does it need something the warning cry is about? Hungry (any stage), or your follower in
+## its sleep slot.
+static func needs_warning(species_key: String) -> bool:
+	if species_key == "" or GameState.get_pokemon_flags(species_key).is_empty() or is_leaving(species_key):
+		return false
+	return hunger_stage(species_key) >= 1 \
+			or (species_key == GameState.get_follower() and is_sleep_time(species_key))
+
+
+## Is it losing affection over it right now? Starved (stage 4), or your follower kept up
+## past the first charged hour of its sleep slot (credit_sleep's first charge).
+static func needs_alert(species_key: String) -> bool:
+	return hunger_stage(species_key) >= 4 or hours_kept_up(species_key) >= SLEEP_SAD_AFTER_HOURS + 1.0
+
+
+## THE WARNING CRY: every one of your Pokémon on this map that needs something cries (a part
+## of its cry, low and slow) every WARN_CRY_EVERY seconds. One at a time. While something's
+## on screen or a cutscene runs (`busy`) the timers stand still and no new one starts.
+static func warn_cries(tree: SceneTree, busy: bool) -> void:
+	var now := Time.get_ticks_msec()
+	var elapsed := now - _last_warn_poll_ms
+	_last_warn_poll_ms = now
+	busy = busy or GameState.going_to_bed or MapManager.cutscene_active or MapManager.overworld_paused
+	if busy:
+		for id in _next_warn_ms.keys():
+			_next_warn_ms[id] = int(_next_warn_ms[id]) + elapsed   # paused
+		return
+	var on_map := {}
+	for group in [PokemonFollower.GROUP, PokemonHomeWanderer.GROUP]:
+		for node in tree.get_nodes_in_group(group):
+			var p := node as OverworldPokemon
+			if p == null or p._is_gone or p.pokemon_id == "":
+				continue
+			if p is PokemonHomeWanderer and (p as PokemonHomeWanderer).asleep:
+				continue
+			if needs_warning(p.pokemon_id):
+				on_map[p.pokemon_id] = p
+	for id in _next_warn_ms.keys():
+		if not on_map.has(id):
+			_next_warn_ms.erase(id)   # (off this map or fine now: its first one waits again)
+	for id in on_map:
+		if not _next_warn_ms.has(id):
+			_next_warn_ms[id] = now + randi_range(WARN_CRY_FIRST_MIN, WARN_CRY_FIRST_MAX) * 1000
+	for id in on_map:
+		if now < int(_next_warn_ms[id]):
+			continue
+		var alert := needs_alert(str(id))   # losing affection: the whole cry, lower
+		if SoundManagerScript.play_cry_part(PokemonHome.species_of(str(id)),
+				ALERT_CRY_PITCH if alert else WARN_CRY_PITCH,
+				ALERT_CRY_FRACTION if alert else WARN_CRY_FRACTION,
+				ALERT_CRY_LEVEL if alert else WARN_CRY_LEVEL):
+			_next_warn_ms[id] = now + int(WARN_CRY_EVERY * 1000.0)
+		return   # one per poll (if a cry was sounding it tries again next poll)
 
 
 ## The sad bubble on every one of your Pokémon on this map.

@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="3_xhodw"]
 [ext_resource type="PackedScene" uid="uid://drt5x7u3dyhk1" path="res://Image_Assets/Map_Objects/Indoor_Lamp.tscn" id="5_g1bce"]
 [ext_resource type="Script" uid="uid://cphl8h5xtm64h" path="res://Scripts/Map_Scripts/Interactables_Script.gd" id="int_script"]
+[ext_resource type="Texture2D" path="res://Image_Assets/Map_Objects/Player_Bed/bed.png" id="player_bed_tex"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_377ug"]
 size = Vector2(11, 17)
@@ -105,10 +106,10 @@ position = Vector2(5, 8)
 tile_map_data = PackedByteArray("AAAYAAsAAQA1ABMAAAAYAAwAAQA1ABQAAAA=")
 tile_set = ExtResource("2_g1bce")
 
-[node name="Bed" type="TileMapLayer" parent="UPSTAIRS" unique_id=1440724849]
-position = Vector2(1, -5)
-tile_map_data = PackedByteArray("AAAUAAgAAQArAAsAAAAUAAkAAQArAAwAAAAUAAoAAQArAA0AAAAUAAsAAQArAA4AAAAVAAgAAQAsAAsAAAAVAAkAAQAsAAwAAAAVAAoAAQAsAA0AAAAVAAsAAQAsAA4AAAA=")
-tile_set = ExtResource("2_g1bce")
+[node name="Bed" type="Sprite2D" parent="UPSTAIRS" unique_id=1440724849]
+position = Vector2(321, 123)
+texture = ExtResource("player_bed_tex")
+centered = false
 
 [node name="Moving In" type="TileMapLayer" parent="UPSTAIRS" unique_id=1934996203]
 visible = false

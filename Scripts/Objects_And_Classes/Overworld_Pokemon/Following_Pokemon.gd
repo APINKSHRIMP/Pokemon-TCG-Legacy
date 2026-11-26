@@ -208,8 +208,9 @@ static func super_food_target(player: Node2D) -> OverworldPokemon:
 
 ## A NEW `species_key` joins you (always a new one, even if you already have that species -
 ## PokemonHome.recruit gives it its own ID) and walks behind the player on the current map.
-## Any follower already there goes to live at your house -- never dismissed here (bedtime
-## sorts out who has a bed). Returns the old follower's ID, "" if none.
+## Any follower already there goes to live at your house if it can (been there + a free bed,
+## PokemonHome.can_live_at_home), else back to the wild - callers warn first with
+## PokemonHome.new_partner_warning(). Returns the old follower's ID, "" if none.
 ## `shiny` goes into its flags (PokemonHome.is_shiny): the wild one's.
 static func befriend(species_key: String, at_global: Variant = null, shiny: bool = false) -> String:
 	var old := PokemonHome.recruit(species_key, shiny)

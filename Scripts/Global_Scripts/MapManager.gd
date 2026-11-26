@@ -455,6 +455,7 @@ func initialise(
 	_player = player
 	_opponents_container = opponents_container
 	_ui_layer = ui_layer
+	var previous_scene_path := _map_scene_path   # (the house: from outside = a fresh layout)
 	_map_scene_path = map_scene_path
 	_map_data = map_data
 
@@ -504,6 +505,11 @@ func initialise(
 	# POKÉMON AT HOME: the ones living in the house that aren't following you -- wandering
 	# downstairs by day, asleep on their beds upstairs at night, always in a water tank.
 	if map_root != null and PokemonHome.in_house(_map_scene_path):
+		# Walked in with you: your follower knows the way home from now on.
+		PokemonHome.note_in_house(GameState.get_follower())
+		# In from outside (or a save loaded here, or a new day): everyone gets a random floor
+		# and spot; up / down the stairs keeps where they were.
+		PokemonHome.note_house_entry(previous_scene_path)
 		PokemonHome.refresh_house(map_root)
 
 	_player.interact_pressed.connect(_on_player_interact)
@@ -2343,13 +2349,35 @@ func _offer_food_to_pokemon(pokemon: Node, food: String) -> void:
 		var lost := " (The %s is gone.)" % food if FollowingPokemon.CONSUME_ON_FAIL else ""
 		show_interactable_message("%s sniffed the %s... but it isn't interested.%s" % [species_name, food, lost])
 		return
+	var line := "%s gobbled up the %s! %s wants to come with you!" % [species_name, food, species_name]
+	# BEDS (user 2026-11-26): a follower that can't go home would leave for good - ask first.
+	var warning := PokemonHome.new_partner_warning()
+	if warning != "":
+		_set_pokemon_frozen(pokemon, true)
+		SoundManagerScript.play_cry(species_key, SoundManagerScript.INTERACT_CRY_PITCH, true)
+		show_cutscene_choice("%s\n%s Take %s with you?" % [line, warning, species_name], {},
+				func(): _take_new_partner(pokemon, line),
+				func():
+					_set_pokemon_frozen(pokemon, false)
+					show_interactable_message("%s watched you go, then wandered off." % species_name))
+		return
+	_take_new_partner(pokemon, line)
+
+
+## A wild Pokémon becomes your follower; `line` is what the box says (the old follower's
+## fate is added).
+func _take_new_partner(pokemon: Node, line: String) -> void:
+	if not is_instance_valid(pokemon):
+		_hide_message()
+		return
+	_set_pokemon_frozen(pokemon, false)
+	var species_key := str(pokemon.species)
 	var at: Vector2 = (pokemon as Node2D).global_position
 	SoundManagerScript.play_cry(species_key, SoundManagerScript.BEFRIEND_CRY_PITCH, true)
 	var was_shiny := bool(pokemon.get("shiny"))
 	if pokemon.has_method("despawn"):
 		pokemon.despawn()
 	var old := FollowingPokemon.befriend(species_key, at, was_shiny)
-	var line := "%s gobbled up the %s! %s wants to come with you!" % [species_name, food, species_name]
 	if old != "":
 		line += "\n" + PokemonHome.old_follower_note(old)
 	show_interactable_message(line)
@@ -2366,7 +2394,9 @@ func offer_super_food(pokemon: OverworldPokemon) -> void:
 	current_pokemon = pokemon
 	_face_player_toward_actor(pokemon)
 	SoundManagerScript.play_cry(pokemon.species, SoundManagerScript.INTERACT_CRY_PITCH, true)
-	show_cutscene_choice("%s!\nUse your %s to make it your partner?" % [pokemon.display_name, FollowingPokemon.SUPER_FOOD],
+	var warning := PokemonHome.new_partner_warning()   # BEDS: the old follower would leave
+	show_cutscene_choice("%s!\nUse your %s to make it your partner?%s" % [pokemon.display_name,
+			FollowingPokemon.SUPER_FOOD, ("\n" + warning) if warning != "" else ""],
 			{}, func(): _capture_with_super_food(pokemon),
 			func(): _set_pokemon_frozen(pokemon, false))
 
@@ -2438,7 +2468,12 @@ func _pokemon_menu_items(pokemon: Node) -> Array:
 		ids = ["pet", "feed", "rename", "send_home", "dismiss", "cancel"]
 	var items: Array = []
 	for id in ids:
-		items.append({"id": id, "label": POKEMON_MENU_LABELS[id]})
+		var item := {"id": id, "label": POKEMON_MENU_LABELS[id]}
+		# BEDS (user 2026-11-26): SEND HOME is greyed out until it has been to your house
+		# (choosing it still explains why).
+		if id == "send_home" and not PokemonHome.has_visited_home(PokemonHome.id_of(pokemon)):
+			item["disabled"] = true
+		items.append(item)
 	return items
 
 
@@ -2660,6 +2695,11 @@ func _rename_pokemon(pokemon: Node) -> void:
 func _send_follower_to_house(follower: Node) -> void:
 	var species_key := PokemonHome.id_of(follower)   # its ID ("..#2")
 	var poke_name := str(follower.display_name)
+	# BEDS: only if it knows the way and a bed is free.
+	var why := PokemonHome.cant_go_home_line(PokemonHome.cant_go_home_reason(), poke_name)
+	if why != "":
+		_pokemon_say(species_key, poke_name, why)
+		return
 	PokemonHome.leave_at_home()
 	(follower as OverworldPokemon).despawn()
 	_pokemon_say(species_key, poke_name, "%s headed back to your house. It'll be waiting for you there!" % poke_name)
@@ -2670,15 +2710,23 @@ func _send_follower_to_house(follower: Node) -> void:
 func _leave_follower_home(follower: Node) -> void:
 	var species_key := PokemonHome.id_of(follower)   # its ID ("..#2")
 	var poke_name := str(follower.display_name)
+	# BEDS (user 2026-11-26): no free bed, no staying.
+	PokemonHome.note_in_house(species_key)
+	var why := PokemonHome.cant_go_home_line(PokemonHome.cant_go_home_reason(), poke_name)
+	if why != "":
+		_pokemon_say(species_key, poke_name, why)
+		return
 	PokemonHome.leave_at_home()
 	(follower as OverworldPokemon).despawn()
 	PokemonHome.refresh_house(_player.get_parent())
 	var bed := PokemonHome.bed_of(species_key)
 	var line := "%s settled in at home." % poke_name
-	if bed < 0:
-		line += "\nIt has no bed yet -- it'll need one in your room by bedtime."
-	elif PokemonHome.is_water_bed(str(PokemonHome.slots()[bed])):
+	if PokemonHome.sleeps_on_player_bed(species_key):
+		line = "%s settled in at home. It'll curl up at the foot of your bed tonight." % poke_name
+	elif bed >= 0 and PokemonHome.is_water_bed(str(PokemonHome.slots()[bed])):
 		line = "%s is swimming happily in the %s upstairs." % [poke_name, str(PokemonHome.slots()[bed])]
+	elif PokemonCare.is_sleep_time(species_key):
+		line = "%s gratefully trotted off to bed for a sleep." % poke_name   # SLEEP: its bedtime
 	_pokemon_say(species_key, poke_name, line)
 
 
@@ -2686,6 +2734,23 @@ func _leave_follower_home(follower: Node) -> void:
 func _take_home_pokemon_out(pokemon: Node) -> void:
 	var species_key := PokemonHome.id_of(pokemon)   # its ID ("..#2")
 	var poke_name := str(pokemon.display_name)
+	# BEDS: your follower takes its place at home - if there's a bed left for it once this one
+	# moves out. If not, ask first: it would go back to the wild.
+	var warning := PokemonHome.new_partner_warning(species_key)
+	if warning != "":
+		pokemon_speaker = {}
+		_pending_ok_action = Callable()
+		_show_message_with_choices("Take %s with you?\n%s" % [poke_name, warning])
+		_pending_confirm_yes = func() -> void: _swap_in_home_pokemon(pokemon, species_key, poke_name)
+		_pending_confirm_no = func() -> void: _open_pokemon_menu(pokemon, "follow")
+		return
+	_swap_in_home_pokemon(pokemon, species_key, poke_name)
+
+
+func _swap_in_home_pokemon(pokemon: Node, species_key: String, poke_name: String) -> void:
+	if not is_instance_valid(pokemon):
+		_hide_message()
+		return
 	var at: Vector2 = (pokemon as Node2D).global_position
 	(pokemon as OverworldPokemon).despawn()
 	var old := FollowingPokemon.take_out(species_key, at)

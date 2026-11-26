@@ -1734,15 +1734,30 @@ func _show_catch_message() -> void:
 
 	var species_name := OverworldPokemonData.display_name(_fish_species)
 	var text := "You caught a %s worth %d Fish Coins!" % [species_name, reward]
+	# BEDS (user 2026-11-26): a follower that can't go home would leave for good.
+	var warning := PokemonHome.new_partner_warning() if (super_food or _befriended) else ""
 	if super_food:
-		MapManager.show_cutscene_choice(text + "\nUse your %s to make it your partner?" % FollowingPokemon.SUPER_FOOD,
+		MapManager.show_cutscene_choice(text + "\nUse your %s to make it your partner?%s" % [FollowingPokemon.SUPER_FOOD,
+				("\n" + warning) if warning != "" else ""],
 				{}, Callable(self, "_on_super_food_keep"), Callable(self, "_on_super_food_release"))
+		return
+	if _befriended and warning != "":
+		text += "\nIt loved your %s - it wants to come with you!\n%s Take %s with you?" % [befriend_food, warning, species_name]
+		MapManager.show_cutscene_choice(text, {}, Callable(self, "_on_catch_message_ok"),
+				Callable(self, "_on_befriend_declined"))
 		return
 	if _befriended:
 		text += "\nIt loved your %s - it wants to come with you!" % befriend_food
 		if old_follower != "":
 			text += " " + PokemonHome.old_follower_note(old_follower)
 	MapManager.show_message_then(text, Callable(self, "_on_catch_message_ok"))
+
+
+## BEDS: No to taking it (your follower would have had to leave): the normal ending.
+func _on_befriend_declined() -> void:
+	_befriended = false
+	_bank_in_fish_shop()
+	_on_catch_message_ok()
 
 
 ## Sent to FISH, if a tank has room: banked once, with the bonus paid now (shown later).
