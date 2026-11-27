@@ -23,7 +23,7 @@ const GIF_SLOT := 3
 const FPS := 20.0
 ## Frames are shrunk to this before saving: the gif is 800 wide, and saving a
 ## 1920x1080 PNG every frame is what makes a recording slow.
-const SAVE_SIZE := Vector2i(960, 540)
+var SAVE_SIZE := Vector2i(960, 540)   # --size=WxH overrides (the trailer records 1280x720)
 
 var _out := ""
 var _shot := ""
@@ -42,6 +42,10 @@ func _ready() -> void:
 			_args[s.substr(2, s.find("=") - 2)] = s.substr(s.find("=") + 1)
 	_shot = _args.get("shot", "")
 	_out = _args.get("out", "")
+	if _args.has("size"):
+		var wh := str(_args["size"]).split("x")
+		SAVE_SIZE = Vector2i(int(wh[0]), int(wh[1]))
+	_jpg = _args.get("jpg", "0") == "1"
 	_run.call_deferred()
 
 
@@ -171,7 +175,7 @@ func _motion(pos: Vector2) -> void:
 
 
 ## Glide the mouse to `to` over `dur` seconds, a motion event every frame.
-func move_mouse(to: Vector2, dur: float = 0.4) -> void:
+func move_mouse(to: Vector2, dur: float = 0.18) -> void:
 	var from := _mouse
 	var t := 0.0
 	while t < dur:
@@ -231,7 +235,7 @@ func stock_slot() -> void:
 	GameState.save_progress()
 	write_current_data({})
 	# Recording pace: animations at medium, text fast. Not written to Settings.json.
-	GameState.set_animation_speed(_args.get("anim", "medium"), false)
+	GameState.set_animation_speed(_args.get("anim", "fast"), false)
 	GameState.set_text_speed(_args.get("text", "fast"), false)
 
 
@@ -285,7 +289,7 @@ func wheel_scroll(sc: ScrollContainer, step: int, hold: float, max_steps: int = 
 		var target := clampi(sc.scroll_vertical + (-step if up else step), 0, bottom)
 		if target == sc.scroll_vertical:
 			return
-		await tween_prop(sc, "scroll_vertical", target, 0.3)
+		await tween_prop(sc, "scroll_vertical", target, 0.2)
 		await wait(hold)
 
 
@@ -318,15 +322,15 @@ func _grid_shot(scene_path: String, step: int, steps: int, pick := Vector2(1000,
 	await wait_loaded(s)
 	var sc := find_first(s, "ScrollContainer") as ScrollContainer
 	rec(true)
-	await wait(1.5)
+	await wait(0.6)
 	if sc != null:
-		await wheel_scroll(sc, step, 0.6, steps)
-		await wait(0.4)
-		await wheel_scroll(sc, step, 0.5, 3, true)
+		await wheel_scroll(sc, step, 0.3, steps)
+		await wait(0.2)
+		await wheel_scroll(sc, step, 0.25, 3, true)
 		var t := tile_near(sc, pick)
 		if t != null:
 			await click_node(t)
-	await wait(2.5)
+	await wait(1.5)
 	await done()
 
 
@@ -355,51 +359,69 @@ func shot_trainercard() -> void:
 		var s := await go("res://Scenes/Main_Menu_Scenes/Info_Scene.tscn", 0.2)
 		await wait(1.5)
 		rec(true)
-		await wait(2.2)
+		await wait(1.4)
 	await done()
 
 
-## The deck builder: hover a few cards (the big preview follows), add some, flip sets.
+## The deck builder: flick through the sets about every 0.75 s, adding a couple of cards on
+## the way, the way a player browsing would.
 func shot_cards() -> void:
 	stock_slot()
 	var s := await go("res://Scenes/Main_Menu_Scenes/Deck_Build_And_Card_View_Scene.tscn", 0.2)
 	await wait_loaded(s, 2.0)
 	show_cursor()
-	_motion(Vector2(700, 900))
+	_motion(s.next_btn.get_global_rect().get_center() + Vector2(-120, 60))
 	rec(true)
-	await wait(0.8)
+	await wait(0.3)
 	var grid: GridContainer = s.grid
-	for page in 4:
-		var cards: Array = []
-		for c in grid.get_children():
-			if c is Control and c.visible and c.has_meta("card_id"):
-				cards.append(c)
-		for k in [0, 9, 12]:
-			if k < cards.size():
-				await move_mouse((cards[k] as Control).get_global_rect().get_center(), 0.35)
-				await wait(0.45)
-				if page < 2 and k != 9:
-					await click_node(cards[k])
-					await wait(0.25)
-		if page == 1:
-			# Hold Shift over a card: the full card detail panel.
-			await move_mouse((cards[3] as Control).get_global_rect().get_center(), 0.35)
-			var e := InputEventKey.new()
-			e.keycode = KEY_SHIFT
-			e.physical_keycode = KEY_SHIFT
-			e.pressed = true
-			Input.parse_input_event(e)
-			await wait(1.4)
-			await move_mouse((cards[5] as Control).get_global_rect().get_center(), 0.35)
-			await wait(1.4)
-			var u := e.duplicate()
-			u.pressed = false
-			Input.parse_input_event(u)
-			await wait(0.5)
-		if page < 3:
-			await click_node(s.next_btn, 0.45)
-			await wait(1.0)
-	await wait(1.0)
+	var pages := int(_args.get("pages", "12"))
+	for page in pages:
+		if page in [1, 4]:
+			# Grab two cards off this page, then back to the arrow.
+			var cards: Array = []
+			for c in grid.get_children():
+				if c is Control and c.visible and c.has_meta("card_id"):
+					cards.append(c)
+			for k in [2, 7]:
+				if k < cards.size():
+					await click_node(cards[k], 0.16)
+		await click_node(s.next_btn, 0.14 if page in [1, 2, 4, 5] else 0.0)
+		await wait(0.62)
+	await wait(0.6)
+	await done()
+
+
+## Hold-Shift card preview: straight onto a card, open the preview, sweep across a row of
+## cards with it open (no closing and reopening), let go.
+func shot_previews() -> void:
+	stock_slot()
+	var s := await go("res://Scenes/Main_Menu_Scenes/Deck_Build_And_Card_View_Scene.tscn", 0.2)
+	await wait_loaded(s, 2.0)
+	for _i in int(_args.get("page", "2")):
+		s._on_next_set()
+	await wait_loaded(s, 0.6)
+	var cards: Array = []
+	for c in s.grid.get_children():
+		if c is Control and c.visible and c.has_meta("card_id"):
+			cards.append(c)
+	show_cursor()
+	_motion(Vector2(700, 950))
+	rec(true)
+	await wait(0.3)
+	await move_mouse((cards[0] as Control).get_global_rect().get_center(), 0.2)
+	var e := InputEventKey.new()
+	e.keycode = KEY_SHIFT
+	e.physical_keycode = KEY_SHIFT
+	e.pressed = true
+	Input.parse_input_event(e)
+	for k in [0, 1, 2, 3, 4, 9, 8, 7, 12, 13]:
+		if k < cards.size():
+			await move_mouse((cards[k] as Control).get_global_rect().get_center(), 0.12)
+			await wait(0.55)
+	var u := e.duplicate()
+	u.pressed = false
+	Input.parse_input_event(u)
+	await wait(0.5)
 	await done()
 
 
@@ -414,17 +436,15 @@ func _pack_shot(shop_id: String, pack_id: String, pick: int) -> void:
 	show_cursor()
 	_motion(Vector2(960, 900))
 	rec(true)
-	await wait(0.8)
+	await wait(0.4)
 	var packs: Array = []
 	for c in s.pack_hbox.get_children():
 		if c is Control and c.visible:
 			packs.append(c)
 	var target: Control = packs[min(pick, packs.size() - 1)]
 	var tr := find_first(target, "TextureRect") as Control
-	await click_node(tr if tr != null else target, 0.5)
-	await wait(0.7)
-	await click_node(s.buy_button, 0.45)
-	await wait(0.3)
+	await click_node(tr if tr != null else target, 0.25)
+	await click_node(s.buy_button, 0.2)
 	show_cursor(false)
 	var pom = PackOpeningManager
 	var guard := 0
@@ -435,15 +455,46 @@ func _pack_shot(shop_id: String, pack_id: String, pick: int) -> void:
 	while pom.is_active() and guard < 3000:
 		guard += 1
 		if pom._showing_summary:
-			await wait(3.0)
+			await wait(1.6)
 			await click(Vector2(960, 540))
-			await wait(0.3)
+			await wait(0.2)
 		elif pom._waiting_for_advance:
-			await wait(0.75)
+			await wait(0.3)
 			await click(Vector2(960, 540))
 		else:
 			await get_tree().process_frame
 	await wait(1.5)
+	await done()
+
+
+## TRAILER: walking the harbour in the afternoon with a Charmander at your heels, then it
+## evolves on the spot (the real DEL-menu evolution path). --walk=secs of walking first.
+func shot_follower() -> void:
+	stock_slot()
+	story_state(5, "Afternoon")
+	await go_map("res://Scenes/Map_Scenes/Celeste_Harbour.tscn", Vector2(290, 1700), "right", 1.0)
+	FollowingPokemon.befriend(str(_args.get("mon", "004_Charmander")), player().global_position + Vector2(-30, 0))
+	await wait(3.0)
+	rec(true)
+	var path := str(_args.get("path", "right:1.6,down:0.8,right:1.4,up:0.6"))
+	for leg in path.split(","):
+		var bits := leg.split(":")
+		await walk(bits[0], float(bits[1]))
+	await wait(0.8)
+	if _args.get("evolve", "1") == "1":
+		var f := GameState.get_follower()
+		var evos := PokemonEvolution.evolutions_of(f)
+		if not evos.is_empty() and PokemonEvolution.queue(f, str(evos[0])):
+			PokemonEvolution.run_pending(player().get_parent())
+			await wait(0.5)
+			var guard := 0
+			while (PokemonEvolution.is_playing() or MapManager.message_panel.visible) and guard < 600:
+				if MapManager.message_panel.visible:
+					await wait(1.6)
+					await accept()
+				await wait(0.1)
+				guard += 1
+	await wait(0.8)
 	await done()
 
 
@@ -539,35 +590,70 @@ func approach_and_talk(npc: Node, walk_secs: float = 0.35) -> void:
 ## Walk up to an NPC and talk to them: the gift sequence.
 func shot_gift() -> void:
 	stock_slot()
-	story_state(5, "Afternoon")
+	story_state(int(_args.get("date", "3")), "Afternoon")
+	# A one-time NPC ("not met:" gate): forget an earlier recording's meeting.
+	var met: Array = GameState.progress.get("npc_interactions", [])
+	met.erase(str(_args.get("npc", "Kid Opening Packs")))
+	GameState.progress["npc_interactions"] = met
+	var got: Array = GameState.progress.get("gifts_received", [])
+	got.erase(str(_args.get("npc", "Kid Opening Packs")))
+	GameState.progress["gifts_received"] = got
+	GameState.save_progress()
 	var s := await go_map("res://Scenes/Map_Scenes/Celeste_Harbour.tscn", Vector2(290, 1700), "up", 1.0)
-	var kid := npc_named("Kid Opening Packs")
+	var kid := npc_named(str(_args.get("npc", "Kid Opening Packs")))
+	if kid == null:
+		for n in get_tree().get_nodes_in_group("npcs"):
+			print("GIF: npc on map: ", n.get("npc_name"))
 	kid.set("move_pattern", "idle")
 	player().global_position = kid.global_position + Vector2(0, 46)
 	await wait(3.5)
 	rec(true)
-	await wait(0.8)
+	await wait(0.3)
 	await approach_and_talk(kid, 0.3)
-	await talk_through(2.4)
-	await wait(1.0)
+	await talk_through(1.3)
+	await wait(0.6)
 	await done()
 
 
-## The gym hall at three times of day: the crowd changes and the interior darkens.
+## The gym hall across a few days and times: the player stands still on the Poke Ball in the
+## middle of the star, facing down, while the crowd and the light change. --hold=secs per look.
 func shot_gymhall() -> void:
 	stock_slot()
-	var first := true
-	for t in ["Afternoon", "Evening", "Night"]:
-		story_state(13, t)
+	var hold := float(_args.get("hold", "0.9"))
+	for look in [[13, "Morning"], [13, "Afternoon"], [13, "Evening"], [13, "Night"],
+			[14, "Morning"], [14, "Afternoon"], [15, "Evening"]]:
+		story_state(int(look[0]), str(look[1]))
 		rec(false)
 		GameState.entering_from = "Gym_Challenge_Reception"
 		GameState.save_progress()
-		await go("res://Scenes/Map_Scenes/Gym_Challenge_Hall.tscn", 3.5)
+		var s := await go("res://Scenes/Map_Scenes/Gym_Challenge_Hall.tscn", 2.0)
+		var star := s.get_node_or_null("Tile_Maps/STAR")
+		player().global_position = _map_centre(star if star != null else s)
+		player().set_direction("down")
+		await wait(1.2)   # camera catches up
 		rec(true)
-		await wait(0.4)
-		await walk("up", 1.6)
-		await wait(1.0)
+		await wait(hold)
 	await done()
+
+
+## The middle of every tile layer on a map, in global coordinates.
+func _map_centre(root: Node) -> Vector2:
+	var box := Rect2()
+	var first := true
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		stack.append_array(n.get_children())
+		if n is TileMapLayer and (n as TileMapLayer).tile_set != null:
+			var l := n as TileMapLayer
+			var r := l.get_used_rect()
+			if r.size == Vector2i.ZERO:
+				continue
+			var ts := Vector2(l.tile_set.tile_size)
+			var g := Rect2(l.to_global(Vector2(r.position) * ts), Vector2(r.size) * ts * l.global_scale)
+			box = g if first else box.merge(g)
+			first = false
+	return box.get_center()
 
 
 ## The arrival: the taxi drives in at night while Olly's call plays over it.
@@ -621,12 +707,27 @@ func shot_times() -> void:
 	var off := Vector2(float(_args.get("dx", "-190")), float(_args.get("dy", "90")))
 	if cel != null:
 		player().global_position = cel.global_position + off
+	player().set_direction("down")
+	# Only the town, the light and the birds: every NPC and opponent hidden.
+	for grp in ["npcs", "opponents"]:
+		for n in get_tree().get_nodes_in_group(grp):
+			if n is CanvasItem:
+				(n as CanvasItem).visible = false
 	await wait(4.0)
 	var clock = s.get("_clock")
 	var tpa := GameState.time_points_to_advance()
 	var h_from := 8.0
 	var h_to := 27.0
-	var secs := float(_args.get("secs", "14"))
+	var secs := float(_args.get("secs", "7"))
+	# Two flocks crossing the whole timelapse: bottom-left heading right, top-right heading
+	# left. Every time the slot changes, each bird turns into that slot's species mid-flight.
+	var spawner := find_first_script(s, "OverworldPokemonSpawner")
+	var flocks: Array = []
+	var cur_slot := "Morning"
+	if spawner != null:
+		var pair := _flock_species(spawner, cur_slot)
+		flocks.append(_gif_flock(spawner, pair[0], true, 0.78, secs + 1.0))
+		flocks.append(_gif_flock(spawner, pair[1], false, 0.2, secs + 1.0))
 	rec(true)
 	if clock != null:
 		clock.peek()
@@ -639,6 +740,11 @@ func shot_times() -> void:
 		var pts := int(round((h - (8.0 + 4.0 * slot_i)) / 4.0 * tpa))
 		GameState.progress["time"] = slots[slot_i]
 		GameState.progress["time_points"] = pts
+		if spawner != null and slots[slot_i] != cur_slot:
+			cur_slot = slots[slot_i]
+			var pair2 := _flock_species(spawner, cur_slot, flocks)
+			for k in flocks.size():
+				flocks[k] = _reroll_flock(spawner, flocks[k], pair2[k])
 		# Houses and shops turn in at Bedtime; the street lights stay on (set_time_of_day).
 		var late := s.get_node_or_null("LIGHTS/LATENIGHTOFF")
 		if late != null:
@@ -649,6 +755,122 @@ func shot_times() -> void:
 		await get_tree().process_frame
 		t += get_process_delta_time()
 	await wait(2.0)
+	await done()
+
+
+func find_first_script(from: Node, cls: String) -> Node:
+	var sc: Script = from.get_script()
+	if sc != null and sc.get_global_name() == cls:
+		return from
+	for c in from.get_children():
+		var r := find_first_script(c, cls)
+		if r != null:
+			return r
+	return null
+
+
+## Two different flyer species for `slot` from the map's own flyer table (each unlike the
+## species already flying in `flocks`, when the table allows).
+func _flock_species(spawner: Node, slot: String, flocks: Array = []) -> Array:
+	var rows: Array = spawner._flyer_config(slot).get("table", [])
+	var pool: Array = []
+	for r in rows:
+		if r is Dictionary and str(r.get("species", "")) != "" and not pool.has(str(r["species"])):
+			pool.append(str(r["species"]))
+	if pool.is_empty():
+		pool = ["016_Pidgey", "278_Wingull"]
+	pool.shuffle()
+	var out: Array = []
+	for k in 2:
+		var old := ""
+		if k < flocks.size() and not (flocks[k] as Array).is_empty() and is_instance_valid(flocks[k][0]):
+			old = str(flocks[k][0].species)
+		var pick := ""
+		for sp in pool:
+			if not out.has(sp) and sp != old:
+				pick = sp
+				break
+		if pick == "":
+			pick = pool[k % pool.size()]
+		out.append(pick)
+	return out
+
+
+## A flock of `species` entering from the left (or right) edge at `y_frac` of the screen,
+## paced to cross the view in `cross_secs`.
+func _gif_flock(spawner: Node, species: String, from_left: bool, y_frac: float, cross_secs: float) -> Array:
+	var view: Rect2 = spawner._view_rect()
+	var direction := 1.0 if from_left else -1.0
+	var start := Vector2(view.position.x - 20.0 if from_left else view.end.x + 20.0,
+		view.position.y + view.size.y * y_frac)
+	var speed := (view.size.x + 120.0) / cross_secs
+	var placed: Array[Vector2] = []
+	var out: Array = []
+	for i in int(_args.get("flock", "5")):
+		var offset: Vector2 = Vector2.ZERO if i == 0 else spawner._flock_offset(direction, placed)
+		placed.append(offset)
+		out.append(_make_flyer(spawner, species, direction, speed, spawner._map_edge(direction), start + offset))
+	return out
+
+
+func _make_flyer(spawner: Node, species: String, direction: float, speed: float, end_x: float, at: Vector2) -> Node:
+	var info := OverworldPokemonData.species_info(species)
+	var f := PokemonFlyer.new()
+	f.configure(species)
+	f.direction = direction
+	f.end_x = end_x
+	f.speed = speed
+	f.spins = bool(info.get("spin", false))
+	f.erratic = bool(info.get("erratic", false))
+	f.bug = bool(info.get("bug", false))
+	f.ghost = bool(info.get("ghost", false))
+	f.size_scale = OverworldPokemonData.species_scale(species)
+	f.position = spawner.to_local(at)
+	spawner.add_child(f)
+	return f
+
+
+## Every bird of a flock becomes `species` where it is, same heading and speed.
+func _reroll_flock(spawner: Node, flock: Array, species: String) -> Array:
+	var out: Array = []
+	for f in flock:
+		if f == null or not is_instance_valid(f):
+			continue
+		out.append(_make_flyer(spawner, species, f.direction, f.speed, f.end_x, f.global_position))
+		f.queue_free()
+	return out
+
+
+## TRAILER/README: walking with a shiny follower, then it evolves (no message lines - the
+## player turns to watch). Frames are kept full size so the gif can crop in on the player.
+func shot_evolve() -> void:
+	stock_slot()
+	story_state(5, "Afternoon")
+	await go_map("res://Scenes/Map_Scenes/Celeste_Harbour.tscn", Vector2(290, 1700), "right", 1.0)
+	FollowingPokemon.befriend(str(_args.get("mon", "010_Caterpie")), player().global_position + Vector2(-30, 0),
+		_args.get("shiny", "1") == "1")
+	PokemonEvolution.silent = true
+	await wait(2.5)
+	rec(true)
+	for leg in str(_args.get("path", "right:1.3,down:0.12,right:1.1")).split(","):
+		var bits := leg.split(":")
+		await walk(bits[0], float(bits[1]))
+	await wait(0.4)
+	var f := GameState.get_follower()
+	var evos := PokemonEvolution.evolutions_of(f)
+	if not evos.is_empty() and PokemonEvolution.queue(f, str(evos[0])):
+		PokemonEvolution.run_pending(player().get_parent())
+		await wait(0.3)
+		var guard := 0
+		while PokemonEvolution.is_playing() or PokemonEvolution._running:
+			await wait(0.1)
+			guard += 1
+			if guard > 300:
+				break
+	await wait(0.6)
+	await walk("right", 1.2)
+	await wait(0.4)
+	PokemonEvolution.silent = false
 	await done()
 
 
@@ -759,11 +981,11 @@ func shot_matchstart() -> void:
 	player().global_position = opp.global_position + Vector2(0, 46)
 	await wait(3.5)
 	rec(true)
-	await wait(0.6)
+	await wait(0.3)
 	await approach_and_talk(opp, 0.3)
 	var guard := 0
 	while not MatchTransition.is_active() and guard < 25:
-		await wait(2.0)
+		await wait(1.1)
 		if not MatchTransition.is_active():
 			await accept()
 		guard += 1
@@ -771,7 +993,7 @@ func shot_matchstart() -> void:
 	while MatchTransition.is_active() and guard < 600:
 		await wait(0.1)
 		guard += 1
-	await wait(2.5)
+	await wait(1.5)
 	await done()
 
 
@@ -889,4 +1111,189 @@ func shot_staged() -> void:
 		await wait(0.1)
 		t += 0.1
 	await wait(1.0)
+	await done()
+
+
+# ============================================================
+# SEISMIC TOSS — the slow, human-paced battle gif
+# ============================================================
+# A real match switched onto a staged final turn, then played by hand: real mouse drags
+# and clicks with a visible cursor, a pause after every click, animations at "medium".
+# Machop to the Bench, the last Fighting Energy onto Machamp, Seismic Toss for the win
+# against a Blastoise with three Water Energy. --pause=<s> sets the beat between clicks.
+
+func _stage_seismic(m: Node) -> void:
+	for side in ["player_", "opponent_"]:
+		var disc: Array = m.get(side + "discard_pile")
+		if m.get(side + "active_pokemon") != null:
+			disc.append(m.get(side + "active_pokemon"))
+		disc.append_array(m.get(side + "bench"))
+		var prizes: Array = m.get(side + "prize_cards")
+		while prizes.size() > (1 if side == "player_" else 3):
+			disc.append(prizes.pop_back())
+		for k in disc:
+			k.current_location = "discard"
+	var FI := "base1-97"; var W := "base1-102"
+	m.player_active_pokemon = _staged_mon(m, "base1-8", [FI, FI, FI], 30, "active")       # Machamp: Seismic Toss
+	m.player_bench = [
+		_staged_mon(m, "base1-7", [FI], 20, "bench"),                                       # Hitmonchan
+		_staged_mon(m, "base1-56", [FI, FI], 40, "bench"),                                  # Onix
+		_staged_mon(m, "base1-34", [FI], 0, "bench"),                                       # Machoke
+	]
+	m.opponent_active_pokemon = _staged_mon(m, "base1-2", [W, W, W], 40, "active")        # Blastoise, 60 HP left
+	m.opponent_bench = [
+		_staged_mon(m, "base1-13", [W, W], 30, "bench"),                                    # Poliwrath
+		_staged_mon(m, "base1-6", [W, W, W], 0, "bench"),                                   # Gyarados
+		_staged_mon(m, "base1-41", [W], 10, "bench"),                                       # Seel
+	]
+	var hand := ["base1-52", "base1-94", FI, "base1-91"]                                   # Machop, Potion, Fighting, Bill
+	if _args.get("machop", "1") == "0":
+		hand.remove_at(0)
+	m.player_hand = _staged_cards(m, hand, "hand")
+	m.opponent_hand = _staged_cards(m, ["base1-94", W, "base1-64", "base1-91", W], "hand")
+	for o in [false, true]:
+		m.display_pokemon(o)
+		m.display_active_pokemon_energies(o)
+		m.display_prize_cards(o)
+		m.update_discard_pile_display(o)
+		m.update_deck_icon(o)
+		m.refresh_pokemon_hp_display(m.opponent_active_pokemon if o else m.player_active_pokemon, o)
+	m.refresh_both_hands()
+	m.refresh_board_labels()
+	if m.cpu_ai != null and m.cpu_ai.has_method("invalidate_cpu_evaluation"):
+		m.cpu_ai.invalidate_cpu_evaluation()
+
+
+func _hand_card_pos(m: Node, uid: String) -> Vector2:
+	for child in m.player_hand_container.get_children():
+		if child is CardDisplay and (child as CardDisplay).card_ref != null \
+				and (child as CardDisplay).card_ref.uid == uid:
+			return UIKit.drawn_texture_rect(child as TextureRect).get_center()
+	printerr("GIF: no hand card ", uid)
+	return Vector2(-1, -1)
+
+
+## Press at `from`, glide to `to` (a real drag through Hand_Drag), release.
+func drag(from: Vector2, to: Vector2, dur: float = 0.5) -> void:
+	await move_mouse(from, 0.35)
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.button_mask = MOUSE_BUTTON_MASK_LEFT
+	e.position = from
+	e.global_position = from
+	e.pressed = true
+	Input.parse_input_event(e)
+	if _cursor != null:
+		_cursor.scale = Vector2(0.85, 0.85)
+	await wait(0.2)
+	await move_mouse(to, dur)
+	await wait(0.2)
+	var u := e.duplicate()
+	u.pressed = false
+	u.button_mask = 0
+	u.position = to
+	u.global_position = to
+	Input.parse_input_event(u)
+	if _cursor != null:
+		_cursor.scale = Vector2.ONE
+	await get_tree().process_frame
+
+
+## Waits until the board is the player's again (no message, animation or blocker up).
+func wait_board_free(m: Node, cap: float = 15.0) -> void:
+	var t := 0.0
+	while t < cap and not m.hand_drag.board_free():
+		await wait(0.05)
+		t += 0.05
+
+
+func shot_seismic() -> void:
+	stock_slot()
+	GameState.set_animation_speed(_args.get("anim", "medium"), false)
+	GameState.set_text_speed(_args.get("text", "medium"), false)
+	var pause := float(_args.get("pause", "0.45"))
+	var runner = load("res://Scripts/Autotest/Autotest_Runner.gd").new()
+	runner.opt_watch = true
+	runner.opt_timescale = 1.0
+	runner.opt_bot_smart = true
+	runner.opt_matches = 1
+	runner.replay_run = "gif"
+	runner.replay_record = {"player_deck": deck_array(FIRE_FIGHT), "opponent_deck": deck_array(WATER_GRASS),
+		"seed": int(_args.get("seed", "7001")),
+		"opponent_data": {"name": "Ellie", "deck": "TEST", "sprite": "1Ellie_Hoodie", "music": "",
+			"prize_cards": 6, "coin_reward": "", "sleeve": "", "match_effects": [], "restrictions": {}}}
+	get_tree().root.add_child(runner)
+	runner.opt_seed = int(_args.get("seed", "7001"))
+	var m: Node = null
+	var bot: Node = null
+	while true:
+		await get_tree().process_frame
+		m = runner.current_main
+		bot = runner.current_bot
+		if m != null and is_instance_valid(m) and bot != null and int(m.turn_number) >= 3 \
+				and not m.opponents_turn_active:
+			break
+	bot.set_process(false)
+	while not bot._board_idle():
+		await get_tree().process_frame
+	# From here a person plays: the autotester lets go (Hand_Drag only takes real input without it).
+	runner.set_process(false)
+	GameState.autotest = null
+	m.hide_hidden_cards = true
+	_stage_seismic(m)
+	print("GIF: staged Seismic Toss board at turn ", m.turn_number)
+	show_cursor(true)
+	_motion(Vector2(1500, 620))
+	await wait(0.6)
+	await wait_board_free(m)
+	rec(true)
+	await wait(1.2)
+	# 1. Machop onto the Bench (--machop=0 skips it: energy + knockout only).
+	if _args.get("machop", "1") != "0":
+		var bench_to: Vector2 = m.hand_drag._bench_slot(3).get_center()
+		await drag(_hand_card_pos(m, "base1-52"), bench_to, 0.55)
+		await wait(pause)
+		await wait_board_free(m)
+		await wait(pause)
+	# 2. The last Fighting Energy onto Machamp.
+	var champ: Vector2 = m.hand_drag.pokemon_rect(m.player_active_pokemon).get_center()
+	await drag(_hand_card_pos(m, "base1-97"), champ, 0.6)
+	await wait(pause)
+	await wait_board_free(m)
+	await wait(pause)
+	# 3. Seismic Toss.
+	var row: BaseButton = null
+	for b in m._all_buttons_under(m._player_action_panel):
+		if String(b.get_meta("row_kind", "")) == "attack":
+			row = b
+			break
+	if row == null:
+		printerr("GIF: no attack row")
+	else:
+		await move_mouse(row.get_global_rect().get_center(), 0.4)
+		await wait(pause)
+		await click(row.get_global_rect().get_center())
+	# Whatever follows (prize pick, messages): answer it like a person, with a beat each time.
+	var t := 0.0
+	var cap := float(_args.get("cap", "25"))
+	while t < cap and not m.game_is_over:
+		if _args.get("stop_at_prize", "1") == "1" and m.card_selection_mode_enabled:
+			break   # the prize pick below clicks a stale pool entry; the gif ends before it anyway
+		if m.card_selection_mode_enabled and not m.shown_selection_pool.is_empty():
+			await wait(pause)
+			var c = m.shown_selection_pool[0]
+			var node = m.find_card_ui_for_object(c)
+			if node != null and node is Control:
+				await click((node as Control).get_global_rect().get_center(), MOUSE_BUTTON_LEFT, 0.35)
+				await wait(pause)
+			if m.action_button.visible and not m.action_button.disabled:
+				await click(m.action_button.get_global_rect().get_center(), MOUSE_BUTTON_LEFT, 0.35)
+		elif m.msgbox_container.visible:
+			await wait(0.9)
+			if m.msgbox_container.visible:
+				await click(Vector2(960, 560), MOUSE_BUTTON_LEFT, 0.3)
+		await wait(0.1)
+		t += 0.1
+	print("GIF: game over ", m.game_is_over, " at frame ", _frame)
+	await wait(float(_args.get("tail", "3.0")))
 	await done()

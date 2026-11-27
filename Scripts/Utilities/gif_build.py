@@ -33,6 +33,12 @@ def main():
     ap.add_argument("--squeeze-keep", type=int, default=9)
     ap.add_argument("--fuzz", type=float, default=0.0,
                     help="RGB distance under which a pixel counts as unchanged (lossy; 0 = exact)")
+    ap.add_argument("--hq", default="",
+                    help="full-colour build through ffmpeg (imageio-ffmpeg) instead of the 128-colour "
+                         "fuzzed palette: 'global' = one 256-colour palette from the whole clip, "
+                         "'frame' = a fresh 256-colour palette every frame (best colour, biggest)")
+    ap.add_argument("--crop", default="", help="x,y,w,h of each source frame to keep (zoom in), before --width")
+    ap.add_argument("--dither", default="sierra2_4a", help="--hq dither: none, bayer, sierra2_4a, floyd_steinberg")
     a = ap.parse_args()
 
     files = sorted(glob.glob(os.path.join(a.frames, "f_*.png")) + glob.glob(os.path.join(a.frames, "f_*.jpg")))
@@ -61,6 +67,9 @@ def main():
     frames = []
     for f in files:
         im = Image.open(f).convert("RGB")
+        if a.crop:
+            x, y, w, h = (int(v) for v in a.crop.split(","))
+            im = im.crop((x, y, x + w, y + h))
         h = round(im.height * a.width / im.width)
         im = im.resize((a.width, h), Image.LANCZOS)
         frames.append(im)
@@ -73,6 +82,10 @@ def main():
         for k, im in enumerate(pick):
             sheet.paste(im.resize((tw, th)), ((k % 3) * tw, (k // 3) * th))
         sheet.save(a.sheet)
+
+    if a.hq:
+        _hq_build(frames, a)
+        return
 
     # One palette for the whole gif (built from a strip of sampled frames), so a pixel
     # that did not change keeps the same index from frame to frame. Those pixels are
@@ -119,6 +132,29 @@ def main():
                 loop=0, optimize=False, disposal=1, transparency=TRANS)
     print(f"{a.out}: {len(out)} frames, {sum(durations)/1000:.1f}s, "
           f"{os.path.getsize(a.out)/1e6:.1f} MB")
+
+
+def _hq_build(frames, a):
+    """Full-colour gif: ffmpeg palettegen/paletteuse with error-diffusion dither, and only the
+    changed rectangle of each frame stored (diff_mode=rectangle), so stills stay small without
+    the fuzz smearing."""
+    import shutil, subprocess, tempfile
+    import imageio_ffmpeg
+    tmp = tempfile.mkdtemp(prefix="gifhq_")
+    for i, im in enumerate(frames):
+        im.save(os.path.join(tmp, f"{i:05d}.png"), compress_level=1)
+    fps = a.fps / a.every
+    if a.hq == "frame":
+        flt = (f"split[a][b];[a]palettegen=max_colors=256:stats_mode=single:reserve_transparent=1[p];"
+               f"[b][p]paletteuse=new=1:dither={a.dither}:diff_mode=rectangle")
+    else:
+        flt = (f"split[a][b];[a]palettegen=max_colors=256:stats_mode=diff:reserve_transparent=1[p];"
+               f"[b][p]paletteuse=dither={a.dither}:diff_mode=rectangle")
+    cmd = [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-framerate", str(fps),
+           "-i", os.path.join(tmp, "%05d.png"), "-filter_complex", flt, "-loop", "0", a.out]
+    subprocess.run(cmd, check=True)
+    shutil.rmtree(tmp, ignore_errors=True)
+    print(f"{a.out}: {len(frames)} frames, {len(frames)/fps:.1f}s, {os.path.getsize(a.out)/1e6:.1f} MB")
 
 
 if __name__ == "__main__":

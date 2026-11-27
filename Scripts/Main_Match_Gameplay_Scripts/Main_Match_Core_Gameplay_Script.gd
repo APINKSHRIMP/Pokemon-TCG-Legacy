@@ -13670,10 +13670,13 @@ func _ready() -> void:
 		# their coverage (e.g. areas that should be unclickable but aren't) are visible for
 		# debugging. Normal matches keep them fully transparent. Kept at 20% alpha on a pale
 		# (not saturated) red so a blocker appearing mid-match doesn't flash the whole screen.
-		var debug_blocker_color = Color(1.0, 0.55, 0.55, 0.2)
-		opponent_blocker.color = debug_blocker_color
-		animation_blocker.color = debug_blocker_color
-		buttons_only_blocker.color = debug_blocker_color
+		# Switched OFF for now (user 2026-11-27): flip TINT_TEST_BLOCKERS to bring it back.
+		const TINT_TEST_BLOCKERS := false
+		if TINT_TEST_BLOCKERS:
+			var debug_blocker_color = Color(1.0, 0.55, 0.55, 0.2)
+			opponent_blocker.color = debug_blocker_color
+			animation_blocker.color = debug_blocker_color
+			buttons_only_blocker.color = debug_blocker_color
 
 	# Load sleeve textures for player and opponent
 	player_sleeve_small = _resolve_sleeve_path(pdata.get("sleeve", "default"), true)

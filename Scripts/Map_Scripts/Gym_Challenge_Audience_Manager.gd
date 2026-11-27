@@ -24,7 +24,10 @@ class_name GymChallengeAudienceManager
 # day 15 on. The challenge has no end date any more -- it runs until all eight
 # leaders are beaten -- so the curve has to hold for any day.
 # ============================================================
-const CHALLENGE_START_DAY := 8
+## The day the challenge opens = the PEAK crowd (moved from 8 when the challenge start moved to
+## day 13, 2026-11-27: on day 13 the old curve had already decayed to ~59%). Earlier days count
+## as the start too (elapsed clamps at 0).
+const CHALLENGE_START_DAY := 13
 const BASE_ATTENDANCE: Dictionary = {
 	"Morning": 0.80, "Afternoon": 1.00, "Evening": 0.50, "Night": 0.20, "Bedtime": 0.0,
 }
@@ -54,38 +57,27 @@ const RANDOM_PATTERN_CHANCE := 0.3
 # Add or remove sprite names here to control which characters
 # appear in the stands. One name per line for easy editing.
 # ============================================================
+## Names must match Overworld_Sprites filenames EXACTLY (case too: exports are case-sensitive).
+## Re-synced to the 2026-09-08 rename on 2026-11-27 (43 stale names were loading blank seats).
 const NPC_SPRITE_POOL: Array = [
-	"NPC01", "NPC02", "NPC03", "NPC04", "NPC05", "NPC07",
-	"NPC09", "NPC10", "NPC11", "NPC12", "NPC16",
-	"NPC21", "NPC22", "NPC23", "NPC24", "NPC25",
-	"NPC28", "NPC29", "NPC30", 
-	"NPC40", "NPC 02", "NPC 03", "NPC 04", "NPC 05", "NPC 06",
-	"NPC 07", "NPC 08", "NPC 10", "NPC 13", "NPC 14", "NPC 15", "NPC 17",
-	"NPC 26", "NPC 30", "NPC 31", "NPC 32", "NPC 18", "NPC 33", "NPC 34",
-	"NPC 85", "NPC 86", "NPC 87", "NPC 88",
-	"Aromalady", "Artist", "Artist2",
-	"Backers_F", "Backers_F2", "Backers_M", "Backers_M2", "Bakushin_Clerk", "Bakushin_Sailor", "Battlegirl", "Battlegirl2", "Beauty",
-	"Birdkeeper_F", "Birdkeeper_M",
-	"Gambler", "Scientist_M3", "Scientist_F",
-	"Pokemaniac_Red", "Pokemaniac_Blue", "Pokemaniac_Green", "Pokemaniac_Purple",
-	"Cooltrainer_F2", "Blackbelt2", "Burglar", "Clerk_F", "Clerk_M0", "Clerk_M1",
-	"Gentleman", "Gentleman2", "Gentleman3",
-	"Lady", "Lady2", "Youngster", "Youngster2", "Youngster3",
-	"Cooltrainer_M", "Cooltrainer_F", "Cooltrainer_M2",
-	"Cooltrainer_M3", "Cooltrainer_M4", "Cooltrainer_F3", "Cooltrainer_F4",
-	"Hiker", "Collector", "Richboy", "RichBoy2", "Socialite2", "Medium_1", "Rancher",
-	"Lass", "Lass2", "Lass3", "Pokefan_F", "Pokefan_F2",
-	"Pokemonbreeder_M", "Pokemonbreeder_M2", "Pokemonbreeder_F", "Pokemonbreeder_F2",
-	"Pokemonranger_M", "Pokemonranger_M2", "Pokemonranger_F", "Pokemonranger_F2",
-	"Psychic_F", "Psychic_F2", "Psychic_M", "Psychic_M2", 
-	"Bugcatcher", "Bugcatcher2", "Roughneck", "Roughneck2", "Sage",
-	"Beauty2", "Beauty3", "Sailor", "Camper", "Picnicker",
-	"Fisherman2", "Fisherman", "Juggler", "Supernerd", "Guitarist", "Guitarist2",
-	"Pokefan_M", "Pokefan_M2", "Dancer", "Elder", "Fisher", "Hoopster", "Idol", "NurseryAide",
-	"Schoolkid_F", "Schoolkid_F2", "Schoolkid_M", "Schoolkid_M2", "Schoolkid_M3", "Smasher",
-	"Socialite", "Striker", "Teacher", "Twin1", "Twin3", "Twin5",
-	"Veteran_M", "Veteran_M2", "Veteran_F", "Waiter2", "Waiter",
-	"Youngcouple", "Youngcouple_2", "Youngcouple2", "Youngcouple2_2",   
+	"NPC02", "NPC03", "NPC04", "NPC05", "NPC07", "NPC09", "NPC10", "NPC11",
+	"NPC12", "NPC16", "NPC21", "NPC22", "NPC23", "NPC24", "NPC25", "NPC28",
+	"NPC29", "NPC30", "NPC40", "NPC06", "NPC08", "NPC13", "NPC14", "NPC15",
+	"NPC17", "NPC26", "NPC31", "NPC32", "NPC18", "NPC33", "NPC34", "NPC85",
+	"NPC86", "NPC87", "NPC88", "AromaLady", "Artist_M", "Artist_M2", "Backer_F", "Backer_F2",
+	"Backer_M", "Backer_M2", "Bakushin_Clerk", "Bakushin_Sailor", "BattleGirl", "BattleGirl2", "Beauty", "BirdKeeper_F",
+	"BirdKeeper_M", "Gambler", "Scientist_M3", "Scientist_F", "Pokemaniac_Red", "Pokemaniac_Blue", "Pokemaniac_Green", "Pokemaniac_Purple",
+	"CoolTrainer_F2", "BlackBelt2", "Burglar", "Clerk_F", "Clerk_M", "Gentleman", "Gentleman2", "Gentleman3",
+	"Lady", "Lady2", "Youngster", "Youngster2", "Youngster3", "CoolTrainer_M", "CoolTrainer_F", "CoolTrainer_M2",
+	"CoolTrainer_M3", "CoolTrainer_M4", "CoolTrainer_F3", "CoolTrainer_F4", "Hiker", "Collector", "RichBoy", "RichBoy2",
+	"Socialite2", "Medium", "Rancher_M", "Lass", "Lass2", "Lass3", "PokeFan_F", "PokeFan_F2",
+	"PokemonBreeder_M", "PokemonBreeder_M2", "PokemonBreeder_F", "PokemonBreeder_F2", "PokemonRanger_M", "PokemonRanger_M2", "PokemonRanger_F", "PokemonRanger_F2",
+	"Psychic_F", "Psychic_F2", "Psychic_M", "Psychic_M2", "BugCatcher", "BugCatcher2", "Roughneck", "Roughneck2",
+	"Sage", "Beauty2", "Beauty3", "Sailor", "Camper_M", "Picnicker", "Juggler", "Supernerd",
+	"Guitarist_M", "Guitarist_M2", "PokeFan_M", "PokeFan_M2", "Dancer_M", "Elder", "Fisher_M", "Hoopster",
+	"Idol", "NurseryAide", "SchoolKid_F", "SchoolKid_F2", "SchoolKid_M", "SchoolKid_M2", "SchoolKid_M3", "Smasher",
+	"Socialite", "Striker", "Teacher", "Twin", "Twins3", "Veteran_M", "Veteran_M2", "Veteran_F",
+	"Waiter2", "Waiter", "YoungCouple", "YoungCouple_2", "YoungCouple2", "YoungCouple2_2",
 ]
 
 # ============================================================

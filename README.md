@@ -4,11 +4,13 @@
 
 ## The Game
 
-Pokemon TCG Legacy is my modern take on the old Pokémon Trading Card GB games created from the ground up in Godot GD script, so this isn't a rom hack or an RPG maker game release, everything in the game has been coded entirely from scratch in the Godot Engine. 
+Pokémon TCG Legacy is my modern take on the old Pokémon Trading Card GB games created from the ground up in Godot GDScript, so this isn't a rom hack or an RPG maker game release, everything in the game has been coded entirely from scratch in the Godot Engine. 
 
 Pokémon TCG 2: The Invasion of Team GR! was released in 2001 and was the last single player PTCG experience we got (And it was never officially released in English!).  For over **25 years** every game since has been an online PvP focused experience. Pokémon TCG Legacy focuses entirely on a single-player experience, building your own collection of cards through in game battles against unique and varied decks and unlocking new sets naturally as you progress (of course with no real world money to spend).
 
-The story isn't a continuation from the original Pokemon TCG GB and GB2, but instead aims to be an entirely unique experience of its own. My aim is to capture the satisfaction of earning and collecting new cards and rewarding experimentation with deck building, facing off against opponents with wildly different decks and strategies. No reliance on established metas meaning you won't be seeing the same deck every match, leaving you free to experiment with the cards you actually want to use.
+The story isn't a continuation from the original Pokémon TCG GB and GB2, but instead aims to be an entirely unique experience of its own. The story aims to be existing lore-friendly, so you'll be able to meet and play against NPCs from other games and regions as they visit the island.
+
+My aim is to capture the satisfaction of earning and collecting new cards and rewarding experimentation with deck building, facing off against opponents with wildly different decks and strategies. No reliance on established metas meaning you won't be seeing the same deck every match, leaving you free to experiment with the cards you actually want to use.
 
 ### Rich open world
 
@@ -26,6 +28,8 @@ A battle engine built from the ground up with every card, attack and effect from
 
 Choice of playing a full tutorial to learn the game mechanics or get straight in for those who've played before.
 
+![Seismic Toss](Image_Assets/Screenshots/seismictoss.gif)
+
 ![Battle](Image_Assets/Screenshots/battle.gif)
 
 ### Day - Night cycles change the landscape
@@ -38,15 +42,13 @@ Time progresses throughout the day as you battle. NPCs have different habits, of
 
 ### Complete Card Collection (Base Set → EX Era)
 
-Collect every card from **Base Set** through to **EX Power Keepers**. 3285 collectible cards across 37 sets. Build custom decks and experiment freely within the rules of the official Pokemon TCG. All card information is displayed in full detail.
+Collect every card from **Base Set** through to **EX Power Keepers**. 3,200+ collectible cards across 37 sets. Build custom decks and experiment freely within the rules of the official Pokémon TCG. All card information is displayed in full detail.
 
 ![Cards](Image_Assets/Screenshots/Cards.gif)![Previews](Image_Assets/Screenshots/Previews.gif)
 
-![Fishing minigame](Image_Assets/Screenshots/Fishing.gif)
-
 ### Familiar NPCs and gifts
 
-GYM leaders from Kanto make an appearance in the overworld, letting you speak to old friends. Some NPCs give you a gift when spoken to, so you build up your collection not just by battling but by talking to everyone.
+Gym leaders from Kanto make an appearance in the overworld, letting you speak to old friends. Some NPCs give you a gift when spoken to, so you build up your collection not just by battling but by talking to everyone.
 
 ![Gift](Image_Assets/Screenshots/gift.gif)
 
@@ -64,7 +66,7 @@ Unlock **200+ unique sprites** as you progress through the game. Set your favour
 
 ![Trainer card](Image_Assets/Screenshots/Trainercard.gif)
 
-### 400+ Collectable Coins and Card Sleeves
+### 400+ Collectible Coins and Card Sleeves
 
 Win coins and sleeves as rewards for every battle and find some as gifts to use in your matches.
 
@@ -74,11 +76,15 @@ Win coins and sleeves as rewards for every battle and find some as gifts to use 
 
 ### Endless replayability
 
-Hundreds of unique decks and opponents so you never have to battle the same opponent twice! (Unless you want to). Fishing minigame!
+Hundreds of unique decks and opponents so you never have to battle the same opponent twice! (Unless you want to). If you need to take a break from playing cards you can try your hand at Fishing at different spots around the island and while you can't catch Pokémon (you're not a trainer!) you can still make friends with some wild Pokémon and even have them evolve! Who knew Pokémon loved cards?
 
-![Messages](Image_Assets/Screenshots/Messages.gif)
+![Messages](Image_Assets/Screenshots/Messages.gif)
 
 ![Intro](Image_Assets/Screenshots/intro.gif)
+
+![Fishing minigame](Image_Assets/Screenshots/Fishing.gif)
+
+![Evolve](Image_Assets/Screenshots/evolve.gif)
 
 ## Technical
 
@@ -88,20 +94,21 @@ Built in **Godot 4.6** using GDScript.
 
 # Update on 18/11/2026
 
-Every single card set is now technically implemented. That's all 39 sets and over 3,000 cards playable covering Promos, e-card series, neo, the entire EX era and POP series 1-5.
+Every single card set is now technically implemented. That's all 37 sets and over 3,200 cards playable covering Promos, e-card series, neo, the entire EX era and POP series 1-5.
 
 Key things **already implemented** to look forward to:
 
-1. All cards from Base set Gym Hero/Challenge can be used, earned and purchased from in shops, technically every card from neo-ex power keepers is implemented but not obtainable.
+1. All cards from Base Set to Gym Heroes/Challenge can be used, earned and purchased from in shops, technically every card from neo-ex power keepers is implemented but not obtainable.
 2. Full TCG battle engine written from scratch, all 1061 unique attack effects, 270 Poke-powers and bodies, 284 trainers, 52 stadium cards and 19 special energies all implemented faithfully to the original prints.
 3. A CPU opponent with board evaluation, providing a genuine challenge to battle against.
 4. All main explorable areas completed for the Kanto era cards with both open exteriors and explorable interiors mapped.
 5. Living Morning, Afternoon, Evening and Night cycle with different NPC behaviours and map changes depending on the time of day.
 6. 100+ Opponents to battle already with another 100 NPCs to interact with, all with unique dialogue, gifts and changing interactions depending on time of day. 
 7. "Boss" battles with meta decks and Gym Leader gauntlet resulting in story progression and big rewards
-8. Challenge battles with a combination of 30 different gameplay modifiers such as damage multipliers, weakness and resistance changes, double energy attachment and card restrictions.
-9. Complete deck builder and card database, allowing you to build decks with any of the 3000+ cards and view them full screen with card text in full detail. Advanced filtering to search for specific cards.
+8. Challenge battles with a combination of 31 different gameplay modifiers such as damage multipliers, weakness and resistance changes, double energy attachment and card restrictions.
+9. Complete deck builder and card database, allowing you to build decks with any of the 3,200+ cards and view them full screen with card text in full detail. Advanced filtering to search for specific cards.
 10. Hundreds of cosmetics to chase: 221 trainer sprites, 589 card sleeves, 419 collectible coins, five trainer card designs and six energy card styles, all tracked on your trainer card.
+11. Following Pokémon! Make friends with wild Pokémon around the island, give them a home and a bed and they'll follow you around. Some of them can even evolve.
 
 The game is technically playable now, you could download the godot project from git and run it in debug mode and get a couple hours enjoyment out of it, but it's still buggy and janky with a lot of issues that need working out. I'm still adding a few final features, a bit of polish and most importantly debugging the hundreds of issues that exist. I'm aiming to have the game fully playable by the end of the year.
 
@@ -113,11 +120,10 @@ The game is technically playable now, you could download the godot project from 
 
 3. All decks need battling against fully and adjusting to make them as good as possible. A lot of decks will require tweaking.
 
-4. Add Pokemon to the overworld to flesh out the world along with the additional NPCs.
+4. Add more Pokémon to the overworld to flesh out the world along with the additional NPCs.
 
 5. The three leads (Ellie, Olly and Alexander) take the rival/friend role, with specific interactions helping you start the game, giving you a nudge in the right direction and testing your skill as you progress. Days 1-3 are built; day 4 onwards is still to write.
 
-6. 
 
 Consider this phase 1 complete and a 'finished' game that's playable with a story and rich enough features to be a dozen or so hours gameplay
 
@@ -125,16 +131,15 @@ Consider this phase 1 complete and a 'finished' game that's playable with a stor
 
 1. Add Neo set era cards available to use and purchase
 2. Create another 100+ decks from Neo era with 100+ Opponents to match
-3. Allow pokemon to be followers and allow some pokemon to evolve when certain conditions are met
-4. Add "Southern Island" map area with complete SI set gifted for beating all opponents, while also recreating Southern island cards to fix terrible reverse holo image scans
-5. 3-4 new major map areas for Neo era cards. Travel between all areas via train and boat
-6. Recreate custom translated versions of the Pokemon VS set and implement into the game resulting in Johto Gym Challenge using the VS set
+3. Add "Southern Island" map area with complete SI set gifted for beating all opponents, while also recreating Southern island cards to fix terrible reverse holo image scans
+4. 3-4 new major map areas for Neo era cards. Travel between all areas via train and boat
+5. Recreate custom translated versions of the Pokémon VS set and implement into the game resulting in Johto Gym Challenge using the VS set
 
 Consider this end of phase 2 and next large update to game
 
 # Future features planned
 
-1. Implement all EX generation card sets from Ruby Sapphire to end of Delta species
+1. Unlock all EX generation card sets from Ruby Sapphire to end of Delta species
 2. Implement EX era overworlds and opponents
 3. Add double battle matches as per EX era rulesets
 

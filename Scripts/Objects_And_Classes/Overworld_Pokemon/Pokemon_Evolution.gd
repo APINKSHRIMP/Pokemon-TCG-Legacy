@@ -108,6 +108,8 @@ static var _running: bool = false
 static var _playing: bool = false
 ## DEL menu: the next match you win evolves your follower into its first evolution.
 static var debug_after_next_win: bool = false
+## Recordings only (Gif_Director): no "is evolving" / "evolved" lines, just the animation.
+static var silent: bool = false
 static var _evo_map: Dictionary = {}
 static var _evo_map_built: bool = false
 static var _shader: Shader = null
@@ -255,7 +257,11 @@ static func _play(map_root: Node, old: String, into: String) -> void:
 		follower = null
 	if follower != null:
 		follower.set_facing("down")
-	if EVOLVING_LINE != "":
+		# The player turns to watch it happen (user 2026-11-27).
+		var watcher := tree.get_first_node_in_group("player") as Node2D
+		if watcher != null and watcher.has_method("face_toward"):
+			watcher.face_toward(follower.global_position)
+	if EVOLVING_LINE != "" and not silent:
 		await _say(tree, old, name_before, EVOLVING_LINE % name_before)
 	SoundManagerScript.play_cry(PokemonHome.species_of(old), 1.0, true)
 
@@ -282,6 +288,8 @@ static func _play(map_root: Node, old: String, into: String) -> void:
 		out.tween_callback(fx.queue_free)
 	await tree.create_timer(END_BEAT).timeout
 	SoundManagerScript.play_cry(into, 1.0, true)
+	if silent:
+		return
 	await _say(tree, new_id, PokemonHome.name_of(new_id),
 			EVOLVED_LINE % [name_before, OverworldPokemonData.display_name(into)])
 
