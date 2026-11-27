@@ -150,48 +150,8 @@ const BGM_EXT := ".ogg"
 ## Substring that marks a filename as selectable opponent battle music.
 const BATTLE_BGM_MARKER := "battle"
 
-# --- Battle tracks (these are what the opponent music picker offers) ---
-const BGM_BOSS_BATTLE                    := BGM_DIR + "Boss_battle (PTCG2 The Final Duel GRs King Biruri)" + BGM_EXT
-const BGM_CALM_BATTLE                    := BGM_DIR + "Calm Battle (PMD Surrounded Sea)" + BGM_EXT
-const BGM_CALM_BATTLE_2                  := BGM_DIR + "Calm Battle 2 (PMD Crystal_Cave)" + BGM_EXT
-const BGM_CALM_BATTLE_3                  := BGM_DIR + "Calm Battle 3 (PMDEoS Drenched Bluff)" + BGM_EXT
-const BGM_DARK_BATTLE                    := BGM_DIR + "Dark_battle (PTCG2 Duel Vs Team GR)" + BGM_EXT
-const BGM_DARK_BATTLE_2                  := BGM_DIR + "Dark_battle_2 (PTCG2 Colorless Altar A Dark Dwelling)" + BGM_EXT
-const BGM_DARK_BATTLE_3                  := BGM_DIR + "Dark Battle 3 (PMDEoS In the Depths of the Pit)" + BGM_EXT
-const BGM_EASY_BATTLE                    := BGM_DIR + "Easy_battle (PMD beach cave)" + BGM_EXT
-const BGM_EASY_BATTLE_2                  := BGM_DIR + "Easy Battle 2 (PMDEoS Foggy Forest)" + BGM_EXT
-const BGM_EASY_TENSE_BATTLE              := BGM_DIR + "Easy tense Battle (Pinball Catchem Evolution in Blue Field)" + BGM_EXT
-const BGM_FUN_BATTLE_PMD                 := BGM_DIR + "Fun_battle (PMDX Makuhita Dojo)" + BGM_EXT
-const BGM_FUN_BATTLE_PINBALL             := BGM_DIR + "Fun_battle (Pinball Red Field)" + BGM_EXT
-const BGM_FUN_BATTLE_3                   := BGM_DIR + "Fun Battle 3 (PMDEoS Craggy Coast)" + BGM_EXT
-const BGM_GYM_LEADER_CHALLENGE_BATTLE    := BGM_DIR + "Gym Leader Challenge Battle (Pokemon Card GB2 - Duel Vs Fortress Leader)" + BGM_EXT
-const BGM_IMPORTANT_BATTLE               := BGM_DIR + "Important_battle (Pokmon Card GB2 - GRs Challenge Cup)" + BGM_EXT
-const BGM_IMPORTANT_BATTLE_2             := BGM_DIR + "Important_battle_2 (Pokemon Card GB2 - Duel Vs Fortress Leader)" + BGM_EXT
-const BGM_JOLLY_BATTLE                   := BGM_DIR + "Jolly_battle (Pinball Hi Score Screen)" + BGM_EXT
-const BGM_JOLLY_BATTLE_2                 := BGM_DIR + "Jolly_battle 2 (Pinball Catchem Evolution in Red Field)" + BGM_EXT
-const BGM_LAID_BACK_BATTLE               := BGM_DIR + "Laid Back Battle (Pinball Blue Field)" + BGM_EXT
-const BGM_MEDIUM_BATTLE                  := BGM_DIR + "Medium Battle (PMD Mt Freeze)" + BGM_EXT
-const BGM_MEDIUM_BATTLE_2                := BGM_DIR + "Medium_battle 2 (PMD Amp_Plains)" + BGM_EXT
-const BGM_MEDIUM_BATTLE_3                := BGM_DIR + "Medium_Battle 3 (PMDX Thunderwave Cave)" + BGM_EXT
-const BGM_MEDIUM_BATTLE_4                := BGM_DIR + "Medium Battle (PMD Mt. Bristle)" + BGM_EXT
-const BGM_MEDIUM_BATTLE_5                := BGM_DIR + "Medium Battle 5 (PMDX Mt Steel)" + BGM_EXT
-const BGM_MEDIUM_BATTLE_6                := BGM_DIR + "Medium Battle 6 (PMDEoS Cave and Side Path)" + BGM_EXT
-const BGM_NICE_BATTLE                    := BGM_DIR + "Nice_battle (PTCG2 - GRs Grass Water Forts)" + BGM_EXT
-const BGM_OUTLAW_BATTLE                  := BGM_DIR + "Outlaw_battle (PMD Outlaw)" + BGM_EXT
-const BGM_SERIOUS_BATTLE                 := BGM_DIR + "Serious Battle (PTCG2 GR Rises to Power)" + BGM_EXT
-const BGM_SIMPLE_BATTLE                  := BGM_DIR + "Simple_battle (PTCG2 Mr Ishiharas Villa)" + BGM_EXT
-const BGM_TENSE_BATTLE                   := BGM_DIR + "Tense_battle (PTCG2 GRs Lightning Psychic Forts)" + BGM_EXT
-const BGM_TENSE_BATTLE_2                 := BGM_DIR + "Tense Battle 2 (PMDX Buried Relic)" + BGM_EXT
-const BGM_WORRYING_BATTLE                := BGM_DIR + "Worrying_Battle (PTCG2 GRs Fire Fighting Forts)" + BGM_EXT
-const BGM_CHILLED_BATTLE                 := BGM_DIR + "chilled_battle (PTCG Masons Lab)" + BGM_EXT
-const BGM_FAST_BATTLE                    := BGM_DIR + "fast_battle (PTCG Ronalds Theme)" + BGM_EXT
-const BGM_HARD_BATTLE                    := BGM_DIR + "hard_battle (PTCG Club Master)" + BGM_EXT
-const BGM_HARD_BATTLE_2                  := BGM_DIR + "hard_battle_2 (PTCG Grand Master Battle)" + BGM_EXT
-const BGM_HARD_BATTLE_3                  := BGM_DIR + "Hard Battle 3 (PMDX Mt Blaze Peak)" + BGM_EXT
-const BGM_HARD_BATTLE_4                  := BGM_DIR + "Hard Battle 4 (PMDX Magma Cavern)" + BGM_EXT
-const BGM_JAZZY_BATTLE                   := BGM_DIR + "jazzy_battle (PTCG Grass Lightning Club)" + BGM_EXT
+# --- The default battle track (the opponent music picker lists every "battle" file in BGM_DIR) ---
 const BGM_NORMAL_BATTLE                  := BGM_DIR + "normal_battle (PTCG)" + BGM_EXT
-const BGM_WEIRD_BATTLE                   := BGM_DIR + "weird_battle (PTCG Imakuma)" + BGM_EXT
 
 # --- Maps with a track per time slot (BaseMapScene.get_time_bgm returns one of these tables) ---
 const BGM_HARBOUR_MORNING                := BGM_DIR + "Celeste Harbour Morning (ORAS Dewford Town)" + BGM_EXT

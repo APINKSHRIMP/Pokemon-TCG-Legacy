@@ -128,7 +128,6 @@ var night_eyes_used: bool = false          # neo3-11 Misdreavus Night Eyes: set 
 var triggered_poison_active: bool = false  # neo3-4 Crobat Triggered Poison: if opp attaches energy to this, it becomes Poisoned
 var neo3_high_speed_locked: bool = false   # neo3-36 Piloswine High-Speed Charge: can't use next turn
 var submerge_active: bool = false          # neo3-32 Lanturn Submerge: type is Water this turn
-var legendary_body_active: bool = false    # neo3-17/22/27 Legendary Body: while Active, trainer effects ignored
 
 # NEO4 (Neo Destiny) properties
 var neo4_immune_to_status: bool = false        # neo4-24 Light Ledian Flash Touch: can't be statused while Active

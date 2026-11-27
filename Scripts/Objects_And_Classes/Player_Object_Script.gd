@@ -44,14 +44,6 @@ var _nearby_candidates: Array = []
 # The currently prioritised candidate (closest) — the only one showing a bubble
 var _active_candidate: Node = null
 
-# Back-compat accessors used by MapManager / other scripts
-var nearby_opponent: Node:
-	get:
-		return _active_candidate if (_active_candidate != null and _active_candidate.is_in_group("opponents")) else null
-var nearby_npc: Node:
-	get:
-		return _active_candidate if (_active_candidate != null and _active_candidate.is_in_group("npcs")) else null
-
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var interaction_area: Area2D = $InteractionArea
 @onready var camera: Camera2D = $Camera2D

@@ -12,40 +12,6 @@ const OWNED_CARDS_SUFFIX := "_player_owned_cards.json"
 # GameState (COIN_ASSET_FOLDER / COSTUME_ASSET_FOLDER / SLEEVE_SMALL_FOLDER / COIN_BACK_IMAGE /
 # DEFAULT_SLEEVE_PREFIX), so the X / Y counters below and the CHT.All_* cheats read one list.
 
-# Godot centres a Label on the full ascent+descent box, but kenvector_future is caps-only, so
-# the empty descent space parks the visible ink below the middle of the bar. Measured off a
-# render: 10px of bar above the caps and 5px below, so lift the row by half that difference.
-const STAT_TEXT_Y_NUDGE := -2.5          # screen px, negative is up
-
-# Largest size whose line height still clears the 33px bar (measured in Godot with the theme font:
-# 32px at 28, but 35px at 30). kenvector_future is caps-only, so labels render uppercase whatever
-# case the string is in.
-const STAT_FONT_SIZE  := 28
-
-# DOB / cash block under the name box — two centred lines in the one 614x115 Label.
-const DOB_CASH_FONT_SIZE    := 32
-const DOB_CASH_LINE_SPACING := 14
-
-
-
-# Colour-change burst. Same particle recipe as Coin_Shop_Script._start_sparkle — same scale range,
-# same four-stop gradient, same palette — with three changes: one_shot so it never re-emits, a
-# lifetime 40% shorter than the coin sparkle’s 0.9s so the burst is over quickly, and explosiveness
-# just under 1.0. At exactly 1.0 every pixel spawns on the same frame, which reads as a single flat
-# flash; 0.9 spreads the spawns over lifetime x (1 - explosiveness) — about 54ms — so the glitter
-# stutters in. The count dwarfs the coin sparkle’s 20 because the emission rectangle is the whole
-# card rather than an 80px coin.
-const SPARKLE_AMOUNT        := 450
-const SPARKLE_LIFETIME      := 0.54
-const SPARKLE_EXPLOSIVENESS := 0.9
-const SPARKLE_COLOURS       := {
-	"blue":   Color(0.3,  0.5,  1.0),
-	"green":  Color(0.2,  0.9,  0.3),
-	"yellow": Color(1.0,  0.85, 0.2),
-	"red":    Color(1.0,  0.2,  0.2),
-	"white":  Color(1.0,  1.0,  1.0),
-}
-
 # Target display sizes — uniform regardless of source image dimensions.
 ## ISSUE #201: the costume's fit box went 230x300 -> 322x420 -> 386x504, and is
 ## now DERIVED rather than written down at all — see SPRITE_SIZE further down,

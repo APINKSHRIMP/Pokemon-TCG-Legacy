@@ -910,28 +910,6 @@ func _load_texture(path: String) -> Texture2D:
 	return load(path)
 
 
-# ISSUE #51 FIX: resolve the player's equipped sleeve to a loadable texture path,
-# mirroring Main_Match_Core_Gameplay_Script._resolve_sleeve_path. Sleeves are stored
-# by name (no extension); the originals are a mix of .jpg and .png, so try both.
-func _resolve_player_cardback_path() -> String:
-	var default_path := "res://Image_Assets/Sleeves/1_Default_English.png"
-	var file := FileAccess.open(GameState.PLAYER_CURRENT_DATA_PATH, FileAccess.READ)
-	if file == null:
-		return default_path
-	var data = JSON.parse_string(file.get_as_text())
-	file.close()
-	if not (data is Dictionary):
-		return default_path
-	var sleeve_name : String = String(data.get("sleeve", ""))
-	if sleeve_name == "" or sleeve_name == "default":
-		return default_path
-	for ext: String in [".jpg", ".png"]:
-		var path := "res://Image_Assets/Sleeves/" + sleeve_name + ext
-		if ResourceLoader.exists(path) and load(path) != null:
-			return path
-	return default_path
-
-
 # ── Holo sparkle ──────────────────────────────────────────
 # Tuning constants — big card reveal (face card, one at a time)
 const SPARKLE_BIG_AMOUNT       : int   = 216   # 180 × 1.2

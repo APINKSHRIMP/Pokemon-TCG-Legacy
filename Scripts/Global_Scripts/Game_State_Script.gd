@@ -95,7 +95,6 @@ var autotest_opponent_deck_path: String = ""
 var autotest_opponent_data: Dictionary = {}   # AUTOTEST --real: the real opponent entry to load (empty = test opponent)
 
 var return_to_scene: String = ""
-var interior_entry_position: Vector2 = Vector2.ZERO
 var spawn_position: Vector2 = Vector2.ZERO
 var use_spawn_position: bool = false
 var entering_from: String = ""

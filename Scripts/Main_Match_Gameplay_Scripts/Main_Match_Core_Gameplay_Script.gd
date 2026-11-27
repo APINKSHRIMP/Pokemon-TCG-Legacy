@@ -224,7 +224,6 @@ var mirror_record_on_opponent: Dictionary = {}
 
 # Special attack selection modes (Metronome, Amnesia, Conversion)
 var special_attack_selection_active: bool = false
-var special_attack_selection_callback: Callable
 var energy_type_selection_active: bool = false
 
 # Defender energy discard selection (Hyper Beam, Whirlpool)
@@ -312,10 +311,8 @@ var vermilion_lt_surge_attacker: card_object = null   # AUDIT 2026-11-18 #24: th
 # POKEMON POWER VARIABLES
 var power_menu_active: bool = false
 var damage_swap_mode_active: bool = false
-var damage_swap_source: card_object = null
 var rain_dance_mode_active: bool = false
 var energy_trans_mode_active: bool = false
-var energy_trans_source: card_object = null
 
 # Special Energy Effects handler
 var special_energy_effects: Node
@@ -587,18 +584,6 @@ var card_scales: Dictionary = {
 	12: Vector2(50, 69),
 	13: Vector2(25, 35)
 }
-
-# Fix 4: Named card size constants for readability
-const CARD_SIZE_FULLSCREEN = Vector2(450, 619)
-const CARD_SIZE_SINGLE_SELECTION = Vector2(400, 550)
-const CARD_SIZE_SELECTION_4 = Vector2(405, 557)
-const CARD_SIZE_SELECTION_LARGE = Vector2(350, 481)
-const CARD_SIZE_ACTIVE = Vector2(260, 358)
-const CARD_SIZE_ACTIVE_ANIM = Vector2(200, 275)
-const CARD_SIZE_ENERGY_ANIM = Vector2(150, 206)
-const CARD_SIZE_BENCH = Vector2(100, 138)
-const CARD_SIZE_OPPONENT_HAND = Vector2(50, 69)
-const CARD_SIZE_SMALL_ANIM = Vector2(50, 69)
 
 # Helper script references (instantiated in _ready)
 var attack_effects: Node
@@ -5759,29 +5744,6 @@ func _card_rect_now(card_obj: card_object) -> Dictionary:
 	if node == null or not is_instance_valid(node):
 		return {}
 	return {"position": node.global_position, "size": node.size}
-
-
-## ISSUE #283: WHERE A DRAWN CARD ACTUALLY LANDS IN THE HAND.
-##
-## A draw flew to `player_hand_container` with no override, so it aimed at the
-## CENTRE of the hand box and the card then popped to the end of the row when the
-## board refreshed. The hand is a centred HBoxContainer, so the landing slot is
-## not something that can be calculated - it depends on how many cards are in the
-## hand and how tightly they are overlapping. So build the new hand first, let the
-## container sort itself, and read the last slot's real rect off the screen.
-##
-## The new card is made TRANSPARENT rather than hidden, unlike the Active energy
-## and tool stacks: hiding a child of a centred HBox drops it out of the layout
-## and re-centres every other card in the hand, which would make the whole row
-## shuffle sideways for the length of the flight. Alpha keeps the geometry.
-## The caller's normal refresh puts the alpha back.
-##
-## Assumes the card is ALREADY appended to the hand array (so it is the last one).
-func measure_and_hide_new_hand_slot(is_opponent: bool) -> Dictionary:
-	var hand = opponent_hand if is_opponent else player_hand
-	if hand.is_empty():
-		return {}
-	return measure_and_hide_hand_slot_for(hand[hand.size() - 1], is_opponent)
 
 
 ## FLIGHTS: WHERE A CARD BEING PLAYED FROM THE HAND STARTS ITS FLIGHT.

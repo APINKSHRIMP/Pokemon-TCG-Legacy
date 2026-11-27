@@ -9,7 +9,6 @@
 [ext_resource type="Texture2D" uid="uid://bj6tvwuxqw1bg" path="res://Image_Assets/Map_Objects/SeaGallopSmallRight.png" id="4_a0lly"]
 [ext_resource type="Texture2D" uid="uid://5rb2vlanfegv" path="res://Image_Assets/Map_Objects/Forest/TreeLineThird.png" id="4_aw4ai"]
 [ext_resource type="PackedScene" uid="uid://bprufyh8mxqom" path="res://Scenes/Objects/Player_Object_Scene.tscn" id="5_a0lly"]
-[ext_resource type="Texture2D" uid="uid://bpgp2llb66dny" path="res://Image_Assets/Map_Objects/FishShop.png" id="7_jpjx1"]
 [ext_resource type="Texture2D" uid="uid://3yd2uxgvhb43" path="res://Image_Assets/Map_Objects/FishingBoat.png" id="7_tj6nx"]
 [ext_resource type="Texture2D" uid="uid://u6wrch4agrln" path="res://Image_Assets/Map_Objects/Bakushin_Taxi.png" id="9_a0lly"]
 [ext_resource type="PackedScene" uid="uid://cc668r1nhnhq1" path="res://Image_Assets/Map_Objects/Forest/MediumTree.tscn" id="15_v1hrq"]
@@ -3637,16 +3636,6 @@ tile_set = ExtResource("2_bf13f")
 [node name="FISHSHOP" type="TileMap" parent="TILE_MAPS" unique_id=90439050]
 position = Vector2(-1404, 53)
 format = 2
-
-[node name="FishShop" type="TextureRect" parent="TILE_MAPS/FISHSHOP" unique_id=1557537013]
-visible = false
-offset_left = -366.0
-offset_top = -1132.0
-offset_right = -137.0
-offset_bottom = -844.0
-texture = ExtResource("7_jpjx1")
-expand_mode = 1
-stretch_mode = 4
 
 [node name="FISH_SHOP_bottom" type="TileMapLayer" parent="TILE_MAPS/FISHSHOP" unique_id=773056253]
 position = Vector2(-1, 0)

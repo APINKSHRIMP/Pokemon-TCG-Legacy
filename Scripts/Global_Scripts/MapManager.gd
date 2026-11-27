@@ -519,8 +519,6 @@ func initialise(
 	if GameState.returning_from_battle:
 		_face_battled_opponent()   # ISSUE #378
 		# OLD (ISSUE #381): Bedtime only, a quick fade to black and back with the opponent gone.
-		# if GameState.get_time() == "Bedtime" and not GameState.test_match_mode:
-		# 	_bedtime_dismiss_battled_opponent()   # ISSUE #381 (runs on; not awaited)
 		# The clock reached Bedtime: the opponent says it's late and leaves on the next click.
 		if not GameState.test_match_mode:
 			_dismiss_late_opponent()   # runs on; not awaited
@@ -719,55 +717,9 @@ func _dismiss_late_opponent() -> void:
 		_player.can_move = true
 
 
-## ISSUE #381: nobody is out at Bedtime, so the opponent the player has just fought must not stay to be
-## rematched. The map comes back with them standing there (the battle-return respawn), the player waits,
-## a quick fade to black and back, and they are gone. TWEAKABLE: the three timings.
-const BEDTIME_DISMISS_DELAY := 0.8   # after the map has faded in
+## ISSUE #381: the quick fade to black and back an opponent leaves under. TWEAKABLE.
 const BEDTIME_DISMISS_FADE := 0.35   # each way
 const BEDTIME_DISMISS_HOLD := 0.25   # fully black
-
-func _bedtime_dismiss_battled_opponent() -> void:
-	var opp: Node = null
-	for child in _opponents_container.get_children():
-		if child.is_in_group("opponents") and child.opponent_name == GameState.current_opponent_name:
-			opp = child
-			break
-	if opp == null:
-		return
-	cutscene_active = true
-	if _player != null and is_instance_valid(_player):
-		_player.lock_movement()
-	await get_tree().create_timer(BEDTIME_DISMISS_DELAY).timeout
-	# Their after-battle line (when the outro didn't already say it) is read first.
-	while message_panel != null and is_instance_valid(message_panel) and message_panel.visible:
-		await get_tree().process_frame
-	if _player != null and is_instance_valid(_player):
-		_player.lock_movement()   # closing the box hands movement back
-	var layer := CanvasLayer.new()
-	layer.layer = 90
-	var sheet := ColorRect.new()
-	sheet.color = Color(0, 0, 0, 0)
-	sheet.set_anchors_preset(Control.PRESET_FULL_RECT)
-	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(sheet)
-	get_tree().current_scene.add_child(layer)
-	var tw := sheet.create_tween()
-	tw.tween_property(sheet, "color:a", 1.0, BEDTIME_DISMISS_FADE)
-	await tw.finished
-	if is_instance_valid(opp):
-		opp.queue_free()
-	await get_tree().create_timer(BEDTIME_DISMISS_HOLD).timeout
-	if not is_instance_valid(sheet):
-		cutscene_active = false
-		return
-	var tw2 := sheet.create_tween()
-	tw2.tween_property(sheet, "color:a", 0.0, BEDTIME_DISMISS_FADE)
-	await tw2.finished
-	if is_instance_valid(layer):
-		layer.queue_free()
-	cutscene_active = false
-	if _player != null and is_instance_valid(_player):
-		_player.unlock_movement()
 
 
 ## ISSUE #378: back from a battle, the opponent just fought is still looking at the player (and the
