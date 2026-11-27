@@ -14,13 +14,15 @@ My aim is to capture the satisfaction of earning and collecting new cards and re
 
 ### Rich open world
 
-Unique locations across the map to explore, each filled with dozens of NPCs and opponents to play against. As you progress you will unlock more areas, NPCs, sets and opponents.
+Unique locations across the map to explore, each filled with dozens of NPCs and opponents to play against. As you progress you will unlock more areas, NPCs, sets and opponents. Play a match wherever; You can play your match right on the beach!
 
 ![Taxi](Image_Assets/Screenshots/taxi.gif)
 
 ![Overworld](Image_Assets/Screenshots/overworld.gif)
 
 ![Forest](Image_Assets/Screenshots/forest.gif)
+
+![Matchstart](Image_Assets/Screenshots/matchstart.gif)
 
 ### Battle Simulation Built From Scratch
 
